@@ -244,6 +244,7 @@ python -m unittest backend.test_schema_v2
 - 损坏文件、identity 冲突和不安全路径阻断；
 - matching legacy 记录原样保护；
 - 已有 `is_visible` 人工字段保留；
+- 可在同一进程内/跨进程数据锁内显式保留已有 `artifacts`、`references` 或 `provenance`；
 - 默认不覆盖、显式覆盖和原子写入；
 - 进程内及跨进程数据写锁。
 
@@ -253,7 +254,7 @@ python -m unittest backend.test_schema_v2
 python -m unittest backend.test_version_store backend.test_schema_v2
 ```
 
-结果：40 个测试通过。
+结果：43 个测试通过。
 
 ### `core/indexes`
 
