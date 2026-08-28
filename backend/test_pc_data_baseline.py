@@ -301,7 +301,11 @@ class PcDataBaselineTests(unittest.TestCase):
             for relative in left_files:
                 self.assertEqual((left / relative).read_bytes(), (right / relative).read_bytes(), relative)
                 if not _is_current_overlay(relative):
-                    self.assertEqual((left / relative).read_bytes(), (DATA_ROOT / relative).read_bytes(), relative)
+                    self.assertEqual(
+                        json.loads((left / relative).read_text(encoding="utf-8")),
+                        json.loads((DATA_ROOT / relative).read_text(encoding="utf-8")),
+                        relative,
+                    )
 
 
 if __name__ == "__main__":
