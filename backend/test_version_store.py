@@ -137,6 +137,79 @@ class VersionStoreTests(unittest.TestCase):
             self.assertEqual(stored["file_time"], refreshed["file_time"])
             validate_v2_record(stored)
 
+    def test_persist_preserves_selected_existing_v2_fields_inside_update(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            existing = record("windows")
+            existing["references"] = [{
+                "kind": "chunk_manifest",
+                "path": "chunk-manifests/7.0.0.json",
+                "build_id": "build-old",
+                "source": {
+                    "source_kind": "official_sync",
+                    "source_name": "Sophon",
+                    "source_url": "https://official.example.test/getBuild",
+                },
+            }]
+            existing["provenance"] = {
+                "source_kind": "official_sync",
+                "source_name": "archive source",
+                "source_url": "https://official.example.test/archive",
+            }
+            existing["is_visible"] = False
+            persist_v2_record(existing, root)
+
+            refreshed = record("windows")
+            refreshed["artifacts"][0]["size"] = 99
+            refreshed["references"] = []
+            refreshed["provenance"] = {
+                "source_kind": "official_sync",
+                "source_name": "new source",
+                "source_url": "https://official.example.test/new",
+            }
+            path = persist_v2_record(
+                refreshed,
+                root,
+                preserve_artifacts=True,
+                preserve_references=True,
+                preserve_provenance=True,
+            )
+            stored = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(stored["artifacts"], existing["artifacts"])
+            self.assertEqual(stored["references"], existing["references"])
+            self.assertEqual(stored["provenance"], existing["provenance"])
+            self.assertFalse(stored["is_visible"])
+            validate_v2_record(stored)
+
+    def test_persist_preserves_only_requested_existing_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            existing = record("windows")
+            existing["references"] = [{
+                "kind": "chunk_manifest",
+                "path": "chunk-manifests/7.0.0.json",
+                "source": {"source_kind": "official_sync", "source_name": "Sophon"},
+            }]
+            persist_v2_record(existing, root)
+
+            refreshed = record("windows")
+            refreshed["artifacts"][0]["size"] = 99
+            refreshed["provenance"] = {
+                "source_kind": "official_sync",
+                "source_name": "archive source",
+            }
+            path = persist_v2_record(refreshed, root, preserve_references=True)
+            stored = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(stored["artifacts"], refreshed["artifacts"])
+            self.assertEqual(stored["references"], existing["references"])
+            self.assertEqual(stored["provenance"], refreshed["provenance"])
+
+    def test_persist_preservation_flags_require_bool(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            for name in ("preserve_artifacts", "preserve_references", "preserve_provenance"):
+                with self.subTest(name=name), self.assertRaisesRegex(TypeError, name):
+                    persist_v2_record(record(), Path(directory), **{name: 1})
+
     def test_persist_preserves_matching_legacy_record_verbatim(self) -> None:
         legacy = {
             "vendor": "mihoyo",

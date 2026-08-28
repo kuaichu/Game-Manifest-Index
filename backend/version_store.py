@@ -155,8 +155,13 @@ def _prepare_v2_target_directory_locked(root: Path, target: Path) -> Path:
     return _directory(game_dir, relative_parts[2])
 
 
-def _persist_v2_record_locked(record: Mapping[str, Any], root: Path, target: Path) -> Path:
-    """Read, validate, and persist one record while both storage locks are held."""
+def _persist_v2_record_locked(
+    record: Mapping[str, Any], root: Path, target: Path, *,
+    preserve_artifacts: bool = False,
+    preserve_references: bool = False,
+    preserve_provenance: bool = False,
+) -> Path:
+    """Persist one record while preserving selected fields from an existing v2 record."""
     _prepare_v2_target_directory_locked(root, target)
     try:
         existing = _read_existing_record(target)
@@ -183,20 +188,54 @@ def _persist_v2_record_locked(record: Mapping[str, Any], root: Path, target: Pat
         raise VersionStoreError(f"schema v2 记录 identity 冲突：{detail}")
 
     updated = dict(record)
+    if preserve_artifacts:
+        updated["artifacts"] = existing["artifacts"]
+    if preserve_references:
+        updated["references"] = existing["references"]
+    if preserve_provenance and "provenance" in existing:
+        updated["provenance"] = existing["provenance"]
     if "is_visible" in existing:
         updated["is_visible"] = existing["is_visible"]
+    try:
+        validate_v2_record(updated)
+    except ValueError as error:
+        raise VersionStoreError(f"合并后的 schema v2 记录无效：{error}") from error
     return _write_v2_record_locked(updated, root, target, overwrite=True)
 
 
-def persist_v2_record(record: Mapping[str, Any], output_root: Path) -> Path:
-    """Apply the shared safe persistence policy for one canonical v2 record."""
+def persist_v2_record(
+    record: Mapping[str, Any], output_root: Path, *,
+    preserve_artifacts: bool = False,
+    preserve_references: bool = False,
+    preserve_provenance: bool = False,
+) -> Path:
+    """Persist a record, optionally retaining selected existing v2 fields.
+
+    Preservation happens inside both storage locks and is deliberately limited
+    to fields whose producers can run independently.  This is not a generic
+    merge framework.
+    """
     validate_v2_record(record)
+    for name, value in (
+        ("preserve_artifacts", preserve_artifacts),
+        ("preserve_references", preserve_references),
+        ("preserve_provenance", preserve_provenance),
+    ):
+        if not isinstance(value, bool):
+            raise TypeError(f"{name} 必须显式使用 bool")
     root = Path(output_root)
     target = v2_record_path(record, root)
     with DATA_LOCK:
         _prepare_output_root(root)
         with data_file_lock(root):
-            return _persist_v2_record_locked(record, root, target)
+            return _persist_v2_record_locked(
+                record,
+                root,
+                target,
+                preserve_artifacts=preserve_artifacts,
+                preserve_references=preserve_references,
+                preserve_provenance=preserve_provenance,
+            )
 
 
 def write_v2_record(
