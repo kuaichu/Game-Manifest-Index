@@ -98,6 +98,10 @@ V5 主线。
   - 用于迁入 12 款 Android 的已验证历史数据和索引。
   - 已测试并 squash merge 到 `integration/apk`。
 
+- `apk/url-adapters`
+  - 用于迁入 12 款 Android 的官方采集器和厂商专项 organizer。
+  - 已测试并 squash merge 到 `integration/apk`。
+
 这些任务分支后续不再继续开发，可冻结或删除。
 
 ## 不可破坏的语义约束
@@ -281,11 +285,40 @@ python -m unittest backend.test_indexes backend.test_version_store backend.test_
 
 结果：54 个测试通过。
 
+### APK URL adapters
+
+12 款 Android 的厂商官方采集和 canonical v2 整理逻辑已从已验证 APK 快照中
+选择性迁入。
+
+| 厂商 | 游戏 | 输入 | 输出 | 直接依赖 | 行为变化 |
+| --- | --- | --- | --- | --- | --- |
+| 米哈游 | `hk4e`、`hkrpg`、`nap` | 官方 `download_porter` | 单 APK canonical v2 | curl、后续 APK probe、VersionStore | 成功路径无变化；probe 改为延迟导入 |
+| 米哈游 | `bh3` | 独立官方 `download_porter` | 共享米哈游 organizer 的 canonical v2 | 同上 | organizer 异常统一包装为 adapter 错误 |
+| 米哈游 | `bh2` | 官方 download page | 共享米哈游 organizer 的 canonical v2 | 同上 | organizer 异常统一包装为 adapter 错误 |
+| 鹰角 | `arknights`、`endfield` | 官方 launcher latest | 单 APK canonical v2 | curl、后续 APK probe、VersionStore | 成功路径无变化；probe 改为延迟导入 |
+| 库洛 | `wuwa`、`pns` | 官方 Android manifest | 单 APK canonical v2 | curl、后续 APK probe、VersionStore | 成功路径无变化；probe 改为延迟导入 |
+| 完美世界 | `tof`、`p5x`、`nte` | 官方 gameDownload JS + APK manifest | 单 APK canonical v2 | curl、`remotezip`、`pyaxmlparser`、后续 APK probe、VersionStore | 成功路径无变化；probe 改为延迟导入 |
+
+所有 endpoint 与 V4 已验证快照逐字符一致；输出继续使用
+`provenance.source_kind=official_sync`，URL candidate 使用对应厂商 provider 和
+`source_kind=official`。默认代码不包含 Amarea、HoYoFiles、GitHub、社区或其他第三方
+fallback。旧 flat 米哈游 adapter 没有迁入，也不存在默认入口。
+
+已验证：
+
+```text
+python -m unittest discover -s url_adapters -p 'test_*.py'
+python -m unittest backend.test_apk_data_baseline backend.test_indexes backend.test_version_store backend.test_schema_v2
+python -m compileall -q url_adapters
+```
+
+结果：18 个 adapter 测试和 54 个 core/data 回归通过。真实联网采集需等 APK probe 与
+registry 接入完成后在 `integration/apk` 统一验收。
+
 ## 暂未迁移内容
 
 以下内容还没有进入 V5 的可信基线：
 
-- APK URL adapters；
 - APK probe adapters；
 - APK registry 和 API 接线；
 - PC packages、patches、voice、chunks、manifest 相关适配器；
@@ -313,24 +346,24 @@ snapshot/apk-validated-baseline
 
 其中 `snapshot/apk-validated-baseline`、`frontend` 晋级和 `core/schema` 已完成。
 
-当前下一步建议做 `apk/url-adapters`。
+当前下一步建议做 `apk/probe-adapters`。
 
 分支路径：
 
 ```text
 integration/apk
-  -> apk/url-adapters
+  -> apk/probe-adapters
   -> validation
   -> squash merge -> integration/apk
 ```
 
 预计修改范围：
 
-- 12 款 Android 的厂商官方采集入口；
-- 厂商专项 organizer；
-- 对应采集和整理测试。
+- 四个厂商的 APK URL 探活器；
+- 统一 `urls[].current` 更新；
+- probe 边界和厂商匹配测试。
 
-只从 `snapshot/apk-validated-baseline` 选择性提取已验证 adapter 行为，不整分支合并。
+只从 `snapshot/apk-validated-baseline` 选择性提取已验证 probe 行为，不整分支合并。
 
 这一阶段不要迁入：
 
@@ -348,8 +381,7 @@ integration/apk
 推荐顺序：
 
 ```text
-apk/url-adapters
-  -> apk/probe-adapters
+apk/probe-adapters
   -> apk/registry-integration
   -> APK 真实联网验收
   -> integration/v5

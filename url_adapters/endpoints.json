@@ -1,0 +1,22 @@
+{
+  "mihoyo": {
+    "hk4e": "https://api-takumi.mihoyo.com/event/download_porter/link/ys_cn/official/android_default",
+    "hkrpg": "https://api-takumi.mihoyo.com/event/download_porter/link/hkrpg_cn/official/android_default",
+    "nap": "https://api-takumi.mihoyo.com/event/download_porter/link/nap_cn/official/android_default",
+    "bh3": "https://api-takumi.mihoyo.com/event/download_porter/link/bh3_cn/bh3/android_official",
+    "bh2": "https://www.benghuai.com/download/latest"
+  },
+  "hypergryph": {
+    "endfield": "https://launcher.hypergryph.com/game/latest/6LL0KJuqHBVz33WK/1/1",
+    "arknights": "https://launcher.hypergryph.com/game/latest/GzD1CpaWgmSq1wew/1/1"
+  },
+  "kuro": {
+    "wuwa": "https://download.kurogames.com/mc_WnGtDn85y8lJB4mTmYHYuNjIl9n6YGVm/official/cn/zh-Hans/android_app.json",
+    "pns": "https://download.kurogames.com/pns/official/cn/zh-Hans/androidpc_app.json"
+  },
+  "perfectworld": {
+    "tof": "https://static.games.wanmei.com/public/commonData/gamesData/gameDownload/ht-gameDownload.js",
+    "p5x": "https://static.games.wanmei.com/public/commonData/gamesData/gameDownload/p5x-gameDownload.js",
+    "nte": "https://static.games.wanmei.com/public/commonData/gamesData/gameDownload/yh-gameDownload.js"
+  }
+}
