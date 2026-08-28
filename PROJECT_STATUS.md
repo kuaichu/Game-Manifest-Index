@@ -55,6 +55,7 @@ V5 主线。
   - 已晋级的前端基线
   - 已晋级的 `core/schema`
   - 已晋级的 `core/version-store`
+  - 已晋级的 `core/indexes`
 
 日常新任务应从最新 `integration/v5` 或对应平台 integration 分支切出。
 
@@ -87,6 +88,10 @@ V5 主线。
 
 - `core/version-store`
   - 用于新版记录的安全保存、路径和覆盖规则。
+  - 已测试并 squash merge 到 `integration/v5`。
+
+- `core/indexes`
+  - 用于生成和读取 Android/PC `index.json`。
   - 已测试并 squash merge 到 `integration/v5`。
 
 这些任务分支后续不再继续开发，可冻结或删除。
@@ -219,11 +224,40 @@ python -m unittest backend.test_version_store backend.test_schema_v2
 
 结果：40 个测试通过。
 
+### `core/indexes`
+
+Android/PC 版本索引能力已作为独立 core 模块加入 V5。
+
+当前文件：
+
+- `backend/indexes.py`
+- `backend/test_indexes.py`
+
+当前能力：
+
+- Android/PC 索引路径和平台目录映射；
+- 从有效版本记录生成公共版本摘要；
+- 数字版本降序排序；
+- 隐藏、损坏和 identity 不匹配记录过滤；
+- 空索引删除和原子写入；
+- 严格 index reader；
+- 单游戏和全数据根目录索引重建。
+
+当前 PC index 只写 Android/PC 样本共同确认的字段，不提前加入
+`artifact_count`、`artifact_kinds` 或 `chunk_summary` 等专项摘要。
+
+已验证：
+
+```text
+python -m unittest backend.test_indexes backend.test_version_store backend.test_schema_v2
+```
+
+结果：52 个测试通过。
+
 ## 暂未迁移内容
 
 以下内容还没有进入 V5 的可信基线：
 
-- Android/PC `index.json` 生成与读取；
 - APK 数据基线；
 - APK URL adapters；
 - APK probe adapters；
@@ -253,24 +287,24 @@ snapshot/apk-validated-baseline
 
 其中 `snapshot/apk-validated-baseline`、`frontend` 晋级和 `core/schema` 已完成。
 
-当前下一步建议做 `core/indexes`。
+当前下一步建议进入 APK 正式迁移，先做 `apk/data-baseline`。
 
 分支路径：
 
 ```text
-integration/v5
-  -> core/indexes
+integration/apk
+  -> apk/data-baseline
   -> validation
-  -> squash merge -> integration/v5
+  -> squash merge -> integration/apk
 ```
 
 预计修改范围：
 
-- Android `index.json` 生成和读取；
-- PC `index.json` 生成和读取；
-- 对应索引规则和测试。
+- 已验证的 12 款 Android 历史版本记录；
+- 对应 Android `index.json`；
+- 数据合法性和索引一致性验证。
 
-优先参考 snapshot 中与索引直接相关的已验证实现和测试。
+只从 `snapshot/apk-validated-baseline` 选择性提取已验证 APK 数据，不整分支合并。
 
 这一阶段不要迁入：
 
@@ -288,9 +322,7 @@ integration/v5
 推荐顺序：
 
 ```text
-core/indexes
-  -> integration/apk
-  -> apk/data-baseline
+apk/data-baseline
   -> apk/url-adapters
   -> apk/probe-adapters
   -> apk/registry-integration
