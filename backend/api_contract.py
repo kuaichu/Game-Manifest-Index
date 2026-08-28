@@ -778,12 +778,13 @@ def create_api_app(data_root: Path, upstream: Any | None = None) -> FastAPI:
         return JSONResponse(status_code=error.status, content={"error": {"code": error.code, "message": error.message, "details": error.details}})
 
     @app.exception_handler(RequestValidationError)
-    async def validation_handler(_: Request, error: RequestValidationError) -> JSONResponse:
+    async def validation_handler(request: Request, error: RequestValidationError) -> JSONResponse:
         details = [
             {"location": ".".join(str(part) for part in item.get("loc", ())), "type": item.get("type", "invalid")}
             for item in error.errors()
         ]
-        return JSONResponse(status_code=400, content={"error": {"code": "bad_request", "message": "请求参数无效", "details": details}})
+        is_admin = request.url.path.startswith("/api/v1/admin/")
+        return JSONResponse(status_code=422 if is_admin else 400, content={"error": {"code": "validation_error" if is_admin else "bad_request", "message": "请求参数无效", "details": details}})
 
     @app.exception_handler(StarletteHTTPException)
     async def framework_error_handler(_: Request, error: StarletteHTTPException) -> JSONResponse:

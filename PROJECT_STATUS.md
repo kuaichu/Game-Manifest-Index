@@ -581,17 +581,42 @@ base URL 的历史 Kuro 文档仍可浏览文件元数据但不补造下载链�
 
 API 专项 37 项与 schema/index/version-store 55 项回归通过；另核验 12 games/20 domains、442
 records/1,768 artifacts、63 chunk documents/1,410 public entries、48 个 checked-in file-manifest
-版本均可按对应 contract 读取。没有新增 `/admin` route，也没有提前迁入 sync/probe/scheduler、
-version admin 或 retention。
+版本均可按对应 contract 读取。该 API contract 任务没有提前迁入 sync/probe、version admin 或
+retention；后续 `backend/sync-operations` 在同一个 app factory 上独立注册受保护 admin routes。
+
+### Backend sync / probe operations
+
+`backend/sync-operations` 已实现受 Bearer token 保护的 discovery / probe 运维契约：生产 app
+注册 14 个 frontend 已使用的 admin routes，但只有配置至少 16 字符且无空白的
+`GMI_ADMIN_TOKEN` 后才启用；未配置返回 503，错误 token 返回 401。schedule 与 operation
+snapshot 写入可配置的非数据 `state_root`，使用有界、原子 JSON 文件；默认 `.cache/` 与
+VersionStore 的 `data/.cache/` 已显式忽略。运维任务保持单活动任务、daemon worker、协作取消、
+重启中断转 failed 和增量日志游标语义。
+
+手动 operation 支持 `discover`、`probe` 或固定的 discover→probe 顺序，并按 `all/android/pc`
+scope 精确调用现有 official registries；同一 game id 在 all scope 下分别运行 Android 与 PC。
+discovery 成功后每个受影响 domain 只重建一次 index。批量探活仅处理路径/identity/schema 均
+有效的 canonical v2 Android / Windows 记录：逐 record 串行更新 candidates、records 间有限
+并发，通过现有 probe/apply/VersionStore 与共享写锁保留 artifact identity、非 probe 字段和
+`is_visible`，最后重建受影响 index。单 URL 无 public stable URL id 时只读；携带 id 时才精确
+定位、持久化并重建索引。job snapshot 和日志不保存 URL、token 或 canonical record。
+
+sync schedule 只保存 `{enabled,times}`，probe schedule 只保存
+`{enabled,interval_hours,mode}`。前端现有文案和旧项目都只定义“保存配置，由系统计划任务触发”，
+没有定义内部 timer；因此本阶段没有发明 daemon scheduler。外部 scheduler 的部署方式、时区、
+漏跑补偿以及 sync schedule 应触发 discover 还是 discover+probe 仍为 **UNKNOWN**。
+
+sync/probe 专项 36 项、public API 37 项、schema/index/version-store 55 项、registry 20 项和
+probe service/registry 17 项通过；所有联网和写入边界均使用临时 data/state root 与 fakes，未对
+checked-in baseline 做真实写入。
 
 ## 暂未迁移内容
 
 以下内容还没有进入 V5 的可信基线：
 
-- APK/PC 后台 operation 接线（由后续 backend 阶段完成）；
-- backend sync operations；
 - backend version admin；
 - retention policy。
+- 外部 scheduler 部署与上述 UNKNOWN 调度语义。
 
 这些内容必须按 `BRANCHING.md` 的规则，通过独立任务分支迁移、验证、审查，再晋级到
 对应 integration 分支。
@@ -613,8 +638,8 @@ snapshot/apk-validated-baseline
 APK 平台模块，以及米哈游、Kuro、Perfect World 的当前 PC 采集、URL probe 与内部 registry
 已完成验证。`pc/data-baseline` 已完成数据迁移、官方 current discovery、基线审计与
 `integration/pc` 平台验收；PHASE 7 已 normal merge 到 `integration/v5@639b117`，当前
-`backend/api-contract` 公开只读 API contract 已实现并通过任务级验证；下一任务是
-`backend/sync-operations`。
+`backend/api-contract` 公开只读 API contract 已晋级；`backend/sync-operations` 已实现并通过
+任务级验证，下一任务是 `backend/version-admin`。
 
 分支路径：
 
@@ -642,7 +667,8 @@ integration/pc
 integration/pc
   -> normal merge -> integration/v5@639b117（已完成）
   -> backend/api-contract（已完成）
-  -> backend/sync-operations
+  -> backend/sync-operations（任务验证完成）
+  -> backend/version-admin
 ```
 
 后端业务能力建议在数据和适配器基础稳定后推进：
