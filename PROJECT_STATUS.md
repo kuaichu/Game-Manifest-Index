@@ -144,6 +144,18 @@ V5 主线。
 
 ## 已完成内容
 
+### PC URL probe adapters
+
+`probe_adapters/pc/` 已覆盖米哈游四款 archive/segment/patch/voice candidates、Kuro
+`wuwa` index candidates 和 Perfect World 三款 ResList candidates；复用有限 Range transport，
+严格按 platform/vendor/game/host/path dispatch。写回只更新精确
+`artifacts[].urls[].current`，不会触碰 artifact identity、其他 candidates、references、
+provenance 或 `manifest.base_urls`。
+
+真实代表 URL 验收：`hkrpg`、`nap`、Kuro 和三款 Perfect World 为 available；`hk4e`
+当前 archive endpoint 返回 404，BH3 当前对象为未恢复的 OSS Archive，两者按证据写为
+unavailable。八款结果均通过 schema 和 current 白名单检查，未下载完整包体。
+
 ### Perfect World PC PatcherSDK file manifests
 
 `url_adapters/pc/perfectworld_patcher.py` 已选择性适配成熟 PatcherSDK 协议，支持 `nte`、
@@ -532,23 +544,23 @@ snapshot/apk-validated-baseline
 
 其中 `snapshot/apk-validated-baseline`、`frontend` 晋级和 `core/schema` 已完成。
 
-APK 平台模块，以及米哈游、Kuro、Perfect World 的当前 PC 采集专项已完成，当前下一步是
-`pc/probe-adapters`。
+APK 平台模块，以及米哈游、Kuro、Perfect World 的当前 PC 采集和 URL probe 专项已完成，
+当前下一步是 `pc/registry-integration`。
 
 分支路径：
 
 ```text
 integration/pc
-  -> pc/probe-adapters
+  -> pc/registry-integration
   -> validation
   -> squash merge -> integration/pc
 ```
 
 预计修改范围：
 
-- 米哈游、Kuro、Perfect World PC URL candidate 探活；
-- 只更新 canonical `artifacts[].urls[].current`；
-- 对应厂商 URL dispatch、边界测试和真实代表 URL 验收。
+- 八款 PC 官方 collector 注册；
+- 单任务和批量 discovery/probe 接线；
+- 默认链路官方来源、平台隔离和持久化边界测试。
 
 PC 开发不得修改 Android collector、organizer、probe 或 registry。
 
@@ -559,15 +571,15 @@ PC 开发不得修改 Android collector、organizer、probe 或 registry。
 - frontend 文件；
 - APK 采集器；
 - APK 验活器；
-- 已完成的 PC collector/organizer 语义、registry 和历史数据。
+- 已完成的 PC collector/organizer/probe 语义和历史数据。
 
 ## 近期路线
 
 推荐顺序：
 
 ```text
-pc/probe-adapters
-  -> pc/registry-integration
+pc/registry-integration
+  -> pc/data-baseline（仅在平台格式和 registry 验收稳定后）
 ```
 
 PC 开发应等共享 core 稳定后再开始。`pc/data-baseline` 不要现在创建，等 PC 格式和适配器
