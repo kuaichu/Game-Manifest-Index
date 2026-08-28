@@ -46,7 +46,7 @@ V5 主线。
 
 ### `integration/v5`
 
-- 当前已知基线提交：`ccb6e00 docs: add V5 project status`
+- 当前提交：以 Git 中 `integration/v5` 的实际分支指针为准。
 - 定位：V5 开发期当前最新可信基线。
 - 当前已包含：
   - `.gitignore`
@@ -58,6 +58,21 @@ V5 主线。
   - 已晋级的 `core/indexes`
 
 日常新任务应从最新 `integration/v5` 或对应平台 integration 分支切出。
+
+### `integration/apk`
+
+- 定位：APK 平台验证分支。
+- 当前已包含完整 core、12 款 Android 数据基线、官方 URL adapters、probe adapters 和
+  默认 collector registry。
+- 当前平台验收：12/12 官方采集成功，12/12 专项 probe 为 `available` / HTTP 206，
+  schema、artifact identity、indexes 和 provenance 检查通过。
+- 晋级规则：使用 normal merge 合入 `integration/v5`，不得 squash 整个平台分支。
+
+### `integration/pc`
+
+- 定位：PC 平台验证分支。
+- 当前只包含已经同步的 shared core 基线，PC 业务分支尚未开始晋级。
+- 新 PC 任务从该分支创建，验证后 squash merge 回该分支。
 
 ### `frontend`
 
@@ -104,6 +119,10 @@ V5 主线。
 
 - `apk/probe-adapters`
   - 用于迁入四个厂商的 Android URL 探活与 canonical current 更新。
+  - 已测试并 squash merge 到 `integration/apk`。
+
+- `apk/registry-integration`
+  - 用于注册 12 款 Android 的默认官方 collector 并提供内部 discovery API。
   - 已测试并 squash merge 到 `integration/apk`。
 
 这些任务分支后续不再继续开发，可冻结或删除。
@@ -349,11 +368,32 @@ python -m unittest backend.test_apk_data_baseline backend.test_indexes backend.t
 库洛和完美世界各 1 个基线官方 APK URL 执行 timeout 10 秒的真实只读探活，4/4 为
 `available`、HTTP 206；未写回仓库数据。
 
+### APK registry integration 与平台验收
+
+内部 discovery registry 精确注册 12 款 Android 的 canonical v2 collector，提供单任务和
+并发 `discover_games()` API。默认 registry 不含 legacy、old、第三方 collector 或 PC adapter，
+也不提供第三方 fallback。每个采集结果在返回前重新通过 schema v2 校验。
+
+公开 HTTP route、后台 operation、可持久化批量 probe 和 CLI 依赖 PHASE 8 的
+`backend/api-contract` / `backend/sync-operations`，没有在 APK registry 分支中提前迁入。
+
+在全新系统临时目录完成了 12 款 Android 的真实官方联网平台验收：
+
+- 12/12 discovery 成功并写出 canonical v2；
+- 12/12 命中对应厂商专项 probe；
+- 12/12 `available`、HTTP 206；
+- 12/12 probe 写回后 schema 仍有效且 artifact_id 不变；
+- 12/12 索引重建成功并与临时记录一致；
+- provenance、provider、source_kind 和 endpoint 均符合官方来源约束；
+- 未发现 canonical 禁止字段或 PC adapter 混入。
+
+相关自动验证共包括 25 个 URL adapter/registry、23 个 probe 和 54 个 core/data 测试。
+
 ## 暂未迁移内容
 
 以下内容还没有进入 V5 的可信基线：
 
-- APK registry 和 API 接线；
+- APK 公开 API 和后台 operation 接线（由后续 backend 阶段完成）；
 - PC packages、patches、voice、chunks、manifest 相关适配器；
 - PC probe adapters；
 - PC 数据基线；
@@ -379,24 +419,24 @@ snapshot/apk-validated-baseline
 
 其中 `snapshot/apk-validated-baseline`、`frontend` 晋级和 `core/schema` 已完成。
 
-当前下一步建议做 `apk/registry-integration`。
+APK 平台模块已经完成，当前下一步建议进入 PC，先做 `pc/mihoyo-packages`。
 
 分支路径：
 
 ```text
-integration/apk
-  -> apk/registry-integration
+integration/pc
+  -> pc/mihoyo-packages
   -> validation
-  -> squash merge -> integration/apk
+  -> squash merge -> integration/pc
 ```
 
 预计修改范围：
 
-- 12 款 Android collector 注册；
-- probe service 与 collector 接线；
-- 对应 API/操作入口的最小接入测试。
+- 米哈游 PC 官方完整包资源采集；
+- canonical v2 package artifacts；
+- 对应 parser/organizer 测试和官方来源验证。
 
-保持 Android/PC registry 隔离，默认 discovery 只注册厂商官方入口。
+PC 开发不得修改 Android collector、organizer、probe 或 registry。
 
 这一阶段不要迁入：
 
@@ -414,9 +454,8 @@ integration/apk
 推荐顺序：
 
 ```text
-apk/registry-integration
-  -> APK 真实联网验收
-  -> integration/v5
+pc/mihoyo-packages
+  -> pc/mihoyo-patches
 ```
 
 PC 开发应等共享 core 稳定后再开始。`pc/data-baseline` 不要现在创建，等 PC 格式和适配器
