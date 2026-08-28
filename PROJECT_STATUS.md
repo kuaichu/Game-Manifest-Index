@@ -629,6 +629,25 @@ index，独立 manifest 按既有保守策略保留为 orphan。
 
 task `6dff472` 已 squash 晋级为 `integration/v5@dc97a78`，task/integration tree 一致。
 
+### Frontend 管理能力对齐
+
+`frontend-version-admin` 已按 PHASE 8 的稳定后端契约收口管理界面。由于冻结的历史分支
+`frontend` 占用 Git ref namespace，无法同时创建 `frontend/version-admin`，因此本任务使用等价的
+短期分支名；父分支仍为最新 `integration/v5`，晋级规则不变。
+
+游戏和数据模块目录现在只展示静态注册关系与 canonical 数据投影，不再暴露必然返回
+`catalog_mutation_unsupported` 的创建、编辑或删除操作。Android 域继续提供后端实际支持的单 APK
+手工新增和编辑；Windows 域明确显示只读说明，不再把 package、patch、voice、file manifest 或
+chunk manifest 塞进 APK 专用表单。手工新增版本成功提示忠实显示后端 `probe_error`，不会虚构后台
+自动探活成功。
+
+retention 入口保留为禁用的“未接入”状态，不会请求当前不存在的 API，也不再宣称清理引擎就绪。
+sync/probe schedule 只标为计划参数：服务不会启动内置计时器，真实触发、时区、漏跑策略与采集动作
+仍由外部计划任务定义，保持 **UNKNOWN** 而不猜测。
+
+前端专项 7 项能力测试和完整 183 项 Vitest 均通过，`npm run build` 通过。测试使用 jsdom，不涉及
+客户端内置浏览器或用户浏览器会话。
+
 ## 暂未迁移内容
 
 以下内容还没有进入 V5 的可信基线：
@@ -656,9 +675,9 @@ snapshot/apk-validated-baseline
 APK 平台模块，以及米哈游、Kuro、Perfect World 的当前 PC 采集、URL probe 与内部 registry
 已完成验证。`pc/data-baseline` 已完成数据迁移、官方 current discovery、基线审计与
 `integration/pc` 平台验收；PHASE 7 已 normal merge 到 `integration/v5@639b117`，当前
-`backend/api-contract` 与 `backend/sync-operations` 已晋级；`backend/version-admin` 已完成
-任务级实现、主审和验证，并已 squash 晋级 `integration/v5@dc97a78`。PHASE 8 已完成；下一步
-按实际需要调查现有 frontend 是否仍需独立任务调整，不创建空分支。
+`backend/api-contract`、`backend/sync-operations` 与 `backend/version-admin` 已晋级。PHASE 8 已完成；
+PHASE 9 已确认并完成必要的 frontend 管理能力对齐，下一步是在 `integration/v5` 执行 PHASE 10
+全链路验收，通过后才允许晋级 `main`。
 
 分支路径：
 
@@ -688,6 +707,8 @@ integration/pc
   -> backend/api-contract（已完成）
   -> backend/sync-operations（已完成）
   -> backend/version-admin（已完成）
+  -> frontend-version-admin（已完成，待按任务分支规则晋级）
+  -> PHASE 10 全链路验收
 ```
 
 后端业务能力建议在数据和适配器基础稳定后推进：
