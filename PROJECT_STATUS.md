@@ -39,10 +39,11 @@ V5 主线。
 
 ### `main`
 
-- 提交：`c6bf94b Initial empty baseline`
-- 内容：空树。
+- 初始空基线：`c6bf94b Initial empty baseline`。
+- 已晋级代码基线：`f5ff865`；最终指针以 Git 中 `main` 的实际分支指针为准。
+- 内容：完成 PHASE 10 验收的完整 V5 产品状态。
 - 定位：V5 最终可信产品状态。
-- 规则：开发期间不直接提交，不直接开发。只有 `integration/v5` 完成最终验收后才合入。
+- 规则：仍不直接开发；后续只接收通过 `integration/v5` 验证的晋级。
 
 ### `integration/v5`
 
@@ -648,6 +649,45 @@ sync/probe schedule 只标为计划参数：服务不会启动内置计时器，
 前端专项 7 项能力测试和完整 183 项 Vitest 均通过，`npm run build` 通过。测试使用 jsdom，不涉及
 客户端内置浏览器或用户浏览器会话。
 
+### PHASE 10 全链路验收
+
+`integration/v5@f5ff865` 已完成最终代码与数据验收，并从空 `main@c6bf94b` fast-forward 晋级。
+本节是晋级后的纯状态记录，不改变已验收业务代码或数据。
+
+自动验证：
+
+- `python -m unittest discover`：275 项通过；
+- `python -m compileall -q backend url_adapters probe_adapters scripts`：通过；
+- `npm test`：16 个测试文件、183 项通过；
+- `npm run build`：Vue 类型检查与 production build 通过；
+- `git diff --check`：通过。
+
+真实官方联网验收全部在系统临时目录执行，没有写入 checked-in `data/`：
+
+- Android 12/12 discovery 成功，12/12 代表 APK probe 均为 available / HTTP 206；
+- PC 8/8 discovery 成功；hkrpg、nap、wuwa、tof、p5x、nte 代表 probe 为 available / HTTP 206；
+- hk4e 当前官方 archive 返回 404，BH3 当前对象仍为未恢复 Archive，均按真实证据保持
+  unavailable，BH3 未伪造 HTTP code；
+- 共验证 20 个域、23 条临时 canonical records、20 个临时 indexes；probe 写回只改变目标
+  candidate `current`，artifact identity 和其他字段保持不变。
+
+checked-in 数据与 API 审计：
+
+- 442 条 canonical records（269 Android / 173 Windows）、1,768 个全局唯一 artifact IDs；
+- Android 历史 269 条继续使用 URL 级 `legacy`，没有伪造顶层官方 provenance；PC provenance
+  为 60 条 `legacy_migration`、102 条 `third_party_history`、11 条 `official_sync`；
+- 20 个 indexes 在临时副本中由正式生成器重建后逐 JSON 一致；
+- FastAPI 联调覆盖 16 public + 28 admin method/routes、12 games、20 domains、442 public/admin
+  versions、20 latest editable、16 个可比较域和 4 个 chunk 域，并验证 admin 认证、unsupported 409
+  与结构化错误 envelope；
+- 孤立 `snapshot/apk-validated-baseline@bfb2023` 不在正式 ancestry；APK/PC 平台分别以双父 normal
+  merge `05017fe` / `639b117` 晋级。`snapshot/v5-global-*` 只是指向既有 integration 提交的历史
+  分支指针，没有产生 snapshot merge。
+
+仓库没有真实浏览器 E2E harness；前端关键路径由 jsdom 组件/路由/API 测试和 production build
+验证，未调用客户端内置浏览器或用户浏览器。retention policy 与外部 scheduler 部署、触发、时区、
+漏跑和采集动作仍为明确未实现/UNKNOWN，不属于本次 V5 可信能力。
+
 ## 暂未迁移内容
 
 以下内容还没有进入 V5 的可信基线：
@@ -672,12 +712,10 @@ snapshot/apk-validated-baseline
 
 其中 `snapshot/apk-validated-baseline`、`frontend` 晋级和 `core/schema` 已完成。
 
-APK 平台模块，以及米哈游、Kuro、Perfect World 的当前 PC 采集、URL probe 与内部 registry
-已完成验证。`pc/data-baseline` 已完成数据迁移、官方 current discovery、基线审计与
-`integration/pc` 平台验收；PHASE 7 已 normal merge 到 `integration/v5@639b117`，当前
-`backend/api-contract`、`backend/sync-operations` 与 `backend/version-admin` 已晋级。PHASE 8 已完成；
-PHASE 9 已确认并完成必要的 frontend 管理能力对齐，下一步是在 `integration/v5` 执行 PHASE 10
-全链路验收，通过后才允许晋级 `main`。
+PHASE 1–9 已按任务分支和 integration 规则完成。PHASE 10 已完成自动、真实联网、API、前端关键
+路径、数据与 Git 历史验收；已验证代码基线 `integration/v5@f5ff865` 已 fast-forward 到 `main`。
+当前纯状态任务只记录已完成的晋级证据；晋级该记录后，`main` 与 `integration/v5` 应保持同一指针，
+正式验证 tag 应指向该共同提交。
 
 分支路径：
 
@@ -708,7 +746,8 @@ integration/pc
   -> backend/sync-operations（已完成）
   -> backend/version-admin（已完成）
   -> frontend-version-admin（已完成并晋级 `integration/v5@5e61b78`）
-  -> PHASE 10 全链路验收
+  -> PHASE 10 全链路验收（已完成）
+  -> fast-forward -> main（代码基线已完成；最终状态记录待同步）
 ```
 
 后端业务能力建议在数据和适配器基础稳定后推进：
