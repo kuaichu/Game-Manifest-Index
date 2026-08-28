@@ -1,0 +1,52 @@
+{
+  "schema_version": 2,
+  "vendor": "perfectworld",
+  "game_id": "tof",
+  "domain_id": "tof-pc",
+  "platform": "windows",
+  "channel": "official",
+  "version": "6.3.3",
+  "version_code": null,
+  "file_time": null,
+  "artifacts": [
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "file_manifest",
+      "name": "ResList.bin.zip",
+      "size": 108166145942,
+      "manifest": {
+        "path": "manifests/6.3.3/files.json",
+        "base_urls": [
+          {
+            "url": "https://htcdn1.wmupd.com/clientRes/Windows55/Res/",
+            "provider": "perfectworld",
+            "source_kind": "official",
+            "priority": 0
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://htcdn1.wmupd.com/clientRes/Windows55/Version/Windows/version/6.3.3/ResList.bin.zip",
+          "provider": "perfectworld",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Perfect World PatcherSDK",
+        "source_url": "https://htcdn1.wmupd.com/clientRes/Windows55/Version/Windows/config.xml"
+      },
+      "artifact_id": "a1_8ad20e3629bb6d77c72d007c45af6a67"
+    }
+  ],
+  "references": [],
+  "provenance": {
+    "source_kind": "official_sync",
+    "source_name": "Perfect World PatcherSDK",
+    "source_url": "https://htcdn1.wmupd.com/clientRes/Windows55/Version/Windows/config.xml"
+  }
+}

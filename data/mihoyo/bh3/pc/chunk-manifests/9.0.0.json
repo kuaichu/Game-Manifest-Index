@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "domain_id": "bh3-pc",
+  "platform": "windows",
+  "version": "9.0.0",
+  "tag": "9.0.0",
+  "build_id": "FMryTs1shKAC",
+  "diff_tags": [],
+  "manifests": [
+    {
+      "category": {
+        "id": 10156,
+        "name": "asb-å¤ç½"
+      },
+      "manifest": {
+        "id": "manifest_8b07b9fba0808b22_a74fc39c5da04401386f2b1a4001efd3",
+        "checksum": "a74fc39c5da04401386f2b1a4001efd3",
+        "compressed_size": 2247093,
+        "uncompressed_size": 4185400
+      },
+      "component": "resource",
+      "language": null,
+      "matching_field": "asb",
+      "stats": {
+        "compressed_size": 30239119368,
+        "uncompressed_size": 33178343961,
+        "file_count": 789,
+        "chunk_count": 28288
+      },
+      "deduplicated_stats": {
+        "compressed_size": 30218150069,
+        "uncompressed_size": 33157069404,
+        "file_count": 789,
+        "chunk_count": 28267
+      },
+      "manifest_download": {
+        "url_prefix": "https://autopatchcn.bh3.com/ptpublic/rel/chunk/manifests/cxi8tkx5vdog/20260716/9.0.0/FMryTs1shKAC",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      },
+      "chunk_download": {
+        "url_prefix": "https://autopatchcn.bh3.com/ptpublic/rel/chunk/chunks/cxi8tkx5vdog/20260716/9.0.0/FMryTs1shKAC",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      }
+    },
+    {
+      "category": {
+        "id": 10161,
+        "name": "æ¸¸æèµæº-å¤ç½ï¼æ°ï¼"
+      },
+      "manifest": {
+        "id": "manifest_67d2966bde5cdeb7_5110a62dac8ee4a7f48d4fa55612518f",
+        "checksum": "5110a62dac8ee4a7f48d4fa55612518f",
+        "compressed_size": 131304,
+        "uncompressed_size": 263323
+      },
+      "component": "game",
+      "language": null,
+      "matching_field": "game",
+      "stats": {
+        "compressed_size": 955392411,
+        "uncompressed_size": 1637546049,
+        "file_count": 267,
+        "chunk_count": 1673
+      },
+      "deduplicated_stats": {
+        "compressed_size": 943446749,
+        "uncompressed_size": 1620299329,
+        "file_count": 267,
+        "chunk_count": 1659
+      },
+      "manifest_download": {
+        "url_prefix": "https://autopatchcn.bh3.com/ptpublic/rel/chunk/manifests/cxi8tkx5vdog/20260716/9.0.0/FMryTs1shKAC",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      },
+      "chunk_download": {
+        "url_prefix": "https://autopatchcn.bh3.com/ptpublic/rel/chunk/chunks/cxi8tkx5vdog/20260716/9.0.0/FMryTs1shKAC",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      }
+    }
+  ],
+  "provenance": {
+    "source_kind": "official_sync",
+    "source_name": "HoYoPlay/Sophon",
+    "source_url": "https://api-takumi.mihoyo.com/downloader/sophon_chunk/api/getBuild"
+  }
+}

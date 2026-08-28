@@ -1,0 +1,52 @@
+{
+  "schema_version": 2,
+  "vendor": "perfectworld",
+  "game_id": "p5x",
+  "domain_id": "p5x-pc",
+  "platform": "windows",
+  "channel": "official",
+  "version": "1.0.74",
+  "version_code": null,
+  "file_time": null,
+  "artifacts": [
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "file_manifest",
+      "name": "ResList.bin.zip",
+      "size": 969604327,
+      "manifest": {
+        "path": "manifests/1.0.74/files.json",
+        "base_urls": [
+          {
+            "url": "https://nsywl-client-dev1.wmupd.com/clientRes/CN_OB_OFFICIAL/Res/",
+            "provider": "perfectworld",
+            "source_kind": "official",
+            "priority": 0
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://nsywl-client-dev1.wmupd.com/clientRes/CN_OB_OFFICIAL/Version/Windows/version/1.0.74/ResList.bin.zip",
+          "provider": "perfectworld",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Perfect World PatcherSDK",
+        "source_url": "https://nsywl-client-dev1.wmupd.com/clientRes/CN_OB_OFFICIAL/Version/Windows/config.xml"
+      },
+      "artifact_id": "a1_7cb203f94a7b30cc9190ce464f637088"
+    }
+  ],
+  "references": [],
+  "provenance": {
+    "source_kind": "official_sync",
+    "source_name": "Perfect World PatcherSDK",
+    "source_url": "https://nsywl-client-dev1.wmupd.com/clientRes/CN_OB_OFFICIAL/Version/Windows/config.xml"
+  }
+}

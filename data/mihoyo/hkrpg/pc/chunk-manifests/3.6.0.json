@@ -1,0 +1,213 @@
+{
+  "schema_version": 1,
+  "vendor": "mihoyo",
+  "game_id": "hkrpg",
+  "domain_id": "hkrpg-pc",
+  "platform": "windows",
+  "version": "3.6.0",
+  "tag": "3.6.0",
+  "build_id": "ja330AS1eXdd",
+  "diff_tags": [],
+  "manifests": [
+    {
+      "category": {
+        "id": 10054,
+        "name": "正式环境-游戏包体"
+      },
+      "manifest": {
+        "id": "manifest_2a40fc1732e31145_1c607d7becd231653c0aaf874bf29553",
+        "checksum": "1c607d7becd231653c0aaf874bf29553",
+        "compressed_size": 4742846,
+        "uncompressed_size": 9246472
+      },
+      "component": "game",
+      "language": null,
+      "matching_field": "game",
+      "stats": {
+        "compressed_size": 62614756704,
+        "uncompressed_size": 64012953351,
+        "file_count": 7025,
+        "chunk_count": 58075
+      },
+      "deduplicated_stats": {
+        "compressed_size": 62504302891,
+        "uncompressed_size": 63902277933,
+        "file_count": 7025,
+        "chunk_count": 57969
+      },
+      "manifest_download": {
+        "url_prefix": "https://autopatchcn.bhsr.com/client/sophon/manifests/cxi9zq9xwjk0/20250913/3.6.0/Mzk1ZwXHVKOi",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      },
+      "chunk_download": {
+        "url_prefix": "https://autopatchcn.bhsr.com/client/sophon/chunks/cxi9zq9xwjk0/20250913/3.6.0/Mzk1ZwXHVKOi",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      }
+    },
+    {
+      "category": {
+        "id": 10055,
+        "name": "正式环境-中文语音包"
+      },
+      "manifest": {
+        "id": "manifest_3b934b407c4c5efc_d9114037074f4efa5e2ea26ef7aa5479",
+        "checksum": "d9114037074f4efa5e2ea26ef7aa5479",
+        "compressed_size": 642570,
+        "uncompressed_size": 1235286
+      },
+      "component": "voice",
+      "language": "zh-cn",
+      "matching_field": "zh-cn",
+      "stats": {
+        "compressed_size": 9411169443,
+        "uncompressed_size": 9423635347,
+        "file_count": 296,
+        "chunk_count": 8218
+      },
+      "deduplicated_stats": {
+        "compressed_size": 9411167385,
+        "uncompressed_size": 9423635200,
+        "file_count": 296,
+        "chunk_count": 8071
+      },
+      "manifest_download": {
+        "url_prefix": "https://autopatchcn.bhsr.com/client/sophon/manifests/cxi9zq9xwjk0/20250913/3.6.0/Mzk1ZwXHVKOi",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      },
+      "chunk_download": {
+        "url_prefix": "https://autopatchcn.bhsr.com/client/sophon/chunks/cxi9zq9xwjk0/20250913/3.6.0/Mzk1ZwXHVKOi",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      }
+    },
+    {
+      "category": {
+        "id": 10056,
+        "name": "正式环境-英语语音包"
+      },
+      "manifest": {
+        "id": "manifest_3ed4bae16ccbeab5_2739799f5352a2eaea7aee3a85c7fd26",
+        "checksum": "2739799f5352a2eaea7aee3a85c7fd26",
+        "compressed_size": 767928,
+        "uncompressed_size": 1465890
+      },
+      "component": "voice",
+      "language": "en-us",
+      "matching_field": "en-us",
+      "stats": {
+        "compressed_size": 11250021323,
+        "uncompressed_size": 11329554281,
+        "file_count": 296,
+        "chunk_count": 9813
+      },
+      "deduplicated_stats": {
+        "compressed_size": 11250019265,
+        "uncompressed_size": 11329554134,
+        "file_count": 296,
+        "chunk_count": 9666
+      },
+      "manifest_download": {
+        "url_prefix": "https://autopatchcn.bhsr.com/client/sophon/manifests/cxi9zq9xwjk0/20250913/3.6.0/Mzk1ZwXHVKOi",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      },
+      "chunk_download": {
+        "url_prefix": "https://autopatchcn.bhsr.com/client/sophon/chunks/cxi9zq9xwjk0/20250913/3.6.0/Mzk1ZwXHVKOi",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      }
+    },
+    {
+      "category": {
+        "id": 10057,
+        "name": "正式环境-日语语音包"
+      },
+      "manifest": {
+        "id": "manifest_26c1804f9d4a05f5_8ccba6c4aca08c53a604e955a351869a",
+        "checksum": "8ccba6c4aca08c53a604e955a351869a",
+        "compressed_size": 797767,
+        "uncompressed_size": 1521308
+      },
+      "component": "voice",
+      "language": "ja-jp",
+      "matching_field": "ja-jp",
+      "stats": {
+        "compressed_size": 11601475891,
+        "uncompressed_size": 11742239628,
+        "file_count": 296,
+        "chunk_count": 10192
+      },
+      "deduplicated_stats": {
+        "compressed_size": 11601171841,
+        "uncompressed_size": 11741937511,
+        "file_count": 296,
+        "chunk_count": 10044
+      },
+      "manifest_download": {
+        "url_prefix": "https://autopatchcn.bhsr.com/client/sophon/manifests/cxi9zq9xwjk0/20250913/3.6.0/Mzk1ZwXHVKOi",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      },
+      "chunk_download": {
+        "url_prefix": "https://autopatchcn.bhsr.com/client/sophon/chunks/cxi9zq9xwjk0/20250913/3.6.0/Mzk1ZwXHVKOi",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      }
+    },
+    {
+      "category": {
+        "id": 10058,
+        "name": "正式环境-韩语语音包"
+      },
+      "manifest": {
+        "id": "manifest_6267244229089cab_553d2bf16b41825199184859f6467888",
+        "checksum": "553d2bf16b41825199184859f6467888",
+        "compressed_size": 648089,
+        "uncompressed_size": 1243872
+      },
+      "component": "voice",
+      "language": "ko-kr",
+      "matching_field": "ko-kr",
+      "stats": {
+        "compressed_size": 9315731171,
+        "uncompressed_size": 9491710588,
+        "file_count": 296,
+        "chunk_count": 8290
+      },
+      "deduplicated_stats": {
+        "compressed_size": 9315729113,
+        "uncompressed_size": 9491710441,
+        "file_count": 296,
+        "chunk_count": 8143
+      },
+      "manifest_download": {
+        "url_prefix": "https://autopatchcn.bhsr.com/client/sophon/manifests/cxi9zq9xwjk0/20250913/3.6.0/Mzk1ZwXHVKOi",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      },
+      "chunk_download": {
+        "url_prefix": "https://autopatchcn.bhsr.com/client/sophon/chunks/cxi9zq9xwjk0/20250913/3.6.0/Mzk1ZwXHVKOi",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      }
+    }
+  ],
+  "provenance": {
+    "source_kind": "third_party_history",
+    "source_name": "Amarea",
+    "source_url": "https://autopatch.amarea.cn/pkg_version/chunk/hkrpg_3.6.0.json"
+  }
+}

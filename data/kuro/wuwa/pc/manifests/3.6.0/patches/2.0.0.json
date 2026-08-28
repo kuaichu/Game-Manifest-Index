@@ -1,0 +1,1828 @@
+{
+  "schema_version": 1,
+  "vendor": "kuro",
+  "game_id": "wuwa",
+  "platform": "windows",
+  "version": "3.6.0",
+  "route_from": "2.0.0",
+  "route_to": "3.6.0",
+  "resource": [
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/v8_context_snapshot.bin",
+      "md5": "98ab036ec4ccc63051c818a7d7acae33",
+      "size": 164433
+    },
+    {
+      "dest": "Client/Binaries/Win64/Client-Win64-ShippingBase.dll",
+      "md5": "5aa83a185ca0c85513063869847229b8",
+      "size": 38673736
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk7-WindowsNoEditor.pak",
+      "md5": "a2bcabeb8a9ba41a1ed35fde3f153d33",
+      "size": 4228101647
+    },
+    {
+      "dest": "Client/Plugins/Wwise/ThirdParty/x64_vc160/Release/bin/AkMeter.dll",
+      "md5": "a2ecd5ae0e9b92385cf128b2b2ac7725",
+      "size": 161576
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/ko.pak",
+      "md5": "d722cf48cf6080c7cebd5957eaa9c390",
+      "size": 336047
+    },
+    {
+      "dest": "Client/Plugins/FFMPEGMedia/ThirdParty/ffmpeg/bin/vs/x64/swresample-3.dll",
+      "md5": "ab373257f640d0c1f7f8400b648272ed",
+      "size": 174792
+    },
+    {
+      "dest": "Engine/Plugins/Runtime/Nvidia/StreamlineCore/Binaries/ThirdParty/Win64/sl.pcl.dll",
+      "md5": "49702863998af5ba80756f1d0d9e0e85",
+      "size": 176256
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/chrome_100_percent.pak",
+      "md5": "d2ff5f31fc30eaf45ca289929309a476",
+      "size": 812219
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/skin/res_common/icon_loading_rotate.png",
+      "md5": "652e4ca8a99d4dd7ca74fd08e28e6ae0",
+      "size": 9449
+    },
+    {
+      "dest": "Client/Binaries/Win64/libprotobuf.dll",
+      "md5": "53fb897f4efa2a3b6b332ab2ad28c457",
+      "size": 2318024
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/el.pak",
+      "md5": "00225807bd28e2883cc8aaa1c10a04ae",
+      "size": 594880
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/nb.pak",
+      "md5": "a9f8906715e8ac1cf61ebdafe8953a60",
+      "size": 303218
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk44-WindowsNoEditor.pak",
+      "md5": "2ccdab9bc76fa09a85b5ca8a1ce16cfc",
+      "size": 979689442
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKWebView/KRWebView.exe",
+      "md5": "c26e0abb654a9d5d85bcadcae1c0efb1",
+      "size": 5430984
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/skin/res_login/btn_acc_login_normal.png",
+      "md5": "b02acdbd74d4f07d0a1468f77c3ad718",
+      "size": 1752
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk109-WindowsNoEditor.sig",
+      "md5": "7d6709a3e07b69d8c3b254f4da3b47e4",
+      "size": 52232
+    },
+    {
+      "dest": "Engine/Binaries/ThirdParty/PhysX3/Win64/VS2015/PhysX3_x64.dll",
+      "md5": "d490c4d426e4afd13261bd7f5b31d298",
+      "size": 2127560
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk110-WindowsNoEditor.pak",
+      "md5": "8e7d6037321990f59bca1d0ae032592b",
+      "size": 49430255
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/hu.pak",
+      "md5": "8bfa73f2e6d320f682fa52524e6754eb",
+      "size": 353504
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/pt-BR.pak",
+      "md5": "0fbec9a1345eb43e55c5274cc35687c5",
+      "size": 325604
+    },
+    {
+      "dest": "Client/Config/RTX.json",
+      "md5": "de6a1551d8c62235a3e57fcf4f094fb2",
+      "size": 23
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKWebView/libGLESv2.dll",
+      "md5": "e9056863c27f4edcbad73441386f90fb",
+      "size": 6904912
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk34-WindowsNoEditor.pak",
+      "md5": "e7af93609b404c27e3e27b4b875c86d3",
+      "size": 296509046
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/mr.pak",
+      "md5": "0e9fd086459af5e1fc849ff62871a30a",
+      "size": 663814
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk48-WindowsNoEditor.pak",
+      "md5": "92c54f2b3fb884e28ce13872fdb0b14d",
+      "size": 2523238383
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/fr.pak",
+      "md5": "767d965a00dedb1e6836c0e6dd557f94",
+      "size": 360491
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk105-WindowsNoEditor.pak",
+      "md5": "48aeb76bf0147074dfe0b531b78f0272",
+      "size": 135527490
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/es.pak",
+      "md5": "9e05d0be141b1f6790dc08fe7b2f9f67",
+      "size": 331585
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/pl.pak",
+      "md5": "5194d989c6c4e4e95948cb84492c9473",
+      "size": 343089
+    },
+    {
+      "dest": "Engine/Plugins/Runtime/Nvidia/StreamlineCore/Binaries/ThirdParty/Win64/sl.common.dll",
+      "md5": "867bca097549fba09d5856d1baa5822c",
+      "size": 674432
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/id.pak",
+      "md5": "eda0ce61c6d5e951d12f6c7a590ef7c4",
+      "size": 294592
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk2-WindowsNoEditor.sig",
+      "md5": "510bd065b3dab9698ac0b7c93a77bfa1",
+      "size": 9176
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/skin/res_common/btn_black_hover_624_80.png",
+      "md5": "0cf59bd02667da13b8d7312d4b031536",
+      "size": 3016
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/lt.pak",
+      "md5": "05e636dcffb4cba29d7cdfb938e7badd",
+      "size": 354903
+    },
+    {
+      "dest": "Client/Plugins/FFMPEGMedia/ThirdParty/ffmpeg/bin/vs/x64/avformat-58.dll",
+      "md5": "775f38c3afeebdad2db192eaa82c6346",
+      "size": 3003080
+    },
+    {
+      "dest": "Client/Plugins/FFMPEGMedia/ThirdParty/ffmpeg/bin/vs/x64/postproc-55.dll",
+      "md5": "5ba22a5d51d3d6a24999068306f07b79",
+      "size": 160456
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/d3dcompiler_47.dll",
+      "md5": "222d020bd33c90170a8296adc1b7036a",
+      "size": 4346120
+    },
+    {
+      "dest": "Client/Plugins/Wwise/ThirdParty/x64_vc160/Release/bin/AkRoomVerb.dll",
+      "md5": "09ef863751edfa9cb8d5636cd868706d",
+      "size": 247600
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk3-WindowsNoEditor.pak",
+      "md5": "c7bc9ad01aae4e54bb0d426cb987679b",
+      "size": 28337439
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk110-WindowsNoEditor.sig",
+      "md5": "265c2586ace57eef9388e6f781d51647",
+      "size": 3548
+    },
+    {
+      "dest": "Client/Plugins/Wwise/ThirdParty/x64_vc160/Release/bin/AkSineTone.dll",
+      "md5": "3843c14431d78cd6fe33fcb1fb06a2ff",
+      "size": 131888
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk48-WindowsNoEditor.sig",
+      "md5": "b8c8bf7e884cc9a23b303ee5690470d4",
+      "size": 154536
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/libcrypto-3-x64.dll",
+      "md5": "27ffda2dbebcbb2b51b4fb4eb370b73d",
+      "size": 6050504
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/zh-CN.pak",
+      "md5": "0196d538fd59a5586e85a88f246ac8b7",
+      "size": 279738
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/skin/res_login/btn_acc_login_hover.png",
+      "md5": "7d637251e41a5a06e02f9a3376e83f48",
+      "size": 1788
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/skin/res_common/btn_webview_refresh_normal_72.png",
+      "md5": "3c50a3f497fef72ef1aefa3a6c3cd625",
+      "size": 1156
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk40-WindowsNoEditor.pak",
+      "md5": "4d6a900e0eeea41969463c683c8d90f8",
+      "size": 282941311
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/kn.pak",
+      "md5": "395857e34e045a55f5af53da984354f6",
+      "size": 787859
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk2-WindowsNoEditor.pak",
+      "md5": "01f98446a2a24bd5d50fd96f9fcbb34a",
+      "size": 141688130
+    },
+    {
+      "dest": "Engine/Plugins/Runtime/Nvidia/StreamlineCore/Binaries/ThirdParty/Win64/sl.deepdvc.dll",
+      "md5": "69f383e1838b5ea5889d1c99827abbb5",
+      "size": 190592
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/pt-PT.pak",
+      "md5": "4e471505af2e2d9bac44cd57ffd92862",
+      "size": 329102
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/libEGL.dll",
+      "md5": "7df0c7c1caca93a23d508cf8550f7ccc",
+      "size": 427088
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKWebView/chrome_elf.dll",
+      "md5": "42b68e46394b4df5032438a4ae6bb721",
+      "size": 1156688
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk20-WindowsNoEditor.sig",
+      "md5": "d5e316662330c63bf5b34c856666f24d",
+      "size": 72288
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk53-WindowsNoEditor.sig",
+      "md5": "c7ac92126babcbb48f1cd4466e67e0d5",
+      "size": 455712
+    },
+    {
+      "dest": "Client/Plugins/FFMPEGMedia/ThirdParty/ffmpeg/bin/vs/x64/avutil-56.dll",
+      "md5": "a5528482fe0892914229804665c7d5f3",
+      "size": 651976
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/libkrsdkcurl.dll",
+      "md5": "16f721ca0dc469f23534eef328a6d9a6",
+      "size": 496840
+    },
+    {
+      "dest": "Engine/Binaries/ThirdParty/PhysX3/Win64/VS2015/PxPvdSDK_x64.dll",
+      "md5": "13b043b29d1c54773c96b7375c441351",
+      "size": 210120
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/ro.pak",
+      "md5": "ec8ffda5942a53693e40fecbec3cb82e",
+      "size": 337293
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKWebView/swiftshader/libGLESv2.dll",
+      "md5": "17780996047e2465c440b204dabc0813",
+      "size": 2765392
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk33-WindowsNoEditor.sig",
+      "md5": "2bd53668e6e65a69ab813baf84f72457",
+      "size": 3640
+    },
+    {
+      "dest": "Client/Content/Aki/Cursor/CursorHi.png",
+      "md5": "cb4e6d3ff9907f40d7ae31d15d770ea5",
+      "size": 7688
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/ms.pak",
+      "md5": "bf0e39851f539fc00a9355aa4bc883c4",
+      "size": 308189
+    },
+    {
+      "dest": "Client/Binaries/Win64/AntiCheatExpert/ACE-CORE.sys",
+      "md5": "2c2677ef812676e97a188eb6c84cdbc7",
+      "size": 3923120
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk39-WindowsNoEditor.pak",
+      "md5": "ba75dbb06e754bb6c1fc6e16a20998a3",
+      "size": 1149532806
+    },
+    {
+      "dest": "Engine/Binaries/ThirdParty/PhysX3/Win64/VS2015/PhysX3Cooking_x64.dll",
+      "md5": "49791bda8bf69cd804c772cac0d51cff",
+      "size": 265928
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk54-WindowsNoEditor.sig",
+      "md5": "f007d9fa68f2dae6787caef9b1eb9c69",
+      "size": 217336
+    },
+    {
+      "dest": "Client/Binaries/Win64/AntiCheatExpert/ACE-Setup64.exe",
+      "md5": "b77f2e3c15a36f466be5a908e5df35f1",
+      "size": 899984
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk101-WindowsNoEditor.pak",
+      "md5": "c011ac925eff473fe0d4487c9bcf4091",
+      "size": 553169471
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk34-WindowsNoEditor.sig",
+      "md5": "7c23ea77fbcb008c45aa54c424068601",
+      "size": 18628
+    },
+    {
+      "dest": "Client/Plugins/Wwise/ThirdParty/x64_vc160/Release/bin/AkHarmonizer.dll",
+      "md5": "d9d24644b26f59e67a61dc1eb983239c",
+      "size": 239408
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/swiftshader/libEGL.dll",
+      "md5": "4439205bbeee044a34d2908084273033",
+      "size": 444496
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk70-WindowsNoEditor.pak",
+      "md5": "4044e2e5f1fcee3533f250dac6b341ed",
+      "size": 26476085243
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk20-WindowsNoEditor.pak",
+      "md5": "f64d5179b6036525f272809fdd185d68",
+      "size": 1175688111
+    },
+    {
+      "dest": "Engine/Plugins/Runtime/Intel/XeSS/Binaries/ThirdParty/Win64/libxell.dll",
+      "md5": "2747b644c19058fc594650a7f3705218",
+      "size": 411504
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk53-WindowsNoEditor.pak",
+      "md5": "2d8cc30857ac3266b5fd1754eb1871bd",
+      "size": 7457727663
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/krsdk_zlib.dll",
+      "md5": "f1ce2717a960ab1fded408487890f117",
+      "size": 103624
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/skin/res_login/btn_taptap_login_clicked.png",
+      "md5": "7f8e47e4f9e62b43e5f33595dbe352d9",
+      "size": 1868
+    },
+    {
+      "dest": "Client/Binaries/Win64/turbojpeg.dll",
+      "md5": "7de1a40513fcc47bff5e5a2e4d994ea2",
+      "size": 747208
+    },
+    {
+      "dest": "Engine/Binaries/ThirdParty/HLMediaLibrary/Windows/Release/x64/HLMediaLibrary.dll",
+      "md5": "383bf9f3c7d63e1442d6a8b7bc7752e4",
+      "size": 149704
+    },
+    {
+      "dest": "Client/Binaries/Win64/D3D12/D3D12Core.dll",
+      "md5": "91b14e973642494d14ea1acb2779d4eb",
+      "size": 4821064
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk54-WindowsNoEditor.pak",
+      "md5": "b2ab0b0386aad6c62c110e62f7b70bac",
+      "size": 3552174255
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/libcurl.dll",
+      "md5": "7587933b7287a46b996fee547ce83001",
+      "size": 540872
+    },
+    {
+      "dest": "Engine/Binaries/ThirdParty/PhysX3/Win64/VS2015/PxFoundation_x64.dll",
+      "md5": "01b71616bdab6874438fb9a2f7207ba7",
+      "size": 75976
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk108-WindowsNoEditor.pak",
+      "md5": "693baef155eed6353b1f632191ea9b5b",
+      "size": 24475172
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk70-WindowsNoEditor.sig",
+      "md5": "e47aa9a6cae3c9fcf4bb6fdf53cc15db",
+      "size": 1616500
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/zh-TW.pak",
+      "md5": "85b902be54f5c6f3977ee9525fb6a14a",
+      "size": 277483
+    },
+    {
+      "dest": "Client/Plugins/Wwise/ThirdParty/x64_vc160/Release/bin/AkDelay.dll",
+      "md5": "94a749723f9d09d6f6d1fd46fd3d98f4",
+      "size": 136488
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/ru.pak",
+      "md5": "f742644e28f56727158bb9a15e373753",
+      "size": 541552
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk35-WindowsNoEditor.pak",
+      "md5": "4983d050ce95d4725d9341f332bfa04a",
+      "size": 54838086
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk6-WindowsNoEditor.pak",
+      "md5": "574fcf1e59fd52109ca6c546828b21e5",
+      "size": 3885195658
+    },
+    {
+      "dest": "Client/Plugins/Wwise/ThirdParty/x64_vc160/Release/bin/AkFlanger.dll",
+      "md5": "db856bbfb1ac923fc748d72e39fe067e",
+      "size": 157992
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/skin/res_common/btn_black_clicked_624_80.png",
+      "md5": "a4f266ec94f56bd0fa7da67ec1da7391",
+      "size": 3929
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/skin/res_common/btn_webview_refresh_hover_72.png",
+      "md5": "8a25317c7f4d1d7178f8fbb139e43e4a",
+      "size": 1161
+    },
+    {
+      "dest": "Client/Config/SpatialData/SpatialDataCookConfig.json",
+      "md5": "a350e1b4d79167c3e623d2b0e1e54a1b",
+      "size": 774
+    },
+    {
+      "dest": "Client/Binaries/Win64/AntiCheatExpert/ACE-Base64.dll",
+      "md5": "d4e24f1e9bef505850f0b17a68260f2c",
+      "size": 70043536
+    },
+    {
+      "dest": "Engine/Plugins/Runtime/Nvidia/StreamlineCore/Binaries/ThirdParty/Win64/sl.reflex.dll",
+      "md5": "a9583e307fce1d029a4ade9b04926b0e",
+      "size": 198784
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk8-WindowsNoEditor.sig",
+      "md5": "130f35251cae24793c72efd88eb98a40",
+      "size": 53396
+    },
+    {
+      "dest": "Client/Binaries/Win64/cgsdk.dll",
+      "md5": "4567941de3b8b1b1deb1a4588d94aa0b",
+      "size": 791240
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKWebView/chrome_100_percent.pak",
+      "md5": "c21fc6c0e939304752265ba070555441",
+      "size": 812533
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk50-WindowsNoEditor.sig",
+      "md5": "eea18331b4cad506bfb7604fe494e86e",
+      "size": 22608
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk106-WindowsNoEditor.pak",
+      "md5": "fd9ab9c4ace5df74b00461c9e976ec97",
+      "size": 10792440
+    },
+    {
+      "dest": "Engine/Binaries/ThirdParty/PhysX3/Win64/VS2015/NvCloth_x64.dll",
+      "md5": "f9f95b359ed62add625a6d0a1804b503",
+      "size": 286920
+    },
+    {
+      "dest": "Client/Config/Kuro/NewKuroLevelPrefabConfig.json",
+      "md5": "9f0c20b90a7b4eb33f6ff636387d67a8",
+      "size": 201
+    },
+    {
+      "dest": "Client/Binaries/Win64/libScePad.dll",
+      "md5": "d92cb8cc0f69ee05f26dc0e9cda2a379",
+      "size": 237256
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk21-WindowsNoEditor.pak",
+      "md5": "f8017941d61ca7731d44c8148d7bc8bf",
+      "size": 835592911
+    },
+    {
+      "dest": "Client/Content/Aki/Cursor/CursorHi@1.5x.png",
+      "md5": "2bdcad10bbcefdc67ea028655ad70154",
+      "size": 10526
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKWebView/libEGL.dll",
+      "md5": "9161e222ff7b9ea7068b50158130fee7",
+      "size": 424528
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk4-WindowsNoEditor.pak",
+      "md5": "3035f855968ce2758304ea3d2a511a34",
+      "size": 1415965455
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/da.pak",
+      "md5": "812f815faab1c0ff151f6333a1d212dd",
+      "size": 309791
+    },
+    {
+      "dest": "Client/Binaries/Win64/D3D12/d3d12SDKLayers.dll",
+      "md5": "4ff04e3e1b067f447f453166c4e59f86",
+      "size": 4932640
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk40-WindowsNoEditor.sig",
+      "md5": "5e4b7afc112b42daa808783cabb55a0b",
+      "size": 17800
+    },
+    {
+      "dest": "Client/Config/SpatialData/SpatialDataCookConfig.backup.json",
+      "md5": "de3cb6d9f63fb7cc7f40c43efd489933",
+      "size": 1266
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk23-WindowsNoEditor.sig",
+      "md5": "a6b4a77dcdbab5a108c35cb70ecec574",
+      "size": 71532
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk31-WindowsNoEditor.pak",
+      "md5": "b3d145156b81d5ccd816a446c2f1c1bb",
+      "size": 632474031
+    },
+    {
+      "dest": "Client/Plugins/TaptapSdk/TapCommon/Source/ThirdParty/Windows/taptap_api.dll",
+      "md5": "d3b82cc74ef2e1cb463ff9dfe94944bd",
+      "size": 156936
+    },
+    {
+      "dest": "Client/Binaries/Win64/Mono/System.Globalization.Native.dll",
+      "md5": "0b3db227b7c6f2a3942faf39f2a208a7",
+      "size": 105672
+    },
+    {
+      "dest": "Client/Content/Aki/Cursor/CursorNor@1.5x.png",
+      "md5": "2bdcad10bbcefdc67ea028655ad70154",
+      "size": 10526
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/it.pak",
+      "md5": "bab5d565817d3d03b890d4878a4d0bef",
+      "size": 324736
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk104-WindowsNoEditor.pak",
+      "md5": "c870467a43dd25e79945245ff8f509eb",
+      "size": 22779498
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk33-WindowsNoEditor.pak",
+      "md5": "ded1138e360a8375215e7d8ff06745ae",
+      "size": 50977510
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk50-WindowsNoEditor.pak",
+      "md5": "c2598b26f0966552d4ea1cbb85c05c3e",
+      "size": 361731103
+    },
+    {
+      "dest": "Client/Binaries/Win64/libcryptoMD.dll",
+      "md5": "a8da505097cdd709a1f585ae56e29707",
+      "size": 2428616
+    },
+    {
+      "dest": "Client/Plugins/Wwise/ThirdParty/x64_vc160/Release/bin/AkImpacter.dll",
+      "md5": "3b2a7d31c54eb0186ad225b3c6bc4270",
+      "size": 230184
+    },
+    {
+      "dest": "Engine/Binaries/ThirdParty/CEF3/Win64/libGLESv2.dll",
+      "md5": "8e12ff16509eff3bfaa21a3a4a3787b9",
+      "size": 3943624
+    },
+    {
+      "dest": "Client/Binaries/Win64/Mono/System.IO.Compression.Native.dll",
+      "md5": "83d45c41bd802d19a8b3713cc6612b4b",
+      "size": 936648
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/Kanit-Medium.ttf",
+      "md5": "da9eae892a8a3763f7fdbe859a4dd895",
+      "size": 171336
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/uk.pak",
+      "md5": "bf1ba75e69c7eb8667561e68eba01b78",
+      "size": 540497
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk21-WindowsNoEditor.sig",
+      "md5": "eea85243403463c1f18f28e4e80e7288",
+      "size": 51532
+    },
+    {
+      "dest": "Client/Binaries/Win64/libsslMD.dll",
+      "md5": "3fd5499af196cb2331cb16535333c6ac",
+      "size": 516296
+    },
+    {
+      "dest": "Client/Plugins/FFMPEGMedia/ThirdParty/ffmpeg/bin/vs/x64/swscale-5.dll",
+      "md5": "225695e8ac0ec321d2e90d32c1519b2c",
+      "size": 1750216
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/resources.pak",
+      "md5": "7492032846ac2e12d4838823a6c65402",
+      "size": 7332780
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk23-WindowsNoEditor.pak",
+      "md5": "bf2abc6a9db077c8ab706ee40d172282",
+      "size": 1163324079
+    },
+    {
+      "dest": "Client/Content/Aki/Cursor/CursorPre.png",
+      "md5": "cb4e6d3ff9907f40d7ae31d15d770ea5",
+      "size": 7688
+    },
+    {
+      "dest": "Client/Plugins/Wwise/ThirdParty/x64_vc160/Release/bin/AkCompressor.dll",
+      "md5": "351ab8d713fe8eed6b1b38a0c7e8e0be",
+      "size": 163112
+    },
+    {
+      "dest": "Engine/Plugins/Runtime/Nvidia/DLSS/Binaries/ThirdParty/Win64/nvngx_dlssd.dll",
+      "md5": "cdf14cef11f7a3547548e301147b4a1f",
+      "size": 28590704
+    },
+    {
+      "dest": "Engine/Binaries/ThirdParty/Vorbis/Win64/VS2015/libvorbisfile_64.dll",
+      "md5": "ead650c8e9dd075c8818432fb9b79cf4",
+      "size": 59080
+    },
+    {
+      "dest": "Engine/Binaries/ThirdParty/PhysX3/Win64/VS2015/APEX_Clothing_x64.dll",
+      "md5": "5ddf18b07b23022c21a26df822d26916",
+      "size": 1239752
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/icudtl.dat",
+      "md5": "7e3033083604afcffdee0e596795c24a",
+      "size": 10144432
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/ml.pak",
+      "md5": "133e0a254eccdd2c5838673d541bd2e5",
+      "size": 825151
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk0optional-WindowsNoEditor.sig",
+      "md5": "f0f191282af7da84cabf9199f496a3c9",
+      "size": 576
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk4-WindowsNoEditor.sig",
+      "md5": "07e815172faf630d19f3b6229504e6e6",
+      "size": 86952
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk42-WindowsNoEditor.sig",
+      "md5": "17b5154754afde9e38b57457264d02b1",
+      "size": 22600
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/sr.pak",
+      "md5": "c445db37cc72bd013e57d584496d82ec",
+      "size": 514485
+    },
+    {
+      "dest": "Client/Binaries/Win64/AntiCheatExpert/ACE-BASE.sys",
+      "md5": "cc05394dcaef7a1002c04dbc324ff3fd",
+      "size": 4125432
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/zlibwapi.dll",
+      "md5": "1a3ef43d06d3a57830f4f2db49f2728d",
+      "size": 137416
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/libGLESv2.dll",
+      "md5": "081da93b26fb993fd82edaebd423caf0",
+      "size": 6919248
+    },
+    {
+      "dest": "Client/Plugins/Wwise/ThirdParty/x64_vc160/Release/bin/AkParametricEQ.dll",
+      "md5": "c8bb162cf9490672a34aea5fc8f16188",
+      "size": 159536
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/fil.pak",
+      "md5": "c5b9b51bcae92adf4bb3667a4a79361f",
+      "size": 343073
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/te.pak",
+      "md5": "a3e00ae83733d16553ad15173a41cfbd",
+      "size": 747495
+    },
+    {
+      "dest": "Client/Binaries/Win64/PerfSight.dll",
+      "md5": "14546f87a13bb86ea3929a06cc275a52",
+      "size": 4828360
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/skin/skin.json",
+      "md5": "cc4fd6ce3673c96fd7ba5e5bf0ee9085",
+      "size": 12357
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk104-WindowsNoEditor.sig",
+      "md5": "bb926cf0d85fc2b9ea657921a0917f29",
+      "size": 1920
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/KRWebView.exe",
+      "md5": "470ada0db8d7c398905240cd3d2278f8",
+      "size": 5430984
+    },
+    {
+      "dest": "Client/Plugins/Wwise/ThirdParty/x64_vc160/Release/bin/AkGain.dll",
+      "md5": "0ee71edd2091e7f887c81fc5beac1bea",
+      "size": 131888
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/chrome_elf.dll",
+      "md5": "9d360025107016a2fde555ac29881785",
+      "size": 1166928
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/es-419.pak",
+      "md5": "aa21375ba4e383cddf1460c6949d4c2d",
+      "size": 329203
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/he.pak",
+      "md5": "fb13c67d8c9f64d6f908a1cf4987c6bc",
+      "size": 418772
+    },
+    {
+      "dest": "Client/Plugins/Wwise/ThirdParty/x64_vc160/Release/bin/AkRecorder.dll",
+      "md5": "77ccf30ebb3afc575b94ac93cdfd53f1",
+      "size": 129320
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk108-WindowsNoEditor.sig",
+      "md5": "97385026a1b9792088cc6e10003ebd15",
+      "size": 2024
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk6-WindowsNoEditor.sig",
+      "md5": "c93783e1ec4e11d5a1afb89837e6ac51",
+      "size": 237664
+    },
+    {
+      "dest": "Client/Plugins/Wwise/ThirdParty/x64_vc160/Release/bin/AkGuitarDistortion.dll",
+      "md5": "a1cc7e962e50988b35d730154eead988",
+      "size": 171304
+    },
+    {
+      "dest": "Wuthering Waves.exe",
+      "md5": "e4c454597d98ecfafdd8ea27665b5dde",
+      "size": 484040
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/skin/res_login/btn_acc_login_clicked.png",
+      "md5": "5ccfbc93c01699e2b043f201c7e268e6",
+      "size": 1774
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk27-WindowsNoEditor.pak",
+      "md5": "c0a0ee0ac91c1ce6ff0ae99bad27326c",
+      "size": 9624668
+    },
+    {
+      "dest": "Engine/Plugins/Runtime/Intel/XeSS/Binaries/ThirdParty/Win64/libxess.dll",
+      "md5": "d9e2aca10667501dced0e5b69b7d3ea5",
+      "size": 77795704
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk106-WindowsNoEditor.sig",
+      "md5": "bedb73fa6cc9f22bba2d4ff6c43a5f00",
+      "size": 1188
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk27-WindowsNoEditor.sig",
+      "md5": "1acaa3f4ab9e60fe12f61496b3f8b133",
+      "size": 1116
+    },
+    {
+      "dest": "Client/Content/Aki/Cursor/CursorNor@1.25x.png",
+      "md5": "85e8e8fa07357169d757054ed9a32a38",
+      "size": 9043
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk44-WindowsNoEditor.sig",
+      "md5": "231bed121d11403bf8a3db7e8bb0d80b",
+      "size": 60324
+    },
+    {
+      "dest": "Client/Plugins/FFMPEGMedia/ThirdParty/ffmpeg/bin/vs/x64/zlib1.dll",
+      "md5": "d855fef4a15fbac35295ab44368f0e38",
+      "size": 149680
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk8-WindowsNoEditor.pak",
+      "md5": "7fe0df2040e70f8b2f095c41c2b58b93",
+      "size": 866159670
+    },
+    {
+      "dest": "Engine/Plugins/Runtime/Nvidia/StreamlineCore/Binaries/ThirdParty/Win64/sl.interposer.dll",
+      "md5": "f51b45da9eca7525c2d877cb7b7b51b0",
+      "size": 569472
+    },
+    {
+      "dest": "Client/Plugins/Wwise/ThirdParty/x64_vc160/Release/bin/AkStereoDelay.dll",
+      "md5": "ca8f9f1cbce07cc718add517043a9d2a",
+      "size": 172840
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/am.pak",
+      "md5": "8e32e232fa9bf90c7c347b0d2d7a9a91",
+      "size": 477934
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKWebView/d3dcompiler_47.dll",
+      "md5": "a7349236212b0e5cec2978f2cfa49a1a",
+      "size": 4916840
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk46-WindowsNoEditor.pak",
+      "md5": "d235a917beecb8b28de9e214a484523e",
+      "size": 335513087
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk36-WindowsNoEditor.sig",
+      "md5": "b16cac5875a81e500a0c1d303b1e2bfc",
+      "size": 5368
+    },
+    {
+      "dest": "ClearThirdParty.exe",
+      "md5": "5415f372980e406c316cb4208cdbac2c",
+      "size": 220872
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk107-WindowsNoEditor.pak",
+      "md5": "aa1218203858ba20ea798e1cc59acb5a",
+      "size": 1885503593
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk9-WindowsNoEditor.sig",
+      "md5": "5d69806f60828a63de5e3450633196a4",
+      "size": 13120
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk22-WindowsNoEditor.pak",
+      "md5": "1cba21b91edf047d7d487f76392003c5",
+      "size": 995123981
+    },
+    {
+      "dest": "Engine/Binaries/ThirdParty/PhysX3/Win64/VS2015/APEX_Destructible_x64.dll",
+      "md5": "e483d2340c5ba0d041b659685c9c7372",
+      "size": 2030792
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk112-WindowsNoEditor.sig",
+      "md5": "0e4b7996e4a12711a9b12ed83e15ccf8",
+      "size": 24624
+    },
+    {
+      "dest": "Engine/Binaries/ThirdParty/CEF3/Win64/libEGL.dll",
+      "md5": "3417dcd1764a8a5bee1a61cf5a6a5b60",
+      "size": 113864
+    },
+    {
+      "dest": "Engine/Plugins/Runtime/Intel/XeSS/Binaries/ThirdParty/Win64/libxess_dx11.dll",
+      "md5": "e04c7f44bc073d164cbf603215e96eaa",
+      "size": 156016
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKExternal.exe",
+      "md5": "10cf6621b0cfcca72fca18713b99ef2e",
+      "size": 199880
+    },
+    {
+      "dest": "Client/Plugins/Wwise/ThirdParty/x64_vc160/Release/bin/WwiseProjectDatabase.dll",
+      "md5": "54a9631af6287ee1abade405630dbb24",
+      "size": 893744
+    },
+    {
+      "dest": "Engine/Plugins/Runtime/Intel/XeSS/Binaries/ThirdParty/Win64/libxess_fg.dll",
+      "md5": "e5da7e91e3af8a8340b3fef922912e6e",
+      "size": 22957432
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk56-WindowsNoEditor.pak",
+      "md5": "eca978eac748d3abba975d42275a3619",
+      "size": 3186389567
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk46-WindowsNoEditor.sig",
+      "md5": "7093b906c969d8425a35b9694ae0f3fb",
+      "size": 21008
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk5-WindowsNoEditor.pak",
+      "md5": "5c701287b003173b2b27cf25657a1599",
+      "size": 391002927
+    },
+    {
+      "dest": "Client/Content/Aki/Cursor/CursorNor@2x.png",
+      "md5": "fe45e1c4708a5e566c7878b89e589a39",
+      "size": 13807
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk0optional-WindowsNoEditor.pak",
+      "md5": "6526d100bf5e60b024893d918b6de3cd",
+      "size": 723254
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk56-WindowsNoEditor.sig",
+      "md5": "49bb6cec51dd41a26d55bc8b1d424744",
+      "size": 195012
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/skin/res_login/btn_taptap_login_normal.png",
+      "md5": "986ee0bdfa0aac3899f80c72876bdc7f",
+      "size": 1829
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk102-WindowsNoEditor.sig",
+      "md5": "b6038ee22139ea50cf09077678e48bc8",
+      "size": 3376
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/kurodata.dll",
+      "md5": "4b6efef9afd122a50ece1be73f194151",
+      "size": 373960
+    },
+    {
+      "dest": "Engine/Binaries/ThirdParty/PhysX3/Win64/VS2015/ApexFramework_x64.dll",
+      "md5": "3faa01d0b864c6977f75a2396b8b723b",
+      "size": 1065160
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/skin/res_common/light_btn_disable_72.png",
+      "md5": "59bd5da42711f0229cc353d1e05a3d11",
+      "size": 2363
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk22-WindowsNoEditor.sig",
+      "md5": "89bfefcf0e5b571cfb1627cb7e7bd7f8",
+      "size": 61268
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk42-WindowsNoEditor.pak",
+      "md5": "dd5dbb8f45b1c90b817c59f02bb7ba31",
+      "size": 361598994
+    },
+    {
+      "dest": "Engine/Plugins/Runtime/Nvidia/StreamlineCore/Binaries/ThirdParty/Win64/nvngx_deepdvc.dll",
+      "md5": "d9d8cb77d3ba38bef4268da53614538c",
+      "size": 3144304
+    },
+    {
+      "dest": "Client/Content/Aki/Cursor/CursorHi@2x.png",
+      "md5": "fe45e1c4708a5e566c7878b89e589a39",
+      "size": 13807
+    },
+    {
+      "dest": "Client/Content/Aki/Cursor/CursorNor.png",
+      "md5": "cb4e6d3ff9907f40d7ae31d15d770ea5",
+      "size": 7688
+    },
+    {
+      "dest": "Engine/Plugins/Compositing/OpenCVLensDistortion/Binaries/ThirdParty/Win64/opencv_world331.dll",
+      "md5": "1b69898b894c0bc4b37b63cb010e2398",
+      "size": 18490568
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk0-WindowsNoEditor.sig",
+      "md5": "1b5d3ad3d1b8230a66c18efced3fe9e6",
+      "size": 390948
+    },
+    {
+      "dest": "Client/Binaries/Win64/amd_fidelityfx_dx12.dll",
+      "md5": "49230ad94ed6169933cd0457501d9cb4",
+      "size": 6675664
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/ta.pak",
+      "md5": "88b354c918a8745ddd627944c1080513",
+      "size": 800387
+    },
+    {
+      "dest": "Client/Binaries/Win64/cgsdk-loader.dll",
+      "md5": "d1f5419bdfdacfabe3442674a5fad255",
+      "size": 92360
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/th.pak",
+      "md5": "56f17b294d650a8028dbe790fde41a3d",
+      "size": 630343
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk112-WindowsNoEditor.pak",
+      "md5": "607d8a134a3fe2466731e971e5952f56",
+      "size": 394773344
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk32-WindowsNoEditor.pak",
+      "md5": "c82dba5bdf956ff67facb4c7c0b77965",
+      "size": 25881199
+    },
+    {
+      "dest": "Client/Plugins/Wwise/ThirdParty/x64_vc160/Release/bin/AkPitchShifter.dll",
+      "md5": "148734ebefda908df44a76e2dbfa2500",
+      "size": 165680
+    },
+    {
+      "dest": "Client/Binaries/Win64/AntiCheatExpert/ACE-CORE.sys2",
+      "md5": "cdb956389efa5ad875e8c8c3f9530ae9",
+      "size": 3272880
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/skin/res_pay/list_item_extra_40.png",
+      "md5": "c7eced1ec8ccb45e01e788cb5d00da6e",
+      "size": 346
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk51-WindowsNoEditor.pak",
+      "md5": "81937f3d56d392914460768e11fd488d",
+      "size": 376454255
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/KRWebViewRes/kr_webview_close.png",
+      "md5": "863d26e9ceb211abe80e313394efcbd3",
+      "size": 387
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKWebView/chrome_200_percent.pak",
+      "md5": "22db818ae2b76d6ee2ea72d356b76a6f",
+      "size": 1409813
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk103-WindowsNoEditor.pak",
+      "md5": "726aa3f150470a882cbfea1b7bbfe376",
+      "size": 443597131
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/sk.pak",
+      "md5": "e1e36405413e7576eb62c51c91b4637d",
+      "size": 348597
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKWebView/resources.pak",
+      "md5": "c9f54125ae45054b5963f0beb5ea2321",
+      "size": 7336311
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk102-WindowsNoEditor.pak",
+      "md5": "225714993719803038529cf002168125",
+      "size": 46656214
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk1-WindowsNoEditor.pak",
+      "md5": "3debb28680a7721f1af63d3a21dc9058",
+      "size": 706274478
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk31-WindowsNoEditor.sig",
+      "md5": "bf1186a70a4169d49b289b2585de83a1",
+      "size": 39132
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/skin/res_common/btn_black_normal_624_80.png",
+      "md5": "68bdc82ee0a105abc587a3f5d1aec65a",
+      "size": 3602
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/nl.pak",
+      "md5": "aebffe0bde5903057a1643fc417f49ff",
+      "size": 311588
+    },
+    {
+      "dest": "Engine/Plugins/Runtime/Nvidia/StreamlineCore/Binaries/ThirdParty/Win64/sl.dlss_g.dll",
+      "md5": "249b136ff31c01e406ffdf838e654930",
+      "size": 459392
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk55-WindowsNoEditor.sig",
+      "md5": "5e8372d170a306e3279ab27070889422",
+      "size": 100824
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk52-WindowsNoEditor.pak",
+      "md5": "526402c7bfd369039ac35cd48e227b59",
+      "size": 494115791
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk32-WindowsNoEditor.sig",
+      "md5": "0725c3b73ea038c459c3045d438e9ed8",
+      "size": 2108
+    },
+    {
+      "dest": "Engine/Plugins/Runtime/Nvidia/StreamlineCore/Binaries/ThirdParty/Win64/nvngx_dlssg.dll",
+      "md5": "8187325390f03f2fe0b23bcbf28fe615",
+      "size": 7499376
+    },
+    {
+      "dest": "Client/Binaries/Win64/JoyShockLibrary.dll",
+      "md5": "fea3d45b5bc91fbca489f04ec81a28ce",
+      "size": 224968
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/libssl-3-x64.dll",
+      "md5": "3738047aa65975d1102971a93ee2e869",
+      "size": 796360
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk0-WindowsNoEditor.pak",
+      "md5": "6959ec7d99c6e3ca29d9c01325f7bf88",
+      "size": 6396624097
+    },
+    {
+      "dest": "Client/Binaries/Win64/AntiCheatExpert/ids.dat",
+      "md5": "5580693789956d3a0fec1d10b8464a45",
+      "size": 4200061
+    },
+    {
+      "dest": "Engine/Binaries/ThirdParty/CEF3/Win64/chrome_elf.dll",
+      "md5": "a58c3b25e27896e60266075b58a9e382",
+      "size": 569032
+    },
+    {
+      "dest": "Client/Content/Aki/Cursor/CursorData",
+      "md5": "f657d084f05753f446082cc4cb5e89ce",
+      "size": 16
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk51-WindowsNoEditor.sig",
+      "md5": "bbfe8ffa4d2e0c41526b6d1cad660653",
+      "size": 23508
+    },
+    {
+      "dest": "Client/Plugins/Wwise/ThirdParty/x64_vc160/Release/bin/AkSoundEngineDLL.dll",
+      "md5": "afee7ad23062c305c9012d8fe0a84d02",
+      "size": 2110760
+    },
+    {
+      "dest": "Client/Binaries/Win64/AntiCheatExpert/ACE-CORE.sysa",
+      "md5": "155fa1c0c4770325b502ccc9a0c5a3a8",
+      "size": 1704168
+    },
+    {
+      "dest": "Client/Plugins/Wwise/ThirdParty/x64_vc160/Release/bin/AkMatrixReverb.dll",
+      "md5": "bf3aacc30afdc532bfec8278ef3ac46a",
+      "size": 197416
+    },
+    {
+      "dest": "Client/Plugins/FFMPEGMedia/ThirdParty/ffmpeg/bin/vs/x64/avdevice-58.dll",
+      "md5": "6a7f7803babe8a4103823a5ad087675a",
+      "size": 169160
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRShmq.dll",
+      "md5": "80662b93d83b1f6f0112d2c768ea6626",
+      "size": 45256
+    },
+    {
+      "dest": "Client/Plugins/Wwise/ThirdParty/x64_vc160/Release/bin/AkSynthOne.dll",
+      "md5": "d80f1a5a982b47b3c01050e0f0fa0e21",
+      "size": 176944
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk52-WindowsNoEditor.sig",
+      "md5": "4464b3073c4a0b3c4d259bc51e6ef6ae",
+      "size": 30688
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk55-WindowsNoEditor.pak",
+      "md5": "a143db4d55192e891fc00b9cb9c39f52",
+      "size": 1643234479
+    },
+    {
+      "dest": "Client/Binaries/Win64/AntiCheatExpert/ACE-IDS64.dll",
+      "md5": "4fa64aa32dcf8c062ae6bf8d18685eea",
+      "size": 4617616
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk35-WindowsNoEditor.sig",
+      "md5": "386024f3658895801485cb8695250b12",
+      "size": 3876
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/fa.pak",
+      "md5": "d4a3b0bf69505e328618659a7d53572f",
+      "size": 481800
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk36-WindowsNoEditor.pak",
+      "md5": "df4799204178e5fe7e6794faa4d10257",
+      "size": 79251030
+    },
+    {
+      "dest": "Client/Binaries/Win64/AntiCheatExpert/ACE-Base.dat",
+      "md5": "ebedc59c2991b904e4c61e1a5ba06168",
+      "size": 54276
+    },
+    {
+      "dest": "Client/Plugins/Wwise/ThirdParty/x64_vc160/Release/bin/AkToneGen.dll",
+      "md5": "07baee6c689582e3d21b3f3b4417dd71",
+      "size": 151848
+    },
+    {
+      "dest": "Client/Plugins/Wwise/ThirdParty/x64_vc160/Release/bin/AkPeakLimiter.dll",
+      "md5": "292dc14d59f1829e4a53b1d2a9e73cf7",
+      "size": 139560
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/en-US.pak",
+      "md5": "555f85fc64aad8e25db9f2ccd20f7674",
+      "size": 277549
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/bg.pak",
+      "md5": "e7f9487b07aaf74ba7a21d3492831bdf",
+      "size": 545490
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/skin/res_login/ico_delete_40.png",
+      "md5": "5dee4e6f69ae775d6abc4f7ffb4eee15",
+      "size": 1108
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/gu.pak",
+      "md5": "ad874365bd40dc01a1963ad6de36c84a",
+      "size": 678704
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/lv.pak",
+      "md5": "b29a5f900159d8c82c19a842ce6da80f",
+      "size": 353486
+    },
+    {
+      "dest": "Client/Plugins/FFMPEGMedia/ThirdParty/ffmpeg/bin/vs/x64/avfilter-7.dll",
+      "md5": "cf81cc0ed9413aa991f70562f80fe7d5",
+      "size": 4325064
+    },
+    {
+      "dest": "Engine/Binaries/ThirdParty/Ogg/Win64/VS2015/libogg_64.dll",
+      "md5": "98b53779587865d11e339059a8be4b43",
+      "size": 70344
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk47-WindowsNoEditor.sig",
+      "md5": "c33dc3d9dc101b5921d666e325c9f9ce",
+      "size": 184248
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/sl.pak",
+      "md5": "0116d44c863b6a50632067e615027a4e",
+      "size": 332695
+    },
+    {
+      "dest": "Client/Plugins/Wwise/ThirdParty/x64_vc160/Release/bin/AkTremolo.dll",
+      "md5": "1b4891cebbf22bd3f4600aed875c2755",
+      "size": 156464
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk111-WindowsNoEditor.sig",
+      "md5": "cbe0ae23d2769069e9ce6d686ac0632d",
+      "size": 61776
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/skin/res_common/btn_transparent_webview_close_normal_48.png",
+      "md5": "35a1a7dc0c524c96d3ab78e1d6421253",
+      "size": 2388
+    },
+    {
+      "dest": "Engine/Binaries/ThirdParty/PhysX3/Win64/VS2015/PhysX3Common_x64.dll",
+      "md5": "cb2f1a4e5a8aa6b0ba91694e6c49b2cf",
+      "size": 1620168
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/KRShmq.dll",
+      "md5": "3bf5b312b4df996b53d10372b716d083",
+      "size": 45256
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/ar.pak",
+      "md5": "3c8d9f885fcf2153427812a5076d80ab",
+      "size": 506933
+    },
+    {
+      "dest": "Client/Plugins/Wwise/ThirdParty/x64_vc160/Release/bin/AkTimeStretch.dll",
+      "md5": "229d044a5ebc7cbb86bbb3ee6851d61f",
+      "size": 246568
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKConfig.json",
+      "md5": "fec272b5e897a474c314509c359f1ad3",
+      "size": 1234
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk47-WindowsNoEditor.pak",
+      "md5": "336f98b69f87127499e703f1483f34f0",
+      "size": 3010038733
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/libcef.dll",
+      "md5": "c674dc1935cba88cee6352615b10cdf7",
+      "size": 155668560
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKEx.dll",
+      "md5": "6d46653993543aadd49ff9724ce36ead",
+      "size": 2016456
+    },
+    {
+      "dest": "Client/Plugins/Kuro/VolcanoMsgChannel/Source/MsgChannSDK/bin/x64/PcMsgChan.dll",
+      "md5": "5537ca8380fa9a12ad818e1e1a578667",
+      "size": 466120
+    },
+    {
+      "dest": "Client/Config/Kuro/KuroLevelPrefabConfig.json",
+      "md5": "9e08787543892940d3ab18df9ea3bcb3",
+      "size": 114
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk43-WindowsNoEditor.pak",
+      "md5": "d38706cca353037b8053a8b746c4425b",
+      "size": 298722326
+    },
+    {
+      "dest": "Client/Plugins/Wwise/ThirdParty/x64_vc160/Release/bin/AkSilenceGenerator.dll",
+      "md5": "9fca306e9d2b7787020537828f116a77",
+      "size": 123176
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk111-WindowsNoEditor.pak",
+      "md5": "8e896baed8600254f7bc73c89f744095",
+      "size": 1003473681
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/ja.pak",
+      "md5": "b272d83f2da940283829888e3c82cf68",
+      "size": 400156
+    },
+    {
+      "dest": "Client/Content/Aki/Cursor/CursorPre@2x.png",
+      "md5": "fe45e1c4708a5e566c7878b89e589a39",
+      "size": 13807
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk39-WindowsNoEditor.sig",
+      "md5": "2f08b7d2e22cd02b7f666cf00599af69",
+      "size": 70692
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk1-WindowsNoEditor.sig",
+      "md5": "e81bee4d817a6555c357c783f216446f",
+      "size": 43636
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/fi.pak",
+      "md5": "fe4e79cbbb6cad1b9c7204a175926091",
+      "size": 306235
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk103-WindowsNoEditor.sig",
+      "md5": "8f9e0c1251844a6266911c7da1ea5c4a",
+      "size": 27604
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/vi.pak",
+      "md5": "62d5191b9ff7c541ac0305a17d82db06",
+      "size": 380361
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk49-WindowsNoEditor.pak",
+      "md5": "af829720ebb211b061ceb776953ea7b8",
+      "size": 3334792047
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/sw.pak",
+      "md5": "46105b37fbc4acb39fb7c9c1244bb67f",
+      "size": 312072
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk49-WindowsNoEditor.sig",
+      "md5": "f0b0589d4d267cd5ebcae73b97479d14",
+      "size": 204068
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk101-WindowsNoEditor.sig",
+      "md5": "f19047b5f175d02e8b76c54576ba3235",
+      "size": 34292
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/skin/res_common/btn_webview_refresh_clicked_72.png",
+      "md5": "4fc7bf970234759728385e7a2d250c68",
+      "size": 1116
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/skin/res_common/icon_loading_static.png",
+      "md5": "7a3fa6d04a0d98360d7faf8a2e2d5592",
+      "size": 8237
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk41-WindowsNoEditor.pak",
+      "md5": "186f600db60832b74075266c8ae2e68b",
+      "size": 723187590
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/de.pak",
+      "md5": "175ffd3a15fa3a320fd2dd969acf9485",
+      "size": 334104
+    },
+    {
+      "dest": "Engine/Binaries/ThirdParty/PhysX3/Win64/VS2015/APEX_Legacy_x64.dll",
+      "md5": "5c86df17bfed50344ff4077343e8c1b6",
+      "size": 3350728
+    },
+    {
+      "dest": "Client/Binaries/Win64/CrashSight64.dll",
+      "md5": "5ad1556fc556507189cbf55b98596153",
+      "size": 5574344
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKWebView/KRShmq.dll",
+      "md5": "f57b55b90b1008f97b50c48ea0cc9e3f",
+      "size": 45256
+    },
+    {
+      "dest": "Engine/Binaries/ThirdParty/Vorbis/Win64/VS2015/libvorbis_64.dll",
+      "md5": "b621c6372b0a685c8542a34cd20faa8f",
+      "size": 1735368
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/hi.pak",
+      "md5": "45caa8f94a926638d040ae93e53dde74",
+      "size": 704354
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/tr.pak",
+      "md5": "97e37ee50522f9300d43b5b529945835",
+      "size": 322444
+    },
+    {
+      "dest": "Client/Config/uninstall.ini",
+      "md5": "63285b890be0064b0f362b1ea2dff35b",
+      "size": 148
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKWebView/libcef.dll",
+      "md5": "8907f8be74da1629bebc0afad5d0b985",
+      "size": 156463184
+    },
+    {
+      "dest": "Client/Binaries/Win64/AntiCheatExpert/ACE-CORE.sysa2",
+      "md5": "41cbf0c1a99a60d4cd0bf07629464d3e",
+      "size": 1596640
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/hr.pak",
+      "md5": "dd27fb99ae9b74c900e5d57edbf9fb68",
+      "size": 330294
+    },
+    {
+      "dest": "Engine/Plugins/Runtime/Nvidia/DLSS/Binaries/ThirdParty/Win64/nvngx_dlss.dll",
+      "md5": "a30d0cfbec9d48dcd5f314aea1bde86d",
+      "size": 54778992
+    },
+    {
+      "dest": "Client/Plugins/Wwise/ThirdParty/x64_vc160/Release/bin/Ak3DAudioBedMixer.dll",
+      "md5": "ad31fe80b01495d4e858bbcea000f81d",
+      "size": 125736
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk105-WindowsNoEditor.sig",
+      "md5": "c9603f5d0714efe276cc7e183e427450",
+      "size": 8800
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk41-WindowsNoEditor.sig",
+      "md5": "640e5846f3cff682651010681079f1d4",
+      "size": 44668
+    },
+    {
+      "dest": "Client/Binaries/Win64/AntiCheatExpert/ACE-Service64.exe",
+      "md5": "f49b484edaaf829c6dc2f8d65e5926f0",
+      "size": 3251080
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/snapshot_blob.bin",
+      "md5": "02e994e7e41f1b70d8a982e57436aa67",
+      "size": 49553
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/skin/res_common/btn_transparent_webview_close_clicked_48.png",
+      "md5": "19f695f2da4eb2454bbee1db177399e1",
+      "size": 2109
+    },
+    {
+      "dest": "Engine/Binaries/ThirdParty/CEF3/Win64/libcef.dll",
+      "md5": "2acc7f8f25888e05370ca1aa0ad40600",
+      "size": 98296520
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/swiftshader/libGLESv2.dll",
+      "md5": "bc927a3c5d5d35402387db99c5f2df06",
+      "size": 2760272
+    },
+    {
+      "dest": "Client/Plugins/Wwise/ThirdParty/x64_vc160/Release/bin/AkAudioInput.dll",
+      "md5": "33a9862e6d82eddff10ecaeb1e06fde7",
+      "size": 131888
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/chrome_200_percent.pak",
+      "md5": "0a88df685e751eb9e6f2a349b0c5f1c2",
+      "size": 1409499
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk3-WindowsNoEditor.sig",
+      "md5": "04138563f4edf882fb94a498c31ab9b0",
+      "size": 2260
+    },
+    {
+      "dest": "Client/Plugins/Kuro/WeLingPipeSDK/ThirdParty/Win64/libs/NamedPipeClient.dll",
+      "md5": "db64a366f3714ef22c07f6c34039ee73",
+      "size": 1235656
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKWebView/swiftshader/libEGL.dll",
+      "md5": "fc6920f6e6f0697fe4525dfc1dc7b2e4",
+      "size": 439888
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/skin/res_common/btn_transparent_webview_close_hover_48.png",
+      "md5": "3f9166ab08a7e58759cadba3879262ce",
+      "size": 2692
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/et.pak",
+      "md5": "4ec8909a4bc57bf5e67ab338339f7437",
+      "size": 297568
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/sqlite3.dll",
+      "md5": "ebff447082bd58a49371c008509859a9",
+      "size": 2910920
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk45-WindowsNoEditor.sig",
+      "md5": "ca1b7e1d408e4a58dc194cdc6b2f26e6",
+      "size": 18468
+    },
+    {
+      "dest": "Client/Content/Aki/Cursor/CursorPre@1.25x.png",
+      "md5": "85e8e8fa07357169d757054ed9a32a38",
+      "size": 9043
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/skin/res_login/btn_qrcode_login_clicked.png",
+      "md5": "46b57c2b8db88d759e75c6e32374ee8b",
+      "size": 1582
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/skin/res_common/kuro_game_logo_28.png",
+      "md5": "c9b657fa86d66dca5a7d15bff1ebde07",
+      "size": 5153
+    },
+    {
+      "dest": "Client/Plugins/Wwise/ThirdParty/x64_vc160/Release/bin/AkSidechain.dll",
+      "md5": "13ddd138680f834ea735502e7f54a972",
+      "size": 162600
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk26-WindowsNoEditor.pak",
+      "md5": "f63f2712190d3977777eaf5375317d02",
+      "size": 1292710048
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/bn.pak",
+      "md5": "a0517e3da254229c01606ff6f40a2e00",
+      "size": 706405
+    },
+    {
+      "dest": "Engine/Config/DisablePluginModuleConfig.json",
+      "md5": "0b11706fae2dfebcdadf01a9c65d5cac",
+      "size": 1218
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk28-WindowsNoEditor.sig",
+      "md5": "7918593071b6157c31f1901789d4e1ad",
+      "size": 10204
+    },
+    {
+      "dest": "Client/Binaries/Win64/Client-Win64-Shipping.exe",
+      "md5": "beaf07c4dd27b34176349ac2d18304aa",
+      "size": 976121112
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/skin/res_login/btn_taptap_login_hover.png",
+      "md5": "5d958bcbd3dea249d3468dc79abcda57",
+      "size": 1834
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk107-WindowsNoEditor.sig",
+      "md5": "d9c143ae66e4951c758d558bdc617c25",
+      "size": 115612
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk7-WindowsNoEditor.sig",
+      "md5": "2fde0a3a8c476cb2b829a1b46249a305",
+      "size": 258592
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/en-GB.pak",
+      "md5": "a28f54b19b017ba9d1d0cb9ef453a6a0",
+      "size": 274227
+    },
+    {
+      "dest": "Client/Content/Aki/Cursor/CursorPre@1.5x.png",
+      "md5": "2bdcad10bbcefdc67ea028655ad70154",
+      "size": 10526
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk9-WindowsNoEditor.pak",
+      "md5": "7ded43cc1ba9441549a74ba8fb95d5aa",
+      "size": 206283439
+    },
+    {
+      "dest": "Engine/Binaries/Win64/UnrealCEFSubProcess.exe",
+      "md5": "9133dd30aa3a3f93d83044457eb7b87c",
+      "size": 3714760
+    },
+    {
+      "dest": "Client/Plugins/FFMPEGMedia/ThirdParty/ffmpeg/bin/vs/x64/avcodec-58.dll",
+      "md5": "eb303184b65e1f320a28b5ab16ddf753",
+      "size": 18510024
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/thinkingdata.dll",
+      "md5": "589d4f3acb8b2c8f07185442b14d945c",
+      "size": 335560
+    },
+    {
+      "dest": "Client/Plugins/Wwise/ThirdParty/x64_vc160/Release/bin/AkRecorderADM.dll",
+      "md5": "efe63fe57dab0d3656260f51f87dbf29",
+      "size": 189736
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/ca.pak",
+      "md5": "e27c7fa520364fec316e85fb81381496",
+      "size": 335231
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk5-WindowsNoEditor.sig",
+      "md5": "bd366522ae121a4ff37dd2fe7ccdb347",
+      "size": 24396
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/sv.pak",
+      "md5": "e92cce118850bbffb53dadd1b1467243",
+      "size": 303170
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk109-WindowsNoEditor.pak",
+      "md5": "c8dae21c7f5c273ecbd1240a2881f7ab",
+      "size": 847097444
+    },
+    {
+      "dest": "Client/Content/Aki/Cursor/CursorHi@1.25x.png",
+      "md5": "85e8e8fa07357169d757054ed9a32a38",
+      "size": 9043
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk43-WindowsNoEditor.sig",
+      "md5": "a2788b5197f6136a619411db9405c244",
+      "size": 18764
+    },
+    {
+      "dest": "Client/Plugins/Wwise/ThirdParty/x64_vc160/Release/bin/MasteringSuite.dll",
+      "md5": "a4c8f1c737b3c2586d14bc41f22b4252",
+      "size": 256808
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk28-WindowsNoEditor.pak",
+      "md5": "74b2a753e3536668f2a55c5753934e80",
+      "size": 158514680
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk45-WindowsNoEditor.pak",
+      "md5": "b11fa82ab925e1debe781a1f442472f7",
+      "size": 293916111
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/KRSDKUnsupportedVideoWebView/locales/cs.pak",
+      "md5": "bcf62eb086958017be89de5118fbf016",
+      "size": 343057
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/skin/res_login/btn_qrcode_login_normal.png",
+      "md5": "870f4f6ef4d88be0fbae6ed34f66efa9",
+      "size": 1575
+    },
+    {
+      "dest": "Client/Binaries/Win64/ThirdParty/KrPcSdk_Mainland/KRSDKRes/skin/res_login/btn_qrcode_login_hover.png",
+      "md5": "8ccbde06f80579f2cd0ff6c7dc6992c8",
+      "size": 1624
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk26-WindowsNoEditor.sig",
+      "md5": "724f1400cfc0b0d1db0b4e5be546e5c7",
+      "size": 79432
+    }
+  ],
+  "deleteFiles": [
+    "Client/Plugins/Wwise/ThirdParty/x64_vc160/Release/bin/DolbyStereoRenderer.dll",
+    "Client/Binaries/Win64/AntiCheatExpert/InGame/x64/ACE-ATS64.dll",
+    "Client/Binaries/Win64/AntiCheatExpert/InGame/x64/ACE-Trace.dll",
+    "Client/Binaries/Win64/AntiCheatExpert/SGuard/x64/Plugins/ACE-SSC-DRV64.sys",
+    "Client/Binaries/Win64/AntiCheatExpert/SGuard/x64/Plugins/ACE-SSC64.dll",
+    "Client/Binaries/Win64/AntiCheatExpert/InGame/x64/ACE-Base64.dll",
+    "Client/Binaries/Win64/AntiCheatExpert/InGame/x64/SGuardAgent64.dll",
+    "Client/Binaries/Win64/AntiCheatExpert/SGuard/x64/Plugins/ACE-DFS64.dll",
+    "Client/Binaries/Win64/AntiCheatExpert/InGame/x64/ACE-Base.dat",
+    "Engine/Plugins/Runtime/Nvidia/Streamline_Old/Binaries/ThirdParty/Win64/sl.dlss_g.dll",
+    "Client/Binaries/Win64/AntiCheatExpert/InGame/x64/product.rc",
+    "Client/Plugins/Wwise/ThirdParty/x64_vc160/Release/bin/DolbyAtmosRenderer.dll",
+    "Client/Binaries/Win64/AntiCheatExpert/InGame/x64/ACE-Safe.dll",
+    "Client/Binaries/Win64/AntiCheatExpert/InGame/x64/ACE-Base.rc",
+    "Engine/Plugins/Runtime/Nvidia/Streamline_Old/Binaries/ThirdParty/Win64/sl.common.dll",
+    "Client/Binaries/Win64/AntiCheatExpert/InGame/x64/ACE-CSI64.dll",
+    "Client/Binaries/Win64/AntiCheatExpert/SGuard/x64/Uninstall64.exe",
+    "Engine/Plugins/Runtime/Nvidia/Streamline_Old/Binaries/ThirdParty/Win64/sl.reflex.dll",
+    "Client/Binaries/Win64/AntiCheatExpert/InGame/x64/d3dcompiler_43.dll",
+    "Client/Binaries/Win64/AntiCheatExpert/SGuard/x64/SGuardSvc64.exe",
+    "Client/Binaries/Win64/AntiCheatExpert/InGame/x64/ACE-DRV64.dll",
+    "Engine/Plugins/Runtime/Nvidia/Streamline_Old/Binaries/ThirdParty/Win64/nvngx_dlssg.dll",
+    "Client/Binaries/Win64/AntiCheatExpert/SGuard/x64/SGuard.rc",
+    "Client/Binaries/Win64/AntiCheatExpert/SGuard/x64/Plugins/ACE-CSI64.dll",
+    "Client/Binaries/Win64/AntiCheatExpert/SGuard/x64/Plugins/ACE-DRV64.dll",
+    "Client/Binaries/Win64/AntiCheatExpert/InGame/x64/ACE-DFS64.dll",
+    "Client/Binaries/Win64/AntiCheatExpert/InGame/x64/d3dx11_43.dll",
+    "Client/Binaries/Win64/AntiCheatExpert/SGuard/x64/ACE-Trace.dll",
+    "Client/Plugins/Wwise/ThirdParty/x64_vc160/Release/bin/AkExpander.dll",
+    "Client/Binaries/Win64/AntiCheatExpert/SGuard/x64/SGuard64.exe",
+    "Client/Binaries/Win64/AntiCheatExpert/InGame/x64/ids.dat",
+    "Client/Content/Paks/pakchunk15-WindowsNoEditor.sig",
+    "Client/Content/Paks/pakchunk15-WindowsNoEditor.pak",
+    "Client/Binaries/Win64/AntiCheatExpert/SGuard/x64/product.rc",
+    "Client/Binaries/Win64/AntiCheatExpert/SGuard/x64/Plugins/ACE-ATS64.dll",
+    "Client/Binaries/Win64/AntiCheatExpert/InGame/x64/D3DX9_43.dll",
+    "Engine/Plugins/Runtime/Nvidia/Streamline_Old/Binaries/ThirdParty/Win64/sl.interposer.dll",
+    "Client/Binaries/Win64/AntiCheatExpert/InGame/x64/ACE-Tips64.dll",
+    "Client/Binaries/Win64/AntiCheatExpert/SGuard/x64/SGuardUpdate64.exe",
+    "Client/Binaries/Win64/AntiCheatExpert/SGuard/x64/ACE-Safe.dll",
+    "Client/Binaries/Win64/AntiCheatExpert/InGame/x64/tersafe64.dll"
+  ],
+  "provenance": {
+    "source_kind": "official_sync",
+    "source_url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.0.0/indexFile.json"
+  }
+}

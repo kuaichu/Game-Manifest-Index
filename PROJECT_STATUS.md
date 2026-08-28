@@ -13,8 +13,8 @@ GMI V5 是 Game Manifest Index 的干净重建版本。
 - Android APK 资源；
 - PC 资源，包括 packages、patches、voice、chunks、manifest 等。
 
-APK 迁移从已经验证可用的 V4 工作现场开始。PC 迁移暂缓历史数据导入，等格式和适配器
-稳定后再建立 PC 数据基线，避免把未定型数据混入可信主线。
+APK 迁移从已经验证可用的 V4 工作现场开始。PC 数据基线在格式和适配器稳定后，按固定
+历史快照与官方 current discovery 建立，避免把未定型数据混入可信主线。
 
 ## 项目身份和目录角色
 
@@ -538,12 +538,34 @@ manifest/reference 路径和 canonical 禁止字段检查，并重建 8 个 Wind
 OSS Archive，按官方证据标 unavailable 且不伪造 HTTP code。probe 写回只改变精确 candidate
 的 `current`，其余 record 深比较保持不变。
 
+### PC 数据基线
+
+`pc/data-baseline` 已从旧仓库固定 commit
+`85e92d5b7f8868bb5c28901606c50132fe4705bf`（tree
+`7e64fddb974324b3aca39f1d50d31b20336bea81`）选择性迁移 PC 历史数据，并在迁移后执行一次
+8 款官方 bounded discovery（timeout 30 秒、workers 4）。迁移脚本只从 Git object 读取固定
+tree，不依赖 dirty worktree，也不下载资源正文。
+
+最终基线包含 173 个 canonical schema-v2 records、1,499 个唯一 artifacts、157 个独立
+schema-1 manifest 文档和 8 个可重建 PC indexes：`hk4e 56/697`、`hkrpg 18/244`、
+`nap 19/437`、`bh3 32/27`、`wuwa 45/91`、`tof 1/1`、`p5x 1/1`、`nte 1/1`（records/artifacts）。
+历史迁移阶段写入 168 records、1,449 artifacts、106 manifests；4 条 `official_launcher`、
+12 条 hkrpg `zh-tw`、1 条 `official_api` chunk-only 空记录和 648 个没有 Kuro local
+manifest 配对的 route artifacts 均在审计排除清单中。官方 current records 只保留 V5
+collector 产生的 `official_sync` provenance；历史 record 只使用真实
+`third_party_history` / `legacy_migration` provenance。
+
+相关文件：`scripts/migrate_pc_data_baseline.py`、同名 audit 文档/JSON、
+`backend/test_pc_data_baseline.py`。
+测试覆盖固定 snapshot inventory/排除原因、canonical validation/artifact identity、来源与
+manifest/reference 安全、8 个 index 无差异重建、Android data 与 `integration/pc` 无差异及
+Git-object migration rerun。
+
 ## 暂未迁移内容
 
 以下内容还没有进入 V5 的可信基线：
 
 - APK 公开 API 和后台 operation 接线（由后续 backend 阶段完成）；
-- PC 数据基线；
 - backend API contract；
 - backend sync operations；
 - backend version admin；
@@ -567,8 +589,8 @@ snapshot/apk-validated-baseline
 其中 `snapshot/apk-validated-baseline`、`frontend` 晋级和 `core/schema` 已完成。
 
 APK 平台模块，以及米哈游、Kuro、Perfect World 的当前 PC 采集、URL probe 与内部 registry
-已完成验证。registry task squash 晋级并在 `integration/pc` 复验后，下一步是
-`pc/data-baseline`。
+已完成验证。`pc/data-baseline` 已完成数据迁移、官方 current discovery 和基线审计，待
+审查后晋级 `integration/pc`。
 
 分支路径：
 
@@ -579,25 +601,12 @@ integration/pc
   -> squash merge -> integration/pc
   -> platform validation
   -> pc/data-baseline
+  -> validation
+  -> squash merge -> integration/pc
 ```
 
-预计修改范围：
-
-- 八款 PC 官方 collector 注册；
-- 单任务和批量 discovery/probe 接线；
-- 默认链路官方来源、平台隔离和持久化边界测试。
-
-registry 任务没有修改 Android collector、organizer 或 probe；Android registry/default scope
-通过回归测试保持原行为。
-
-后续 `pc/data-baseline` 仍不要提前迁入：
-
-- `data/`
-- API route；
-- frontend 文件；
-- APK 采集器；
-- APK 验活器；
-- 已完成的 PC collector/organizer/probe 语义和历史数据。
+数据基线任务没有修改 Android collector、organizer 或 probe，也没有修改 API route、frontend
+或已完成的 PC collector/organizer/probe 语义。
 
 ## 近期路线
 
@@ -605,11 +614,8 @@ registry 任务没有修改 Android collector、organizer 或 probe；Android re
 
 ```text
 pc/registry-integration
-  -> pc/data-baseline（仅在平台格式和 registry 验收稳定后）
+  -> pc/data-baseline（已完成，待审查后晋级 integration/pc）
 ```
-
-PC 开发应等共享 core 稳定后再开始。`pc/data-baseline` 不要现在创建，等 PC 格式和适配器
-稳定后再迁移历史数据。
 
 后端业务能力建议在数据和适配器基础稳定后推进：
 

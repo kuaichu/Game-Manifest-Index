@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "domain_id": "bh3-pc",
+  "platform": "windows",
+  "version": "8.3.0",
+  "tag": "8.3.0",
+  "build_id": "6H8QvYqRWaj3",
+  "diff_tags": [],
+  "manifests": [
+    {
+      "category": {
+        "id": 10059,
+        "name": "游戏资源-外网"
+      },
+      "manifest": {
+        "id": "manifest_508e9e9d2983d830_69ef4144ca29a0371f5e46957271427a",
+        "checksum": "69ef4144ca29a0371f5e46957271427a",
+        "compressed_size": 2025988,
+        "uncompressed_size": 3781745
+      },
+      "component": "game",
+      "language": null,
+      "matching_field": "game",
+      "stats": {
+        "compressed_size": 26670056736,
+        "uncompressed_size": 29873992741,
+        "file_count": 944,
+        "chunk_count": 25444
+      },
+      "deduplicated_stats": {
+        "compressed_size": 26660263222,
+        "uncompressed_size": 29852040307,
+        "file_count": 944,
+        "chunk_count": 25429
+      },
+      "manifest_download": {
+        "url_prefix": "https://autopatchcn.bh3.com/ptpublic/rel/chunk/manifests/cxi8tkx5vdog/6H8QvYqRWaj3",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      },
+      "chunk_download": {
+        "url_prefix": "https://autopatchcn.bh3.com/ptpublic/rel/chunk/chunks/cxi8tkx5vdog/6H8QvYqRWaj3",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      }
+    }
+  ],
+  "provenance": {
+    "source_kind": "third_party_history",
+    "source_name": "Amarea",
+    "source_url": "https://autopatch.amarea.cn/pkg_version/chunk/bh3_8.3.0.json"
+  }
+}

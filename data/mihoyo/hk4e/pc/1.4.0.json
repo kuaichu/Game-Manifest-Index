@@ -1,0 +1,133 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "hk4e",
+  "domain_id": "hk4e-pc",
+  "platform": "windows",
+  "channel": "official",
+  "version": "1.4.0",
+  "version_code": null,
+  "file_time": "2021-03-17",
+  "artifacts": [
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "archive",
+      "name": "YuanShen_1.4.0.zip",
+      "size": 22207975039,
+      "checksum": {
+        "md5": "d8fbe65c328069f7981a3a497c53a5a3"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.yuanshen.com/client_app/pc_mihoyo/20210317_67c8f1002bb26672/YuanShen_1.4.0.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:14:34Z",
+            "etag": "1D2AA4B6BE947BC6F7B101D4311DDC60-2118",
+            "crc64": "10568980219115841351",
+            "last_modified": "Fri, 05 Mar 2021 06:50:27 GMT",
+            "response_size": 22207975039
+          }
+        }
+      ],
+      "artifact_id": "a1_082cf5d3c48fa9411312b5982d4b8735"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "1.3.2_1.4.0_diff_8rY3a0Hs.zip",
+      "route_from": "1.3.2",
+      "route_to": "1.4.0",
+      "size": 4612512879,
+      "urls": [
+        {
+          "url": "https://autopatchcn.yuanshen.com/client_app/update/hk4e_cn/18/1.3.2_1.4.0_diff_8rY3a0Hs.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:14:34Z",
+            "etag": "5CEA97B23267D0651F6FF6E9840D0F3A",
+            "crc64": "6898914468567290548",
+            "last_modified": "Mon, 08 Mar 2021 10:18:22 GMT",
+            "response_size": 4612512879
+          }
+        }
+      ],
+      "artifact_id": "a1_5de7c5804a0556d9261485cf9d6752d2"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "1.3.0_1.4.0_diff_ir2NV1xs.zip",
+      "route_from": "1.3.0",
+      "route_to": "1.4.0",
+      "size": 4612512879,
+      "urls": [
+        {
+          "url": "https://autopatchcn.yuanshen.com/client_app/update/hk4e_cn/18/1.3.0_1.4.0_diff_ir2NV1xs.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:14:34Z",
+            "etag": "86E65C2CF013F7671E93FDC7F5DC7C90",
+            "crc64": "14150717901709760912",
+            "last_modified": "Mon, 08 Mar 2021 10:37:20 GMT",
+            "response_size": 4612512879
+          }
+        }
+      ],
+      "artifact_id": "a1_af8ca0728dc453a0908cae3c0c7ad19a"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "1.2.0_1.4.0_diff_s6wkdiZF.zip",
+      "route_from": "1.2.0",
+      "route_to": "1.4.0",
+      "size": 7684641487,
+      "urls": [
+        {
+          "url": "https://autopatchcn.yuanshen.com/client_app/update/hk4e_cn/18/1.2.0_1.4.0_diff_s6wkdiZF.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:14:34Z",
+            "etag": "F689014B1241E57B8F6D3102E3B45DEA",
+            "crc64": "5421964954224415499",
+            "last_modified": "Mon, 08 Mar 2021 11:02:39 GMT",
+            "response_size": 7684641487
+          }
+        }
+      ],
+      "artifact_id": "a1_16bf392df583210f0b086d471f1e26b2"
+    }
+  ],
+  "references": [],
+  "provenance": {
+    "source_kind": "third_party_history",
+    "source_name": "HoyoFiles/Amarea",
+    "source_url": "https://autopatch.amarea.cn/pkg_version/hk4e_versions.json",
+    "imported_at": "2026-08-26T09:09:01Z"
+  }
+}

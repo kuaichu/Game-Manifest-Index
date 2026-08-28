@@ -1,0 +1,213 @@
+{
+  "schema_version": 1,
+  "vendor": "mihoyo",
+  "game_id": "nap",
+  "domain_id": "nap-pc",
+  "platform": "windows",
+  "version": "1.6.0",
+  "tag": "1.6.0",
+  "build_id": "2AFBBcd11wPK",
+  "diff_tags": [],
+  "manifests": [
+    {
+      "category": {
+        "id": 10047,
+        "name": "游戏资源-外网"
+      },
+      "manifest": {
+        "id": "manifest_57afe5d5e071cf6e_d1511020b97429b32a352ecd1a3ced25",
+        "checksum": "d1511020b97429b32a352ecd1a3ced25",
+        "compressed_size": 5657982,
+        "uncompressed_size": 10959329
+      },
+      "component": "game",
+      "language": null,
+      "matching_field": "game",
+      "stats": {
+        "compressed_size": 68602045033,
+        "uncompressed_size": 75113770829,
+        "file_count": 9766,
+        "chunk_count": 68620
+      },
+      "deduplicated_stats": {
+        "compressed_size": 68456795261,
+        "uncompressed_size": 74947879659,
+        "file_count": 9766,
+        "chunk_count": 68450
+      },
+      "manifest_download": {
+        "url_prefix": "https://autopatchcn.juequling.com/pclauncher/manifests/cxi9diu5aadc/10047",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      },
+      "chunk_download": {
+        "url_prefix": "https://autopatchcn.juequling.com/pclauncher/chunks/cxi9diu5aadc/10047",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      }
+    },
+    {
+      "category": {
+        "id": 10048,
+        "name": "语音包-中文-外网"
+      },
+      "manifest": {
+        "id": "manifest_284dcee3114b1ec2_06edff3fbee7a56c87abcaa944da2c95",
+        "checksum": "06edff3fbee7a56c87abcaa944da2c95",
+        "compressed_size": 99436,
+        "uncompressed_size": 184403
+      },
+      "component": "voice",
+      "language": "zh-cn",
+      "matching_field": "zh-cn",
+      "stats": {
+        "compressed_size": 1476253235,
+        "uncompressed_size": 1483006872,
+        "file_count": 21,
+        "chunk_count": 1250
+      },
+      "deduplicated_stats": {
+        "compressed_size": 1476253235,
+        "uncompressed_size": 1483006872,
+        "file_count": 21,
+        "chunk_count": 1250
+      },
+      "manifest_download": {
+        "url_prefix": "https://autopatchcn.juequling.com/pclauncher/manifests/cxi9diu5aadc/10048",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      },
+      "chunk_download": {
+        "url_prefix": "https://autopatchcn.juequling.com/pclauncher/chunks/cxi9diu5aadc/10048",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      }
+    },
+    {
+      "category": {
+        "id": 10049,
+        "name": "语音包-英文-外网"
+      },
+      "manifest": {
+        "id": "manifest_8cf8154506bf854b_41816afff593aec25d181b2f10ce8e1e",
+        "checksum": "41816afff593aec25d181b2f10ce8e1e",
+        "compressed_size": 104794,
+        "uncompressed_size": 194345
+      },
+      "component": "voice",
+      "language": "en-us",
+      "matching_field": "en-us",
+      "stats": {
+        "compressed_size": 1552580693,
+        "uncompressed_size": 1559618839,
+        "file_count": 21,
+        "chunk_count": 1318
+      },
+      "deduplicated_stats": {
+        "compressed_size": 1552580693,
+        "uncompressed_size": 1559618839,
+        "file_count": 21,
+        "chunk_count": 1318
+      },
+      "manifest_download": {
+        "url_prefix": "https://autopatchcn.juequling.com/pclauncher/manifests/cxi9diu5aadc/10049",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      },
+      "chunk_download": {
+        "url_prefix": "https://autopatchcn.juequling.com/pclauncher/chunks/cxi9diu5aadc/10049",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      }
+    },
+    {
+      "category": {
+        "id": 10050,
+        "name": "语音包-韩文-外网"
+      },
+      "manifest": {
+        "id": "manifest_cdbc643118794b0b_5e77298b1ce42c3be873e719423e95b4",
+        "checksum": "5e77298b1ce42c3be873e719423e95b4",
+        "compressed_size": 113127,
+        "uncompressed_size": 209773
+      },
+      "component": "voice",
+      "language": "ko-kr",
+      "matching_field": "ko-kr",
+      "stats": {
+        "compressed_size": 1682064665,
+        "uncompressed_size": 1688868527,
+        "file_count": 21,
+        "chunk_count": 1424
+      },
+      "deduplicated_stats": {
+        "compressed_size": 1682064665,
+        "uncompressed_size": 1688868527,
+        "file_count": 21,
+        "chunk_count": 1424
+      },
+      "manifest_download": {
+        "url_prefix": "https://autopatchcn.juequling.com/pclauncher/manifests/cxi9diu5aadc/10050",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      },
+      "chunk_download": {
+        "url_prefix": "https://autopatchcn.juequling.com/pclauncher/chunks/cxi9diu5aadc/10050",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      }
+    },
+    {
+      "category": {
+        "id": 10051,
+        "name": "语音包-日文-外网"
+      },
+      "manifest": {
+        "id": "manifest_b84211233c56d466_74ec71ed8ed20e12814c3c11d8235c46",
+        "checksum": "74ec71ed8ed20e12814c3c11d8235c46",
+        "compressed_size": 126287,
+        "uncompressed_size": 234221
+      },
+      "component": "voice",
+      "language": "ja-jp",
+      "matching_field": "ja-jp",
+      "stats": {
+        "compressed_size": 1861227889,
+        "uncompressed_size": 1868114623,
+        "file_count": 21,
+        "chunk_count": 1592
+      },
+      "deduplicated_stats": {
+        "compressed_size": 1861227889,
+        "uncompressed_size": 1868114623,
+        "file_count": 21,
+        "chunk_count": 1592
+      },
+      "manifest_download": {
+        "url_prefix": "https://autopatchcn.juequling.com/pclauncher/manifests/cxi9diu5aadc/10051",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      },
+      "chunk_download": {
+        "url_prefix": "https://autopatchcn.juequling.com/pclauncher/chunks/cxi9diu5aadc/10051",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      }
+    }
+  ],
+  "provenance": {
+    "source_kind": "third_party_history",
+    "source_name": "Amarea",
+    "source_url": "https://autopatch.amarea.cn/pkg_version/chunk/nap_1.6.0.json"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "hkrpg",
+  "domain_id": "hkrpg-pc",
+  "platform": "windows",
+  "channel": "official",
+  "version": "1.0.5",
+  "version_code": null,
+  "file_time": "2023-04-13T13:52:09Z",
+  "artifacts": [
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "archive",
+      "name": "StarRail_1.0.5.zip",
+      "size": 10863708622,
+      "checksum": {
+        "md5": "58fad1765e8474cba45cbba566010817"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.bhsr.com/client/cn/20230413215209_VC9JD8S2WrcciZFu/StarRail_1.0.5.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "unavailable",
+            "http_code": 404,
+            "checked_at": "2026-08-25T14:14:13Z",
+            "etag": "53AF239EE5D3E261545DEDEDCB6FFD57",
+            "crc64": "4510927154085114263",
+            "last_modified": "Thu, 08 Sep 2022 10:13:18 GMT"
+          }
+        }
+      ],
+      "artifact_id": "a1_49f08952a72e25d9c69655d2a20a586c"
+    }
+  ],
+  "references": [],
+  "provenance": {
+    "source_kind": "third_party_history",
+    "source_name": "HoyoFiles/Amarea",
+    "source_url": "https://autopatch.amarea.cn/pkg_version/hkrpg_versions.json",
+    "imported_at": "2026-08-24T16:45:08Z"
+  }
+}

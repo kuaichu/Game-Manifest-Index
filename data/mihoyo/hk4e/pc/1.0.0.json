@@ -1,0 +1,49 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "hk4e",
+  "domain_id": "hk4e-pc",
+  "platform": "windows",
+  "channel": "official",
+  "version": "1.0.0",
+  "version_code": null,
+  "file_time": null,
+  "artifacts": [
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "archive",
+      "name": "YuanShen_1.0.0.zip",
+      "size": 12850520560,
+      "checksum": {
+        "md5": "7d1c0778a7eb4c99f2c19266629e1eb2"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.yuanshen.com/client_app/pc_mihoyo/04874b5ed14055383219644f40b514ca/YuanShen_1.0.0.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:14:34Z",
+            "etag": "5CFF80D97E6D75143BB636095DBA90AF-1226",
+            "crc64": "3040785508341996959",
+            "last_modified": "Wed, 02 Sep 2020 13:54:10 GMT",
+            "response_size": 12850520560
+          }
+        }
+      ],
+      "artifact_id": "a1_77088aec4877041a1656fd11ee6ad14c"
+    }
+  ],
+  "references": [],
+  "provenance": {
+    "source_kind": "third_party_history",
+    "source_name": "HoyoFiles/Amarea",
+    "source_url": "https://autopatch.amarea.cn/pkg_version/hk4e_versions.json",
+    "imported_at": "2026-08-26T09:09:01Z"
+  }
+}

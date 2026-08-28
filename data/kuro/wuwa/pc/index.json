@@ -1,0 +1,278 @@
+{
+  "vendor": "kuro",
+  "game_id": "wuwa",
+  "platform": "windows",
+  "versions": [
+    {
+      "version": "3.6.0",
+      "updated_at": null,
+      "available": null,
+      "size": 89408316433
+    },
+    {
+      "version": "3.5.3",
+      "updated_at": null,
+      "available": true,
+      "size": 84392057610
+    },
+    {
+      "version": "3.5.2",
+      "updated_at": null,
+      "available": null,
+      "size": 84391965997
+    },
+    {
+      "version": "3.5.0",
+      "updated_at": null,
+      "available": null,
+      "size": 84391973119
+    },
+    {
+      "version": "3.4.1",
+      "updated_at": null,
+      "available": null,
+      "size": 112192502293
+    },
+    {
+      "version": "3.4.0",
+      "updated_at": null,
+      "available": true,
+      "size": 112192002858
+    },
+    {
+      "version": "3.3.0",
+      "updated_at": null,
+      "available": null,
+      "size": 107107240364
+    },
+    {
+      "version": "3.2.2",
+      "updated_at": null,
+      "available": true,
+      "size": 123336019944
+    },
+    {
+      "version": "3.2.1",
+      "updated_at": null,
+      "available": null,
+      "size": 123327875987
+    },
+    {
+      "version": "3.1.3",
+      "updated_at": null,
+      "available": null,
+      "size": 134336999153
+    },
+    {
+      "version": "3.1.2",
+      "updated_at": null,
+      "available": null,
+      "size": 134336977657
+    },
+    {
+      "version": "3.1.0",
+      "updated_at": null,
+      "available": null,
+      "size": 134336973526
+    },
+    {
+      "version": "3.0.3",
+      "updated_at": null,
+      "available": null,
+      "size": 120746537144
+    },
+    {
+      "version": "3.0.2",
+      "updated_at": null,
+      "available": null,
+      "size": 120746147920
+    },
+    {
+      "version": "3.0.1",
+      "updated_at": null,
+      "available": null,
+      "size": 120746120700
+    },
+    {
+      "version": "3.0.0",
+      "updated_at": null,
+      "available": null,
+      "size": 120746140987
+    },
+    {
+      "version": "2.8.0",
+      "updated_at": null,
+      "available": true,
+      "size": 88827190223
+    },
+    {
+      "version": "2.7.0",
+      "updated_at": null,
+      "available": null,
+      "size": 83057842295
+    },
+    {
+      "version": "2.6.2",
+      "updated_at": null,
+      "available": true,
+      "size": 71837979399
+    },
+    {
+      "version": "2.6.1",
+      "updated_at": null,
+      "available": null,
+      "size": 71837974719
+    },
+    {
+      "version": "2.6.0",
+      "updated_at": null,
+      "available": null,
+      "size": 71836015175
+    },
+    {
+      "version": "2.5.1",
+      "updated_at": null,
+      "available": null,
+      "size": 65604529375
+    },
+    {
+      "version": "2.5.0",
+      "updated_at": null,
+      "available": null,
+      "size": 65604492495
+    },
+    {
+      "version": "2.4.1",
+      "updated_at": null,
+      "available": null,
+      "size": 60949962698
+    },
+    {
+      "version": "2.4.0",
+      "updated_at": null,
+      "available": null,
+      "size": 60949951570
+    },
+    {
+      "version": "2.3.1",
+      "updated_at": null,
+      "available": true,
+      "size": 47174353468
+    },
+    {
+      "version": "2.3.0",
+      "updated_at": null,
+      "available": null,
+      "size": 47174333004
+    },
+    {
+      "version": "2.2.1",
+      "updated_at": null,
+      "available": true,
+      "size": 34102430362
+    },
+    {
+      "version": "2.2.0",
+      "updated_at": null,
+      "available": true,
+      "size": 34102399018
+    },
+    {
+      "version": "2.1.1",
+      "updated_at": null,
+      "available": null,
+      "size": 47944901626
+    },
+    {
+      "version": "2.1.0",
+      "updated_at": null,
+      "available": null,
+      "size": 47723980949
+    },
+    {
+      "version": "2.0.3",
+      "updated_at": null,
+      "available": null,
+      "size": 44459253528
+    },
+    {
+      "version": "2.0.2",
+      "updated_at": null,
+      "available": null,
+      "size": 44459244824
+    },
+    {
+      "version": "2.0.1",
+      "updated_at": null,
+      "available": null,
+      "size": 44459244560
+    },
+    {
+      "version": "2.0.0",
+      "updated_at": null,
+      "available": null,
+      "size": 44459244186
+    },
+    {
+      "version": "1.4.3",
+      "updated_at": null,
+      "available": null,
+      "size": 30155279987
+    },
+    {
+      "version": "1.4.2",
+      "updated_at": null,
+      "available": null,
+      "size": 30155279475
+    },
+    {
+      "version": "1.4.1",
+      "updated_at": null,
+      "available": null,
+      "size": 30155485377
+    },
+    {
+      "version": "1.4.0",
+      "updated_at": null,
+      "available": null,
+      "size": 30155485377
+    },
+    {
+      "version": "1.3.0",
+      "updated_at": null,
+      "available": null,
+      "size": 28401202451
+    },
+    {
+      "version": "1.2.0",
+      "updated_at": null,
+      "available": null,
+      "size": 24948003319
+    },
+    {
+      "version": "1.1.1",
+      "updated_at": null,
+      "available": true,
+      "size": 22835542606
+    },
+    {
+      "version": "1.1.0",
+      "updated_at": null,
+      "available": null,
+      "size": 22885295841
+    },
+    {
+      "version": "1.0.2",
+      "updated_at": null,
+      "available": null,
+      "size": 19834662353
+    },
+    {
+      "version": "1.0.0",
+      "updated_at": null,
+      "available": true,
+      "size": 19834673288
+    }
+  ],
+  "domain_id": "wuwa-pc"
+}

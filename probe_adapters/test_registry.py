@@ -7,18 +7,26 @@ from probe_adapters.common import ProbeError
 
 
 EXPECTED = {
-    "arknights": "hypergryph_arknights_hycdn",
-    "endfield": "hypergryph_endfield_hycdn",
-    "pns": "kuro_pns_txcdn",
-    "wuwa": "kuro_wuwa_mc_cdn",
-    "bh2": "mihoyo_bh2_benghuai",
-    "bh3": "mihoyo_bh3_cdn",
-    "hk4e": "mihoyo_autopatch",
-    "hkrpg": "mihoyo_autopatch",
-    "nap": "mihoyo_autopatch",
-    "nte": "perfectworld_webops",
-    "p5x": "perfectworld_webops",
-    "tof": "perfectworld_webops",
+    ("android", "arknights"): "hypergryph_arknights_hycdn",
+    ("android", "endfield"): "hypergryph_endfield_hycdn",
+    ("android", "pns"): "kuro_pns_txcdn",
+    ("android", "wuwa"): "kuro_wuwa_mc_cdn",
+    ("android", "bh2"): "mihoyo_bh2_benghuai",
+    ("android", "bh3"): "mihoyo_bh3_cdn",
+    ("android", "hk4e"): "mihoyo_autopatch",
+    ("android", "hkrpg"): "mihoyo_autopatch",
+    ("android", "nap"): "mihoyo_autopatch",
+    ("android", "nte"): "perfectworld_webops",
+    ("android", "p5x"): "perfectworld_webops",
+    ("android", "tof"): "perfectworld_webops",
+    ("windows", "wuwa"): "kuro_cdn",
+    ("windows", "bh3"): "mihoyo_bh3_cdn",
+    ("windows", "hk4e"): "mihoyo_autopatch",
+    ("windows", "hkrpg"): "mihoyo_autopatch",
+    ("windows", "nap"): "mihoyo_autopatch",
+    ("windows", "nte"): "perfectworld_patcher",
+    ("windows", "p5x"): "perfectworld_patcher",
+    ("windows", "tof"): "perfectworld_patcher",
 }
 
 
@@ -46,9 +54,13 @@ class ProbeRegistryTests(unittest.TestCase):
                         record["vendor"], record["game_id"], candidate["url"],
                         platform=record["platform"],
                     )
-                    self.assertEqual(adapter.NAME, EXPECTED[record["game_id"]], path)
+                    self.assertEqual(
+                        adapter.NAME,
+                        EXPECTED[(record["platform"], record["game_id"])],
+                        path,
+                    )
                     count += 1
-        self.assertEqual(count, 269)
+        self.assertEqual(count, 1848)
 
     def test_url_only_dispatch_still_uses_the_specific_adapter(self) -> None:
         adapter = adapter_for(

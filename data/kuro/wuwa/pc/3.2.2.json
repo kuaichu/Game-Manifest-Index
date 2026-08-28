@@ -1,0 +1,101 @@
+{
+  "schema_version": 2,
+  "vendor": "kuro",
+  "game_id": "wuwa",
+  "domain_id": "wuwa-pc",
+  "platform": "windows",
+  "channel": "official",
+  "version": "3.2.2",
+  "version_code": null,
+  "file_time": null,
+  "artifacts": [
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "file_manifest",
+      "name": "WutheringWaves-3.2.2-full",
+      "size": 123336019944,
+      "decompressed_size": 123336019944,
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.2.2/sUfHBBTqFSGticVyXaeclYjVwoLQhMEE/resource/10003/3.2.2/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-26T14:33:20Z",
+            "etag": "b92e358027a080c53127ed3efdccfc7b",
+            "crc64": null,
+            "last_modified": "Thu, 09 Apr 2026 03:25:22 GMT",
+            "response_size": 280237
+          }
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.2.2/sUfHBBTqFSGticVyXaeclYjVwoLQhMEE/resource/10003/3.2.2/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-26T14:33:20Z",
+            "etag": "b92e358027a080c53127ed3efdccfc7b",
+            "crc64": null,
+            "last_modified": "Thu, 09 Apr 2026 03:25:22 GMT",
+            "response_size": 280237
+          }
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.2.2/sUfHBBTqFSGticVyXaeclYjVwoLQhMEE/resource/10003/3.2.2/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-26T14:33:21Z",
+            "etag": "b92e358027a080c53127ed3efdccfc7b",
+            "crc64": null,
+            "last_modified": "Thu, 09 Apr 2026 03:25:22 GMT",
+            "response_size": 280237
+          }
+        }
+      ],
+      "manifest": {
+        "path": "manifests/3.2.2/full.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.2.2/sUfHBBTqFSGticVyXaeclYjVwoLQhMEE/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.2.2/sUfHBBTqFSGticVyXaeclYjVwoLQhMEE/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.2.2/sUfHBBTqFSGticVyXaeclYjVwoLQhMEE/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "artifact_id": "a1_fddbcd46965f16a89d02db2d13e59946"
+    }
+  ],
+  "references": [],
+  "provenance": {
+    "source_kind": "legacy_migration",
+    "source_name": "Game-Manifest-Index",
+    "source_url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.2.2/sUfHBBTqFSGticVyXaeclYjVwoLQhMEE/resource/10003/3.2.2/indexFile.json",
+    "source_repo": "https://github.com/yuhkix/wuwa-downloader",
+    "source_commit": "4435fd290c07f7f766a6d2ab09ed3096d83b02e3"
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "hk4e",
+  "domain_id": "hk4e-pc",
+  "platform": "windows",
+  "channel": "official",
+  "version": "1.2.0",
+  "version_code": null,
+  "file_time": "2020-12-23",
+  "artifacts": [
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "archive",
+      "name": "YuanShen_1.2.0.zip",
+      "size": 17794018228,
+      "checksum": {
+        "md5": "d84ee6b56496f9740274c3b729cb6dbd"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.yuanshen.com/client_app/pc_mihoyo/20201223_267c0ad2673e87a2/YuanShen_1.2.0.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:14:34Z",
+            "etag": "30EBC0EAA8A035779DCD9FD562DCDFA9-1697",
+            "crc64": "13526921450805731882",
+            "last_modified": "Thu, 10 Dec 2020 10:13:41 GMT",
+            "response_size": 17794018228
+          }
+        }
+      ],
+      "artifact_id": "a1_9e6bd4375f5c9aaec2d49cd4ed84c388"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "1.1.0_1.2.0_diff_KcCtyQqL.zip",
+      "route_from": "1.1.0",
+      "route_to": "1.2.0",
+      "size": 3518917634,
+      "urls": [
+        {
+          "url": "https://autopatchcn.yuanshen.com/client_app/update/hk4e_cn/18/1.1.0_1.2.0_diff_KcCtyQqL.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:14:34Z",
+            "etag": "A21CDD32D1FD8A11D0E68ADA65ECD3EA",
+            "crc64": "767701018290690561",
+            "last_modified": "Fri, 11 Dec 2020 13:20:36 GMT",
+            "response_size": 3518917634
+          }
+        }
+      ],
+      "artifact_id": "a1_db78f31271bbcba7e0b79fedc9cde9dc"
+    }
+  ],
+  "references": [],
+  "provenance": {
+    "source_kind": "third_party_history",
+    "source_name": "HoyoFiles/Amarea",
+    "source_url": "https://autopatch.amarea.cn/pkg_version/hk4e_versions.json",
+    "imported_at": "2026-08-26T09:09:01Z"
+  }
+}

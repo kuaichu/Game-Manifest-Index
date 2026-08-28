@@ -1,0 +1,51 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "domain_id": "bh3-pc",
+  "platform": "windows",
+  "channel": "official",
+  "version": "8.4.0",
+  "version_code": null,
+  "file_time": null,
+  "artifacts": [
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "archive",
+      "name": "BH3_v8.4.0_589030804b01.7z",
+      "size": 23003662135,
+      "decompressed_size": 46017810030,
+      "checksum": {
+        "md5": "e7aece7f28a667bba9ea0769c30fd16d"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.bh3.com/ptpublic/rel/20250717152657_HmMWzKltujR0bm3L/PC/BH3_v8.4.0_589030804b01.7z",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "artifact_id": "a1_38734550ca9a97e2e85da78cf84b4c2d"
+    }
+  ],
+  "references": [
+    {
+      "kind": "chunk_manifest",
+      "path": "chunk-manifests/8.4.0.json",
+      "build_id": "gp54KMhmByFG",
+      "source": {
+        "source_kind": "third_party_history",
+        "source_name": "Amarea",
+        "source_url": "https://autopatch.amarea.cn/pkg_version/chunk/bh3_8.4.0.json"
+      }
+    }
+  ],
+  "provenance": {
+    "source_kind": "official_sync",
+    "source_name": "MiHoYo HoYoPlay getGamePackages",
+    "source_url": "https://hyp-api.mihoyo.com/hyp/hyp-connect/api/getGamePackages?launcher_id=jGHBHlcOq1&game_ids%5B%5D=osvnlOc0S8"
+  }
+}

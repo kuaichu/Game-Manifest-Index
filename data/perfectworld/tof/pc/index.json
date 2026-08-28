@@ -1,0 +1,14 @@
+{
+  "vendor": "perfectworld",
+  "game_id": "tof",
+  "platform": "windows",
+  "versions": [
+    {
+      "version": "6.3.3",
+      "updated_at": null,
+      "available": null,
+      "size": 108166145942
+    }
+  ],
+  "domain_id": "tof-pc"
+}

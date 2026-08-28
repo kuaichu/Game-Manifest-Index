@@ -1,0 +1,110 @@
+{
+  "vendor": "mihoyo",
+  "game_id": "hkrpg",
+  "platform": "windows",
+  "versions": [
+    {
+      "version": "4.4.0",
+      "updated_at": null,
+      "available": null,
+      "size": 89342155469
+    },
+    {
+      "version": "4.3.0",
+      "updated_at": "2026-05-23T02:43:53Z",
+      "available": true,
+      "size": 85609026969
+    },
+    {
+      "version": "4.2.0",
+      "updated_at": "2026-04-16T03:17:23Z",
+      "available": true,
+      "size": 83956017855
+    },
+    {
+      "version": "4.1.0",
+      "updated_at": "2026-03-13T07:56:16Z",
+      "available": true,
+      "size": 80942657552
+    },
+    {
+      "version": "4.0.0",
+      "updated_at": "2026-02-06T07:12:32Z",
+      "available": true,
+      "size": 78959716672
+    },
+    {
+      "version": "3.8.0",
+      "updated_at": "2025-12-05T11:36:33Z",
+      "available": true,
+      "size": 69302990083
+    },
+    {
+      "version": "3.7.0",
+      "updated_at": "2025-10-24T11:34:14Z",
+      "available": true,
+      "size": 66035639873
+    },
+    {
+      "version": "3.6.0",
+      "updated_at": "2025-09-13T08:39:25Z",
+      "available": true,
+      "size": 61227538875
+    },
+    {
+      "version": "3.5.0",
+      "updated_at": "2025-08-01T01:56:41Z",
+      "available": true,
+      "size": 58406753499
+    },
+    {
+      "version": "3.4.0",
+      "updated_at": "2025-06-23T03:29:12Z",
+      "available": true,
+      "size": 55733734296
+    },
+    {
+      "version": "3.3.0",
+      "updated_at": "2025-05-09T01:47:53Z",
+      "available": true,
+      "size": 52227517316
+    },
+    {
+      "version": "3.2.0",
+      "updated_at": "2025-03-27T10:29:02Z",
+      "available": true,
+      "size": 48230997592
+    },
+    {
+      "version": "1.4.0",
+      "updated_at": "2023-09-26T06:12:22Z",
+      "available": false,
+      "size": 18289024858
+    },
+    {
+      "version": "1.3.0",
+      "updated_at": "2023-08-18T07:34:31Z",
+      "available": true,
+      "size": 16288804768
+    },
+    {
+      "version": "1.2.0",
+      "updated_at": "2023-07-09T14:47:19Z",
+      "available": false,
+      "size": 15101507952
+    },
+    {
+      "version": "1.1.0",
+      "updated_at": "2023-05-27T03:11:04Z",
+      "available": false,
+      "size": 11054715824
+    },
+    {
+      "version": "1.0.5",
+      "updated_at": "2023-04-13T13:52:09Z",
+      "available": false,
+      "size": 10863708622
+    }
+  ],
+  "domain_id": "hkrpg-pc"
+}

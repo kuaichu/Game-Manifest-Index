@@ -1,0 +1,34 @@
+{
+  "schema_version": 2,
+  "vendor": "kuro",
+  "game_id": "wuwa",
+  "domain_id": "wuwa-pc",
+  "platform": "windows",
+  "channel": "official",
+  "version": "2.0.0",
+  "version_code": null,
+  "file_time": null,
+  "artifacts": [
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "file_manifest",
+      "name": "WutheringWaves-2.0.0-full",
+      "size": 44459244186,
+      "decompressed_size": 44459244186,
+      "urls": [],
+      "manifest": {
+        "path": "manifests/2.0.0/full.json"
+      },
+      "artifact_id": "a1_8ade62e1cd8893043114dfd2e5fa83b9"
+    }
+  ],
+  "references": [],
+  "provenance": {
+    "source_kind": "legacy_migration",
+    "source_name": "Game-Manifest-Index",
+    "source_repo": "https://github.com/TomyJan/GenshinImpact-Client-Version.git",
+    "source_commit": "c38b8cb84e907a5f7550a630aafd32ccd380b643"
+  }
+}

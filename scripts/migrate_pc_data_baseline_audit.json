@@ -1,0 +1,228 @@
+{
+  "source_commit": "85e92d5b7f8868bb5c28901606c50132fe4705bf",
+  "source_tree": "7e64fddb974324b3aca39f1d50d31b20336bea81",
+  "source_files": {
+    "records": 185,
+    "manifests": 110,
+    "indexes": 8
+  },
+  "written_records": 168,
+  "written_artifacts": 1449,
+  "written_manifests": 106,
+  "counts": {
+    "kuro/wuwa": 44,
+    "mihoyo/bh3": 32,
+    "mihoyo/hk4e": 55,
+    "mihoyo/hkrpg": 18,
+    "mihoyo/nap": 19
+  },
+  "exclusions": {
+    "empty_after_conversion": 1,
+    "hkrpg_zh_tw_without_semantics": 12,
+    "kuro_route_manifest_unpaired": 648,
+    "official_api_chunk_reference": 1,
+    "provenance_official_launcher": 4
+  },
+  "exclusion_details": [
+    {
+      "source_path": "data/kuro/wuwa/pc/2.3.0.json",
+      "reason": "kuro_route_manifest_unpaired",
+      "count": 17
+    },
+    {
+      "source_path": "data/kuro/wuwa/pc/2.4.0.json",
+      "reason": "kuro_route_manifest_unpaired",
+      "count": 19
+    },
+    {
+      "source_path": "data/kuro/wuwa/pc/2.4.1.json",
+      "reason": "kuro_route_manifest_unpaired",
+      "count": 20
+    },
+    {
+      "source_path": "data/kuro/wuwa/pc/2.5.0.json",
+      "reason": "kuro_route_manifest_unpaired",
+      "count": 21
+    },
+    {
+      "source_path": "data/kuro/wuwa/pc/2.5.1.json",
+      "reason": "kuro_route_manifest_unpaired",
+      "count": 22
+    },
+    {
+      "source_path": "data/kuro/wuwa/pc/2.6.0.json",
+      "reason": "kuro_route_manifest_unpaired",
+      "count": 23
+    },
+    {
+      "source_path": "data/kuro/wuwa/pc/2.6.1.json",
+      "reason": "kuro_route_manifest_unpaired",
+      "count": 24
+    },
+    {
+      "source_path": "data/kuro/wuwa/pc/2.7.0.json",
+      "reason": "kuro_route_manifest_unpaired",
+      "count": 26
+    },
+    {
+      "source_path": "data/kuro/wuwa/pc/3.0.0.json",
+      "reason": "kuro_route_manifest_unpaired",
+      "count": 28
+    },
+    {
+      "source_path": "data/kuro/wuwa/pc/3.0.1.json",
+      "reason": "kuro_route_manifest_unpaired",
+      "count": 29
+    },
+    {
+      "source_path": "data/kuro/wuwa/pc/3.0.2.json",
+      "reason": "kuro_route_manifest_unpaired",
+      "count": 30
+    },
+    {
+      "source_path": "data/kuro/wuwa/pc/3.0.3.json",
+      "reason": "kuro_route_manifest_unpaired",
+      "count": 31
+    },
+    {
+      "source_path": "data/kuro/wuwa/pc/3.1.0.json",
+      "reason": "kuro_route_manifest_unpaired",
+      "count": 34
+    },
+    {
+      "source_path": "data/kuro/wuwa/pc/3.1.2.json",
+      "reason": "kuro_route_manifest_unpaired",
+      "count": 35
+    },
+    {
+      "source_path": "data/kuro/wuwa/pc/3.1.3.json",
+      "reason": "kuro_route_manifest_unpaired",
+      "count": 36
+    },
+    {
+      "source_path": "data/kuro/wuwa/pc/3.2.1.json",
+      "reason": "kuro_route_manifest_unpaired",
+      "count": 38
+    },
+    {
+      "source_path": "data/kuro/wuwa/pc/3.3.0.json",
+      "reason": "kuro_route_manifest_unpaired",
+      "count": 40
+    },
+    {
+      "source_path": "data/kuro/wuwa/pc/3.4.0.json",
+      "reason": "kuro_route_manifest_unpaired",
+      "count": 1
+    },
+    {
+      "source_path": "data/kuro/wuwa/pc/3.4.1.json",
+      "reason": "kuro_route_manifest_unpaired",
+      "count": 42
+    },
+    {
+      "source_path": "data/kuro/wuwa/pc/3.5.0.json",
+      "reason": "kuro_route_manifest_unpaired",
+      "count": 43
+    },
+    {
+      "source_path": "data/kuro/wuwa/pc/3.5.2.json",
+      "reason": "kuro_route_manifest_unpaired",
+      "count": 44
+    },
+    {
+      "source_path": "data/kuro/wuwa/pc/3.5.3.json",
+      "reason": "kuro_route_manifest_unpaired",
+      "count": 45
+    },
+    {
+      "source_path": "data/kuro/wuwa/pc/3.6.0.json",
+      "reason": "provenance_official_launcher",
+      "count": 1
+    },
+    {
+      "source_path": "data/mihoyo/hk4e/pc/7.0.0.json",
+      "reason": "empty_after_conversion",
+      "count": 1
+    },
+    {
+      "source_path": "data/mihoyo/hk4e/pc/7.0.0.json",
+      "reason": "official_api_chunk_reference",
+      "count": 1
+    },
+    {
+      "source_path": "data/mihoyo/hkrpg/pc/1.5.0.json",
+      "reason": "hkrpg_zh_tw_without_semantics",
+      "count": 1
+    },
+    {
+      "source_path": "data/mihoyo/hkrpg/pc/1.6.0.json",
+      "reason": "hkrpg_zh_tw_without_semantics",
+      "count": 1
+    },
+    {
+      "source_path": "data/mihoyo/hkrpg/pc/2.0.0.json",
+      "reason": "hkrpg_zh_tw_without_semantics",
+      "count": 1
+    },
+    {
+      "source_path": "data/mihoyo/hkrpg/pc/2.1.0.json",
+      "reason": "hkrpg_zh_tw_without_semantics",
+      "count": 1
+    },
+    {
+      "source_path": "data/mihoyo/hkrpg/pc/2.2.0.json",
+      "reason": "hkrpg_zh_tw_without_semantics",
+      "count": 1
+    },
+    {
+      "source_path": "data/mihoyo/hkrpg/pc/2.3.0.json",
+      "reason": "hkrpg_zh_tw_without_semantics",
+      "count": 1
+    },
+    {
+      "source_path": "data/mihoyo/hkrpg/pc/2.4.0.json",
+      "reason": "hkrpg_zh_tw_without_semantics",
+      "count": 1
+    },
+    {
+      "source_path": "data/mihoyo/hkrpg/pc/2.5.0.json",
+      "reason": "hkrpg_zh_tw_without_semantics",
+      "count": 1
+    },
+    {
+      "source_path": "data/mihoyo/hkrpg/pc/2.6.0.json",
+      "reason": "hkrpg_zh_tw_without_semantics",
+      "count": 1
+    },
+    {
+      "source_path": "data/mihoyo/hkrpg/pc/2.7.0.json",
+      "reason": "hkrpg_zh_tw_without_semantics",
+      "count": 1
+    },
+    {
+      "source_path": "data/mihoyo/hkrpg/pc/3.0.0.json",
+      "reason": "hkrpg_zh_tw_without_semantics",
+      "count": 1
+    },
+    {
+      "source_path": "data/mihoyo/hkrpg/pc/3.1.0.json",
+      "reason": "hkrpg_zh_tw_without_semantics",
+      "count": 1
+    },
+    {
+      "source_path": "data/perfectworld/nte/pc/1.3.12.json",
+      "reason": "provenance_official_launcher",
+      "count": 1
+    },
+    {
+      "source_path": "data/perfectworld/p5x/pc/1.0.74.json",
+      "reason": "provenance_official_launcher",
+      "count": 1
+    },
+    {
+      "source_path": "data/perfectworld/tof/pc/6.3.2.json",
+      "reason": "provenance_official_launcher",
+      "count": 1
+    }
+  ]
+}

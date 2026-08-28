@@ -1,0 +1,769 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "nap",
+  "domain_id": "nap-pc",
+  "platform": "windows",
+  "channel": "official",
+  "version": "1.7.0",
+  "version_code": null,
+  "file_time": "2025-04-01T03:00:33Z",
+  "artifacts": [
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "juequling_1.7.0_AS.zip.001",
+      "size": 6749683712,
+      "checksum": {
+        "md5": "b3e195d41e87e27ed78258f84bd51aa2"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.juequling.com/package_download/op/client_app/download/20250401110033_AUTTA15vOBQ6Ll40/VolumeZip/juequling_1.7.0_AS.zip.001",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:13:09Z",
+            "etag": "B3E195D41E87E27ED78258F84BD51AA2",
+            "crc64": "3098778576297732677",
+            "last_modified": "Tue, 01 Apr 2025 05:06:56 GMT",
+            "response_size": 6749683712
+          }
+        }
+      ],
+      "part": 1,
+      "artifact_id": "a1_053f435f61986c7b1df242e570f5aeb0"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "juequling_1.7.0_AS.zip.002",
+      "size": 6749683712,
+      "checksum": {
+        "md5": "7517eb9085a88a8a703d44441af59b38"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.juequling.com/package_download/op/client_app/download/20250401110033_AUTTA15vOBQ6Ll40/VolumeZip/juequling_1.7.0_AS.zip.002",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:13:09Z",
+            "etag": "7517EB9085A88A8A703D44441AF59B38",
+            "crc64": "18388029338600557661",
+            "last_modified": "Tue, 01 Apr 2025 05:12:55 GMT",
+            "response_size": 6749683712
+          }
+        }
+      ],
+      "part": 2,
+      "artifact_id": "a1_1bad9853baf612899657ef9d1903f922"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "juequling_1.7.0_AS.zip.003",
+      "size": 6749683712,
+      "checksum": {
+        "md5": "531d1c66f57212da73442ac6ac06b371"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.juequling.com/package_download/op/client_app/download/20250401110033_AUTTA15vOBQ6Ll40/VolumeZip/juequling_1.7.0_AS.zip.003",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:13:09Z",
+            "etag": "531D1C66F57212DA73442AC6AC06B371",
+            "crc64": "9501464845866672612",
+            "last_modified": "Tue, 01 Apr 2025 05:12:54 GMT",
+            "response_size": 6749683712
+          }
+        }
+      ],
+      "part": 3,
+      "artifact_id": "a1_27592c2d403f9182ce525d911a0b9ed8"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "juequling_1.7.0_AS.zip.004",
+      "size": 6749683712,
+      "checksum": {
+        "md5": "dab917c8bfa1180f299482d07ce9266d"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.juequling.com/package_download/op/client_app/download/20250401110033_AUTTA15vOBQ6Ll40/VolumeZip/juequling_1.7.0_AS.zip.004",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:13:09Z",
+            "etag": "DAB917C8BFA1180F299482D07CE9266D",
+            "crc64": "198905352205714186",
+            "last_modified": "Tue, 01 Apr 2025 05:12:37 GMT",
+            "response_size": 6749683712
+          }
+        }
+      ],
+      "part": 4,
+      "artifact_id": "a1_cfa4a2032cfefd9d048c0c5bb45ff684"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "juequling_1.7.0_AS.zip.005",
+      "size": 6749683712,
+      "checksum": {
+        "md5": "e1c41f4f48820390cc1b21fd4e25a06f"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.juequling.com/package_download/op/client_app/download/20250401110033_AUTTA15vOBQ6Ll40/VolumeZip/juequling_1.7.0_AS.zip.005",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:13:09Z",
+            "etag": "E1C41F4F48820390CC1B21FD4E25A06F",
+            "crc64": "9882402472308426572",
+            "last_modified": "Tue, 01 Apr 2025 05:06:23 GMT",
+            "response_size": 6749683712
+          }
+        }
+      ],
+      "part": 5,
+      "artifact_id": "a1_1905c3abcd97bfdca8d7f5e74a2de0f3"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "juequling_1.7.0_AS.zip.006",
+      "size": 6749683712,
+      "checksum": {
+        "md5": "8a41c594d2304e164035ef6d8f3e746c"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.juequling.com/package_download/op/client_app/download/20250401110033_AUTTA15vOBQ6Ll40/VolumeZip/juequling_1.7.0_AS.zip.006",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:13:09Z",
+            "etag": "8A41C594D2304E164035EF6D8F3E746C",
+            "crc64": "13111192835876479511",
+            "last_modified": "Tue, 01 Apr 2025 05:13:15 GMT",
+            "response_size": 6749683712
+          }
+        }
+      ],
+      "part": 6,
+      "artifact_id": "a1_efdf11aa84ebfbbf40e19429869cfafa"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "juequling_1.7.0_AS.zip.007",
+      "size": 6749683712,
+      "checksum": {
+        "md5": "3a8d685b43f7840ac1fa0f0e4e5e99ee"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.juequling.com/package_download/op/client_app/download/20250401110033_AUTTA15vOBQ6Ll40/VolumeZip/juequling_1.7.0_AS.zip.007",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:13:09Z",
+            "etag": "3A8D685B43F7840AC1FA0F0E4E5E99EE",
+            "crc64": "18267941617265449728",
+            "last_modified": "Tue, 01 Apr 2025 05:07:04 GMT",
+            "response_size": 6749683712
+          }
+        }
+      ],
+      "part": 7,
+      "artifact_id": "a1_348dd147481d32123acda94bbb6bcd34"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "juequling_1.7.0_AS.zip.008",
+      "size": 6749683712,
+      "checksum": {
+        "md5": "0677e82586b2694854128b87c4b7582a"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.juequling.com/package_download/op/client_app/download/20250401110033_AUTTA15vOBQ6Ll40/VolumeZip/juequling_1.7.0_AS.zip.008",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:13:09Z",
+            "etag": "0677E82586B2694854128B87C4B7582A",
+            "crc64": "14517776386396750832",
+            "last_modified": "Tue, 01 Apr 2025 05:13:17 GMT",
+            "response_size": 6749683712
+          }
+        }
+      ],
+      "part": 8,
+      "artifact_id": "a1_db0b34915f3aedbfa3400e2c40a51263"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "juequling_1.7.0_AS.zip.009",
+      "size": 6749683712,
+      "checksum": {
+        "md5": "8200c97bf67abf8bac51abaa69e01790"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.juequling.com/package_download/op/client_app/download/20250401110033_AUTTA15vOBQ6Ll40/VolumeZip/juequling_1.7.0_AS.zip.009",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:13:09Z",
+            "etag": "8200C97BF67ABF8BAC51ABAA69E01790",
+            "crc64": "7296093148946657273",
+            "last_modified": "Tue, 01 Apr 2025 05:06:57 GMT",
+            "response_size": 6749683712
+          }
+        }
+      ],
+      "part": 9,
+      "artifact_id": "a1_cc6915e273cf422d08f2bc3345683f8a"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "juequling_1.7.0_AS.zip.010",
+      "size": 6745453870,
+      "checksum": {
+        "md5": "a2901de5847b5739165c7290d44ed573"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.juequling.com/package_download/op/client_app/download/20250401110033_AUTTA15vOBQ6Ll40/VolumeZip/juequling_1.7.0_AS.zip.010",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:13:09Z",
+            "etag": "A2901DE5847B5739165C7290D44ED573",
+            "crc64": "13893019295379825573",
+            "last_modified": "Tue, 01 Apr 2025 05:07:00 GMT",
+            "response_size": 6745453870
+          }
+        }
+      ],
+      "part": 10,
+      "artifact_id": "a1_afdaedff7cf8a123467034a230996adf"
+    },
+    {
+      "kind": "package",
+      "component": "voice",
+      "package_type": "optional",
+      "delivery_mode": "archive",
+      "name": "audio_zip_Cn.zip",
+      "language": "zh-cn",
+      "size": 1592543949,
+      "checksum": {
+        "md5": "b7c2bd4541e67b99c92730b6f17a0dec"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.juequling.com/package_download/op/client_app/download/20250401110033_AUTTA15vOBQ6Ll40/audio_zip_Cn.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:13:09Z",
+            "etag": "E599B795983D472B884BDAA2385FD32F-50",
+            "crc64": "8480409521758621483",
+            "last_modified": "Tue, 01 Apr 2025 03:03:11 GMT",
+            "response_size": 1592543949
+          }
+        }
+      ],
+      "artifact_id": "a1_db95d662d8ca03fa5053ba26941c27ed"
+    },
+    {
+      "kind": "package",
+      "component": "voice",
+      "package_type": "optional",
+      "delivery_mode": "archive",
+      "name": "audio_zip_En.zip",
+      "language": "en-us",
+      "size": 1680190512,
+      "checksum": {
+        "md5": "88ce6da570792fef83f1653162cc5e73"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.juequling.com/package_download/op/client_app/download/20250401110033_AUTTA15vOBQ6Ll40/audio_zip_En.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:13:09Z",
+            "etag": "A4585726A4C67882B7154C34AC27A7C6-50",
+            "crc64": "16424782977521348862",
+            "last_modified": "Tue, 01 Apr 2025 03:08:17 GMT",
+            "response_size": 1680190512
+          }
+        }
+      ],
+      "artifact_id": "a1_3c281c12ce6317e62d6e3cdbbde4b9dd"
+    },
+    {
+      "kind": "package",
+      "component": "voice",
+      "package_type": "optional",
+      "delivery_mode": "archive",
+      "name": "audio_zip_Jp.zip",
+      "language": "ja-jp",
+      "size": 1975660643,
+      "checksum": {
+        "md5": "ce0450ffe81f3701a60ce2241d03eeb6"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.juequling.com/package_download/op/client_app/download/20250401110033_AUTTA15vOBQ6Ll40/audio_zip_Jp.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:13:09Z",
+            "etag": "D169D76953A4582DA4F58726BD2DFE62-50",
+            "crc64": "9931919307929278876",
+            "last_modified": "Tue, 01 Apr 2025 03:06:35 GMT",
+            "response_size": 1975660643
+          }
+        }
+      ],
+      "artifact_id": "a1_dd9f2005cca643ae2548687119c317b7"
+    },
+    {
+      "kind": "package",
+      "component": "voice",
+      "package_type": "optional",
+      "delivery_mode": "archive",
+      "name": "audio_zip_Kr.zip",
+      "language": "ko-kr",
+      "size": 1796517885,
+      "checksum": {
+        "md5": "4a423e0cb25a47c11da732f4f39c2f31"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.juequling.com/package_download/op/client_app/download/20250401110033_AUTTA15vOBQ6Ll40/audio_zip_Kr.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:13:09Z",
+            "etag": "2F98F6E8FDB7590918FC0A9DB0A13842-50",
+            "crc64": "794039271944073863",
+            "last_modified": "Tue, 01 Apr 2025 03:04:47 GMT",
+            "response_size": 1796517885
+          }
+        }
+      ],
+      "artifact_id": "a1_ec712483aeb4044794da190b9643ca98"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "game_1.6.0_1.7.0_hdiff_DMhYdaetODvAYXQt.zip",
+      "route_from": "1.6.0",
+      "route_to": "1.7.0",
+      "size": 4358890970,
+      "checksum": {
+        "md5": "049b6dc48bb23abe1e1051ebaa9f1ed0"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.juequling.com/pclauncher/nap_cn/game_1.6.0_1.7.0_hdiff_DMhYdaetODvAYXQt.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:13:09Z",
+            "etag": "C69F92552EDC53D495458EC39A22153B-832",
+            "crc64": "10251436459566024459",
+            "last_modified": "Tue, 01 Apr 2025 07:48:19 GMT",
+            "response_size": 4358890970
+          }
+        }
+      ],
+      "artifact_id": "a1_06adb212d00ff8e9faba6155a49cb827"
+    },
+    {
+      "kind": "patch",
+      "component": "voice",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "audio_ko-kr_1.6.0_1.7.0_hdiff_YSFxrRysiaZPobJL.zip",
+      "language": "ko-kr",
+      "route_from": "1.6.0",
+      "route_to": "1.7.0",
+      "size": 128397766,
+      "checksum": {
+        "md5": "b36d04cece90b4c0fb4723d2116e3cc2"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.juequling.com/pclauncher/nap_cn/audio_ko-kr_1.6.0_1.7.0_hdiff_YSFxrRysiaZPobJL.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:13:09Z",
+            "etag": "B87DE1A2B2867FDBD8499D14BC2B5904-25",
+            "crc64": "724101159879133474",
+            "last_modified": "Tue, 01 Apr 2025 07:21:43 GMT",
+            "response_size": 128397766
+          }
+        }
+      ],
+      "artifact_id": "a1_3ad70e003e69080cbe412fdcb8a769cb"
+    },
+    {
+      "kind": "patch",
+      "component": "voice",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "audio_ja-jp_1.6.0_1.7.0_hdiff_XXsmEAECSoBIAjUu.zip",
+      "language": "ja-jp",
+      "route_from": "1.6.0",
+      "route_to": "1.7.0",
+      "size": 130197331,
+      "checksum": {
+        "md5": "0298fd008e0fd1698b5f11b1fb321a33"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.juequling.com/pclauncher/nap_cn/audio_ja-jp_1.6.0_1.7.0_hdiff_XXsmEAECSoBIAjUu.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:13:09Z",
+            "etag": "DDABE68A534E8CEE09531EA049DEB79B-25",
+            "crc64": "3934375696610060697",
+            "last_modified": "Tue, 01 Apr 2025 07:22:25 GMT",
+            "response_size": 130197331
+          }
+        }
+      ],
+      "artifact_id": "a1_ddac2dd14b40767528c63d2b883cc6a0"
+    },
+    {
+      "kind": "patch",
+      "component": "voice",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "audio_en-us_1.6.0_1.7.0_hdiff_OSghHPGwDKpMmKNL.zip",
+      "language": "en-us",
+      "route_from": "1.6.0",
+      "route_to": "1.7.0",
+      "size": 222401577,
+      "checksum": {
+        "md5": "5aa4898e787a711d57ba874bdbd622a0"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.juequling.com/pclauncher/nap_cn/audio_en-us_1.6.0_1.7.0_hdiff_OSghHPGwDKpMmKNL.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:13:09Z",
+            "etag": "AC0E7EA81A078087D7A828E6919CAB27-43",
+            "crc64": "11938343519678456004",
+            "last_modified": "Tue, 01 Apr 2025 07:23:19 GMT",
+            "response_size": 222401577
+          }
+        }
+      ],
+      "artifact_id": "a1_4a3a0bf85f309a5f19d2d09e14bbf93b"
+    },
+    {
+      "kind": "patch",
+      "component": "voice",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "audio_zh-cn_1.6.0_1.7.0_hdiff_XocrWqgFWAocRbCf.zip",
+      "language": "zh-cn",
+      "route_from": "1.6.0",
+      "route_to": "1.7.0",
+      "size": 126696984,
+      "checksum": {
+        "md5": "9e08d2752510dc4d8dec5f7ac02e3e45"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.juequling.com/pclauncher/nap_cn/audio_zh-cn_1.6.0_1.7.0_hdiff_XocrWqgFWAocRbCf.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:13:09Z",
+            "etag": "06FDA49028F093C23554F02E154FCF90-25",
+            "crc64": "16802419763587000077",
+            "last_modified": "Tue, 01 Apr 2025 07:27:25 GMT",
+            "response_size": 126696984
+          }
+        }
+      ],
+      "artifact_id": "a1_32edfb05dde976bffb108590dd318e96"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "game_1.5.0_1.7.0_hdiff_YlezItcTkCuotFCC.zip",
+      "route_from": "1.5.0",
+      "route_to": "1.7.0",
+      "size": 8375490978,
+      "checksum": {
+        "md5": "dba6fec38ae26b7d23bc2d90b1a28c27"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.juequling.com/pclauncher/nap_cn/game_1.5.0_1.7.0_hdiff_YlezItcTkCuotFCC.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:13:09Z",
+            "etag": "E4D761147987ABAB9F57FAD45AB8BC1F-1598",
+            "crc64": "5725958753930084185",
+            "last_modified": "Tue, 01 Apr 2025 07:53:34 GMT",
+            "response_size": 8375490978
+          }
+        }
+      ],
+      "artifact_id": "a1_5dfcc02a8f63bab2ee08524f3fb6e93c"
+    },
+    {
+      "kind": "patch",
+      "component": "voice",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "audio_ja-jp_1.5.0_1.7.0_hdiff_LUzisSHrzxbASbmd.zip",
+      "language": "ja-jp",
+      "route_from": "1.5.0",
+      "route_to": "1.7.0",
+      "size": 499642203,
+      "checksum": {
+        "md5": "3848e2f9a96bbce18a51ba28dc7a343a"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.juequling.com/pclauncher/nap_cn/audio_ja-jp_1.5.0_1.7.0_hdiff_LUzisSHrzxbASbmd.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:13:09Z",
+            "etag": "591EE7AA4652010DBF308FA86570758C-96",
+            "crc64": "8418239730913199251",
+            "last_modified": "Tue, 01 Apr 2025 07:28:28 GMT",
+            "response_size": 499642203
+          }
+        }
+      ],
+      "artifact_id": "a1_f767f786c50780cb7adb9bf3722eb124"
+    },
+    {
+      "kind": "patch",
+      "component": "voice",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "audio_en-us_1.5.0_1.7.0_hdiff_TUPHWpQGaaHIIQCP.zip",
+      "language": "en-us",
+      "route_from": "1.5.0",
+      "route_to": "1.7.0",
+      "size": 597958108,
+      "checksum": {
+        "md5": "2eca0147be541922b5403e872ea4b0e5"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.juequling.com/pclauncher/nap_cn/audio_en-us_1.5.0_1.7.0_hdiff_TUPHWpQGaaHIIQCP.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:13:10Z",
+            "etag": "F6620A01571CA610C3316F275CF270FD-115",
+            "crc64": "11196703361562632633",
+            "last_modified": "Tue, 01 Apr 2025 07:28:28 GMT",
+            "response_size": 597958108
+          }
+        }
+      ],
+      "artifact_id": "a1_ff70e61c4930b999179c066d2746bd19"
+    },
+    {
+      "kind": "patch",
+      "component": "voice",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "audio_zh-cn_1.5.0_1.7.0_hdiff_IsGNavkEVEwQYThW.zip",
+      "language": "zh-cn",
+      "route_from": "1.5.0",
+      "route_to": "1.7.0",
+      "size": 329065640,
+      "checksum": {
+        "md5": "e7b0c6a443c45786771c01a44e625273"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.juequling.com/pclauncher/nap_cn/audio_zh-cn_1.5.0_1.7.0_hdiff_IsGNavkEVEwQYThW.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:13:09Z",
+            "etag": "2A52DBD21950967829CEA9F93B53D2E4-63",
+            "crc64": "4571933578433798058",
+            "last_modified": "Tue, 01 Apr 2025 07:31:00 GMT",
+            "response_size": 329065640
+          }
+        }
+      ],
+      "artifact_id": "a1_948ae0b46ce3c23369295d9a00d3dba6"
+    },
+    {
+      "kind": "patch",
+      "component": "voice",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "audio_ko-kr_1.5.0_1.7.0_hdiff_OozFwSJNmZWLtwpp.zip",
+      "language": "ko-kr",
+      "route_from": "1.5.0",
+      "route_to": "1.7.0",
+      "size": 454306262,
+      "checksum": {
+        "md5": "e059368071c7e16ef90a9a6ff0dfabb7"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.juequling.com/pclauncher/nap_cn/audio_ko-kr_1.5.0_1.7.0_hdiff_OozFwSJNmZWLtwpp.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:13:09Z",
+            "etag": "FFB7BA243B85041CE14E6543DF35F5DA-87",
+            "crc64": "16781052349738515114",
+            "last_modified": "Tue, 01 Apr 2025 07:31:59 GMT",
+            "response_size": 454306262
+          }
+        }
+      ],
+      "artifact_id": "a1_e4d248db09d004ca7c85db0e1f4df2b6"
+    }
+  ],
+  "references": [
+    {
+      "kind": "chunk_manifest",
+      "path": "chunk-manifests/1.7.0.json",
+      "build_id": "5gHWPdEb6fas",
+      "source": {
+        "source_kind": "third_party_history",
+        "source_name": "Amarea",
+        "source_url": "https://autopatch.amarea.cn/pkg_version/chunk/nap_1.7.0.json"
+      }
+    }
+  ],
+  "provenance": {
+    "source_kind": "third_party_history",
+    "source_name": "HoyoFiles/Amarea",
+    "source_url": "https://autopatch.amarea.cn/pkg_version/nap_versions.json",
+    "imported_at": "2026-08-24T16:45:08Z"
+  }
+}

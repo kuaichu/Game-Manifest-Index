@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "domain_id": "bh3-pc",
+  "platform": "windows",
+  "version": "8.5.0",
+  "tag": "8.5.0",
+  "build_id": "7tKBUF8CwcjR",
+  "diff_tags": [],
+  "manifests": [
+    {
+      "category": {
+        "id": 10156,
+        "name": "asb-外网"
+      },
+      "manifest": {
+        "id": "manifest_925a57e1f2a50c8f_9272517f9352054a1aa98a0b2a9222f3",
+        "checksum": "9272517f9352054a1aa98a0b2a9222f3",
+        "compressed_size": 2059259,
+        "uncompressed_size": 3833898
+      },
+      "component": "resource",
+      "language": null,
+      "matching_field": "asb",
+      "stats": {
+        "compressed_size": 27704505380,
+        "uncompressed_size": 30425765826,
+        "file_count": 731,
+        "chunk_count": 25907
+      },
+      "deduplicated_stats": {
+        "compressed_size": 27701482429,
+        "uncompressed_size": 30422614313,
+        "file_count": 731,
+        "chunk_count": 25903
+      },
+      "manifest_download": {
+        "url_prefix": "https://autopatchcn.bh3.com/ptpublic/rel/chunk/manifests/cxi8tkx5vdog/20250919/8.5.0/7tKBUF8CwcjR",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      },
+      "chunk_download": {
+        "url_prefix": "https://autopatchcn.bh3.com/ptpublic/rel/chunk/chunks/cxi8tkx5vdog/20250919/8.5.0/7tKBUF8CwcjR",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      }
+    },
+    {
+      "category": {
+        "id": 10161,
+        "name": "游戏资源-外网（新）"
+      },
+      "manifest": {
+        "id": "manifest_85a5894b3156a3fa_0cb76a45bcfb0070bdc4f5b97a003796",
+        "checksum": "0cb76a45bcfb0070bdc4f5b97a003796",
+        "compressed_size": 125097,
+        "uncompressed_size": 251618
+      },
+      "component": "game",
+      "language": null,
+      "matching_field": "game",
+      "stats": {
+        "compressed_size": 868448287,
+        "uncompressed_size": 1552849058,
+        "file_count": 267,
+        "chunk_count": 1593
+      },
+      "deduplicated_stats": {
+        "compressed_size": 861104113,
+        "uncompressed_size": 1533406824,
+        "file_count": 267,
+        "chunk_count": 1581
+      },
+      "manifest_download": {
+        "url_prefix": "https://autopatchcn.bh3.com/ptpublic/rel/chunk/manifests/cxi8tkx5vdog/20250919/8.5.0/7tKBUF8CwcjR",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      },
+      "chunk_download": {
+        "url_prefix": "https://autopatchcn.bh3.com/ptpublic/rel/chunk/chunks/cxi8tkx5vdog/20250919/8.5.0/7tKBUF8CwcjR",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      }
+    }
+  ],
+  "provenance": {
+    "source_kind": "third_party_history",
+    "source_name": "Amarea",
+    "source_url": "https://autopatch.amarea.cn/pkg_version/chunk/bh3_8.5.0.json"
+  }
+}

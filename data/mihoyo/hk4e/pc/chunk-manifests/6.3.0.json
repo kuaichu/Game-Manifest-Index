@@ -1,0 +1,213 @@
+{
+  "schema_version": 1,
+  "vendor": "mihoyo",
+  "game_id": "hk4e",
+  "domain_id": "hk4e-pc",
+  "platform": "windows",
+  "version": "6.3.0",
+  "tag": "6.3.0",
+  "build_id": "6nc46TZkTxG3",
+  "diff_tags": [],
+  "manifests": [
+    {
+      "category": {
+        "id": 10017,
+        "name": "游戏资源-外网"
+      },
+      "manifest": {
+        "id": "manifest_f6dd866cee8bee4f_ebb8967dddd1062f0c74f382e0fc8085",
+        "checksum": "ebb8967dddd1062f0c74f382e0fc8085",
+        "compressed_size": 7383471,
+        "uncompressed_size": 13806067
+      },
+      "component": "game",
+      "language": null,
+      "matching_field": "game",
+      "stats": {
+        "compressed_size": 104983190519,
+        "uncompressed_size": 108027094587,
+        "file_count": 2532,
+        "chunk_count": 93108
+      },
+      "deduplicated_stats": {
+        "compressed_size": 104861587887,
+        "uncompressed_size": 107856761310,
+        "file_count": 2532,
+        "chunk_count": 92966
+      },
+      "manifest_download": {
+        "url_prefix": "https://autopatchcn.yuanshen.com/client_app/sophon/manifests/cxgf44wie1a8/6nc46TZkTxG3",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      },
+      "chunk_download": {
+        "url_prefix": "https://autopatchcn.yuanshen.com/client_app/sophon/chunks/cxgf44wie1a8/6nc46TZkTxG3",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      }
+    },
+    {
+      "category": {
+        "id": 10018,
+        "name": "语音包-中文-外网"
+      },
+      "manifest": {
+        "id": "manifest_77bf5aa4811e41d7_6dd347621d121d873aaf3b250e477cc9",
+        "checksum": "6dd347621d121d873aaf3b250e477cc9",
+        "compressed_size": 796252,
+        "uncompressed_size": 1477010
+      },
+      "component": "voice",
+      "language": "zh-cn",
+      "matching_field": "zh-cn",
+      "stats": {
+        "compressed_size": 11696805291,
+        "uncompressed_size": 11698033936,
+        "file_count": 168,
+        "chunk_count": 10041
+      },
+      "deduplicated_stats": {
+        "compressed_size": 11696805291,
+        "uncompressed_size": 11698033936,
+        "file_count": 168,
+        "chunk_count": 10041
+      },
+      "manifest_download": {
+        "url_prefix": "https://autopatchcn.yuanshen.com/client_app/sophon/manifests/cxgf44wie1a8/6nc46TZkTxG3",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      },
+      "chunk_download": {
+        "url_prefix": "https://autopatchcn.yuanshen.com/client_app/sophon/chunks/cxgf44wie1a8/6nc46TZkTxG3",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      }
+    },
+    {
+      "category": {
+        "id": 10019,
+        "name": "语音包-英文-外网"
+      },
+      "manifest": {
+        "id": "manifest_ec038db0e518cc3b_f7e170331363007e92e7d0f7d90a9369",
+        "checksum": "f7e170331363007e92e7d0f7d90a9369",
+        "compressed_size": 1031257,
+        "uncompressed_size": 1912792
+      },
+      "component": "voice",
+      "language": "en-us",
+      "matching_field": "en-us",
+      "stats": {
+        "compressed_size": 15269352906,
+        "uncompressed_size": 15277423674,
+        "file_count": 168,
+        "chunk_count": 13030
+      },
+      "deduplicated_stats": {
+        "compressed_size": 15269352906,
+        "uncompressed_size": 15277423674,
+        "file_count": 168,
+        "chunk_count": 13030
+      },
+      "manifest_download": {
+        "url_prefix": "https://autopatchcn.yuanshen.com/client_app/sophon/manifests/cxgf44wie1a8/6nc46TZkTxG3",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      },
+      "chunk_download": {
+        "url_prefix": "https://autopatchcn.yuanshen.com/client_app/sophon/chunks/cxgf44wie1a8/6nc46TZkTxG3",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      }
+    },
+    {
+      "category": {
+        "id": 10021,
+        "name": "语音包-日文-外网"
+      },
+      "manifest": {
+        "id": "manifest_06bce7ff9bafa152_f47d9cff23e6071faa9e5f38357c6772",
+        "checksum": "f47d9cff23e6071faa9e5f38357c6772",
+        "compressed_size": 938098,
+        "uncompressed_size": 1741287
+      },
+      "component": "voice",
+      "language": "ja-jp",
+      "matching_field": "ja-jp",
+      "stats": {
+        "compressed_size": 13895323972,
+        "uncompressed_size": 13896886048,
+        "file_count": 168,
+        "chunk_count": 11855
+      },
+      "deduplicated_stats": {
+        "compressed_size": 13895323972,
+        "uncompressed_size": 13896886048,
+        "file_count": 168,
+        "chunk_count": 11855
+      },
+      "manifest_download": {
+        "url_prefix": "https://autopatchcn.yuanshen.com/client_app/sophon/manifests/cxgf44wie1a8/6nc46TZkTxG3",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      },
+      "chunk_download": {
+        "url_prefix": "https://autopatchcn.yuanshen.com/client_app/sophon/chunks/cxgf44wie1a8/6nc46TZkTxG3",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      }
+    },
+    {
+      "category": {
+        "id": 10020,
+        "name": "语音包-韩文-外网"
+      },
+      "manifest": {
+        "id": "manifest_37803b5f11d5e876_b33466abee26eb360b95dc0cdff376c9",
+        "checksum": "b33466abee26eb360b95dc0cdff376c9",
+        "compressed_size": 829549,
+        "uncompressed_size": 1538707
+      },
+      "component": "voice",
+      "language": "ko-kr",
+      "matching_field": "ko-kr",
+      "stats": {
+        "compressed_size": 12287483688,
+        "uncompressed_size": 12289866412,
+        "file_count": 168,
+        "chunk_count": 10465
+      },
+      "deduplicated_stats": {
+        "compressed_size": 12287051070,
+        "uncompressed_size": 12289433819,
+        "file_count": 168,
+        "chunk_count": 10464
+      },
+      "manifest_download": {
+        "url_prefix": "https://autopatchcn.yuanshen.com/client_app/sophon/manifests/cxgf44wie1a8/6nc46TZkTxG3",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      },
+      "chunk_download": {
+        "url_prefix": "https://autopatchcn.yuanshen.com/client_app/sophon/chunks/cxgf44wie1a8/6nc46TZkTxG3",
+        "url_suffix": "",
+        "compression": 1,
+        "encryption": 0
+      }
+    }
+  ],
+  "provenance": {
+    "source_kind": "third_party_history",
+    "source_name": "Amarea",
+    "source_url": "https://autopatch.amarea.cn/pkg_version/chunk/hk4e_6.3.0.json"
+  }
+}
