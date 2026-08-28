@@ -1,3 +1,5 @@
+import subprocess
+import sys
 import unittest
 from unittest.mock import patch
 
@@ -35,8 +37,20 @@ class CommonAdapterTests(unittest.TestCase):
         curl.assert_called_once_with(["--fail", "--max-filesize", "1048576", "https://example.test/a"], 12)
 
     def test_probe_dependency_is_lazy(self):
-        import sys
-        self.assertNotIn("probe_adapters.service", sys.modules)
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                (
+                    "import sys; import url_adapters.common; "
+                    "raise SystemExit('probe_adapters.service' in sys.modules)"
+                ),
+            ],
+            capture_output=True,
+            check=False,
+            text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
 
 
 if __name__ == "__main__":
