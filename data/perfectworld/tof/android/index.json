@@ -1,0 +1,14 @@
+{
+  "vendor": "perfectworld",
+  "game_id": "tof",
+  "platform": "android",
+  "versions": [
+    {
+      "version": "4.2.670.136938",
+      "updated_at": "2024-07-11T10:48:10Z",
+      "available": true,
+      "size": 1559683250
+    }
+  ],
+  "domain_id": "tof-android"
+}

@@ -1,0 +1,35 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh2",
+  "platform": "android",
+  "channel": "official",
+  "version": "4.3.221",
+  "version_code": null,
+  "file_time": null,
+  "domain_id": "bh2-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "Mix_4.3.221_10_signed.apk",
+      "urls": [
+        {
+          "url": "http://static.benghuai.com/Download/v4_3/Mix_4.3.221_10_signed.apk",
+          "provider": "mihoyo",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 404,
+            "checked_at": "2026-08-24T11:44:12Z",
+            "state": "unavailable"
+          }
+        }
+      ],
+      "artifact_id": "a1_90b8988abd5275e0ce44cca9e8187ff9"
+    }
+  ],
+  "references": []
+}

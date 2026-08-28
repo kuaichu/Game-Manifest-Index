@@ -1,0 +1,35 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh2",
+  "platform": "android",
+  "channel": "official",
+  "version": "9.7.54",
+  "version_code": null,
+  "file_time": null,
+  "domain_id": "bh2-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "Mix_9.7.54_310.shell.apk",
+      "urls": [
+        {
+          "url": "https://static.benghuai.com/Download/v9_7/Mix_9.7.54_310.shell.apk",
+          "provider": "mihoyo",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 404,
+            "checked_at": "2026-08-24T11:44:12Z",
+            "state": "unavailable"
+          }
+        }
+      ],
+      "artifact_id": "a1_e8f719cf9e842ec6a6b712604f190a1c"
+    }
+  ],
+  "references": []
+}

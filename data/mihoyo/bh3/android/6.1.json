@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "platform": "android",
+  "channel": "official",
+  "version": "6.1",
+  "version_code": null,
+  "file_time": "2023-02-28T10:25:46Z",
+  "domain_id": "bh3-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "20220922-171040-gf_android_ota-versions-v6_1-Moonshade_Epic_guofu.apk",
+      "urls": [
+        {
+          "url": "https://bundle.bh3.com/public/Android/20220922-171040-gf_android_ota-versions-v6_1-Moonshade_Epic_guofu.apk",
+          "provider": "mihoyo",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 404,
+            "checked_at": "2026-08-25T15:39:19Z",
+            "state": "unavailable",
+            "etag": "60B0F4630F6F13F329E338B74014282D"
+          }
+        }
+      ],
+      "checksum": {
+        "crc64": "2237473512751335202",
+        "md5": "60b0f4630f6f13f329e338b74014282d"
+      },
+      "artifact_id": "a1_4f51d1e3b76fbf42f8880a9e97375143"
+    }
+  ],
+  "references": []
+}

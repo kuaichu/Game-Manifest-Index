@@ -1,0 +1,39 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "platform": "android",
+  "channel": "official",
+  "version": "7.5",
+  "version_code": null,
+  "file_time": "2025-06-25T02:51:44Z",
+  "domain_id": "bh3-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "20240430-053124-gf_android_ota-versions-v7_5-Crusade_of_Chasing_Shadows_gw.apk",
+      "urls": [
+        {
+          "url": "https://bundle.bh3.com/ptpublic/rel/20240506104443_Eb7wY4fRoYiICW5J/CPS/20240430-053124-gf_android_ota-versions-v7_5-Crusade_of_Chasing_Shadows_gw.apk",
+          "provider": "mihoyo",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 403,
+            "checked_at": "2026-08-25T15:39:21Z",
+            "etag": "23B88F761E302F0BBCB0E343D3D4357D-10"
+          }
+        }
+      ],
+      "size": 600051270,
+      "checksum": {
+        "crc64": "11014474017573172542"
+      },
+      "artifact_id": "a1_a33cbac73bca287793b5abae73e9bc54"
+    }
+  ],
+  "references": []
+}

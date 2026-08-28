@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "vendor": "hypergryph",
+  "game_id": "endfield",
+  "platform": "android",
+  "channel": "official",
+  "version": "1.4.3",
+  "version_code": null,
+  "file_time": "2026-07-13T03:19:02Z",
+  "domain_id": "endfield-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "endfield-hg-1-1.4.3.apk",
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.4/package/1/1/Android/1.4.3_N3kXcstgi31V2hpt/endfield-hg-1-1.4.3.apk?auth_key=1787506229-21e81fed261e45d99e1ff63580b3d54b-0-5232c7142bf3713ba8c0959bea9529c1",
+          "provider": "hypergryph",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 206,
+            "checked_at": "2026-08-24T11:44:10Z",
+            "state": "available",
+            "etag": "AAB0E7C131A156E9FF660EFEBAFF5601-388"
+          }
+        }
+      ],
+      "size": 993840184,
+      "checksum": {
+        "crc64": "14832346271447586090"
+      },
+      "artifact_id": "a1_b46276242ab3c83ecaa2f0616ea943d2"
+    }
+  ],
+  "references": []
+}

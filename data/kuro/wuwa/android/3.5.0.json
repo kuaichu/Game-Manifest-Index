@@ -1,0 +1,37 @@
+{
+  "schema_version": 2,
+  "vendor": "kuro",
+  "game_id": "wuwa",
+  "platform": "android",
+  "channel": "official",
+  "version": "3.5.0",
+  "version_code": null,
+  "file_time": "2026-07-02T10:41:41Z",
+  "domain_id": "wuwa-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "鸣潮_3.5.0_172895146_33_官渠_3e74faa7c258967d018486ed461e8607_shelled.apk",
+      "urls": [
+        {
+          "url": "https://mirrors-package-mc.aki-game.com/client/download/20260702184141_MbD56iPHs88E9r7qnL/%E9%B8%A3%E6%BD%AE_3.5.0_172895146_33_%E5%AE%98%E6%B8%A0_3e74faa7c258967d018486ed461e8607_shelled.apk",
+          "provider": "kuro",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 206,
+            "checked_at": "2026-08-24T11:44:11Z",
+            "state": "available",
+            "etag": "98b6aa75add6102f54db331e57b9f9ac-39"
+          }
+        }
+      ],
+      "size": 2024016862,
+      "artifact_id": "a1_010b7a23e03525f6c3ea1cfce9585514"
+    }
+  ],
+  "references": []
+}

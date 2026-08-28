@@ -1,0 +1,206 @@
+{
+  "vendor": "mihoyo",
+  "game_id": "bh2",
+  "platform": "android",
+  "versions": [
+    {
+      "version": "13.3.8",
+      "updated_at": "2026-08-07T02:10:03Z",
+      "available": true,
+      "size": 261215062
+    },
+    {
+      "version": "13.2.8",
+      "updated_at": "2026-06-12T02:29:33Z",
+      "available": true,
+      "size": 261083990
+    },
+    {
+      "version": "12.6.101",
+      "updated_at": null,
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "12.6.54",
+      "updated_at": null,
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "12.6.27",
+      "updated_at": null,
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "12.6.8",
+      "updated_at": null,
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "12.5.54",
+      "updated_at": null,
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "12.5.8",
+      "updated_at": null,
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "12.4.101",
+      "updated_at": null,
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "12.4.54",
+      "updated_at": null,
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "12.4.8",
+      "updated_at": null,
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "12.3.103",
+      "updated_at": null,
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "12.3.101",
+      "updated_at": null,
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "12.3.54",
+      "updated_at": null,
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "12.3.27",
+      "updated_at": null,
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "12.3.8",
+      "updated_at": null,
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "12.2.103",
+      "updated_at": null,
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "12.2.54",
+      "updated_at": null,
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "12.2.8",
+      "updated_at": null,
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "12.1.8",
+      "updated_at": null,
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "11.4.8",
+      "updated_at": null,
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "10.7.8",
+      "updated_at": null,
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "9.8.103",
+      "updated_at": null,
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "9.8.54",
+      "updated_at": null,
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "9.8.8",
+      "updated_at": null,
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "9.7.54",
+      "updated_at": null,
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "9.7.8",
+      "updated_at": null,
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "8.6.8",
+      "updated_at": null,
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "8.5.8",
+      "updated_at": null,
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "7.5.8",
+      "updated_at": null,
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "4.3.221",
+      "updated_at": null,
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "4.3.210",
+      "updated_at": null,
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "3.4.8",
+      "updated_at": null,
+      "available": false,
+      "size": null
+    }
+  ],
+  "domain_id": "bh2-android"
+}

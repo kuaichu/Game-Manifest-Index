@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "platform": "android",
+  "channel": "official",
+  "version": "6.8",
+  "version_code": null,
+  "file_time": "2023-07-03T02:26:11Z",
+  "domain_id": "bh3-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "20230629-122046-gf_android_ota-versions-v6_8-Saha_and_Rebirth_gw.apk",
+      "urls": [
+        {
+          "url": "https://bundle.bh3.com/ptpublic/rel/20230702172043_o8BzGMLGBbVpTjyy/CPS/20230629-122046-gf_android_ota-versions-v6_8-Saha_and_Rebirth_gw.apk",
+          "provider": "mihoyo",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 206,
+            "checked_at": "2026-08-25T15:39:20Z",
+            "state": "available",
+            "etag": "BA55A1D096EEB915468BE92A88F29749-10"
+          }
+        }
+      ],
+      "size": 530428840,
+      "checksum": {
+        "crc64": "11190126661296066107"
+      },
+      "artifact_id": "a1_6c471af4cfa2fafee88708cff880ac8d"
+    }
+  ],
+  "references": []
+}

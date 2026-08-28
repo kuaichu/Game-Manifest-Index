@@ -1,0 +1,34 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "platform": "android",
+  "channel": "official",
+  "version": "7.9",
+  "version_code": null,
+  "file_time": "2024-10-25T07:18:16Z",
+  "domain_id": "bh3-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "20241024-005902-gf_android_ota-versions-v7_9-Stars_Derailed_gw.apk",
+      "urls": [
+        {
+          "url": "https://autopatchcn.bh3.com/ptpublic/rel/20241025151816_Y1hlFtfrB4sR5Scd/CPS/20241024-005902-gf_android_ota-versions-v7_9-Stars_Derailed_gw.apk",
+          "provider": "mihoyo",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 403,
+            "checked_at": "2026-08-25T15:39:21Z"
+          }
+        }
+      ],
+      "artifact_id": "a1_db7c7f53481f295cb5d040298b6ec35e"
+    }
+  ],
+  "references": []
+}

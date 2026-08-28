@@ -1,0 +1,35 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh2",
+  "platform": "android",
+  "channel": "official",
+  "version": "4.3.210",
+  "version_code": null,
+  "file_time": null,
+  "domain_id": "bh2-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "Original.StripResource_4.3.210_10_signed.apk",
+      "urls": [
+        {
+          "url": "http://static.benghuai.com/Download/v4_3/Original.StripResource_4.3.210_10_signed.apk",
+          "provider": "mihoyo",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 404,
+            "checked_at": "2026-08-24T11:44:12Z",
+            "state": "unavailable"
+          }
+        }
+      ],
+      "artifact_id": "a1_0640ca6e4c64cc2610e4148736609e61"
+    }
+  ],
+  "references": []
+}

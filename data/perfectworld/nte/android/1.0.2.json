@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "vendor": "perfectworld",
+  "game_id": "nte",
+  "platform": "android",
+  "channel": "official",
+  "version": "1.0.2",
+  "version_code": 3,
+  "file_time": "2026-04-21T00:31:06Z",
+  "domain_id": "nte-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "yh_gw_20260423.apk",
+      "urls": [
+        {
+          "url": "https://yhapk.wmupd.com/webops/yh/yh_gw_20260423.apk",
+          "provider": "perfectworld",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 206,
+            "checked_at": "2026-08-24T11:44:15Z",
+            "state": "available",
+            "etag": "0FF00F2A862674B307075A60485D4F73-90"
+          }
+        }
+      ],
+      "size": 940694857,
+      "checksum": {
+        "crc64": "8990914718054970518"
+      },
+      "artifact_id": "a1_199e1b191f0eadd4c35f280bc5e26407"
+    }
+  ],
+  "references": []
+}

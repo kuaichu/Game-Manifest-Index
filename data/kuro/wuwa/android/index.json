@@ -1,0 +1,200 @@
+{
+  "vendor": "kuro",
+  "game_id": "wuwa",
+  "platform": "android",
+  "versions": [
+    {
+      "version": "3.6.0",
+      "updated_at": "2026-08-12T02:30:20Z",
+      "available": true,
+      "size": 1887010610
+    },
+    {
+      "version": "3.5.0",
+      "updated_at": "2026-07-02T10:41:41Z",
+      "available": true,
+      "size": 2024016862
+    },
+    {
+      "version": "3.4.0",
+      "updated_at": "2026-06-02T06:01:07Z",
+      "available": true,
+      "size": 2016398059
+    },
+    {
+      "version": "3.3.2",
+      "updated_at": "2026-05-16T10:37:06Z",
+      "available": true,
+      "size": 2012916532
+    },
+    {
+      "version": "3.3.1",
+      "updated_at": "2026-05-07T10:09:53Z",
+      "available": true,
+      "size": 2012916532
+    },
+    {
+      "version": "3.3.0",
+      "updated_at": "2026-04-22T08:10:38Z",
+      "available": true,
+      "size": 2012961588
+    },
+    {
+      "version": "3.2.2",
+      "updated_at": "2026-04-09T10:34:06Z",
+      "available": true,
+      "size": 2000239412
+    },
+    {
+      "version": "3.2.1",
+      "updated_at": "2026-03-24T09:43:22Z",
+      "available": true,
+      "size": 2000067295
+    },
+    {
+      "version": "3.1.2",
+      "updated_at": "2026-03-02T11:37:39Z",
+      "available": true,
+      "size": 1979214559
+    },
+    {
+      "version": "3.1.0",
+      "updated_at": "2026-01-27T06:56:45Z",
+      "available": true,
+      "size": 1979279926
+    },
+    {
+      "version": "3.0.2",
+      "updated_at": "2026-01-07T06:29:41Z",
+      "available": true,
+      "size": 2010482827
+    },
+    {
+      "version": "3.0.1",
+      "updated_at": "2025-12-30T07:33:35Z",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "3.0.0",
+      "updated_at": "2025-12-18T08:35:11Z",
+      "available": true,
+      "size": 2010359947
+    },
+    {
+      "version": "2.8.1",
+      "updated_at": "2025-12-03T10:00:38Z",
+      "available": true,
+      "size": 2007615631
+    },
+    {
+      "version": "2.7.0",
+      "updated_at": "2025-09-28T02:55:40Z",
+      "available": true,
+      "size": 2012624557
+    },
+    {
+      "version": "2.6.1",
+      "updated_at": "2025-09-03T03:00:15Z",
+      "available": true,
+      "size": 2016008495
+    },
+    {
+      "version": "2.6.0",
+      "updated_at": "2025-08-25T02:39:28Z",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "2.5.0",
+      "updated_at": "2025-07-21T09:58:18Z",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "2.4.1",
+      "updated_at": "2025-07-09T02:52:31Z",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "2.4.0",
+      "updated_at": "2025-06-09T11:22:49Z",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "2.3.0",
+      "updated_at": "2025-04-23T10:17:38Z",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "2.2.0",
+      "updated_at": "2025-03-20T06:22:24Z",
+      "available": true,
+      "size": 2018073369
+    },
+    {
+      "version": "2.1.1",
+      "updated_at": "2025-03-03T02:17:06Z",
+      "available": true,
+      "size": 2020387609
+    },
+    {
+      "version": "2.1.0",
+      "updated_at": "2025-02-07T08:25:16Z",
+      "available": true,
+      "size": 2019977118
+    },
+    {
+      "version": "2.0.0",
+      "updated_at": "2024-12-24T02:37:26Z",
+      "available": null,
+      "size": 2660
+    },
+    {
+      "version": "1.4.1",
+      "updated_at": "2024-12-18T02:12:10Z",
+      "available": true,
+      "size": 1964197566
+    },
+    {
+      "version": "1.4.0",
+      "updated_at": "2024-11-04T03:34:31Z",
+      "available": null,
+      "size": 2660
+    },
+    {
+      "version": "1.3.0",
+      "updated_at": "2024-09-19T07:31:38Z",
+      "available": true,
+      "size": 1997604851
+    },
+    {
+      "version": "1.2.0",
+      "updated_at": "2024-08-08T07:24:45Z",
+      "available": true,
+      "size": 2016298925
+    },
+    {
+      "version": "1.1.0",
+      "updated_at": "2024-06-21T03:05:54Z",
+      "available": true,
+      "size": 2000487630
+    },
+    {
+      "version": "1.0.0",
+      "updated_at": "2024-05-15T10:03:58Z",
+      "available": null,
+      "size": 2660
+    },
+    {
+      "version": "0.7.0",
+      "updated_at": "2023-04-18T03:17:37Z",
+      "available": null,
+      "size": null
+    }
+  ],
+  "domain_id": "wuwa-android"
+}

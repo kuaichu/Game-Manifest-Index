@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "hk4e",
+  "platform": "android",
+  "channel": "official",
+  "version": "1.1.1",
+  "version_code": null,
+  "file_time": "2020-11-06T09:32:33Z",
+  "domain_id": "hk4e-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "yuanshen_1.1.1_mihoyo.apk",
+      "urls": [
+        {
+          "url": "https://autopatchcn.yuanshen.com/client_app/Android/20201111_c957958f02d43b5b/yuanshen_1.1.1_mihoyo.apk",
+          "provider": "mihoyo",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 206,
+            "checked_at": "2026-08-24T16:34:37Z",
+            "state": "available",
+            "etag": "A6FF16DB6B5D79CAFC8CC3C05AD48E2F-15"
+          }
+        }
+      ],
+      "size": 152568499,
+      "checksum": {
+        "crc64": "40722724834554537"
+      },
+      "artifact_id": "a1_c4b3fb51aba1e8aef1932ae021beb604"
+    }
+  ],
+  "references": []
+}

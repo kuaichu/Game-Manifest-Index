@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "platform": "android",
+  "channel": "official",
+  "version": "7.3",
+  "version_code": null,
+  "file_time": "2024-01-29T03:08:00Z",
+  "domain_id": "bh3-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "20240125-141104-gf_android_ota-versions-v7_3-Dreamseeking_Voyage_guofu.apk",
+      "urls": [
+        {
+          "url": "https://bundle.bh3.com/ptpublic/rel/20240129110128_8vnNEN2tuKyZwUhB/CPS/20240125-141104-gf_android_ota-versions-v7_3-Dreamseeking_Voyage_guofu.apk",
+          "provider": "mihoyo",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 206,
+            "checked_at": "2026-08-25T15:39:21Z",
+            "state": "available",
+            "etag": "C490B72C7307FAEEFECB7F900C127C34-10"
+          }
+        }
+      ],
+      "size": 586476686,
+      "checksum": {
+        "crc64": "6184000636792782756"
+      },
+      "artifact_id": "a1_295fbd2d624e5c5a4c4b445695d43326"
+    }
+  ],
+  "references": []
+}

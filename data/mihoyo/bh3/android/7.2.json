@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "platform": "android",
+  "channel": "official",
+  "version": "7.2",
+  "version_code": null,
+  "file_time": "2023-12-18T07:42:36Z",
+  "domain_id": "bh3-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "20231213-222300-gf_android_ota-versions-v7_2-The_Wings_to_Mars_gw.apk",
+      "urls": [
+        {
+          "url": "https://bundle.bh3.com/ptpublic/rel/20231218144111_nFwR8NyQCxVRbXeo/CPS/20231213-222300-gf_android_ota-versions-v7_2-The_Wings_to_Mars_gw.apk",
+          "provider": "mihoyo",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 206,
+            "checked_at": "2026-08-25T15:39:20Z",
+            "state": "available",
+            "etag": "0769D6BAAC5311F2D102E34D3B8E63EE-10"
+          }
+        }
+      ],
+      "size": 538409750,
+      "checksum": {
+        "crc64": "16040456963749780617"
+      },
+      "artifact_id": "a1_b3e3600688e86523596f6d3d2b9b9a14"
+    }
+  ],
+  "references": []
+}

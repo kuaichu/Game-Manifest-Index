@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "vendor": "kuro",
+  "game_id": "pns",
+  "platform": "android",
+  "channel": "official",
+  "version": "4.6.0",
+  "version_code": null,
+  "file_time": "2026-07-15T10:59:19Z",
+  "domain_id": "pns-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "20260717-v4_6-zspms_A1372.apk",
+      "urls": [
+        {
+          "url": "https://zspms-txcdn-media.kurogame.com/install/20260717-v4_6-zspms_A1372.apk",
+          "provider": "kuro",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 206,
+            "checked_at": "2026-08-24T11:44:11Z",
+            "state": "available",
+            "etag": "BB70A10AEDEB014B563B3FEFA52D5351-400"
+          }
+        }
+      ],
+      "size": 2086642875,
+      "checksum": {
+        "crc64": "13008991337613412068"
+      },
+      "artifact_id": "a1_6af6adb0fddacaf1bd0df2b0ee4a5b81"
+    }
+  ],
+  "references": []
+}

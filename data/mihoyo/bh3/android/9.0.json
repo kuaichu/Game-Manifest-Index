@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "platform": "android",
+  "channel": "official",
+  "version": "9.0",
+  "version_code": null,
+  "file_time": "2026-07-15T08:07:50Z",
+  "domain_id": "bh3-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "20260709-005224-gf_android_ota-versions-v9_0-Dreams_End_guofu.apk",
+      "urls": [
+        {
+          "url": "https://autopatchcn.bh3.com/ptpublic/rel/20260715154830_irZOIRldy2vFHp3T/20260709-005224-gf_android_ota-versions-v9_0-Dreams_End_guofu.apk",
+          "provider": "mihoyo",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 206,
+            "checked_at": "2026-08-25T15:39:22Z",
+            "state": "available",
+            "etag": "5558EB618587C09589CF3EE967387649-10"
+          }
+        }
+      ],
+      "size": 699364583,
+      "checksum": {
+        "crc64": "16117509248562626157"
+      },
+      "artifact_id": "a1_54590847fb63823ed26de4999e9d0525"
+    }
+  ],
+  "references": []
+}
