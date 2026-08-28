@@ -49,7 +49,7 @@ def collect(game_id: str, timeout: int) -> MihoyoPackageCollection:
 def discover_collection(collection: MihoyoPackageCollection, output_root: Path) -> Path:
     """Persist game and voice packages/patches from one response atomically."""
     try:
-        return persist_v2_record(organize_complete(collection), output_root)
+        return persist_v2_record(organize_complete(collection), output_root, preserve_references=True)
     except (MihoyoPackageOrganizationError, VersionStoreError) as error:
         raise AdapterError(str(error)) from error
 

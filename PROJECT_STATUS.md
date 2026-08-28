@@ -460,12 +460,33 @@ voice-only record 覆盖已有 artifacts。
 package-only 与 game-only combined organizer 继续保留各自纯解析契约。真实 4/4 完整记录已通过
 schema、provenance、artifact identity 和临时持久化检查，package/patch artifacts 未丢失。
 
+### 米哈游 PC Sophon chunks
+
+实现覆盖四款中国服（`hk4e`、`hkrpg`、`nap`、`bh3`）的 HoYoPlay/Sophon 两步官方同步：
+`getGameBranches` 严格选择对应 game id/biz 的唯一 `main`，再以 branch/package/password/tag
+请求 `getBuild`。输出为 `chunk-manifests/<tag>.json` 外部文档及 canonical v2
+`chunk_manifest` reference；现有 archive artifacts/provenance 会被保留。
+
+manifest 只保存规范化 metadata、recipe URL 和统计字段，不下载或展开 manifest/chunks，recipe
+password 不写入任何 collection、文档、record、日志或输出。若第二步或 record 持久化失败，旧
+record 不变；官方文档可能作为 orphan manifest 留存，需后续人工处理。
+
+四款真实只读验收均成功，未下载 manifest/chunk：
+
+- `hk4e 7.0.0`: build `K75N8sBHhKJk`，5 个 manifests；
+- `hkrpg 4.5.0`: build `rGIV4WEtxMWi`，5 个 manifests；
+- `nap 3.1.0`: build `K6kIJzryVWIq`，116 个 manifests；
+- `bh3 9.0.0`: build `FMryTs1shKAC`，2 个 manifests。
+
+绝区零 `3.1.0` 实际按 archive -> chunk -> archive refresh 顺序验收：24 个 archive artifacts
+全程保留，chunk reference 从 0 增至 1 后继续保留，artifact ids 和 archive provenance 不变。
+
 ## 暂未迁移内容
 
 以下内容还没有进入 V5 的可信基线：
 
 - APK 公开 API 和后台 operation 接线（由后续 backend 阶段完成）；
-- PC chunks 和其他厂商 manifest/package 适配器；
+- 其他厂商 manifest/package 适配器；
 - PC probe adapters；
 - PC 数据基线；
 - backend API contract；
@@ -490,21 +511,21 @@ snapshot/apk-validated-baseline
 
 其中 `snapshot/apk-validated-baseline`、`frontend` 晋级和 `core/schema` 已完成。
 
-APK 平台模块和 PC packages/patches/voice 任务已经完成，当前下一步是 `pc/mihoyo-chunks`。
+APK 平台模块和米哈游 PC packages/patches/voice/chunks 已完成，当前下一步是 `pc/kuro-manifests`。
 
 分支路径：
 
 ```text
 integration/pc
-  -> pc/mihoyo-chunks
+  -> pc/kuro-manifests
   -> validation
   -> squash merge -> integration/pc
 ```
 
 预计修改范围：
 
-- 米哈游 PC 官方 Sophon chunk manifest 采集；
-- canonical v2 chunk manifest reference；
+- 库洛 PC 官方 manifest 采集；
+- canonical v2 file manifest/reference；
 - 对应 parser/organizer 测试和官方来源验证。
 
 PC 开发不得修改 Android collector、organizer、probe 或 registry。
@@ -517,15 +538,15 @@ PC 开发不得修改 Android collector、organizer、probe 或 registry。
 - frontend 文件；
 - APK 采集器；
 - APK 验活器；
-- archive packages/patches/voice、其他厂商 PC 专项逻辑。
+- 米哈游 PC 专项逻辑、其他厂商 package/probe/registry。
 
 ## 近期路线
 
 推荐顺序：
 
 ```text
-pc/mihoyo-chunks
-  -> pc/kuro-manifests
+pc/kuro-manifests
+  -> pc/perfectworld-packages
 ```
 
 PC 开发应等共享 core 稳定后再开始。`pc/data-baseline` 不要现在创建，等 PC 格式和适配器
