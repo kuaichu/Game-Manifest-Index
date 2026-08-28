@@ -71,8 +71,10 @@ V5 主线。
 ### `integration/pc`
 
 - 定位：PC 平台验证分支。
-- 当前包含已同步的 shared core，以及米哈游 package/patch/voice/chunk、Kuro manifest、
-  Perfect World package manifest 和 PC probe 的已验证实现；当前 registry 任务完成后晋级该分支。
+- 当前包含已同步的 shared core、8 款 PC collector/registry/probe、173 条 canonical records、
+  157 份独立 manifests 和 8 个 indexes。
+- 当前平台验收：191 项 Python 测试通过；8/8 官方 discovery、8 款代表 probe、历史/Android
+  隔离、artifact identity、manifest/reference 和 index 重建检查通过。
 - 新 PC 任务从该分支创建，验证后 squash merge 回该分支。
 
 ### `frontend`
@@ -589,8 +591,8 @@ snapshot/apk-validated-baseline
 其中 `snapshot/apk-validated-baseline`、`frontend` 晋级和 `core/schema` 已完成。
 
 APK 平台模块，以及米哈游、Kuro、Perfect World 的当前 PC 采集、URL probe 与内部 registry
-已完成验证。`pc/data-baseline` 已完成数据迁移、官方 current discovery 和基线审计，待
-审查后晋级 `integration/pc`。
+已完成验证。`pc/data-baseline` 已完成数据迁移、官方 current discovery、基线审计与
+`integration/pc` 平台验收；下一步按 normal merge 晋级 `integration/v5`，再进入 PHASE 8。
 
 分支路径：
 
@@ -603,6 +605,8 @@ integration/pc
   -> pc/data-baseline
   -> validation
   -> squash merge -> integration/pc
+  -> platform validation
+  -> normal merge -> integration/v5
 ```
 
 数据基线任务没有修改 Android collector、organizer 或 probe，也没有修改 API route、frontend
@@ -613,8 +617,9 @@ integration/pc
 推荐顺序：
 
 ```text
-pc/registry-integration
-  -> pc/data-baseline（已完成，待审查后晋级 integration/pc）
+integration/pc
+  -> normal merge -> integration/v5
+  -> backend/api-contract
 ```
 
 后端业务能力建议在数据和适配器基础稳定后推进：
