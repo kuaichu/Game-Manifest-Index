@@ -614,9 +614,27 @@ checked-in baseline 做真实写入。
 
 以下内容还没有进入 V5 的可信基线：
 
-- backend version admin；
 - retention policy。
 - 外部 scheduler 部署与上述 UNKNOWN 调度语义。
+
+### Backend version admin（实现完成，待晋级）
+
+当前任务分支已实现受 Bearer token 保护的 catalog/versions 查询、手工版本写入、editable
+读取与更新、visibility 切换和 canonical 版本删除。扫描严格校验路径、文件 identity、schema
+和安全属性；隐藏版本仍可由管理员读取，公共 index 按 `is_visible` 过滤，全部隐藏时 public API
+会安全省略该 domain。手工 Android 写入严格保持单 APK/单 URL，使用 `manual` provenance，写入
+后明确提示尚未自动探活；editable 往返保留 references、provenance、visibility、官方 candidate
+provider/current、canonical checksum 与 artifact identity。删除只移除 canonical record 并重建
+index，独立 manifest 按既有保守策略保留为 orphan。
+
+当前新增 14 个 version-admin method/routes。game/domain CRUD 与独立 artifact 编辑明确返回 409
+`unsupported`，不假写静态 catalog 或用 `part` 猜测 PC artifact identity。revision/capture 字段仅
+返回兼容前端的零值，不建立虚构 ledger。version-admin 专项 11 项、sync/admin 36 项、public API
+37 项、schema/index/version-store 55 项、registry 20 项和 probe 17 项通过；真实 checked-in 数据
+只读审计覆盖 12 games、20 domains、442 个 admin versions 和 20 个 latest editable 投影。
+外部 scheduler 的部署、触发与 UNKNOWN 调度语义保持不变。
+
+该实现尚未晋级到 `integration/v5`，不能视为可信基线。
 
 这些内容必须按 `BRANCHING.md` 的规则，通过独立任务分支迁移、验证、审查，再晋级到
 对应 integration 分支。
@@ -638,8 +656,8 @@ snapshot/apk-validated-baseline
 APK 平台模块，以及米哈游、Kuro、Perfect World 的当前 PC 采集、URL probe 与内部 registry
 已完成验证。`pc/data-baseline` 已完成数据迁移、官方 current discovery、基线审计与
 `integration/pc` 平台验收；PHASE 7 已 normal merge 到 `integration/v5@639b117`，当前
-`backend/api-contract` 公开只读 API contract 已晋级；`backend/sync-operations` 已实现并通过
-任务级验证，下一任务是 `backend/version-admin`。
+`backend/api-contract` 与 `backend/sync-operations` 已晋级；`backend/version-admin` 已完成
+任务级实现、主审和验证，待 squash 晋级 `integration/v5`。
 
 分支路径：
 
@@ -667,8 +685,8 @@ integration/pc
 integration/pc
   -> normal merge -> integration/v5@639b117（已完成）
   -> backend/api-contract（已完成）
-  -> backend/sync-operations（任务验证完成）
-  -> backend/version-admin
+  -> backend/sync-operations（已完成）
+  -> backend/version-admin（任务验证完成，待晋级）
 ```
 
 后端业务能力建议在数据和适配器基础稳定后推进：

@@ -9,13 +9,14 @@ from pathlib import Path
 from threading import RLock
 from typing import Any, Callable, Literal
 
-from fastapi import APIRouter, Depends, Header, Query
-from pydantic import BaseModel, ConfigDict
+from fastapi import APIRouter, Body, Depends, Header, Query, Response
+from pydantic import BaseModel, ConfigDict, Field
 
 from backend.admin_operations import OperationManager
 from backend.admin_probe import AdminProbeDataError, probe_direct, probe_public_url, probe_records, selected_records, valid_probe_url
 from backend.admin_state import AdminStateStore
 from backend.api_contract import ApiContract, fail
+from backend import version_admin
 from probe_adapters.service import apply_result as default_apply
 from probe_adapters.service import probe as default_probe
 from url_adapters.service import DISCOVERERS, PC_DISCOVERERS
@@ -59,6 +60,72 @@ class OperationPayload(StrictModel):
     timeout: int = 10
     workers: int = 8
     scope: Literal["all", "android", "pc"] = "all"
+
+
+class AdminStrictModel(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+
+class AdminUrlPayload(AdminStrictModel):
+    url: str
+    priority: int = 0
+    source_kind: str
+    provider: str | None = None
+
+
+class AdminArtifactPayload(AdminStrictModel):
+    kind: str
+    name: str
+    part: int = 1
+    size: int = 0
+    checksum_type: str | None = None
+    checksum_value: str | None = None
+    attributes: dict[str, Any] = Field(default_factory=dict)
+    urls: list[AdminUrlPayload]
+    component: str | None = None
+    package_type: str | None = None
+    delivery_mode: str | None = None
+    language: str | None = None
+    route_from: str | None = None
+    route_to: str | None = None
+    decompressed_size: int | None = None
+    manifest: dict[str, Any] | None = None
+    source: dict[str, Any] | None = None
+
+
+class AdminVersionPayload(AdminStrictModel):
+    version: str
+    client_version: str | None = None
+    file_path: str | None = None
+    observed_at: str | None = None
+    file_created_at_override: str | None = None
+    version_code: int | None = None
+    channel: str | None = None
+    attributes: dict[str, Any] = Field(default_factory=dict)
+    artifacts: list[AdminArtifactPayload]
+    unpacked_size: int | None = None
+    files_checksum_type: str | None = None
+    files_checksum_value: str | None = None
+    source_note: str | None = None
+
+
+class AdminEditablePayload(AdminStrictModel):
+    channel: str | None = None
+    version_code: int | None = None
+    client_version: str | None = None
+    observed_at: str | None = None
+    file_created_at_override: str | None = None
+    file_path: str | None = None
+    unpacked_size: int | None = None
+    files_checksum_type: str | None = None
+    files_checksum_value: str | None = None
+    attributes: dict[str, Any] = Field(default_factory=dict)
+    artifacts: list[AdminArtifactPayload] | None = None
+    source_note: str | None = None
+
+
+class AdminVisibilityPayload(AdminStrictModel):
+    is_visible: bool
 
 
 def _valid_token(token: str | None) -> bool:
@@ -294,6 +361,105 @@ def create_admin_router(
                 return dict(manual_probe_status)
         status = "running" if job["status"] in {"running", "cancelling"} else "finished"
         return {"status": status, "mode": "normal", "started_at": job["started_at"], "finished_at": job["finished_at"], "family": job.get("scope", "all"), "log": job.get("logs", [])[-150:]}
+
+    # Version administration intentionally lives outside ApiContract: hidden
+    # records must remain manageable even though the public inventory excludes them.
+    @router.get("/catalog", dependencies=protected)
+    def get_admin_catalog() -> dict[str, Any]:
+        return version_admin.catalog_projection(Path(data_root))
+
+    @router.get("/domains/{domain_id}/versions", dependencies=protected)
+    def get_admin_versions(domain_id: str) -> dict[str, Any]:
+        return {"items": version_admin.version_summaries(data_root, domain_id)}
+
+    def import_result(
+        domain_id: str, version: str, *, changed: bool, probe_error: str | None = None,
+    ) -> dict[str, Any]:
+        return {
+            "domain_id": domain_id,
+            "version": version,
+            "revisions_created": 0,
+            "revisions_reused": 0,
+            "capture_event_id": 0,
+            "changed": changed,
+            "revision_created": False,
+            "revision_id": None,
+            **({"probe_error": probe_error} if probe_error is not None else {}),
+        }
+
+    @router.post("/domains/{domain_id}/versions", dependencies=protected)
+    def post_admin_version(domain_id: str, payload: AdminVersionPayload) -> dict[str, Any]:
+        try:
+            record = version_admin.create_version(
+                data_root, domain_id, payload.model_dump(exclude_unset=True),
+            )
+        except FileExistsError:
+            fail(409, "version_exists", "版本已存在")
+        return import_result(
+            domain_id,
+            record["version"],
+            changed=True,
+            probe_error="未自动探活；请手动执行版本探活",
+        )
+
+    @router.get("/domains/{domain_id}/versions/{version}/editable", dependencies=protected)
+    def get_editable(domain_id: str, version: str) -> dict[str, Any]:
+        record = version_admin.read_record(data_root, domain_id, version)[0]
+        return version_admin.editable_projection(record)
+
+    @router.patch("/domains/{domain_id}/versions/{version}/editable", dependencies=protected)
+    def patch_editable(domain_id: str, version: str, payload: AdminEditablePayload) -> dict[str, Any]:
+        _, changed = version_admin.update_version(
+            data_root, domain_id, version, payload.model_dump(exclude_unset=True),
+        )
+        return import_result(domain_id, version, changed=changed)
+
+    @router.patch("/domains/{domain_id}/versions/{version}", dependencies=protected)
+    def patch_visibility(
+        domain_id: str, version: str, payload: AdminVisibilityPayload,
+    ) -> dict[str, Any]:
+        visible = version_admin.set_visibility(
+            data_root, domain_id, version, payload.is_visible,
+        )
+        return {"is_visible": visible}
+
+    @router.delete("/domains/{domain_id}/versions/{version}", dependencies=protected)
+    def delete_version(domain_id: str, version: str) -> Response:
+        version_admin.delete_version(data_root, domain_id, version)
+        return Response(status_code=204)
+
+    def _unsupported() -> None:
+        fail(409, "catalog_mutation_unsupported", "V5 不支持修改静态 catalog")
+
+    @router.post("/games", dependencies=protected)
+    def unsupported_create_game(payload: Any = Body(...)) -> None:
+        _unsupported()
+
+    @router.patch("/games/{game_id}", dependencies=protected)
+    def unsupported_update_game(game_id: str, payload: Any = Body(...)) -> None:
+        _unsupported()
+
+    @router.delete("/games/{game_id}", dependencies=protected)
+    def unsupported_delete_game(game_id: str) -> None:
+        _unsupported()
+
+    @router.post("/domains", dependencies=protected)
+    def unsupported_create_domain(payload: Any = Body(...)) -> None:
+        _unsupported()
+
+    @router.patch("/domains/{domain_id}", dependencies=protected)
+    def unsupported_update_domain(domain_id: str, payload: Any = Body(...)) -> None:
+        _unsupported()
+
+    @router.delete("/domains/{domain_id}", dependencies=protected)
+    def unsupported_delete_domain(domain_id: str) -> None:
+        _unsupported()
+
+    @router.post("/domains/{domain_id}/versions/{version}/artifacts/edit", dependencies=protected)
+    def unsupported_artifact_edit(
+        domain_id: str, version: str, payload: Any = Body(...),
+    ) -> None:
+        fail(409, "artifact_edit_unsupported", "V5 不支持独立 artifact 编辑")
 
     return router, operations, store
 

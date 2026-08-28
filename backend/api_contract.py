@@ -256,7 +256,40 @@ class ApiContract:
                         fail(500, "duplicate_domain", "归档域归属冲突")
                     index_path = directory / "index.json"
                     if not _ordinary(index_path, directory=False):
-                        fail(500, "missing_index", "版本索引缺失")
+                        if _present(index_path):
+                            fail(500, "corrupt_index", "版本索引损坏")
+                        # Core intentionally removes an index when every
+                        # canonical record is hidden.  Validate that state
+                        # strictly, then omit the domain from the public
+                        # inventory instead of treating it as corruption.
+                        try:
+                            children = list(directory.iterdir())
+                        except OSError as error:
+                            raise ApiFault(500, "corrupt_data", "归档目录无法读取") from error
+                        has_visible_record = False
+                        for path in children:
+                            if _ordinary(path, directory=True):
+                                continue
+                            if path.suffix != ".json" or not _ordinary(path, directory=False):
+                                fail(500, "unsafe_data_path", "归档文件不安全")
+                            record = self._read_json(path, MAX_RECORD_BYTES, "corrupt_record")
+                            try:
+                                validate_v2_record(record)
+                            except SchemaValidationError as error:
+                                raise ApiFault(500, "corrupt_record", "版本记录校验失败") from error
+                            expected_record = {
+                                "vendor": vendor,
+                                "game_id": game_id,
+                                "platform": platform,
+                                "domain_id": domain_id,
+                                "version": path.stem,
+                            }
+                            if any(record.get(key) != expected for key, expected in expected_record.items()):
+                                fail(500, "record_identity_mismatch", "版本记录身份不匹配")
+                            has_visible_record = has_visible_record or record.get("is_visible") is not False
+                        if has_visible_record:
+                            fail(500, "missing_index", "版本索引缺失")
+                        continue
                     try:
                         if index_path.stat().st_size > MAX_INDEX_BYTES:
                             fail(500, "corrupt_index", "版本索引超过大小限制")

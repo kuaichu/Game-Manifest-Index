@@ -134,7 +134,6 @@ class AuthAndRouteTests(AdminFixture):
         self.assertTrue(expected <= routes)
         self.assertNotIn(("/api/v1/admin/operations/run", "POST"), routes)
         self.assertFalse(any("retention" in path for path, _ in routes))
-        self.assertFalse(any(path.endswith("/editable") for path, _ in routes))
 
 
 class ScheduleTests(AdminFixture):
