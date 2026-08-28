@@ -1,0 +1,2837 @@
+{
+  "schema_version": 2,
+  "vendor": "kuro",
+  "game_id": "wuwa",
+  "domain_id": "wuwa-pc",
+  "platform": "windows",
+  "channel": "official",
+  "version": "3.6.0",
+  "version_code": null,
+  "file_time": null,
+  "artifacts": [
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "file_manifest",
+      "name": "WutheringWaves-3.6.0-full",
+      "size": 89408316433,
+      "decompressed_size": 89408316433,
+      "manifest": {
+        "path": "manifests/3.6.0/full.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_b96dd54e36478f2a4324651e7cab75a9"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "1.0.0->3.6.0",
+      "route_from": "1.0.0",
+      "route_to": "3.6.0",
+      "size": 89262723819,
+      "decompressed_size": 89262723819,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/1.0.0.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/1.0.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/1.0.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/1.0.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_e6e58f3c64c7b73d37cf2da9db83af72"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "1.0.2->3.6.0",
+      "route_from": "1.0.2",
+      "route_to": "3.6.0",
+      "size": 89262723819,
+      "decompressed_size": 89262723819,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/1.0.2.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/1.0.2/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/1.0.2/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/1.0.2/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_1ee3ea9fc4c5681c6037b7af39ca6866"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "1.1.0->3.6.0",
+      "route_from": "1.1.0",
+      "route_to": "3.6.0",
+      "size": 89260501811,
+      "decompressed_size": 89260501811,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/1.1.0.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/1.1.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/1.1.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/1.1.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_270528bec8630c43905bc3a188a7ae6c"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "1.2.0->3.6.0",
+      "route_from": "1.2.0",
+      "route_to": "3.6.0",
+      "size": 89246498047,
+      "decompressed_size": 89246498047,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/1.2.0.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/1.2.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/1.2.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/1.2.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_45e311bc7684de5433da6a50d777ab8f"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "1.3.0->3.6.0",
+      "route_from": "1.3.0",
+      "route_to": "3.6.0",
+      "size": 89246498047,
+      "decompressed_size": 89246498047,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/1.3.0.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/1.3.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/1.3.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/1.3.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_aa57c103b801873c1acf4e9d1bd808ce"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "1.4.0->3.6.0",
+      "route_from": "1.4.0",
+      "route_to": "3.6.0",
+      "size": 89246497086,
+      "decompressed_size": 89246497086,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/1.4.0.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/1.4.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/1.4.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/1.4.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_c8617a7266c17b58d2fbc2505cfbe44b"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "1.4.1->3.6.0",
+      "route_from": "1.4.1",
+      "route_to": "3.6.0",
+      "size": 89246497086,
+      "decompressed_size": 89246497086,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/1.4.1.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/1.4.1/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/1.4.1/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/1.4.1/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_03b1a5f42b46de1c12684c0e1fbe6fc8"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "1.4.2->3.6.0",
+      "route_from": "1.4.2",
+      "route_to": "3.6.0",
+      "size": 89246417650,
+      "decompressed_size": 89246417650,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/1.4.2.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/1.4.2/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/1.4.2/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/1.4.2/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_ded15216fcc4cf7095c7a720a5d2497f"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "1.4.3->3.6.0",
+      "route_from": "1.4.3",
+      "route_to": "3.6.0",
+      "size": 89246417650,
+      "decompressed_size": 89246417650,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/1.4.3.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/1.4.3/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/1.4.3/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/1.4.3/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_0a8f3f7f243ab0e0707394ea32fc1bf1"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "2.0.0->3.6.0",
+      "route_from": "2.0.0",
+      "route_to": "3.6.0",
+      "size": 89246417650,
+      "decompressed_size": 89246417650,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/2.0.0.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.0.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.0.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.0.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_1fc19b617e6697557071e5e940f69c5d"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "2.0.1->3.6.0",
+      "route_from": "2.0.1",
+      "route_to": "3.6.0",
+      "size": 89246417650,
+      "decompressed_size": 89246417650,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/2.0.1.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.0.1/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.0.1/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.0.1/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_e3f949fd345106d8d018bb53a2a927c7"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "2.0.2->3.6.0",
+      "route_from": "2.0.2",
+      "route_to": "3.6.0",
+      "size": 89246417650,
+      "decompressed_size": 89246417650,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/2.0.2.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.0.2/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.0.2/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.0.2/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_650115ed563b4273effe4a6858f4459a"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "2.0.3->3.6.0",
+      "route_from": "2.0.3",
+      "route_to": "3.6.0",
+      "size": 89246417650,
+      "decompressed_size": 89246417650,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/2.0.3.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.0.3/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.0.3/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.0.3/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_7ca1340167dc8eb8b7f94e7eba5f1d84"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "2.1.0->3.6.0",
+      "route_from": "2.1.0",
+      "route_to": "3.6.0",
+      "size": 89246417627,
+      "decompressed_size": 89246417627,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/2.1.0.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.1.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.1.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.1.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_b00c77ed92016b3af4e793d8956f8847"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "2.1.1->3.6.0",
+      "route_from": "2.1.1",
+      "route_to": "3.6.0",
+      "size": 89185060614,
+      "decompressed_size": 89185060614,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/2.1.1.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.1.1/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.1.1/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.1.1/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_3693063feb4ab9744922e9c11f70816c"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "2.2.0->3.6.0",
+      "route_from": "2.2.0",
+      "route_to": "3.6.0",
+      "size": 89185060614,
+      "decompressed_size": 89185060614,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/2.2.0.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.2.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.2.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.2.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_80be7198dd61850df425165957e33b65"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "2.2.1->3.6.0",
+      "route_from": "2.2.1",
+      "route_to": "3.6.0",
+      "size": 89185060614,
+      "decompressed_size": 89185060614,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/2.2.1.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.2.1/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.2.1/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.2.1/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_e0d20d55d6107a77d9bf91ddb4f4b678"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "2.3.0->3.6.0",
+      "route_from": "2.3.0",
+      "route_to": "3.6.0",
+      "size": 89185060614,
+      "decompressed_size": 89185060614,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/2.3.0.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.3.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.3.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.3.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_e21c0e80b86cdd218ee4c74f68318806"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "2.3.1->3.6.0",
+      "route_from": "2.3.1",
+      "route_to": "3.6.0",
+      "size": 89185060614,
+      "decompressed_size": 89185060614,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/2.3.1.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.3.1/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.3.1/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.3.1/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_497b1bc28d0316b50a01f62f920dd0af"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "2.4.0->3.6.0",
+      "route_from": "2.4.0",
+      "route_to": "3.6.0",
+      "size": 89185060500,
+      "decompressed_size": 89185060500,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/2.4.0.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.4.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.4.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.4.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_c7dcb03b719d6f7b3979cca9296e47d9"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "2.4.1->3.6.0",
+      "route_from": "2.4.1",
+      "route_to": "3.6.0",
+      "size": 89185060500,
+      "decompressed_size": 89185060500,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/2.4.1.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.4.1/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.4.1/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.4.1/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_6379f356eebeccbf326ebde2fa277905"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "2.5.0->3.6.0",
+      "route_from": "2.5.0",
+      "route_to": "3.6.0",
+      "size": 89185060500,
+      "decompressed_size": 89185060500,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/2.5.0.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.5.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.5.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.5.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_bf942d05ad1e429488c66119eaf497c8"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "2.5.1->3.6.0",
+      "route_from": "2.5.1",
+      "route_to": "3.6.0",
+      "size": 89185060500,
+      "decompressed_size": 89185060500,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/2.5.1.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.5.1/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.5.1/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.5.1/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_0795ca2cfba979628cd2b45bc0702900"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "2.5.2->3.6.0",
+      "route_from": "2.5.2",
+      "route_to": "3.6.0",
+      "size": 89408316433,
+      "decompressed_size": 89408316433,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/2.5.2.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.5.2/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.5.2/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.5.2/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_1a63f8874a2b4ec535987c17902c19cd"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "2.6.0->3.6.0",
+      "route_from": "2.6.0",
+      "route_to": "3.6.0",
+      "size": 89185060500,
+      "decompressed_size": 89185060500,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/2.6.0.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.6.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.6.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.6.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_a64bbf4e08920685c410c97bd121d031"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "2.6.1->3.6.0",
+      "route_from": "2.6.1",
+      "route_to": "3.6.0",
+      "size": 88838147220,
+      "decompressed_size": 88838147220,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/2.6.1.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.6.1/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.6.1/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.6.1/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_6581bf2d2e3903eacf1f4f136c758f7b"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "2.6.2->3.6.0",
+      "route_from": "2.6.2",
+      "route_to": "3.6.0",
+      "size": 88838147220,
+      "decompressed_size": 88838147220,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/2.6.2.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.6.2/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.6.2/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.6.2/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_c31b58b2b8567662962026c341f2186d"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "2.7.0->3.6.0",
+      "route_from": "2.7.0",
+      "route_to": "3.6.0",
+      "size": 88838147220,
+      "decompressed_size": 88838147220,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/2.7.0.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.7.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.7.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.7.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_042d5d05f256cbe971e136e33e9162e9"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "2.7.1->3.6.0",
+      "route_from": "2.7.1",
+      "route_to": "3.6.0",
+      "size": 88838147220,
+      "decompressed_size": 88838147220,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/2.7.1.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.7.1/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.7.1/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.7.1/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_4a716f21b959ef3f6a22e9afe6bc9bc9"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "2.8.0->3.6.0",
+      "route_from": "2.8.0",
+      "route_to": "3.6.0",
+      "size": 88831471556,
+      "decompressed_size": 88831471556,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/2.8.0.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.8.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.8.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/2.8.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_0eeee026b2f1620e60177663963bd312"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "3.0.0->3.6.0",
+      "route_from": "3.0.0",
+      "route_to": "3.6.0",
+      "size": 88831300220,
+      "decompressed_size": 88831300220,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/3.0.0.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.0.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.0.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.0.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_2a3458fe9ae8666984ceffc9b75aa943"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "3.0.1->3.6.0",
+      "route_from": "3.0.1",
+      "route_to": "3.6.0",
+      "size": 88831300220,
+      "decompressed_size": 88831300220,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/3.0.1.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.0.1/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.0.1/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.0.1/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_492483d159b69fd8f415cc7e7b0657ee"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "3.0.2->3.6.0",
+      "route_from": "3.0.2",
+      "route_to": "3.6.0",
+      "size": 88831300220,
+      "decompressed_size": 88831300220,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/3.0.2.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.0.2/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.0.2/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.0.2/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_1111673d16bd35cb6eec256a4d6e1199"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "3.0.3->3.6.0",
+      "route_from": "3.0.3",
+      "route_to": "3.6.0",
+      "size": 88831300220,
+      "decompressed_size": 88831300220,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/3.0.3.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.0.3/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.0.3/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.0.3/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_cc0cdcc6cd876be633d0bd26fcf08a48"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "3.1.0->3.6.0",
+      "route_from": "3.1.0",
+      "route_to": "3.6.0",
+      "size": 88831298180,
+      "decompressed_size": 88831298180,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/3.1.0.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.1.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.1.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.1.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_f29235cf0590d40b7ff08af350c22887"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "3.1.2->3.6.0",
+      "route_from": "3.1.2",
+      "route_to": "3.6.0",
+      "size": 88831298180,
+      "decompressed_size": 88831298180,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/3.1.2.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.1.2/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.1.2/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.1.2/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_e9a02c4eccdb1d73c442db154f3822e0"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "3.1.3->3.6.0",
+      "route_from": "3.1.3",
+      "route_to": "3.6.0",
+      "size": 88831298180,
+      "decompressed_size": 88831298180,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/3.1.3.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.1.3/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.1.3/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.1.3/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_878b91c5349c6b005920c2a68ca50a02"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "3.2.0->3.6.0",
+      "route_from": "3.2.0",
+      "route_to": "3.6.0",
+      "size": 88821387540,
+      "decompressed_size": 88821387540,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/3.2.0.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.2.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.2.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.2.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_6f4420b3fb3e1b517fa53d606c70dd9e"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "3.2.1->3.6.0",
+      "route_from": "3.2.1",
+      "route_to": "3.6.0",
+      "size": 88821387540,
+      "decompressed_size": 88821387540,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/3.2.1.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.2.1/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.2.1/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.2.1/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_a22ef2dbf9b2150b35c99b0ca6c73af7"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "3.2.2->3.6.0",
+      "route_from": "3.2.2",
+      "route_to": "3.6.0",
+      "size": 88821382041,
+      "decompressed_size": 88821382041,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/3.2.2.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.2.2/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.2.2/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.2.2/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_87effdcf6595b897ab601e7e1bfa1f16"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "3.3.0->3.6.0",
+      "route_from": "3.3.0",
+      "route_to": "3.6.0",
+      "size": 88815845617,
+      "decompressed_size": 88815845617,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/3.3.0.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.3.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.3.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.3.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_389a548e55da2103f4800ad4f3f57fdd"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "3.4.0->3.6.0",
+      "route_from": "3.4.0",
+      "route_to": "3.6.0",
+      "size": 88729173747,
+      "decompressed_size": 88729173747,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/3.4.0.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.4.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.4.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.4.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_23d3e630b7029b7e6540d21f63261c57"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "3.4.1->3.6.0",
+      "route_from": "3.4.1",
+      "route_to": "3.6.0",
+      "size": 88729154201,
+      "decompressed_size": 88729154201,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/3.4.1.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.4.1/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.4.1/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.4.1/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_fcf2c8476bd9f130386ccb3d47a796ac"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "3.5.0->3.6.0",
+      "route_from": "3.5.0",
+      "route_to": "3.6.0",
+      "size": 88612871904,
+      "decompressed_size": 88612871904,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/3.5.0.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.5.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.5.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.5.0/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_cff8d85ce24c5e04a79bbb7e3fc8678b"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "3.5.2->3.6.0",
+      "route_from": "3.5.2",
+      "route_to": "3.6.0",
+      "size": 23090089919,
+      "decompressed_size": 86939055061,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/3.5.2.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.5.2/resources/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.5.2/resources/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.5.2/resources/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.5.2/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.5.2/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.5.2/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_1348f0b9fcf4cc4dcf1ab9aa8cde0528"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "file_manifest",
+      "name": "3.5.3->3.6.0",
+      "route_from": "3.5.3",
+      "route_to": "3.6.0",
+      "size": 23089447731,
+      "decompressed_size": 86925467029,
+      "manifest": {
+        "path": "manifests/3.6.0/patches/3.5.3.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.5.3/resources/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.5.3/resources/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.5.3/resources/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.5.3/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.5.3/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.5.3/indexFile.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Kuro GameStarter",
+        "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+      },
+      "artifact_id": "a1_b2a1d6c33757e6757ef14c893197d39d"
+    }
+  ],
+  "references": [],
+  "provenance": {
+    "source_kind": "official_sync",
+    "source_name": "Kuro GameStarter",
+    "source_url": "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+  }
+}

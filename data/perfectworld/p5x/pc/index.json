@@ -1,0 +1,14 @@
+{
+  "vendor": "perfectworld",
+  "game_id": "p5x",
+  "platform": "windows",
+  "versions": [
+    {
+      "version": "1.0.74",
+      "updated_at": null,
+      "available": null,
+      "size": 969604327
+    }
+  ],
+  "domain_id": "p5x-pc"
+}

@@ -1,0 +1,569 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "hkrpg",
+  "domain_id": "hkrpg-pc",
+  "platform": "windows",
+  "channel": "official",
+  "version": "3.2.0",
+  "version_code": null,
+  "file_time": "2025-03-27T10:29:02Z",
+  "artifacts": [
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "StarRail_3.2.0.7z.001",
+      "size": 5368709120,
+      "checksum": {
+        "md5": "47e02b11751261e24e4ac00fcdb4eab2"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.bhsr.com/client/cn/20250327182902_EEUkBrjDZhU7n1pu/PC/download/StarRail_3.2.0.7z.001",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:14:18Z",
+            "etag": "47E02B11751261E24E4AC00FCDB4EAB2",
+            "crc64": "10585465909487612752",
+            "last_modified": "Fri, 28 Mar 2025 16:54:11 GMT",
+            "response_size": 5368709120
+          }
+        }
+      ],
+      "part": 1,
+      "artifact_id": "a1_c44e2416266f6338a4d7c51c7f6b544e"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "StarRail_3.2.0.7z.002",
+      "size": 5368709120,
+      "checksum": {
+        "md5": "e48f12b3eaa9610227b0cddb09c9c280"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.bhsr.com/client/cn/20250327182902_EEUkBrjDZhU7n1pu/PC/download/StarRail_3.2.0.7z.002",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:14:18Z",
+            "etag": "E48F12B3EAA9610227B0CDDB09C9C280",
+            "crc64": "6667496751102453522",
+            "last_modified": "Fri, 28 Mar 2025 16:54:12 GMT",
+            "response_size": 5368709120
+          }
+        }
+      ],
+      "part": 2,
+      "artifact_id": "a1_e44aa1b13da8ea450556f34e45d6cce1"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "StarRail_3.2.0.7z.003",
+      "size": 5368709120,
+      "checksum": {
+        "md5": "373591506b318ed8fff2de1b0c352428"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.bhsr.com/client/cn/20250327182902_EEUkBrjDZhU7n1pu/PC/download/StarRail_3.2.0.7z.003",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:14:18Z",
+            "etag": "373591506B318ED8FFF2DE1B0C352428",
+            "crc64": "17030972193013158072",
+            "last_modified": "Fri, 28 Mar 2025 16:51:03 GMT",
+            "response_size": 5368709120
+          }
+        }
+      ],
+      "part": 3,
+      "artifact_id": "a1_a15db379eacfd13458969f0a4f022a07"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "StarRail_3.2.0.7z.004",
+      "size": 5368709120,
+      "checksum": {
+        "md5": "5e180fa80a42ebf3414ac3c0c6e402f0"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.bhsr.com/client/cn/20250327182902_EEUkBrjDZhU7n1pu/PC/download/StarRail_3.2.0.7z.004",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:14:18Z",
+            "etag": "5E180FA80A42EBF3414AC3C0C6E402F0",
+            "crc64": "5257498769239895402",
+            "last_modified": "Fri, 28 Mar 2025 16:53:55 GMT",
+            "response_size": 5368709120
+          }
+        }
+      ],
+      "part": 4,
+      "artifact_id": "a1_5a4643ef80a12bc5b5743da48b715052"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "StarRail_3.2.0.7z.005",
+      "size": 5368709120,
+      "checksum": {
+        "md5": "4612b468bb3a7a6d9562fc678bfd89b5"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.bhsr.com/client/cn/20250327182902_EEUkBrjDZhU7n1pu/PC/download/StarRail_3.2.0.7z.005",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:14:18Z",
+            "etag": "4612B468BB3A7A6D9562FC678BFD89B5",
+            "crc64": "17598442885823053970",
+            "last_modified": "Fri, 28 Mar 2025 16:49:46 GMT",
+            "response_size": 5368709120
+          }
+        }
+      ],
+      "part": 5,
+      "artifact_id": "a1_fc6e9e66bbf613fb042d0c1ef2b36129"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "StarRail_3.2.0.7z.006",
+      "size": 5368709120,
+      "checksum": {
+        "md5": "1975a6987e7c6f4d368e3f576ed394bb"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.bhsr.com/client/cn/20250327182902_EEUkBrjDZhU7n1pu/PC/download/StarRail_3.2.0.7z.006",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:14:18Z",
+            "etag": "1975A6987E7C6F4D368E3F576ED394BB",
+            "crc64": "15034220590097390298",
+            "last_modified": "Fri, 28 Mar 2025 16:49:46 GMT",
+            "response_size": 5368709120
+          }
+        }
+      ],
+      "part": 6,
+      "artifact_id": "a1_2cd1d5932e54573d6a5e900547bdb4f2"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "StarRail_3.2.0.7z.007",
+      "size": 5368709120,
+      "checksum": {
+        "md5": "ab9be5f54134f4192423c5fed0b6ccca"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.bhsr.com/client/cn/20250327182902_EEUkBrjDZhU7n1pu/PC/download/StarRail_3.2.0.7z.007",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:14:18Z",
+            "etag": "AB9BE5F54134F4192423C5FED0B6CCCA",
+            "crc64": "1391081225391380067",
+            "last_modified": "Fri, 28 Mar 2025 16:46:43 GMT",
+            "response_size": 5368709120
+          }
+        }
+      ],
+      "part": 7,
+      "artifact_id": "a1_bb7e618b9e48d7bc6b9f4d234698076e"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "StarRail_3.2.0.7z.008",
+      "size": 5368709120,
+      "checksum": {
+        "md5": "c76dc46d6a3e68668a64c7d0254a9601"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.bhsr.com/client/cn/20250327182902_EEUkBrjDZhU7n1pu/PC/download/StarRail_3.2.0.7z.008",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:14:18Z",
+            "etag": "C76DC46D6A3E68668A64C7D0254A9601",
+            "crc64": "16045456319402929502",
+            "last_modified": "Fri, 28 Mar 2025 16:51:05 GMT",
+            "response_size": 5368709120
+          }
+        }
+      ],
+      "part": 8,
+      "artifact_id": "a1_fcac1e09e8ed7038cd4aed9330386fee"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "StarRail_3.2.0.7z.009",
+      "size": 5281324632,
+      "checksum": {
+        "md5": "4239d51a7d0121bbfb38fd1e4fed7735"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.bhsr.com/client/cn/20250327182902_EEUkBrjDZhU7n1pu/PC/download/StarRail_3.2.0.7z.009",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:14:18Z",
+            "etag": "4239D51A7D0121BBFB38FD1E4FED7735",
+            "crc64": "11446707616674258216",
+            "last_modified": "Fri, 28 Mar 2025 16:53:52 GMT",
+            "response_size": 5281324632
+          }
+        }
+      ],
+      "part": 9,
+      "artifact_id": "a1_7aa69dc7f86bf19b73ab581688f55d54"
+    },
+    {
+      "kind": "package",
+      "component": "voice",
+      "package_type": "optional",
+      "delivery_mode": "archive",
+      "name": "Chinese.7z",
+      "language": "zh-cn",
+      "size": 7617262382,
+      "checksum": {
+        "md5": "b366736761b91b0ae5d16f4296e21278"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.bhsr.com/client/cn/20250327182902_EEUkBrjDZhU7n1pu/PC/Chinese.7z",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:14:18Z",
+            "etag": "2FE20F4250BC72082083753B302D0CC9-50",
+            "crc64": "17190586991131513792",
+            "last_modified": "Fri, 28 Mar 2025 14:14:31 GMT",
+            "response_size": 7617262382
+          }
+        }
+      ],
+      "artifact_id": "a1_fb10f6182bde2c8df4db81e70d5819c7"
+    },
+    {
+      "kind": "package",
+      "component": "voice",
+      "package_type": "optional",
+      "delivery_mode": "archive",
+      "name": "English.7z",
+      "language": "en-us",
+      "size": 8747053629,
+      "checksum": {
+        "md5": "757b5ecb96b0275bde64e06f90308daf"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.bhsr.com/client/cn/20250327182902_EEUkBrjDZhU7n1pu/PC/English.7z",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:14:18Z",
+            "etag": "8B33B365B662466E18F796453CDCA104-50",
+            "crc64": "3621813346451764677",
+            "last_modified": "Fri, 28 Mar 2025 14:06:39 GMT",
+            "response_size": 8747053629
+          }
+        }
+      ],
+      "artifact_id": "a1_121d828c08751a83616efd021004d26d"
+    },
+    {
+      "kind": "package",
+      "component": "voice",
+      "package_type": "optional",
+      "delivery_mode": "archive",
+      "name": "Korean.7z",
+      "language": "ko-kr",
+      "size": 7503660046,
+      "checksum": {
+        "md5": "39eea79ceb18f92c9756a9691c1bdf62"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.bhsr.com/client/cn/20250327182902_EEUkBrjDZhU7n1pu/PC/Korean.7z",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:14:18Z",
+            "etag": "2F37C82006135480F06BED738922EBD3-50",
+            "crc64": "6755927405890850763",
+            "last_modified": "Fri, 28 Mar 2025 14:15:05 GMT",
+            "response_size": 7503660046
+          }
+        }
+      ],
+      "artifact_id": "a1_f58b28242f3fe8d7c4d6ba061e0bd9d5"
+    },
+    {
+      "kind": "package",
+      "component": "voice",
+      "package_type": "optional",
+      "delivery_mode": "archive",
+      "name": "Japanese.7z",
+      "language": "ja-jp",
+      "size": 9389082933,
+      "checksum": {
+        "md5": "7bfd349dd2e6225e05c6d6c949e6f313"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.bhsr.com/client/cn/20250327182902_EEUkBrjDZhU7n1pu/PC/Japanese.7z",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:14:18Z",
+            "etag": "8364F8991002843CFFA6751352E655D3-50",
+            "crc64": "1601600619357468561",
+            "last_modified": "Fri, 28 Mar 2025 14:15:57 GMT",
+            "response_size": 9389082933
+          }
+        }
+      ],
+      "artifact_id": "a1_13fcb8e0a52e6417139ecd0582d249f8"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "game_3.1.0_3.2.0_hdiff_zQUuDUxWvmvHWhzv.7z",
+      "route_from": "3.1.0",
+      "route_to": "3.2.0",
+      "size": 4426742949,
+      "checksum": {
+        "md5": "047e556403ea94ff4379f828ee8a5b98"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.bhsr.com/client/diff/hkrpg_cn/game_3.1.0_3.2.0_hdiff_zQUuDUxWvmvHWhzv.7z",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:14:18Z",
+            "etag": "42F76BE8472035C98889D873E2117A04-845",
+            "crc64": "10018580717178177926",
+            "last_modified": "Sat, 29 Mar 2025 04:29:26 GMT",
+            "response_size": 4426742949
+          }
+        }
+      ],
+      "artifact_id": "a1_75eeff338cfa6205de854c318d6fd23a"
+    },
+    {
+      "kind": "patch",
+      "component": "voice",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "audio_zh-cn_3.1.0_3.2.0_hdiff_BSqxpGVoxrqAYGBB.7z",
+      "language": "zh-cn",
+      "route_from": "3.1.0",
+      "route_to": "3.2.0",
+      "size": 499728729,
+      "checksum": {
+        "md5": "eea0378c0db4ee7833fadc9ac3a2fdba"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.bhsr.com/client/diff/hkrpg_cn/audio_zh-cn_3.1.0_3.2.0_hdiff_BSqxpGVoxrqAYGBB.7z",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:14:19Z",
+            "etag": "9E111216AD0C8509AA1F5C053994F855-96",
+            "crc64": "17803987825176778535",
+            "last_modified": "Sat, 29 Mar 2025 04:01:13 GMT",
+            "response_size": 499728729
+          }
+        }
+      ],
+      "artifact_id": "a1_60f788787148a5f45d9ba0c3665a9f5e"
+    },
+    {
+      "kind": "patch",
+      "component": "voice",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "audio_ko-kr_3.1.0_3.2.0_hdiff_DSUsIyXSRJEmYtPY.7z",
+      "language": "ko-kr",
+      "route_from": "3.1.0",
+      "route_to": "3.2.0",
+      "size": 476150992,
+      "checksum": {
+        "md5": "71f785d0114e4c8330d9f13ca1922add"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.bhsr.com/client/diff/hkrpg_cn/audio_ko-kr_3.1.0_3.2.0_hdiff_DSUsIyXSRJEmYtPY.7z",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:14:19Z",
+            "etag": "F181AEC7993CFA09653A53F861A9E009-91",
+            "crc64": "3992365839381373683",
+            "last_modified": "Sat, 29 Mar 2025 04:02:13 GMT",
+            "response_size": 476150992
+          }
+        }
+      ],
+      "artifact_id": "a1_97bff028d6a244d6fa81f2520c8d2940"
+    },
+    {
+      "kind": "patch",
+      "component": "voice",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "audio_en-us_3.1.0_3.2.0_hdiff_KNVwnzXQkmPxHGkm.7z",
+      "language": "en-us",
+      "route_from": "3.1.0",
+      "route_to": "3.2.0",
+      "size": 528704991,
+      "checksum": {
+        "md5": "d8d95e9d37e33212bcc4f4fe9719b5f9"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.bhsr.com/client/diff/hkrpg_cn/audio_en-us_3.1.0_3.2.0_hdiff_KNVwnzXQkmPxHGkm.7z",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:14:18Z",
+            "etag": "B9A1924658F1654A8D93B16F0727AB25-101",
+            "crc64": "14786322717580966657",
+            "last_modified": "Sat, 29 Mar 2025 04:02:29 GMT",
+            "response_size": 528704991
+          }
+        }
+      ],
+      "artifact_id": "a1_daa6e2311c5f28e44fb01b240c48c11b"
+    },
+    {
+      "kind": "patch",
+      "component": "voice",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "audio_ja-jp_3.1.0_3.2.0_hdiff_pPGwbVZYkKnOSLkV.7z",
+      "language": "ja-jp",
+      "route_from": "3.1.0",
+      "route_to": "3.2.0",
+      "size": 584306695,
+      "checksum": {
+        "md5": "366f361090be25a8bd066275b35bc54f"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.bhsr.com/client/diff/hkrpg_cn/audio_ja-jp_3.1.0_3.2.0_hdiff_pPGwbVZYkKnOSLkV.7z",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:14:18Z",
+            "etag": "8EC67D9F8EEAB7FBEDA8C59A2DBD880C-112",
+            "crc64": "1063233867918354088",
+            "last_modified": "Sat, 29 Mar 2025 04:04:30 GMT",
+            "response_size": 584306695
+          }
+        }
+      ],
+      "artifact_id": "a1_5e616944cd682bfb03b13303387b01cf"
+    }
+  ],
+  "references": [],
+  "provenance": {
+    "source_kind": "third_party_history",
+    "source_name": "HoyoFiles/Amarea",
+    "source_url": "https://autopatch.amarea.cn/pkg_version/hkrpg_versions.json",
+    "imported_at": "2026-08-24T16:45:08Z"
+  }
+}

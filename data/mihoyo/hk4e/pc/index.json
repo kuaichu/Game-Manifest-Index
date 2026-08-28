@@ -1,0 +1,272 @@
+{
+  "vendor": "mihoyo",
+  "game_id": "hk4e",
+  "platform": "windows",
+  "versions": [
+    {
+      "version": "5.5.0",
+      "updated_at": null,
+      "available": null,
+      "size": 80116583151
+    },
+    {
+      "version": "5.4.0",
+      "updated_at": "2025-01-25T12:10:57Z",
+      "available": true,
+      "size": 76995530224
+    },
+    {
+      "version": "5.3.0",
+      "updated_at": "2024-12-19T03:06:13Z",
+      "available": true,
+      "size": 76182554896
+    },
+    {
+      "version": "5.2.0",
+      "updated_at": "2024-11-08T09:34:01Z",
+      "available": true,
+      "size": 72199703774
+    },
+    {
+      "version": "5.1.0",
+      "updated_at": "2024-09-27T10:43:20Z",
+      "available": true,
+      "size": 70805359893
+    },
+    {
+      "version": "5.0.0",
+      "updated_at": "2024-08-16T10:37:03Z",
+      "available": true,
+      "size": 68488937871
+    },
+    {
+      "version": "4.8.0",
+      "updated_at": "2024-07-05T11:07:26Z",
+      "available": true,
+      "size": 62872454091
+    },
+    {
+      "version": "4.7.0",
+      "updated_at": "2024-05-24T10:11:10Z",
+      "available": true,
+      "size": 60838348411
+    },
+    {
+      "version": "4.6.0",
+      "updated_at": "2024-04-12T11:17:59Z",
+      "available": true,
+      "size": 59360713178
+    },
+    {
+      "version": "4.5.0",
+      "updated_at": "2024-03-01T12:28:12Z",
+      "available": true,
+      "size": 75346775559
+    },
+    {
+      "version": "4.4.0",
+      "updated_at": "2024-01-19T10:36:24Z",
+      "available": true,
+      "size": 74919127408
+    },
+    {
+      "version": "4.3.0",
+      "updated_at": "2023-12-08T11:04:55Z",
+      "available": true,
+      "size": 70950596543
+    },
+    {
+      "version": "4.2.0",
+      "updated_at": "2023-10-30T05:09:54Z",
+      "available": true,
+      "size": 69707558428
+    },
+    {
+      "version": "4.1.0",
+      "updated_at": "2023-09-16T02:16:43Z",
+      "available": true,
+      "size": 65390318003
+    },
+    {
+      "version": "4.0.1",
+      "updated_at": "2023-08-21T07:11:13Z",
+      "available": true,
+      "size": 60294699095
+    },
+    {
+      "version": "4.0.0",
+      "updated_at": "2023-08-04T10:57:03Z",
+      "available": true,
+      "size": 60294584351
+    },
+    {
+      "version": "3.8.0",
+      "updated_at": "2023-06-25T04:00:29Z",
+      "available": true,
+      "size": 52993422494
+    },
+    {
+      "version": "3.7.0",
+      "updated_at": "2023-05-13T12:02:50Z",
+      "available": false,
+      "size": 52183852647
+    },
+    {
+      "version": "3.6.0",
+      "updated_at": "2023-03-31T12:03:38Z",
+      "available": true,
+      "size": 51131585659
+    },
+    {
+      "version": "3.5.0",
+      "updated_at": "2023-02-20T04:08:41Z",
+      "available": true,
+      "size": 47953309860
+    },
+    {
+      "version": "3.4.0",
+      "updated_at": "2023-01-09T05:46:23Z",
+      "available": false,
+      "size": 47899622769
+    },
+    {
+      "version": "3.3.0",
+      "updated_at": "2022-11-28T03:36:26Z",
+      "available": true,
+      "size": 45634027520
+    },
+    {
+      "version": "3.2.0",
+      "updated_at": "2022-10-24T02:35:40Z",
+      "available": false,
+      "size": 43486543872
+    },
+    {
+      "version": "3.1.0",
+      "updated_at": "2022-09-17T08:53:28Z",
+      "available": true,
+      "size": 40684077711
+    },
+    {
+      "version": "3.0.0",
+      "updated_at": "2022-08-15T06:37:02Z",
+      "available": true,
+      "size": 36990405836
+    },
+    {
+      "version": "2.8.0",
+      "updated_at": "2022-06-24T16:37:00Z",
+      "available": true,
+      "size": 31793495408
+    },
+    {
+      "version": "2.7.0",
+      "updated_at": "2022-05-10T04:27:39Z",
+      "available": true,
+      "size": 30569429729
+    },
+    {
+      "version": "2.6.0",
+      "updated_at": "2022-03-18T13:00:05Z",
+      "available": true,
+      "size": 28754806046
+    },
+    {
+      "version": "2.5.0",
+      "updated_at": "2022-01-25T02:46:30Z",
+      "available": true,
+      "size": 26363072883
+    },
+    {
+      "version": "2.4.0",
+      "updated_at": "2021-12-24T20:16:52Z",
+      "available": true,
+      "size": 27705144032
+    },
+    {
+      "version": "2.3.0",
+      "updated_at": "2021-11-17T09:38:57Z",
+      "available": true,
+      "size": 24783597602
+    },
+    {
+      "version": "2.2.0",
+      "updated_at": "2021-10-13",
+      "available": true,
+      "size": 23333172836
+    },
+    {
+      "version": "2.1.0",
+      "updated_at": "2021-09-01",
+      "available": true,
+      "size": 21711937741
+    },
+    {
+      "version": "2.0.0",
+      "updated_at": "2021-07-21",
+      "available": true,
+      "size": 18721026086
+    },
+    {
+      "version": "1.6.0",
+      "updated_at": "2021-06-09",
+      "available": true,
+      "size": 14963222880
+    },
+    {
+      "version": "1.5.1",
+      "updated_at": "2021-04-30",
+      "available": true,
+      "size": 13028076516
+    },
+    {
+      "version": "1.5.0",
+      "updated_at": "2021-04-28",
+      "available": true,
+      "size": 13028542249
+    },
+    {
+      "version": "1.4.0",
+      "updated_at": "2021-03-17",
+      "available": true,
+      "size": 22207975039
+    },
+    {
+      "version": "1.3.2",
+      "updated_at": "2021-02-10",
+      "available": true,
+      "size": 19451079131
+    },
+    {
+      "version": "1.3.0",
+      "updated_at": "2021-02-03",
+      "available": true,
+      "size": 19451063669
+    },
+    {
+      "version": "1.2.0",
+      "updated_at": "2020-12-23",
+      "available": true,
+      "size": 17794018228
+    },
+    {
+      "version": "1.1.0",
+      "updated_at": "2020-11-11",
+      "available": true,
+      "size": 15910391284
+    },
+    {
+      "version": "1.0.1",
+      "updated_at": "2020-10-13",
+      "available": true,
+      "size": 12850596583
+    },
+    {
+      "version": "1.0.0",
+      "updated_at": null,
+      "available": true,
+      "size": 12850520560
+    }
+  ],
+  "domain_id": "hk4e-pc"
+}

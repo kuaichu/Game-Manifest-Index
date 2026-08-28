@@ -1,0 +1,49 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "domain_id": "bh3-pc",
+  "platform": "windows",
+  "channel": "official",
+  "version": "7.9.0",
+  "version_code": null,
+  "file_time": "2024-10-25T07:18:16Z",
+  "artifacts": [
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "archive",
+      "name": "BH3_v7.9.0_37db88484689.7z",
+      "size": 20610529816,
+      "checksum": {
+        "md5": "a8596e0d7b4c1378587ca7818e1dce35"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.bh3.com/ptpublic/rel/20241025151816_Y1hlFtfrB4sR5Scd/PC/BH3_v7.9.0_37db88484689.7z",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:15:05Z",
+            "etag": "D5824268505B99460BD42DDAF925DC89-100",
+            "crc64": "18203151257821403691",
+            "last_modified": "Mon, 28 Oct 2024 03:03:27 GMT",
+            "response_size": 20610529816
+          }
+        }
+      ],
+      "artifact_id": "a1_1c3cc819f8892c081ef123748e9bd5cd"
+    }
+  ],
+  "references": [],
+  "provenance": {
+    "source_kind": "third_party_history",
+    "source_name": "HoyoFiles/Amarea",
+    "source_url": "https://autopatch.amarea.cn/pkg_version/bh3_versions.json",
+    "imported_at": "2026-08-24T16:45:08Z"
+  }
+}

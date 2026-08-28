@@ -1,0 +1,104 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "hkrpg",
+  "domain_id": "hkrpg-pc",
+  "platform": "windows",
+  "channel": "official",
+  "version": "1.2.0",
+  "version_code": null,
+  "file_time": "2023-07-09T14:47:19Z",
+  "artifacts": [
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "archive",
+      "name": "StarRail_1.2.0.zip",
+      "size": 15101507952,
+      "checksum": {
+        "md5": "db3ed7b4b6d328d8394e1fa27391ee3f"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.bhsr.com/client/cn/20230709224719_3CcrEpEKT9iaObJh/StarRail_1.2.0.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "unavailable",
+            "http_code": 404,
+            "checked_at": "2026-08-25T14:14:13Z",
+            "etag": "53AF239EE5D3E261545DEDEDCB6FFD57",
+            "crc64": "4510927154085114263",
+            "last_modified": "Thu, 08 Sep 2022 10:13:18 GMT"
+          }
+        }
+      ],
+      "artifact_id": "a1_147b6b5be1796a17da1d358e5b0ccde2"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "game_1.1.0_1.2.0_hdiff_HfBvygO7Z9aNPUmR.zip",
+      "route_from": "1.1.0",
+      "route_to": "1.2.0",
+      "size": 11914862849,
+      "urls": [
+        {
+          "url": "https://autopatchcn.bhsr.com/client/hkrpg_cn/33/game_1.1.0_1.2.0_hdiff_HfBvygO7Z9aNPUmR.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:14:13Z",
+            "etag": "F0C7CF86320056D6C9E95A773DC0D0D2-400",
+            "crc64": "7767633664757746852",
+            "last_modified": "Mon, 10 Jul 2023 07:50:46 GMT",
+            "response_size": 11914862849
+          }
+        }
+      ],
+      "artifact_id": "a1_e9b57f13bcb29770fcdbd9de9df0be2a"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "game_1.0.5_1.2.0_hdiff_7qUejt4fMExIlrQp.zip",
+      "route_from": "1.0.5",
+      "route_to": "1.2.0",
+      "size": 13178454294,
+      "urls": [
+        {
+          "url": "https://autopatchcn.bhsr.com/client/hkrpg_cn/33/game_1.0.5_1.2.0_hdiff_7qUejt4fMExIlrQp.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:14:13Z",
+            "etag": "B728194B011568B279E73931EC5C49C7-400",
+            "crc64": "15852492806131764738",
+            "last_modified": "Mon, 10 Jul 2023 08:27:42 GMT",
+            "response_size": 13178454294
+          }
+        }
+      ],
+      "artifact_id": "a1_9e5383c035978a49a3994a561b9ee082"
+    }
+  ],
+  "references": [],
+  "provenance": {
+    "source_kind": "third_party_history",
+    "source_name": "HoyoFiles/Amarea",
+    "source_url": "https://autopatch.amarea.cn/pkg_version/hkrpg_versions.json",
+    "imported_at": "2026-08-24T16:45:08Z"
+  }
+}

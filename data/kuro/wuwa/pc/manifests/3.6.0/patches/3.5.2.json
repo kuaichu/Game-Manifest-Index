@@ -1,0 +1,246 @@
+{
+  "schema_version": 1,
+  "vendor": "kuro",
+  "game_id": "wuwa",
+  "platform": "windows",
+  "version": "3.6.0",
+  "route_from": "3.5.2",
+  "route_to": "3.6.0",
+  "resource": [
+    {
+      "dest": "Client/Binaries/Win64/Client-Win64-Shipping.exe",
+      "md5": "beaf07c4dd27b34176349ac2d18304aa",
+      "size": 976121112
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk112-WindowsNoEditor.pak",
+      "md5": "607d8a134a3fe2466731e971e5952f56",
+      "size": 394773344
+    },
+    {
+      "dest": "Client/Content/Paks/pakchunk43-WindowsNoEditor.pak",
+      "md5": "d38706cca353037b8053a8b746c4425b",
+      "size": 298722326
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_0_1786130339678.krpdiff",
+      "md5": "59a08f90a399fd21912f5ebb80a73280",
+      "size": 1649759447
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_1_1786131719129.krpdiff",
+      "md5": "41fd8d6168a511eb441a7ef1ef2a92cc",
+      "size": 116809510
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_2_1786131806336.krpdiff",
+      "md5": "ad9caa4b75365f6bb95dfa4ccd38337f",
+      "size": 14457243
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_3_1786131820215.krpdiff",
+      "md5": "c186ba767f4226a9eeb1a278a86f658a",
+      "size": 12367682
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_4_1786131831042.krpdiff",
+      "md5": "071a952492e0fc0db56cc3d215a6b1da",
+      "size": 2703839
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_5_1786131834769.krpdiff",
+      "md5": "cbd23e42662322fd989e59f5808149b9",
+      "size": 3039053
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_6_1786131889927.krpdiff",
+      "md5": "462f8d7c7f1fcdf4e0403c6b36848b3c",
+      "size": 3800820
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_7_1786131906086.krpdiff",
+      "md5": "8535b9a3e38a9b9d5188cdc96193199f",
+      "size": 706924211
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_8_1786132063217.krpdiff",
+      "md5": "ba923a62fcf973855fc15725c9844587",
+      "size": 3921638
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_9_1786132079559.krpdiff",
+      "md5": "9886204c8eeab9c24b0ceaf0dcbacfe8",
+      "size": 237458336
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_10_1786132161771.krpdiff",
+      "md5": "0a0d153f2ba6d09f2c07653752c356ff",
+      "size": 267130403
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_11_1786132228726.krpdiff",
+      "md5": "45f26dfc67a4c9019056db02fc476e55",
+      "size": 207277184
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_12_1786132295599.krpdiff",
+      "md5": "6d50970b312ceef5620f128bedbed3d4",
+      "size": 143807093
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_13_1786132357158.krpdiff",
+      "md5": "a4b6d2b1e3dd264f839c97774fe05ef0",
+      "size": 1421
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_14_1786132398378.krpdiff",
+      "md5": "9a2e4c6a1a5073c5776ec0392257546a",
+      "size": 512
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_15_1786132402063.krpdiff",
+      "md5": "9dba904ed59602b224e7f45f20c88f39",
+      "size": 273134389
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_16_1786132466176.krpdiff",
+      "md5": "48ae82387ba81310a09f70fe499c92b9",
+      "size": 35147126
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_17_1786132478821.krpdiff",
+      "md5": "21b84156bd59d05fd235f4bcf3c8c470",
+      "size": 658450096
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_18_1786132641067.krpdiff",
+      "md5": "1c2070af0fa2b402e173d053be96182c",
+      "size": 428200988
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_19_1786132771396.krpdiff",
+      "md5": "537156dda38c524e53c40c4d8a841e65",
+      "size": 85377811
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_20_1786132795317.krpdiff",
+      "md5": "22679f44a41daf49a97787fb23226a62",
+      "size": 101478651
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_21_1786132831975.krpdiff",
+      "md5": "a44d8da149e9677700c7999f33d3c32c",
+      "size": 69084647
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_22_1786132853790.krpdiff",
+      "md5": "00ed8bf4058081f7a92cb9485c231fe1",
+      "size": 110954297
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_23_1786133100488.krpdiff",
+      "md5": "439f889a772970678d0e4b59a8111a10",
+      "size": 59993604
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_24_1786133118819.krpdiff",
+      "md5": "4e8c480be0e6fecdc482c63ae7a415ce",
+      "size": 38657321
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_25_1786133134563.krpdiff",
+      "md5": "c63fac4ab60b0bfdd375e1cc25088868",
+      "size": 1120060770
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_26_1786133447398.krpdiff",
+      "md5": "2a4d35f873e5da06a2878116e0bfecca",
+      "size": 871691500
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_27_1786133695937.krpdiff",
+      "md5": "9b2751bf64b83c0fa50a6720a96fe584",
+      "size": 1121683480
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_28_1786134021575.krpdiff",
+      "md5": "38fbb6eedbee68656cbd0d04f934c3d2",
+      "size": 82335697
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_29_1786134046822.krpdiff",
+      "md5": "e3afae1d54cc660e9f441547d1ac0087",
+      "size": 49914144
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_30_1786134064549.krpdiff",
+      "md5": "d6ca4d888971a316dfb4e2fe5fe36da9",
+      "size": 96859897
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_31_1786134092145.krpdiff",
+      "md5": "d948406a947b6ba228e3b101e187cdce",
+      "size": 130544894
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_32_1786134129002.krpdiff",
+      "md5": "419a154ed1ab5ccdf836391853a45918",
+      "size": 2057604594
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_33_1786134789129.krpdiff",
+      "md5": "3d5738ae3a3d524bec6aff360be0ff2a",
+      "size": 1169535453
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_34_1786135141323.krpdiff",
+      "md5": "3e62023b77614d8fae32e37f595125c4",
+      "size": 208669153
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_35_1786135233523.krpdiff",
+      "md5": "45609c57b0e748b3fb5aab1f95364949",
+      "size": 2372213129
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_36_1786135762722.krpdiff",
+      "md5": "ac064a4dfa7745c009dac4f69a0cbaeb",
+      "size": 148088463
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_37_1786135905882.krpdiff",
+      "md5": "ab7bd1b6ab9145cb1e7c36105cf939b4",
+      "size": 609164728
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_38_1786136160897.krpdiff",
+      "md5": "c570a0cf39faf29ec0653a2c6bf13a6a",
+      "size": 5223515518
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_39_1786138993641.krpdiff",
+      "md5": "39bdc18e21fd0640d4f36b941ea424e3",
+      "size": 673789170
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_40_1786139139423.krpdiff",
+      "md5": "12fc9b454986c3611dbd7b755cc75bfd",
+      "size": 155019853
+    },
+    {
+      "dest": "3.5.2_3.6.0_group_41_1786139180937.krpdiff",
+      "md5": "bce3199bd783a38c35196ba9425c1d12",
+      "size": 99845372
+    }
+  ],
+  "deleteFiles": [
+    "Client/Content/Paks/pakchunk73-WindowsNoEditor.sig",
+    "Client/Content/Paks/pakchunk73-WindowsNoEditor.pak",
+    "Client/Content/Paks/pakchunk18-WindowsNoEditor.pak",
+    "Client/Content/Paks/pakchunk18-WindowsNoEditor.sig"
+  ],
+  "provenance": {
+    "source_kind": "official_sync",
+    "source_url": "https://pcdownload-aliyun.aki-game.com/launcher/game/G152/10003/3.6.0/NUNandQydLwvsqEMgvklzHubouvTalca/resource/10003/3.6.0/3.5.2/indexFile.json"
+  }
+}

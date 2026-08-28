@@ -13,8 +13,8 @@ GMI V5 是 Game Manifest Index 的干净重建版本。
 - Android APK 资源；
 - PC 资源，包括 packages、patches、voice、chunks、manifest 等。
 
-APK 迁移从已经验证可用的 V4 工作现场开始。PC 迁移暂缓历史数据导入，等格式和适配器
-稳定后再建立 PC 数据基线，避免把未定型数据混入可信主线。
+APK 迁移从已经验证可用的 V4 工作现场开始。PC 数据基线在格式和适配器稳定后，按固定
+历史快照与官方 current discovery 建立，避免把未定型数据混入可信主线。
 
 ## 项目身份和目录角色
 
@@ -71,7 +71,10 @@ V5 主线。
 ### `integration/pc`
 
 - 定位：PC 平台验证分支。
-- 当前只包含已经同步的 shared core 基线，PC 业务分支尚未开始晋级。
+- 当前包含已同步的 shared core、8 款 PC collector/registry/probe、173 条 canonical records、
+  157 份独立 manifests 和 8 个 indexes。
+- 当前平台验收：191 项 Python 测试通过；8/8 官方 discovery、8 款代表 probe、历史/Android
+  隔离、artifact identity、manifest/reference 和 index 重建检查通过。
 - 新 PC 任务从该分支创建，验证后 squash merge 回该分支。
 
 ### `frontend`
@@ -143,6 +146,39 @@ V5 主线。
 如果确实需要改变上述语义，必须先明确声明原因、影响范围和验证方式，再进入实现。
 
 ## 已完成内容
+
+### PC URL probe adapters
+
+`probe_adapters/pc/` 已覆盖米哈游四款 archive/segment/patch/voice candidates、Kuro
+`wuwa` index candidates 和 Perfect World 三款 ResList candidates；复用有限 Range transport，
+严格按 platform/vendor/game/host/path dispatch。写回只更新精确
+`artifacts[].urls[].current`，不会触碰 artifact identity、其他 candidates、references、
+provenance 或 `manifest.base_urls`。
+
+真实代表 URL 验收：`hkrpg`、`nap`、Kuro 和三款 Perfect World 为 available；`hk4e`
+当前 archive endpoint 返回 404，BH3 当前对象为未恢复的 OSS Archive，两者按证据写为
+unavailable。八款结果均通过 schema 和 current 白名单检查，未下载完整包体。
+
+### Perfect World PC PatcherSDK file manifests
+
+`url_adapters/pc/perfectworld_patcher.py` 已选择性适配成熟 PatcherSDK 协议，支持 `nte`、
+`p5x`、`tof` 的官方 Windows `config.xml` 与 `ResList.bin.zip`：有限请求、AES/zlib
+解码、ZIP/XML/path/object 严格校验，并为每款当前版本生成一个 canonical
+`package/full/file_manifest` artifact 和独立 `files.json`。PatchList 文件级对象只保存在
+文档中，不伪造成缺少版本路由的 patch；不猜测 voice 或 segment。
+
+真实官方临时验收：`nte 1.3.13` 为 73 files/397 patch objects，`p5x 1.0.74` 为
+3/833，`tof 6.3.3` 为 95/660；三款 schema、对象相对路径、provenance、artifact
+identity 与临时持久化均通过，未下载游戏对象。
+
+### Kuro Wuthering Waves PC file manifests
+
+`url_adapters/pc/kuro_manifests.py` 已实现 Kuro GameStarter 官方 `wuwa` Windows
+launcher/index manifest 采集：严格校验 launcher 与 file index、按官方 CDN 顺序做
+MD5 fallback、生成 schema v2 file-manifest artifacts，并以原子方式保存外部 manifest
+文档。`pns` 和其他游戏明确拒绝；文档只保留规范化 resource/deleteFiles 及官方同步
+provenance。真实官方验收得到 `3.6.0`、3 个 CDN、1 个 full 和 46 个 patch manifests；
+full 含 699 个 resources，47 份独立文档与 canonical record 引用逐一一致。
 
 ### V4 APK 已验证流程
 
@@ -390,14 +426,148 @@ python -m unittest backend.test_apk_data_baseline backend.test_indexes backend.t
 
 相关自动验证共包括 25 个 URL adapter/registry、23 个 probe 和 54 个 core/data 测试。
 
+### 米哈游 PC packages
+
+四款中国服米哈游 PC 游戏已经接入官方 HoYoPlay `getGamePackages`：
+
+| V5 游戏 | HoYoPlay game id | 官方 biz | 当前 archive 响应 |
+| --- | --- | --- | --- |
+| `hk4e` | `1Z8W5NHUQb` | `hk4e_cn` | 8 个连续分卷 |
+| `hkrpg` | `64kMb5iAWu` | `hkrpg_cn` | 12 个连续分卷 |
+| `nap` | `x6znKlJ0xK` | `nap_cn` | 10 个连续分卷 |
+| `bh3` | `osvnlOc0S8` | `bh3_cn` | 1 个完整 archive |
+
+四款统一使用官方 endpoint `https://hyp-api.mihoyo.com/hyp/hyp-connect/api/getGamePackages`
+和 launcher id `jGHBHlcOq1`。纯 package organizer 只读取 `main.major.game_pkgs`；正式持久化
+入口已逐阶段扩展为 game packages/patches + voice packages/patches 的 complete record。
+pre-download、resource list 和 Sophon chunks 仍明确排除。Amarea/HoyoFiles 没有进入默认链路。
+
+archive basename 的 `.001`、`.002` 等后缀被解析为 canonical `package_type=segment` 和
+从 1 开始的 `part`；无分卷后缀的单个 archive 使用 `package_type=full`。如果 full 与
+segments 同时出现，两者都会保留。官方响应中的十进制字符串 size 会严格规范化为
+canonical integer，MD5 规范化为小写；artifact id 只由共享 schema helper 生成。
+
+真实只读采集 4/4 成功并通过 schema、provenance 和 artifact identity 检查。需要注意：
+`getGamePackages` 的 archive 版本可能落后于同游戏当前 Sophon branch tag；本 adapter 只记录
+package endpoint 实际返回的版本，不把它冒充 Sophon 当前版本，也不在本任务混入 chunk 数据。
+package URL 尚未 probe，留给后续 `pc/probe-adapters`。
+
+### 米哈游 PC patches
+
+同一官方 `getGamePackages` 响应中的 `main.patches[*].game_pkgs` 已整理为 canonical game
+patch artifacts：`main.patches[*].version` 是 `route_from`，`main.major.version` 是
+`route_to`；artifact 使用 `kind=patch`、`component=game`、`package_type=differential` 和
+`delivery_mode=archive`。
+
+真实只读响应当前包含：
+
+- `hk4e`: `5.4.0 -> 5.5.0`、`5.3.0 -> 5.5.0`；
+- `hkrpg`: `4.3.0 -> 4.4.0`；
+- `nap`: `3.0.0 -> 3.1.0`、`2.8.0 -> 3.1.0`；
+- `bh3`: 当前没有 game patch。
+
+每个 `game_pkgs` 文件独立成为 patch artifact；patch 不使用 `part`，即使未来同一路由出现
+多个文件，也由 `name + route_from + route_to` 保持稳定 identity。同一路由的重复 basename
+会被阻断。
+
+`VersionStore` 对同 identity 的记录执行整体替换而不是 artifact 合并，因此正常持久化入口
+使用单次 combined record，同时保留 packages 和 patches。纯 package organizer 的解析契约
+保持不变；没有为此修改 core store。voice 任务也必须继续扩展 combined record，不能写入
+voice-only record 覆盖已有 artifacts。
+
+### 米哈游 PC voice
+
+官方 `main.major.audio_pkgs` 已映射为 canonical optional voice packages；
+`main.patches[*].audio_pkgs` 已映射为带 language 和 route 的 differential voice patches。
+官方语言严格限定为响应实证的 `zh-cn`、`en-us`、`ja-jp`、`ko-kr`，未知值不会被静默猜测。
+
+当前真实只读响应：
+
+- `hk4e`: 4 个 major voice packages，2 条 route 各 4 个 voice patches；
+- `hkrpg`: 4 个 major voice packages，1 条 route 含 4 个 voice patches；
+- `nap`: 4 个 major voice packages，2 条 route 各 4 个 voice patches；
+- `bh3`: 当前无 major voice 或 voice patch。
+
+当前官方 voice URL 全部是单 archive，没有分卷。organizer 仍只在 basename 明确出现 `.001` 等
+连续后缀时才为 voice package 写 `segment + part`；voice patch 永不写 `part`。同语言、同 route
+多文件依靠 basename + language + routes 区分 identity。
+
+正常持久化入口现在一次写入 game packages、game patches、voice packages 和 voice patches；
+package-only 与 game-only combined organizer 继续保留各自纯解析契约。真实 4/4 完整记录已通过
+schema、provenance、artifact identity 和临时持久化检查，package/patch artifacts 未丢失。
+
+### 米哈游 PC Sophon chunks
+
+实现覆盖四款中国服（`hk4e`、`hkrpg`、`nap`、`bh3`）的 HoYoPlay/Sophon 两步官方同步：
+`getGameBranches` 严格选择对应 game id/biz 的唯一 `main`，再以 branch/package/password/tag
+请求 `getBuild`。输出为 `chunk-manifests/<tag>.json` 外部文档及 canonical v2
+`chunk_manifest` reference；现有 archive artifacts/provenance 会被保留。
+
+manifest 只保存规范化 metadata、recipe URL 和统计字段，不下载或展开 manifest/chunks，recipe
+password 不写入任何 collection、文档、record、日志或输出。若第二步或 record 持久化失败，旧
+record 不变；官方文档可能作为 orphan manifest 留存，需后续人工处理。
+
+四款真实只读验收均成功，未下载 manifest/chunk：
+
+- `hk4e 7.0.0`: build `K75N8sBHhKJk`，5 个 manifests；
+- `hkrpg 4.5.0`: build `rGIV4WEtxMWi`，5 个 manifests；
+- `nap 3.1.0`: build `K6kIJzryVWIq`，116 个 manifests；
+- `bh3 9.0.0`: build `FMryTs1shKAC`，2 个 manifests。
+
+绝区零 `3.1.0` 实际按 archive -> chunk -> archive refresh 顺序验收：24 个 archive artifacts
+全程保留，chunk reference 从 0 增至 1 后继续保留，artifact ids 和 archive provenance 不变。
+
+### PC registry integration 与平台验收
+
+内部 discovery registry 与 Android registry 分离，精确注册 8 款 Windows 游戏：米哈游
+`hk4e/hkrpg/nap/bh3` 按 packages -> chunks 串行执行，Kuro `wuwa` 和 Perfect World
+`tof/p5x/nte` 各执行一个官方 manifest/package stage；不同游戏之间有限并发。公开 API、
+batch probe、scheduler、CLI 和 index rebuild 仍留给 PHASE 8 调用方，没有提前进入 registry。
+
+每个 stage 返回后都会重新检查 schema、请求 identity 与 canonical 路径；米哈游同版本的后续
+chunk stage 必须保留已有 artifact IDs 和 references。单个预期采集失败会记录到对应 stage 并
+继续其他 stage/游戏，意外 `RuntimeError` 仍向调用方传播。Android 默认 scope、12 款注册关系和
+原结果契约保持不变。
+
+在全新系统临时目录完成 8 款官方 metadata 平台验收：8/8 discovery 成功，生成 11 份
+canonical records、118 个唯一 artifact IDs、4 份 Mihoyo chunk manifests、47 份 Kuro
+manifests（full 699 resources）和 3 份 Perfect World files 文档；NAP `3.1.0` 同一记录同时
+保留 24 个 archive artifacts 与 chunk reference。全部记录通过 schema、identity、provenance、
+manifest/reference 路径和 canonical 禁止字段检查，并重建 8 个 Windows indexes。
+
+每款抽取一个实际 artifact URL 做有限 Range/metadata probe：`hkrpg`、`nap`、`wuwa`、
+`nte/p5x/tof` 为 available/HTTP 206；`hk4e` 当前 archive 为 404，`bh3` 当前对象仍是未恢复的
+OSS Archive，按官方证据标 unavailable 且不伪造 HTTP code。probe 写回只改变精确 candidate
+的 `current`，其余 record 深比较保持不变。
+
+### PC 数据基线
+
+`pc/data-baseline` 已从旧仓库固定 commit
+`85e92d5b7f8868bb5c28901606c50132fe4705bf`（tree
+`7e64fddb974324b3aca39f1d50d31b20336bea81`）选择性迁移 PC 历史数据，并在迁移后执行一次
+8 款官方 bounded discovery（timeout 30 秒、workers 4）。迁移脚本只从 Git object 读取固定
+tree，不依赖 dirty worktree，也不下载资源正文。
+
+最终基线包含 173 个 canonical schema-v2 records、1,499 个唯一 artifacts、157 个独立
+schema-1 manifest 文档和 8 个可重建 PC indexes：`hk4e 56/697`、`hkrpg 18/244`、
+`nap 19/437`、`bh3 32/27`、`wuwa 45/91`、`tof 1/1`、`p5x 1/1`、`nte 1/1`（records/artifacts）。
+历史迁移阶段写入 168 records、1,449 artifacts、106 manifests；4 条 `official_launcher`、
+12 条 hkrpg `zh-tw`、1 条 `official_api` chunk-only 空记录和 648 个没有 Kuro local
+manifest 配对的 route artifacts 均在审计排除清单中。官方 current records 只保留 V5
+collector 产生的 `official_sync` provenance；历史 record 只使用真实
+`third_party_history` / `legacy_migration` provenance。
+
+相关文件：`scripts/migrate_pc_data_baseline.py`、同名 audit 文档/JSON、
+`backend/test_pc_data_baseline.py`。
+测试覆盖固定 snapshot inventory/排除原因、canonical validation/artifact identity、来源与
+manifest/reference 安全、8 个 index 无差异重建、Android data 与 `integration/pc` 无差异及
+Git-object migration rerun。
+
 ## 暂未迁移内容
 
 以下内容还没有进入 V5 的可信基线：
 
 - APK 公开 API 和后台 operation 接线（由后续 backend 阶段完成）；
-- PC packages、patches、voice、chunks、manifest 相关适配器；
-- PC probe adapters；
-- PC 数据基线；
 - backend API contract；
 - backend sync operations；
 - backend version admin；
@@ -420,47 +590,37 @@ snapshot/apk-validated-baseline
 
 其中 `snapshot/apk-validated-baseline`、`frontend` 晋级和 `core/schema` 已完成。
 
-APK 平台模块已经完成，当前下一步建议进入 PC，先做 `pc/mihoyo-packages`。
+APK 平台模块，以及米哈游、Kuro、Perfect World 的当前 PC 采集、URL probe 与内部 registry
+已完成验证。`pc/data-baseline` 已完成数据迁移、官方 current discovery、基线审计与
+`integration/pc` 平台验收；下一步按 normal merge 晋级 `integration/v5`，再进入 PHASE 8。
 
 分支路径：
 
 ```text
 integration/pc
-  -> pc/mihoyo-packages
+  -> pc/registry-integration
   -> validation
   -> squash merge -> integration/pc
+  -> platform validation
+  -> pc/data-baseline
+  -> validation
+  -> squash merge -> integration/pc
+  -> platform validation
+  -> normal merge -> integration/v5
 ```
 
-预计修改范围：
-
-- 米哈游 PC 官方完整包资源采集；
-- canonical v2 package artifacts；
-- 对应 parser/organizer 测试和官方来源验证。
-
-PC 开发不得修改 Android collector、organizer、probe 或 registry。
-
-这一阶段不要迁入：
-
-- `data/`
-- `url_adapters/`
-- `probe_adapters/`
-- API route；
-- frontend 文件；
-- APK 采集器；
-- APK 验活器；
-- PC 专项逻辑。
+数据基线任务没有修改 Android collector、organizer 或 probe，也没有修改 API route、frontend
+或已完成的 PC collector/organizer/probe 语义。
 
 ## 近期路线
 
 推荐顺序：
 
 ```text
-pc/mihoyo-packages
-  -> pc/mihoyo-patches
+integration/pc
+  -> normal merge -> integration/v5
+  -> backend/api-contract
 ```
-
-PC 开发应等共享 core 稳定后再开始。`pc/data-baseline` 不要现在创建，等 PC 格式和适配器
-稳定后再迁移历史数据。
 
 后端业务能力建议在数据和适配器基础稳定后推进：
 

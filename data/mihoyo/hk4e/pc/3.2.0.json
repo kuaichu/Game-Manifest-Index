@@ -1,0 +1,560 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "hk4e",
+  "domain_id": "hk4e-pc",
+  "platform": "windows",
+  "channel": "official",
+  "version": "3.2.0",
+  "version_code": null,
+  "file_time": "2022-10-24T02:35:40Z",
+  "artifacts": [
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "archive",
+      "name": "YuanShen_3.2.0.zip",
+      "size": 43486543872,
+      "checksum": {
+        "md5": "f171639eddec395bba7b3c92c4db7860"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.yuanshen.com/client_app/download/pc_zip/20221024103540_fp3L3cHoDpo9eNeT/YuanShen_3.2.0.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "unavailable",
+            "http_code": 404,
+            "checked_at": "2026-08-25T14:14:37Z",
+            "etag": null,
+            "crc64": null,
+            "last_modified": null
+          }
+        }
+      ],
+      "artifact_id": "a1_fe37b5213ecae43787b7d6537cbfe489"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "YuanShen_3.2.0.zip.001",
+      "checksum": {
+        "md5": "4e2053d30b7d69c1a7c87f6aac223213"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.yuanshen.com/client_app/download/pc_zip/20221024103540_fp3L3cHoDpo9eNeT/YuanShen_3.2.0.zip.001",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "unavailable",
+            "http_code": 404,
+            "checked_at": "2026-08-25T14:14:37Z",
+            "etag": null,
+            "crc64": null,
+            "last_modified": null
+          }
+        }
+      ],
+      "part": 1,
+      "artifact_id": "a1_cc7fc85c890efcc611295bf4a6743abb"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "YuanShen_3.2.0.zip.002",
+      "checksum": {
+        "md5": "93492b227feda1537bc133f4cae64fe0"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.yuanshen.com/client_app/download/pc_zip/20221024103540_fp3L3cHoDpo9eNeT/YuanShen_3.2.0.zip.002",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "unavailable",
+            "http_code": 404,
+            "checked_at": "2026-08-25T14:14:38Z",
+            "etag": null,
+            "crc64": null,
+            "last_modified": null
+          }
+        }
+      ],
+      "part": 2,
+      "artifact_id": "a1_186db69bcad02ae04c531398e84b04dc"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "YuanShen_3.2.0.zip.003",
+      "checksum": {
+        "md5": "e1122a02dcdc389d9743055af6d93adc"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.yuanshen.com/client_app/download/pc_zip/20221024103540_fp3L3cHoDpo9eNeT/YuanShen_3.2.0.zip.003",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "unavailable",
+            "http_code": 404,
+            "checked_at": "2026-08-25T14:14:37Z",
+            "etag": null,
+            "crc64": null,
+            "last_modified": null
+          }
+        }
+      ],
+      "part": 3,
+      "artifact_id": "a1_c6454107810368a5aa95fad461e91eee"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "YuanShen_3.2.0.zip.004",
+      "checksum": {
+        "md5": "1d35c4375d1819db992e6759938d427e"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.yuanshen.com/client_app/download/pc_zip/20221024103540_fp3L3cHoDpo9eNeT/YuanShen_3.2.0.zip.004",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "unavailable",
+            "http_code": 404,
+            "checked_at": "2026-08-25T14:14:37Z",
+            "etag": null,
+            "crc64": null,
+            "last_modified": null
+          }
+        }
+      ],
+      "part": 4,
+      "artifact_id": "a1_5a24d26596e4baafc057bab806ca0855"
+    },
+    {
+      "kind": "package",
+      "component": "voice",
+      "package_type": "optional",
+      "delivery_mode": "archive",
+      "name": "Audio_Chinese_3.2.0.zip",
+      "language": "zh-cn",
+      "size": 7559142440,
+      "checksum": {
+        "md5": "d55b4bdcef7fb27c2cad0c0f25051538"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.yuanshen.com/client_app/download/pc_zip/20221024103540_fp3L3cHoDpo9eNeT/Audio_Chinese_3.2.0.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "unavailable",
+            "http_code": 404,
+            "checked_at": "2026-08-25T14:14:37Z",
+            "etag": null,
+            "crc64": null,
+            "last_modified": null
+          }
+        }
+      ],
+      "artifact_id": "a1_028839094fe7542fc909dcff783950bc"
+    },
+    {
+      "kind": "package",
+      "component": "voice",
+      "package_type": "optional",
+      "delivery_mode": "archive",
+      "name": "Audio_English(US)_3.2.0.zip",
+      "language": "en-us",
+      "size": 8632884264,
+      "checksum": {
+        "md5": "62dab9e438070b3c7f2188d2074e3139"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.yuanshen.com/client_app/download/pc_zip/20221024103540_fp3L3cHoDpo9eNeT/Audio_English(US)_3.2.0.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "unavailable",
+            "http_code": 404,
+            "checked_at": "2026-08-25T14:14:37Z",
+            "etag": null,
+            "crc64": null,
+            "last_modified": null
+          }
+        }
+      ],
+      "artifact_id": "a1_2890ab7fc0dc8266c2b7acbd2130ef5d"
+    },
+    {
+      "kind": "package",
+      "component": "voice",
+      "package_type": "optional",
+      "delivery_mode": "archive",
+      "name": "Audio_Japanese_3.2.0.zip",
+      "language": "ja-jp",
+      "size": 9599251906,
+      "checksum": {
+        "md5": "038cdeb6506584f7f30a92bb66e36fda"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.yuanshen.com/client_app/download/pc_zip/20221024103540_fp3L3cHoDpo9eNeT/Audio_Japanese_3.2.0.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "unavailable",
+            "http_code": 404,
+            "checked_at": "2026-08-25T14:14:37Z",
+            "etag": null,
+            "crc64": null,
+            "last_modified": null
+          }
+        }
+      ],
+      "artifact_id": "a1_7c5e07f8244ff790fdabb16d1bde4eb9"
+    },
+    {
+      "kind": "package",
+      "component": "voice",
+      "package_type": "optional",
+      "delivery_mode": "archive",
+      "name": "Audio_Korean_3.2.0.zip",
+      "language": "ko-kr",
+      "size": 7419556003,
+      "checksum": {
+        "md5": "34ec7f390cefe961cc7d24f03de7a169"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.yuanshen.com/client_app/download/pc_zip/20221024103540_fp3L3cHoDpo9eNeT/Audio_Korean_3.2.0.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "unavailable",
+            "http_code": 404,
+            "checked_at": "2026-08-25T14:14:37Z",
+            "etag": null,
+            "crc64": null,
+            "last_modified": null
+          }
+        }
+      ],
+      "artifact_id": "a1_17f86cbda934e8b3083e99691c1563c7"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "game_3.1.0_3.2.0_hdiff_jXM0eDiqdLA8oTf3.zip",
+      "route_from": "3.1.0",
+      "route_to": "3.2.0",
+      "urls": [
+        {
+          "url": "https://autopatchcn.yuanshen.com/client_app/update/hk4e_cn/18/game_3.1.0_3.2.0_hdiff_jXM0eDiqdLA8oTf3.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "unavailable",
+            "http_code": 404,
+            "checked_at": "2026-08-25T14:14:37Z",
+            "etag": null,
+            "crc64": null,
+            "last_modified": null
+          }
+        }
+      ],
+      "artifact_id": "a1_fa003719851f493d25d44e4b2281ba65"
+    },
+    {
+      "kind": "patch",
+      "component": "voice",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "zh-cn_3.1.0_3.2.0_hdiff_5D4J7cwHRpSbVWsC.zip",
+      "language": "zh-cn",
+      "route_from": "3.1.0",
+      "route_to": "3.2.0",
+      "size": 562790324,
+      "urls": [
+        {
+          "url": "https://autopatchcn.yuanshen.com/client_app/update/hk4e_cn/18/zh-cn_3.1.0_3.2.0_hdiff_5D4J7cwHRpSbVWsC.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:14:37Z",
+            "etag": "5ADA0B415B41EA09244DB911D9D17AA6-219",
+            "crc64": "10554260595929581604",
+            "last_modified": "Mon, 24 Oct 2022 11:39:24 GMT",
+            "response_size": 562790324
+          }
+        }
+      ],
+      "artifact_id": "a1_2d45e906aae89fe95ee26ba958f92be6"
+    },
+    {
+      "kind": "patch",
+      "component": "voice",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "en-us_3.1.0_3.2.0_hdiff_GFskoYScLp96dgXn.zip",
+      "language": "en-us",
+      "route_from": "3.1.0",
+      "route_to": "3.2.0",
+      "size": 694097365,
+      "urls": [
+        {
+          "url": "https://autopatchcn.yuanshen.com/client_app/update/hk4e_cn/18/en-us_3.1.0_3.2.0_hdiff_GFskoYScLp96dgXn.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:14:37Z",
+            "etag": "EA3983C1F0B8B7AD044F19E59891023C-271",
+            "crc64": "3418595064755554717",
+            "last_modified": "Mon, 24 Oct 2022 11:57:07 GMT",
+            "response_size": 694097365
+          }
+        }
+      ],
+      "artifact_id": "a1_834e430c14d5fe72099c9bc08676ab1c"
+    },
+    {
+      "kind": "patch",
+      "component": "voice",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "ja-jp_3.1.0_3.2.0_hdiff_rR6sEOPDk70Wwfgq.zip",
+      "language": "ja-jp",
+      "route_from": "3.1.0",
+      "route_to": "3.2.0",
+      "size": 683825022,
+      "urls": [
+        {
+          "url": "https://autopatchcn.yuanshen.com/client_app/update/hk4e_cn/18/ja-jp_3.1.0_3.2.0_hdiff_rR6sEOPDk70Wwfgq.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:14:37Z",
+            "etag": "73D7F500DB0928BA60F2F3AAA9805DE5-267",
+            "crc64": "755221927182761204",
+            "last_modified": "Mon, 24 Oct 2022 12:14:04 GMT",
+            "response_size": 683825022
+          }
+        }
+      ],
+      "artifact_id": "a1_662a5f381ef88081527b880492909fed"
+    },
+    {
+      "kind": "patch",
+      "component": "voice",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "ko-kr_3.1.0_3.2.0_hdiff_irZevnPJlQc82bNw.zip",
+      "language": "ko-kr",
+      "route_from": "3.1.0",
+      "route_to": "3.2.0",
+      "size": 546578918,
+      "urls": [
+        {
+          "url": "https://autopatchcn.yuanshen.com/client_app/update/hk4e_cn/18/ko-kr_3.1.0_3.2.0_hdiff_irZevnPJlQc82bNw.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:14:37Z",
+            "etag": "33CF8218D46A619060F09CF6AA66188B-213",
+            "crc64": "16861320889960200530",
+            "last_modified": "Mon, 24 Oct 2022 12:27:43 GMT",
+            "response_size": 546578918
+          }
+        }
+      ],
+      "artifact_id": "a1_974781bf438fde37a57699c51034fbbb"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "game_3.0.0_3.2.0_hdiff_VTro0ZXq4dKa6phJ.zip",
+      "route_from": "3.0.0",
+      "route_to": "3.2.0",
+      "urls": [
+        {
+          "url": "https://autopatchcn.yuanshen.com/client_app/update/hk4e_cn/18/game_3.0.0_3.2.0_hdiff_VTro0ZXq4dKa6phJ.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "unavailable",
+            "http_code": 404,
+            "checked_at": "2026-08-25T14:14:37Z",
+            "etag": null,
+            "crc64": null,
+            "last_modified": null
+          }
+        }
+      ],
+      "artifact_id": "a1_ec1d3442a78285fd720cf55c40b2be5d"
+    },
+    {
+      "kind": "patch",
+      "component": "voice",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "zh-cn_3.0.0_3.2.0_hdiff_BOTxLFcUIoQVgtG0.zip",
+      "language": "zh-cn",
+      "route_from": "3.0.0",
+      "route_to": "3.2.0",
+      "size": 997555744,
+      "urls": [
+        {
+          "url": "https://autopatchcn.yuanshen.com/client_app/update/hk4e_cn/18/zh-cn_3.0.0_3.2.0_hdiff_BOTxLFcUIoQVgtG0.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:14:37Z",
+            "etag": "F6E23CC48BE2194BC6AE6A497F55EAA5-389",
+            "crc64": "14102842685678554820",
+            "last_modified": "Mon, 24 Oct 2022 13:13:49 GMT",
+            "response_size": 997555744
+          }
+        }
+      ],
+      "artifact_id": "a1_11e23d3ad226188c0d8e046e0c267211"
+    },
+    {
+      "kind": "patch",
+      "component": "voice",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "en-us_3.0.0_3.2.0_hdiff_txH1bUAnoR5MpI3L.zip",
+      "language": "en-us",
+      "route_from": "3.0.0",
+      "route_to": "3.2.0",
+      "size": 1235488082,
+      "urls": [
+        {
+          "url": "https://autopatchcn.yuanshen.com/client_app/update/hk4e_cn/18/en-us_3.0.0_3.2.0_hdiff_txH1bUAnoR5MpI3L.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:14:37Z",
+            "etag": "4DB9DE3F70F2D98A5303DFDBA3E2B69A-400",
+            "crc64": "3219989110502634912",
+            "last_modified": "Mon, 24 Oct 2022 13:31:26 GMT",
+            "response_size": 1235488082
+          }
+        }
+      ],
+      "artifact_id": "a1_5fa1d366beca41fa0531fe00a8801d83"
+    },
+    {
+      "kind": "patch",
+      "component": "voice",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "ja-jp_3.0.0_3.2.0_hdiff_XnH8s3zGxZYVg9LJ.zip",
+      "language": "ja-jp",
+      "route_from": "3.0.0",
+      "route_to": "3.2.0",
+      "size": 1190569625,
+      "urls": [
+        {
+          "url": "https://autopatchcn.yuanshen.com/client_app/update/hk4e_cn/18/ja-jp_3.0.0_3.2.0_hdiff_XnH8s3zGxZYVg9LJ.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:14:37Z",
+            "etag": "11B1510561615E58464665A23A96A5F4-400",
+            "crc64": "9507053277964907201",
+            "last_modified": "Mon, 24 Oct 2022 13:47:54 GMT",
+            "response_size": 1190569625
+          }
+        }
+      ],
+      "artifact_id": "a1_f818374d224b1539a42328e98b00941e"
+    },
+    {
+      "kind": "patch",
+      "component": "voice",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "ko-kr_3.0.0_3.2.0_hdiff_FCaKwoLkWQpsPjUh.zip",
+      "language": "ko-kr",
+      "route_from": "3.0.0",
+      "route_to": "3.2.0",
+      "size": 992833603,
+      "urls": [
+        {
+          "url": "https://autopatchcn.yuanshen.com/client_app/update/hk4e_cn/18/ko-kr_3.0.0_3.2.0_hdiff_FCaKwoLkWQpsPjUh.zip",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:14:37Z",
+            "etag": "0A52EBD0867C3A9469A995449D8A45BC-387",
+            "crc64": "9972162115169856276",
+            "last_modified": "Mon, 24 Oct 2022 14:01:41 GMT",
+            "response_size": 992833603
+          }
+        }
+      ],
+      "artifact_id": "a1_1ccf47129af19c0824e880786dcb5c85"
+    }
+  ],
+  "references": [],
+  "provenance": {
+    "source_kind": "third_party_history",
+    "source_name": "HoyoFiles/Amarea",
+    "source_url": "https://autopatch.amarea.cn/pkg_version/hk4e_versions.json",
+    "imported_at": "2026-08-26T09:09:01Z"
+  }
+}

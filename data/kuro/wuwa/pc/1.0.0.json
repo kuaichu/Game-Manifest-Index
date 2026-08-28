@@ -1,0 +1,102 @@
+{
+  "schema_version": 2,
+  "vendor": "kuro",
+  "game_id": "wuwa",
+  "domain_id": "wuwa-pc",
+  "platform": "windows",
+  "channel": "official",
+  "version": "1.0.0",
+  "version_code": null,
+  "file_time": null,
+  "artifacts": [
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "file_manifest",
+      "name": "WutheringWaves-1.0.0-full",
+      "size": 19834673288,
+      "decompressed_size": 19834673288,
+      "urls": [
+        {
+          "url": "https://pcdownload-aliyun.aki-game.com/pcstarter/prod/game/G152/1.0.0/ODPITqJuybUecE9ERVZsY8uV7uMHGIUw/resource.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-26T14:33:01Z",
+            "etag": "322971950b3ff178c0fabe55538651ef",
+            "crc64": null,
+            "last_modified": "Mon, 29 Apr 2024 07:59:50 GMT",
+            "response_size": 94772
+          }
+        },
+        {
+          "url": "https://pcdownload-huoshan.aki-game.com/pcstarter/prod/game/G152/1.0.0/ODPITqJuybUecE9ERVZsY8uV7uMHGIUw/resource.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 1,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-26T14:33:01Z",
+            "etag": "322971950b3ff178c0fabe55538651ef",
+            "crc64": null,
+            "last_modified": "Mon, 29 Apr 2024 07:59:50 GMT",
+            "response_size": 94772
+          }
+        },
+        {
+          "url": "https://pcdownload-qcloud.aki-game.com/pcstarter/prod/game/G152/1.0.0/ODPITqJuybUecE9ERVZsY8uV7uMHGIUw/resource.json",
+          "provider": "kuro",
+          "source_kind": "official",
+          "priority": 2,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-26T14:33:02Z",
+            "etag": "322971950b3ff178c0fabe55538651ef",
+            "crc64": null,
+            "last_modified": "Mon, 29 Apr 2024 07:59:50 GMT",
+            "response_size": 94772
+          }
+        }
+      ],
+      "manifest": {
+        "path": "manifests/1.0.0/full.json",
+        "base_urls": [
+          {
+            "url": "https://pcdownload-aliyun.aki-game.com/pcstarter/prod/game/G152/1.0.0/ODPITqJuybUecE9ERVZsY8uV7uMHGIUw/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 0
+          },
+          {
+            "url": "https://pcdownload-huoshan.aki-game.com/pcstarter/prod/game/G152/1.0.0/ODPITqJuybUecE9ERVZsY8uV7uMHGIUw/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 1
+          },
+          {
+            "url": "https://pcdownload-qcloud.aki-game.com/pcstarter/prod/game/G152/1.0.0/ODPITqJuybUecE9ERVZsY8uV7uMHGIUw/zip/",
+            "provider": "kuro",
+            "source_kind": "official",
+            "priority": 2
+          }
+        ]
+      },
+      "artifact_id": "a1_37c79dce1a825561cd0da5203614c179"
+    }
+  ],
+  "references": [],
+  "provenance": {
+    "source_kind": "legacy_migration",
+    "source_name": "Game-Manifest-Index",
+    "source_url": "https://pcdownload-aliyun.aki-game.com/pcstarter/prod/game/G152/1.0.0/ODPITqJuybUecE9ERVZsY8uV7uMHGIUw/resource.json",
+    "source_repo": "https://github.com/yuhkix/wuwa-downloader",
+    "source_commit": "4435fd290c07f7f766a6d2ab09ed3096d83b02e3"
+  },
+  "is_visible": true
+}

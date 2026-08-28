@@ -1,0 +1,60 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "domain_id": "bh3-pc",
+  "platform": "windows",
+  "channel": "official",
+  "version": "8.2.0",
+  "version_code": null,
+  "file_time": "2025-03-21T02:59:46Z",
+  "artifacts": [
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "archive",
+      "name": "BH3_v8.2.0_070c445c9ac0.7z",
+      "size": 21834314960,
+      "checksum": {
+        "md5": "9f16eb08a73c55f258b9844ed2095435"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.bh3.com/ptpublic/rel/20250321105946_GHQTTjbASRjRe2s6/PC/BH3_v8.2.0_070c445c9ac0.7z",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "unknown",
+            "http_code": 403,
+            "checked_at": "2026-08-25T14:15:05Z",
+            "etag": "D6B540818D50847645FEC8FC0AB38E2B-100",
+            "crc64": "9999499824116572186",
+            "last_modified": "Sat, 09 May 2026 10:31:55 GMT",
+            "response_size": 21834314960
+          }
+        }
+      ],
+      "artifact_id": "a1_fbddc1302d59f78cdf1755fa01567d12"
+    }
+  ],
+  "references": [
+    {
+      "kind": "chunk_manifest",
+      "path": "chunk-manifests/8.2.0.json",
+      "build_id": "NUMJ4gdTnDVe",
+      "source": {
+        "source_kind": "third_party_history",
+        "source_name": "Amarea",
+        "source_url": "https://autopatch.amarea.cn/pkg_version/chunk/bh3_8.2.0.json"
+      }
+    }
+  ],
+  "provenance": {
+    "source_kind": "third_party_history",
+    "source_name": "HoyoFiles/Amarea",
+    "source_url": "https://autopatch.amarea.cn/pkg_version/bh3_versions.json",
+    "imported_at": "2026-08-24T16:45:08Z"
+  }
+}

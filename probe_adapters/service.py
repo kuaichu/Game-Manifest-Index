@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -12,8 +13,17 @@ from backend.android_record_compat import (
     apply_android_v2_result,
     is_android_v2_record,
 )
-from probe_adapters.common import ProbeError, content_md5, content_size, file_time, probe_head, probe_url, validate_timeout
-from probe_adapters.registry import adapter_for
+from backend.schema_v2 import SchemaValidationError, validate_v2_record
+from probe_adapters.common import (
+    ProbeError,
+    content_md5,
+    content_size,
+    file_time,
+    probe_head,
+    probe_url,
+    validate_timeout,
+)
+from probe_adapters.registry import PC_ADAPTERS, adapter_for
 
 
 def probe(
@@ -27,6 +37,8 @@ def probe(
     context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     timeout = validate_timeout(timeout)
+    if platform == "pc":
+        platform = "windows"
     try:
         adapter = adapter_for(vendor, game_id, url, platform)
     except ProbeError:
@@ -136,7 +148,7 @@ def probe(
     checked_at = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
     result = {
         "adapter": adapter.NAME,
-        "platform": platform or "android",
+        "platform": platform or ("windows" if adapter in PC_ADAPTERS else "android"),
         "url": final_url,
         "filename": filename,
         "http_code": (
@@ -152,7 +164,7 @@ def probe(
         "observed_size": observed_size,
         "expected_size": expected_size,
         "etag": headers.get("etag", "").strip('"') or None,
-        "crc64": headers.get("x-oss-hash-crc64ecma"),
+        "crc64": headers.get("x-oss-hash-crc64ecma") or headers.get("x-cos-hash-crc64ecma"),
         "md5": content_md5(headers.get("content-md5")),
         "last_modified": headers.get("last-modified"),
         "file_time": file_time(final_url, headers, adapter.URL_TIME),
@@ -191,7 +203,9 @@ def _static_result(
     checked_at = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
     filename = unquote(Path(urlsplit(url).path).name)
     return {
-        "adapter": adapter.NAME, "platform": platform or "android", "url": url,
+        "adapter": adapter.NAME,
+        "platform": platform or ("windows" if adapter in PC_ADAPTERS else "android"),
+        "url": url,
         "filename": filename, "http_code": None, "available": static["available"],
         "checked_at": checked_at, "content_type": None, "size": None,
         "observed_size": None, "expected_size": expected_size, "etag": None,
@@ -202,9 +216,90 @@ def _static_result(
 
 
 def apply_result(record: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]:
+    if isinstance(record, dict) and record.get("platform") == "windows":
+        try:
+            return apply_pc_v2_result(record, result)
+        except (PCRecordCompatibilityError, SchemaValidationError) as error:
+            raise ProbeError(str(error)) from error
     if not is_android_v2_record(record):
         raise ProbeError("APK 探活写回仅支持 schema_version=2 的 Android 记录")
     try:
         return apply_android_v2_result(record, result)
     except AndroidRecordCompatibilityError as error:
         raise ProbeError(str(error)) from error
+
+
+class PCRecordCompatibilityError(ValueError):
+    """A Windows v2 record/result cannot be represented safely."""
+
+
+def apply_pc_v2_result(record: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(result, dict):
+        raise PCRecordCompatibilityError("PC 探活结果必须是对象")
+    if record.get("schema_version") != 2 or record.get("platform") != "windows":
+        raise PCRecordCompatibilityError("PC 探活写回仅支持 schema_version=2 的 Windows 记录")
+    target_url = result.get("target_url")
+    if not isinstance(target_url, str) or not target_url:
+        raise PCRecordCompatibilityError("PC 探活结果缺少 target_url")
+    validate_v2_record(record)
+    updated = deepcopy(record)
+    artifact_index = result.get("artifact_index")
+    url_index = result.get("url_index")
+    if (not isinstance(artifact_index, int) or isinstance(artifact_index, bool) or artifact_index < 0
+            or not isinstance(url_index, int) or isinstance(url_index, bool) or url_index < 0):
+        raise PCRecordCompatibilityError("PC 探活结果缺少有效 artifact_index/url_index")
+    try:
+        artifact = updated["artifacts"][artifact_index]
+        candidate = artifact["urls"][url_index]
+    except (IndexError, KeyError, TypeError):
+        raise PCRecordCompatibilityError("PC 探活结果索引超出记录范围") from None
+    if not isinstance(artifact, dict) or not isinstance(candidate, dict) or candidate.get("url") != target_url:
+        raise PCRecordCompatibilityError("schema v2 PC 探活结果与索引目标 URL 不一致")
+    available = result.get("available")
+    if available is not None and not isinstance(available, bool):
+        raise PCRecordCompatibilityError("PC 探活结果 available 必须是 boolean 或 null")
+    state = "available" if available is True else "unavailable" if available is False else "unknown"
+    current: dict[str, Any] = {"state": state}
+    http_code = result.get("http_code")
+    if http_code is not None and (not isinstance(http_code, int) or isinstance(http_code, bool) or http_code < 0):
+        raise PCRecordCompatibilityError("PC 探活结果 http_code 必须是非负整数或 null")
+    if http_code is not None:
+        current["http_code"] = http_code
+    checked_at = result.get("checked_at")
+    if checked_at is not None:
+        if not isinstance(checked_at, str) or not checked_at.endswith("Z"):
+            raise PCRecordCompatibilityError("PC 探活结果 checked_at 必须是 ISO-8601 UTC 字符串")
+        try:
+            datetime.fromisoformat(checked_at[:-1] + "+00:00")
+        except ValueError as error:
+            raise PCRecordCompatibilityError("PC 探活结果 checked_at 必须是有效 ISO-8601 UTC 字符串") from error
+        current["checked_at"] = checked_at
+    for key in ("etag", "crc64", "last_modified"):
+        value = result.get(key)
+        if value is not None and (not isinstance(value, str) or not value.strip()):
+            raise PCRecordCompatibilityError(f"PC 探活结果 {key} 必须是非空字符串或 null")
+        if value is not None:
+            current[key] = value
+    size = result.get("observed_size")
+    if size is None:
+        size = result.get("size")
+    if size is not None and (not isinstance(size, int) or isinstance(size, bool) or size < 0):
+        raise PCRecordCompatibilityError("PC 探活结果 response_size 必须是非负整数或 null")
+    if size is not None:
+        current["response_size"] = size
+    final_url = result.get("url")
+    if final_url is not None and (not isinstance(final_url, str) or not final_url):
+        raise PCRecordCompatibilityError("PC 探活结果 final_url 必须是字符串或 null")
+    if final_url and final_url != target_url:
+        try:
+            parsed_final = urlsplit(final_url)
+            if (parsed_final.scheme not in {"http", "https"} or parsed_final.username is not None
+                    or parsed_final.password is not None or parsed_final.query or parsed_final.fragment):
+                raise ValueError("unsafe URL")
+            adapter_for(record.get("vendor"), record.get("game_id"), final_url, "windows")
+        except (ProbeError, ValueError) as error:
+            raise PCRecordCompatibilityError("PC 探活结果 final_url 不属于原记录允许的官方适配器") from error
+        current["final_url"] = final_url
+    candidate["current"] = current
+    validate_v2_record(updated)
+    return updated

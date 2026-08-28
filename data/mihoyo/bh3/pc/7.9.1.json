@@ -1,0 +1,80 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "domain_id": "bh3-pc",
+  "platform": "windows",
+  "channel": "official",
+  "version": "7.9.1",
+  "version_code": null,
+  "file_time": "2024-10-31T06:21:46Z",
+  "artifacts": [
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "archive",
+      "name": "BH3_v7.9.0_37db88484689_m.7z",
+      "size": 20467806960,
+      "checksum": {
+        "md5": "7c8ce62b48ecdd54c61c5e140f04e008"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.bh3.com/ptpublic/rel/20241031142146_Q5Xm5aZOG1hPyJZW/PC/BH3_v7.9.0_37db88484689_m.7z",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:15:05Z",
+            "etag": "A5CC812510DAC23CD2815E748D3391CE-100",
+            "crc64": "13930963765504626303",
+            "last_modified": "Thu, 31 Oct 2024 06:34:34 GMT",
+            "response_size": 20467806960
+          }
+        }
+      ],
+      "artifact_id": "a1_12da98893c16cf09fca6b3c3ee0ac326"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "game_7.9.0_7.9.1_diff_eKgosBseIgDxwyKn.7z",
+      "route_from": "7.9.0",
+      "route_to": "7.9.1",
+      "size": 9989,
+      "checksum": {
+        "md5": "f56c5c15375b5c08ab4af93a2b0276a3"
+      },
+      "urls": [
+        {
+          "url": "https://autopatchcn.bh3.com/tmp/pc_client/product/update/bh3_cn/game_7.9.0_7.9.1_diff_eKgosBseIgDxwyKn.7z",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:15:05Z",
+            "etag": "F56C5C15375B5C08AB4AF93A2B0276A3",
+            "crc64": "4125202860244161391",
+            "last_modified": "Thu, 31 Oct 2024 09:09:08 GMT",
+            "response_size": 9989
+          }
+        }
+      ],
+      "artifact_id": "a1_f28d6eef25f5291cd368f90a84e1385c"
+    }
+  ],
+  "references": [],
+  "provenance": {
+    "source_kind": "third_party_history",
+    "source_name": "HoyoFiles/Amarea",
+    "source_url": "https://autopatch.amarea.cn/pkg_version/bh3_versions.json",
+    "imported_at": "2026-08-24T16:45:08Z"
+  }
+}

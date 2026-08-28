@@ -1,0 +1,45 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "domain_id": "bh3-pc",
+  "platform": "windows",
+  "channel": "official",
+  "version": "4.5.0",
+  "version_code": null,
+  "file_time": "2020-12-24T04:11:19Z",
+  "artifacts": [
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "archive",
+      "name": "BH3_v4.5.0_9f70c980de6.7z",
+      "size": 5179182836,
+      "urls": [
+        {
+          "url": "https://bundle.bh3.com/tmp/pc/BH3_v4.5.0_9f70c980de6.7z",
+          "provider": "mihoyo",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:59:09Z",
+            "etag": "7BA1CA1FEFBD16B8638395C9D8CDB6E1-400",
+            "crc64": "3147304689531863752",
+            "last_modified": "Thu, 24 Dec 2020 04:11:19 GMT",
+            "response_size": 5179182836
+          }
+        }
+      ],
+      "artifact_id": "a1_e0e7320291b62afbf0fd87aabf2b1d8d"
+    }
+  ],
+  "references": [],
+  "provenance": {
+    "source_kind": "legacy_migration",
+    "source_name": "Game-Manifest-Index",
+    "imported_at": "2026-08-25T14:14:16Z"
+  }
+}

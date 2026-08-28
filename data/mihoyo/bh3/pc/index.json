@@ -1,0 +1,164 @@
+{
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "platform": "windows",
+  "versions": [
+    {
+      "version": "8.4.0",
+      "updated_at": null,
+      "available": null,
+      "size": 23003662135
+    },
+    {
+      "version": "8.3.0",
+      "updated_at": "2025-05-23T03:56:48Z",
+      "available": null,
+      "size": 22491072482
+    },
+    {
+      "version": "8.2.0",
+      "updated_at": "2025-03-21T02:59:46Z",
+      "available": null,
+      "size": 21834314960
+    },
+    {
+      "version": "8.1.0",
+      "updated_at": "2025-01-20T02:47:17Z",
+      "available": true,
+      "size": 21846386552
+    },
+    {
+      "version": "8.0.0",
+      "updated_at": "2024-12-07T23:00:32Z",
+      "available": null,
+      "size": 21132460087
+    },
+    {
+      "version": "7.9.1",
+      "updated_at": "2024-10-31T06:21:46Z",
+      "available": true,
+      "size": 20467806960
+    },
+    {
+      "version": "7.9.0",
+      "updated_at": "2024-10-25T07:18:16Z",
+      "available": true,
+      "size": 20610529816
+    },
+    {
+      "version": "7.8.0",
+      "updated_at": "2024-09-12T08:24:05Z",
+      "available": true,
+      "size": 19815929692
+    },
+    {
+      "version": "7.7.0",
+      "updated_at": "2024-08-05T02:40:59Z",
+      "available": true,
+      "size": 19504958103
+    },
+    {
+      "version": "7.6.0",
+      "updated_at": "2024-06-24T02:42:31Z",
+      "available": true,
+      "size": 18973602618
+    },
+    {
+      "version": "7.5.0",
+      "updated_at": "2024-05-06T02:44:43Z",
+      "available": true,
+      "size": 17891545746
+    },
+    {
+      "version": "7.4.0",
+      "updated_at": "2024-03-25T06:39:24Z",
+      "available": true,
+      "size": 17342008186
+    },
+    {
+      "version": "7.3.0",
+      "updated_at": "2024-01-29T03:01:28Z",
+      "available": true,
+      "size": 16717500488
+    },
+    {
+      "version": "7.2.0",
+      "updated_at": "2023-12-18T06:41:11Z",
+      "available": true,
+      "size": 13521206825
+    },
+    {
+      "version": "7.1.0",
+      "updated_at": "2023-11-06T02:53:08Z",
+      "available": true,
+      "size": 14270824403
+    },
+    {
+      "version": "7.0.0",
+      "updated_at": "2023-09-25T02:32:19Z",
+      "available": true,
+      "size": 13615515905
+    },
+    {
+      "version": "6.9.0",
+      "updated_at": "2023-08-14T03:41:02Z",
+      "available": true,
+      "size": 12656036672
+    },
+    {
+      "version": "6.8.0",
+      "updated_at": "2023-07-02T09:20:43Z",
+      "available": true,
+      "size": 12218548509
+    },
+    {
+      "version": "6.7.0",
+      "updated_at": "2023-05-29T02:22:33Z",
+      "available": true,
+      "size": 11813659145
+    },
+    {
+      "version": "6.5.0",
+      "updated_at": "2023-03-05T03:31:40Z",
+      "available": true,
+      "size": 11225162137
+    },
+    {
+      "version": "6.4.0",
+      "updated_at": "2023-01-16T02:18:25Z",
+      "available": true,
+      "size": 10832841217
+    },
+    {
+      "version": "4.5.0",
+      "updated_at": "2020-12-24T04:11:19Z",
+      "available": true,
+      "size": 5179182836
+    },
+    {
+      "version": "4.4.0",
+      "updated_at": "2020-11-17T07:34:57Z",
+      "available": true,
+      "size": 4800027777
+    },
+    {
+      "version": "4.3.1",
+      "updated_at": "2020-09-29T14:14:17Z",
+      "available": true,
+      "size": 4634044068
+    },
+    {
+      "version": "4.3.0",
+      "updated_at": "2020-09-24T11:42:24Z",
+      "available": true,
+      "size": 4637027964
+    },
+    {
+      "version": "4.2.0",
+      "updated_at": "2020-08-19T11:46:44Z",
+      "available": true,
+      "size": 4553098731
+    }
+  ],
+  "domain_id": "bh3-pc"
+}

@@ -1,0 +1,29 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "domain_id": "bh3-pc",
+  "platform": "windows",
+  "channel": "official",
+  "version": "9.0.0",
+  "version_code": null,
+  "file_time": null,
+  "artifacts": [],
+  "references": [
+    {
+      "kind": "chunk_manifest",
+      "path": "chunk-manifests/9.0.0.json",
+      "build_id": "FMryTs1shKAC",
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "HoYoPlay/Sophon",
+        "source_url": "https://api-takumi.mihoyo.com/downloader/sophon_chunk/api/getBuild"
+      }
+    }
+  ],
+  "provenance": {
+    "source_kind": "official_sync",
+    "source_name": "HoYoPlay/Sophon",
+    "source_url": "https://api-takumi.mihoyo.com/downloader/sophon_chunk/api/getBuild"
+  }
+}

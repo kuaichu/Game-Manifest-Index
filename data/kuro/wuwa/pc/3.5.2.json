@@ -1,0 +1,32 @@
+{
+  "schema_version": 2,
+  "vendor": "kuro",
+  "game_id": "wuwa",
+  "domain_id": "wuwa-pc",
+  "platform": "windows",
+  "channel": "official",
+  "version": "3.5.2",
+  "version_code": null,
+  "file_time": null,
+  "artifacts": [
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "file_manifest",
+      "name": "WutheringWaves-3.5.2-full",
+      "size": 84391965997,
+      "decompressed_size": 84391965997,
+      "urls": [],
+      "manifest": {
+        "path": "manifests/3.5.2/full.json"
+      },
+      "artifact_id": "a1_dc32d179fac8cf4ffca2561067172253"
+    }
+  ],
+  "references": [],
+  "provenance": {
+    "source_kind": "legacy_migration",
+    "source_name": "Game-Manifest-Index"
+  }
+}
