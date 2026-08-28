@@ -1,0 +1,28 @@
+{
+  "name": "game-manifest-index-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview --host",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "fzstd": "^0.1.1",
+    "spark-md5": "^3.0.2",
+    "vue": "^3.5.17",
+    "vue-router": "^4.5.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.13",
+    "@types/spark-md5": "^3.0.5",
+    "@vitejs/plugin-vue": "^6.0.0",
+    "jsdom": "^26.1.0",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.4",
+    "vitest": "^3.2.4",
+    "vue-tsc": "^3.0.1"
+  }
+}

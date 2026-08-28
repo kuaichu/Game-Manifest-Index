@@ -1,0 +1,467 @@
+import { createApp, nextTick } from "vue";
+import { createMemoryHistory, createRouter } from "vue-router";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { api } from "./api";
+import ArchiveView from "./views/ArchiveView.vue";
+
+const emptyPage = { items: [], next_cursor: null };
+
+async function flushUpdates(): Promise<void> {
+  await Promise.resolve();
+  await nextTick();
+  await new Promise((resolve) => window.setTimeout(resolve, 0));
+}
+
+describe("archive cross-game navigation", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    document.body.innerHTML = "";
+  });
+
+  it("loads the bounded NTE version on demand and keeps unverified/helper actions hidden", async () => {
+    const game = { id: "nte", name: "异环", sub_name: "Neverness to Everness", icon_source: "", sort_order: 0 };
+    const domain = {
+      id: "nte-pc", game_id: "nte", kind: "mixed", platform: "windows",
+      capabilities: ["files", "patches", "manifest"], adapter: "nte",
+      version_count: 1, latest_version: "1.0.1", source_current_version: null, catalog_version_count: 78, sort_order: 0,
+      capability_contract: {
+        artifact_fields: { path: "supported", size: "supported", checksum: "supported", urls: "supported", provider: "supported", availability: "supported", patch_route: "unsupported" },
+        version_fields: { source_released_at: "unsupported", source_updated_at: "supported", archived_at: "unsupported", observed_at: "supported" },
+        features: { artifact_list: "supported", version_selector: "supported", history: "unsupported", compare: "unsupported" },
+        actions: { open: "conditional", copy: "conditional", download: "conditional" },
+        availability_source_kinds: ["live_probe", "metadata_inference"], url_providers: ["yhcdn1.wmupd.com"], live_probe: false,
+      },
+    };
+    const version = {
+      version: "1.0.1", current_revision_id: 1, revision_count: 1,
+      observed_at: "2026-07-11T03:22:58Z", source_released_at: null,
+      source_updated_at: "2026-04-17T02:00:39Z", archived_at: null, imported_at: "2026-07-19T00:00:00Z",
+      packed_size: 117, unpacked_size: 0, artifact_count: 3,
+      artifact_kinds: { file: { count: 2, size: 30, availability_states: { unknown: 2 } }, patch: { count: 1, size: 7, availability_states: { unknown: 1 } }, manifest: { count: 1, size: 64, availability_states: { available: 1 } } },
+      availability_states: { available: 1, unavailable: 2 }, attributes: { release_type: "patch" }, provenance: { source_kind: "legacy_nte_root_catalog_lists" },
+    };
+    const file = {
+      id: 2, kind: "file", name: "Client/path/game.bin", part: 2, size: 10,
+      checksum_type: "md5", checksum_value: "1".repeat(32), attributes: { relative_path: "Client/path/game.bin" },
+      urls: [{
+        id: 2, url: "https://yhcdn1.wmupd.com/clientRes/publish_PC/Res/1/object", priority: 0,
+        source_kind: "official", provider: "yhcdn1.wmupd.com", evidence_status: "unverified",
+        current: { state: "unknown", reason: "not_probed", confidence: "medium", retained: false, checked_at: "2026-07-11T03:22:58Z", source_kind: "metadata_inference", source_confidence: "medium", observed_at: "2026-07-11T03:22:58Z", expires_at: null, evidence_status: "unverified" },
+      }],
+    };
+    vi.spyOn(api, "games").mockResolvedValue([game] as never);
+    vi.spyOn(api, "domains").mockResolvedValue([domain] as never);
+    const versions = vi.spyOn(api, "versions").mockResolvedValue([version] as never);
+    const artifacts = vi.spyOn(api, "artifacts").mockResolvedValue({ items: [file], next_cursor: null } as never);
+
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: "/games/:gameId/:domainId?/:version?/:mode?", name: "archive", component: ArchiveView }],
+    });
+    await router.push("/games/nte/nte-pc/1.0.1/files");
+    await router.isReady();
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const app = createApp(ArchiveView);
+    app.use(router);
+    app.mount(root);
+    await flushUpdates();
+    await flushUpdates();
+
+    expect(versions).toHaveBeenCalledWith("nte-pc", expect.any(AbortSignal));
+    expect(artifacts.mock.calls.some(([domainId, selected]) => domainId === "nte-pc" && selected === "1.0.1")).toBe(true);
+    expect(root.textContent).toContain("文件清单");
+    expect(root.textContent).toContain("更新补丁");
+    expect(root.textContent).toContain("清单文件");
+    expect(root.textContent).toContain("10 B");
+    expect(root.textContent).toContain("1".repeat(32));
+    expect(root.querySelector<HTMLInputElement>(".search-box input")?.placeholder).toBe("文件名 / MD5 / URL");
+    expect(root.textContent).not.toContain("未验证");
+    expect(root.textContent).not.toContain("含失效");
+    expect(root.textContent).not.toContain("CDN 候选");
+    expect(root.textContent).not.toContain("yhcdn1.wmupd.com");
+    expect(root.textContent).not.toContain("https://yhcdn1.wmupd.com");
+    expect(root.textContent).not.toContain("个 URL");
+    const nteFileRow = root.querySelector(".fragment-file-row") as HTMLButtonElement;
+    nteFileRow.click();
+    await nextTick();
+    expect(root.textContent).toContain("Client/path/game.bin");
+    expect(root.textContent).toContain("可用 / Client/path/game.bin");
+    expect(root.textContent).toContain("复制链接");
+    expect(root.textContent).toContain("打开");
+    expect(root.querySelector<HTMLAnchorElement>(".fragment-file-actions a")?.href).toBe(file.urls[0].url);
+    expect(root.querySelector(".fragment-file-actions .availability")).toBeNull();
+    expect(root.textContent).not.toContain("版本对比");
+    expect(root.textContent).not.toContain("aria2");
+    expect(root.textContent).not.toContain("helper");
+    expect(root.textContent).not.toContain("打开已验证 URL");
+    app.unmount();
+  });
+
+  it("keeps HoYo chunk manifests downloadable when live-probe evidence is absent", async () => {
+    const game = { id: "bh3", name: "崩坏3", sub_name: "Honkai Impact 3rd", icon_source: "", sort_order: 0 };
+    const domain = {
+      id: "bh3-pc", game_id: "bh3", kind: "mixed", platform: "windows",
+      capabilities: ["packages", "chunks", "archive"], adapter: "hoyo",
+      version_count: 55, latest_version: "8.9.0", source_current_version: "8.9.0", catalog_version_count: 55, sort_order: 0,
+      capability_contract: {
+        artifact_fields: { size: "supported", checksum: "supported", urls: "supported", provider: "supported", availability: "supported" },
+        features: { chunks: "supported", chunk_pagination: "supported", history: "supported" },
+        actions: { open: "conditional", copy: "conditional", download: "conditional" },
+        availability_source_kinds: ["metadata_inference"], live_probe: false,
+      },
+    };
+    const version = {
+      version: "8.9.0", current_revision_id: 1, revision_count: 1,
+      observed_at: "2026-07-11T03:30:47Z", source_updated_at: "2026-07-11T03:30:47Z", imported_at: "2026-07-31T00:00:00Z",
+      packed_size: 100, unpacked_size: 120, artifact_count: 1,
+      artifact_kinds: { chunk: { count: 1, size: 100, availability_states: { unknown: 1 } } },
+      availability_states: { unknown: 1 }, attributes: { build_id: "build-1", chunk_file_count: 10, chunk_count: 20 }, provenance: {},
+    };
+    const chunk = {
+      id: 1, kind: "chunk", name: "游戏资源-外网（新）", part: 1, size: 100,
+      checksum_type: "md5", checksum_value: "1".repeat(32),
+      attributes: { manifest_id: "manifest-1", matching_field: "game", file_count: 10, chunk_count: 20 },
+      urls: [{
+        id: 1, url: "https://autopatchcn.bh3.com/chunk/manifest-1", priority: 0,
+        source_kind: "official", provider: "autopatchcn.bh3.com", evidence_status: "no_evidence", current: null,
+      }],
+    };
+    vi.spyOn(api, "games").mockResolvedValue([game] as never);
+    vi.spyOn(api, "domains").mockResolvedValue([domain] as never);
+    vi.spyOn(api, "versions").mockResolvedValue([version] as never);
+    vi.spyOn(api, "artifacts").mockResolvedValue({ items: [chunk], next_cursor: null } as never);
+
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: "/games/:gameId/:domainId?/:version?/:mode?", name: "archive", component: ArchiveView }],
+    });
+    await router.push("/games/bh3/bh3-pc/8.9.0/chunks");
+    await router.isReady();
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const app = createApp(ArchiveView);
+    app.use(router);
+    app.mount(root);
+    await flushUpdates();
+    await flushUpdates();
+
+    expect(root.textContent).toContain("游戏资源-外网（新）");
+    expect(root.textContent).toContain("无证据");
+    expect(root.textContent).toContain("下载 Manifest");
+    expect(root.textContent).toContain("复制链接");
+    expect(root.querySelector<HTMLAnchorElement>(".chunk-card a.icon-button")?.href).toBe(chunk.urls[0].url);
+    app.unmount();
+  });
+
+  it("renders NTE full-history selection and evidence-only partial/404 candidates", async () => {
+    const game = { id: "nte", name: "异环", sub_name: "Neverness to Everness", icon_source: "", sort_order: 0 };
+    const domain = {
+      id: "nte-pc", game_id: "nte", kind: "mixed", platform: "windows",
+      capabilities: ["files", "patches", "manifest", "archive", "compare", "legacy"], adapter: "nte",
+      version_count: 43, latest_version: "1.2.12", source_current_version: null, catalog_version_count: 78, sort_order: 0,
+      capability_contract: {
+        features: { version_selector: "supported", history: "supported", compare: "supported", archive_classification: "supported", historical_404: "supported" },
+        actions: { open: "conditional", copy: "conditional", download: "conditional" },
+        availability_source_kinds: ["live_probe", "metadata_inference"], url_providers: ["yhcdn1.wmupd.com"], live_probe: false,
+      },
+    };
+    const versions = Array.from({ length: 43 }, (_, index) => ({
+      version: index === 42 ? "1.2.12" : `1.1.${index}`,
+      current_revision_id: index + 1, revision_count: 1, observed_at: "2026-07-11T03:22:58Z",
+      packed_size: 1, unpacked_size: 0, artifact_count: 1,
+      artifact_kinds: { file: { count: 1, size: 1 } }, availability_states: { unknown: 1 },
+      attributes: { archive_classification: "complete_archived" }, provenance: { source_current_version: null },
+    }));
+    const leads = [
+      {
+        id: 1, external_id: "nte-catalog:1.0.0", domain_id: "nte-pc", platform: "Windows", version: "1.0.0",
+        inferred_context: "partial_archived", filename: "NTE 1.0.0 ResList.bin.zip", generated_at: "2026-07-11T03:22:58Z",
+        source_note: "catalog evidence", notes: "patches:list_missing", capture_event_id: 1,
+        urls: [{ id: 1, url: "https://yhcdn1.wmupd.com/partial", source_kind: "official_candidate", current_facts: { classification: "partial_archived", status_code: 200, reason: "not_probed", action_allowed: false }, archive_facts: { classification_reason: "patches:list_missing", action_allowed: false } }],
+      },
+      {
+        id: 2, external_id: "nte-catalog:1.0.3", domain_id: "nte-pc", platform: "Windows", version: "1.0.3",
+        inferred_context: "historical_404", filename: "NTE 1.0.3 ResList.bin.zip", generated_at: "2026-07-11T03:22:58Z",
+        source_note: "catalog evidence", notes: "catalog_status_404", capture_event_id: 1,
+        urls: [{ id: 2, url: "https://yhcdn1.wmupd.com/dead", source_kind: "official_candidate", current_facts: { classification: "historical_404", status_code: 404, reason: "http_404", action_allowed: false }, archive_facts: { classification_reason: "catalog_status_404", action_allowed: false } }],
+      },
+    ];
+    const missingActionLead = structuredClone(leads[1]);
+    missingActionLead.id = 3;
+    missingActionLead.external_id = "nte-catalog:missing-action";
+    Reflect.deleteProperty(missingActionLead.urls[0].current_facts, "action_allowed");
+    const nullActionLead = structuredClone(leads[1]);
+    nullActionLead.id = 4;
+    nullActionLead.external_id = "nte-catalog:null-action";
+    (nullActionLead.urls[0].current_facts as Record<string, unknown>).action_allowed = null;
+    const malformedActionLead = structuredClone(leads[1]);
+    malformedActionLead.id = 5;
+    malformedActionLead.external_id = "nte-catalog:malformed-action";
+    (malformedActionLead.urls[0].current_facts as Record<string, unknown>).action_allowed = "true";
+    leads.push(missingActionLead, nullActionLead, malformedActionLead);
+    vi.spyOn(api, "games").mockResolvedValue([game] as never);
+    vi.spyOn(api, "domains").mockResolvedValue([domain] as never);
+    vi.spyOn(api, "versions").mockResolvedValue(versions as never);
+    vi.spyOn(api, "leads").mockResolvedValue(leads as never);
+
+    const router = createRouter({ history: createMemoryHistory(), routes: [{ path: "/games/:gameId/:domainId?/:version?/:mode?", name: "archive", component: ArchiveView }] });
+    await router.push("/games/nte/nte-pc/1.2.12/legacy");
+    await router.isReady();
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const app = createApp(ArchiveView);
+    app.use(router);
+    app.mount(root);
+    await flushUpdates();
+    await flushUpdates();
+
+    (root.querySelector(".select-button") as HTMLButtonElement).click();
+    await nextTick();
+    expect(root.textContent).toContain("42 可用");
+    expect(root.textContent).toContain("1 可用");
+    expect(root.textContent).toContain("版本对比");
+    expect(root.textContent).toContain("部分归档");
+    expect(root.textContent).toContain("历史 404");
+    expect(root.textContent).toContain("http_404");
+    expect(root.textContent).not.toContain("复制官方入口");
+    expect(root.querySelectorAll(".legacy-candidate-card")).toHaveLength(5);
+    expect(root.querySelectorAll(".legacy-candidate-card .file-actions")).toHaveLength(0);
+    expect(root.textContent).not.toContain("aria2");
+    app.unmount();
+  });
+
+  it("does not request the destination domain with the previous game's version", async () => {
+    const games = [
+      { id: "nte", name: "NTE", sub_name: "异环", icon_source: "", sort_order: 0 },
+      { id: "endfield", name: "Arknights: Endfield", sub_name: "明日方舟：终末地", icon_source: "", sort_order: 1 },
+    ];
+    const nteDomain = {
+      id: "nte-pc", game_id: "nte", kind: "files", platform: "Windows", capabilities: ["files"],
+      capability_contract: {}, adapter: "generic", version_count: 1, latest_version: "1.2.15", sort_order: 0,
+    };
+    const endfieldDomain = {
+      id: "endfield-pc", game_id: "endfield", kind: "packages", platform: "Windows", capabilities: ["packages"],
+      capability_contract: {}, adapter: "endfield", version_count: 1, latest_version: "1.3.3", sort_order: 0,
+    };
+    const nteVersions = [{ version: "1.2.15", attributes: {}, artifact_kinds: {}, artifact_count: 0 }];
+    const endfieldVersions = [{ version: "1.3.3", attributes: {}, artifact_kinds: {}, artifact_count: 0 }];
+    let resolveEndfieldVersions!: (value: typeof endfieldVersions) => void;
+    const pendingEndfieldVersions = new Promise<typeof endfieldVersions>((resolve) => { resolveEndfieldVersions = resolve; });
+
+    vi.spyOn(api, "games").mockResolvedValue(games as never);
+    vi.spyOn(api, "domains").mockImplementation(async (gameId) => (
+      gameId === "endfield" ? [endfieldDomain] : [nteDomain]
+    ) as never);
+    vi.spyOn(api, "versions").mockImplementation((domainId) => (
+      domainId === "endfield-pc" ? pendingEndfieldVersions : Promise.resolve(nteVersions)
+    ) as never);
+    const artifacts = vi.spyOn(api, "artifacts").mockResolvedValue(emptyPage);
+
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: "/games/:gameId/:domainId?/:version?/:mode?", name: "archive", component: ArchiveView }],
+    });
+    await router.push("/games/nte/nte-pc/1.2.15/files");
+    await router.isReady();
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const app = createApp(ArchiveView);
+    app.use(router);
+    app.mount(root);
+    await flushUpdates();
+
+    await router.push("/games/endfield");
+    await flushUpdates();
+
+    expect(artifacts.mock.calls.some(([domainId, version]) => (
+      domainId === "endfield-pc" && version === "1.2.15"
+    ))).toBe(false);
+
+    resolveEndfieldVersions(endfieldVersions);
+    await flushUpdates();
+    await flushUpdates();
+    expect(router.currentRoute.value.params).toMatchObject({
+      gameId: "endfield", domainId: "endfield-pc", version: "1.3.3", mode: "packages",
+    });
+    app.unmount();
+  });
+
+  it("renders WuWa fragment URLs as standard grouped actions without URL status rows", async () => {
+    const game = { id: "wuwa", name: "鸣潮", sub_name: "Wuthering Waves", icon_source: "", sort_order: 0 };
+    const domain = {
+      id: "wuwa-pc", game_id: "wuwa", kind: "mixed", platform: "windows",
+      capabilities: ["files", "patches", "archive", "compare"], adapter: "wuwa",
+      version_count: 1, latest_version: "3.3.0", sort_order: 0,
+      capability_contract: {
+        artifact_fields: { urls: "supported", availability: "supported", provider: "supported", size: "supported", checksum: "supported" },
+        features: { split_versions: "supported", package_file_list: "supported", multi_cdn: "supported", provenance: "supported" },
+        actions: { open: "conditional", copy: "conditional", download: "conditional" },
+        url_providers: ["cdn-a.example", "cdn-b.example", "cdn-c.example"],
+      },
+    };
+    const version = {
+      version: "3.3.0", attributes: { region: "cn", channel: "live", cdn_count: 3, patch_route_count: 1 },
+      provenance: { source_kind: "tomyjan-import", publication_state: "promoted", source_commit: "abc123", source_manifest_digest: "digest123" },
+      artifact_kinds: { file: { count: 1, size: 10, availability_states: { available: 1 } } },
+      artifact_count: 1, availability_states: { available: 1 }, packed_size: 10, unpacked_size: 10,
+      current_revision_id: 1, revision_count: 1, observed_at: "2026-07-11T03:30:45Z",
+    };
+    vi.spyOn(api, "games").mockResolvedValue([game] as never);
+    vi.spyOn(api, "domains").mockResolvedValue([domain] as never);
+    vi.spyOn(api, "versions").mockResolvedValue([version] as never);
+    vi.spyOn(api, "artifactTree").mockResolvedValue({
+      prefix: "", folders: [], next_cursor: null,
+      items: [{
+        id: 1, kind: "file", name: "Client/a.bin", part: 1, size: 10,
+        checksum_type: "md5", checksum_value: "1".repeat(32), attributes: {},
+        urls: [
+          { id: 1, url: "https://cdn-a.example/a.bin", priority: 0, source_kind: "official", provider: "cdn-a.example", evidence_status: "verified", current: { state: "available", reason: "http_2xx", confidence: "high", retained: false, checked_at: "2026-07-06T00:00:00Z", source_kind: "live_probe", source_confidence: "high", observed_at: "2026-07-06T00:00:00Z", expires_at: null, evidence_status: "verified" } },
+          { id: 2, url: "https://cdn-b.example/a.bin", priority: 1, source_kind: "official", provider: "cdn-b.example", evidence_status: "no_evidence", current: null },
+          { id: 3, url: "https://cdn-c.example/a.bin", priority: 2, source_kind: "official", provider: "cdn-c.example", evidence_status: "verified", current: { state: "unavailable", reason: "http_404", confidence: "high", retained: false, checked_at: "2026-07-06T00:00:00Z", source_kind: "live_probe", source_confidence: "high", observed_at: "2026-07-06T00:00:00Z", expires_at: null, evidence_status: "verified" } },
+        ],
+      }],
+    } as never);
+
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: "/games/:gameId/:domainId?/:version?/:mode?", name: "archive", component: ArchiveView }],
+    });
+    await router.push("/games/wuwa/wuwa-pc/3.3.0/files");
+    await router.isReady();
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const app = createApp(ArchiveView);
+    app.use(router);
+    app.mount(root);
+    await flushUpdates();
+    await flushUpdates();
+
+    const fileRow = root.querySelector(".file-row") as HTMLButtonElement;
+    fileRow.click();
+    await nextTick();
+    expect(root.textContent).toContain("a.bin");
+    expect(root.textContent).toContain("1".repeat(32));
+    expect(root.querySelector(".availability-toolbar")).toBeNull();
+    expect(root.querySelector(".browser-availability")).toBeNull();
+    expect(root.querySelector(".browser-url-list")).toBeNull();
+    expect(root.textContent).toContain("可用 / Client/a.bin");
+    expect(root.textContent).toContain("复制官方入口");
+    expect(root.textContent).toContain("官方入口");
+    expect(root.textContent).toContain("CDN2");
+    expect(root.textContent).toContain("CDN3");
+    expect(Array.from(root.querySelectorAll<HTMLAnchorElement>(".fragment-file-actions a")).map((link) => link.href)).toEqual([
+      "https://cdn-a.example/a.bin",
+      "https://cdn-b.example/a.bin",
+      "https://cdn-c.example/a.bin",
+    ]);
+    expect(root.textContent).not.toContain("cdn-a.example");
+    expect(root.textContent).not.toContain("https://cdn-a.example/a.bin");
+    expect(root.textContent).not.toContain("不可操作");
+    expect(root.querySelector(".fragment-file-actions .availability")).toBeNull();
+    app.unmount();
+  });
+
+  it("compares two selected versions from a 42-version WuWa catalog on demand", async () => {
+    const game = { id: "wuwa", name: "鸣潮", sub_name: "Wuthering Waves", icon_source: "", sort_order: 0 };
+    const domain = {
+      id: "wuwa-pc", game_id: "wuwa", kind: "mixed", platform: "windows",
+      capabilities: ["files", "patches", "archive", "compare"], adapter: "wuwa",
+      version_count: 42, latest_version: "3.5.0", sort_order: 0,
+      capability_contract: { artifact_fields: { patch_route: "supported" }, features: { split_versions: "supported" } },
+    };
+    const versions = Array.from({ length: 42 }, (_, index) => ({
+      version: index === 0 ? "3.5.0" : index === 1 ? "3.4.2" : `2.${42 - index}.0`,
+      current_revision_id: index + 1, revision_count: 1, observed_at: "2026-07-11T03:30:45Z",
+      packed_size: 1, unpacked_size: 1, artifact_count: 1,
+      artifact_kinds: { file: { count: 1, size: 1 } }, availability_states: {}, attributes: {},
+    }));
+    vi.spyOn(api, "games").mockResolvedValue([game] as never);
+    vi.spyOn(api, "domains").mockResolvedValue([domain] as never);
+    vi.spyOn(api, "versions").mockResolvedValue(versions as never);
+    const compare = vi.spyOn(api, "compare").mockResolvedValue({
+      from_version: "3.4.2", to_version: "3.5.0",
+      summary: { added: 0, removed: 0, changed: 1, size_delta: 10 },
+      items: [{
+        change: "changed", identity: { kind: "file", name: "Client/a.bin" },
+        before: { name: "Client/a.bin", kind: "file", part: 1, size: 10, checksum_type: "md5", checksum_value: "1".repeat(32), attributes: {} },
+        after: { name: "Client/a.bin", kind: "file", part: 1, size: 20, checksum_type: "md5", checksum_value: "2".repeat(32), attributes: {} },
+      }],
+      next_cursor: null,
+    } as never);
+
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: "/games/:gameId/:domainId?/:version?/:mode?", name: "archive", component: ArchiveView }],
+    });
+    await router.push("/games/wuwa/wuwa-pc/3.5.0/compare");
+    await router.isReady();
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const app = createApp(ArchiveView);
+    app.use(router);
+    app.mount(root);
+    await flushUpdates();
+    await flushUpdates();
+    expect(compare).toHaveBeenCalledWith("wuwa-pc", expect.objectContaining({
+      fromVersion: "3.4.2", toVersion: "3.5.0",
+    }), expect.any(AbortSignal));
+    expect(root.textContent).toContain("3.4.2 → 3.5.0");
+    expect(root.textContent).toContain("修改1 个");
+    expect(root.textContent).not.toContain("复制");
+    app.unmount();
+  });
+
+  it("ignores a late versions response from a domain that is no longer selected", async () => {
+    const game = { id: "demo", name: "Demo", sub_name: "演示", icon_source: "", sort_order: 0 };
+    const domainA = {
+      id: "demo-a", game_id: "demo", kind: "files", platform: "Windows", capabilities: ["files"],
+      capability_contract: {}, adapter: "generic", version_count: 1, latest_version: "a1", sort_order: 0,
+    };
+    const domainB = {
+      id: "demo-b", game_id: "demo", kind: "packages", platform: "Windows", capabilities: ["packages"],
+      capability_contract: {}, adapter: "generic", version_count: 1, latest_version: "b1", sort_order: 1,
+    };
+    const versionsA = [{ version: "a1", attributes: {}, artifact_kinds: {}, artifact_count: 0 }];
+    const versionsB = [{ version: "b1", attributes: {}, artifact_kinds: {}, artifact_count: 0 }];
+    let resolveVersionsB!: (value: typeof versionsB) => void;
+    const pendingVersionsB = new Promise<typeof versionsB>((resolve) => { resolveVersionsB = resolve; });
+
+    vi.spyOn(api, "games").mockResolvedValue([game] as never);
+    vi.spyOn(api, "domains").mockResolvedValue([domainA, domainB] as never);
+    vi.spyOn(api, "versions").mockImplementation((domainId) => (
+      domainId === "demo-b" ? pendingVersionsB : Promise.resolve(versionsA)
+    ) as never);
+    const artifacts = vi.spyOn(api, "artifacts").mockResolvedValue(emptyPage);
+
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: "/games/:gameId/:domainId?/:version?/:mode?", name: "archive", component: ArchiveView }],
+    });
+    await router.push("/games/demo/demo-a/a1/files");
+    await router.isReady();
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const app = createApp(ArchiveView);
+    app.use(router);
+    app.mount(root);
+    await flushUpdates();
+
+    await router.push("/games/demo/demo-b");
+    await flushUpdates();
+    await router.push("/games/demo/demo-a");
+    await flushUpdates();
+
+    resolveVersionsB(versionsB);
+    await flushUpdates();
+    await flushUpdates();
+
+    expect(artifacts.mock.calls.some(([domainId, version]) => (
+      domainId === "demo-a" && version === "b1"
+    ))).toBe(false);
+    app.unmount();
+  });
+
+
+});
