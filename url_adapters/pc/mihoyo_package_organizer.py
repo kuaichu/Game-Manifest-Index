@@ -114,7 +114,7 @@ def _select_game_package(payload: Mapping[str, Any], expected_id: str, expected_
     return matches[0]
 
 
-def _artifacts(game_packages: Any, record_identity: Mapping[str, Any]) -> list[dict[str, Any]]:
+def _package_artifacts(game_packages: Any, record_identity: Mapping[str, Any]) -> list[dict[str, Any]]:
     if not isinstance(game_packages, list) or not game_packages:
         raise MihoyoPackageOrganizationError("main.major.game_pkgs 必须是非空数组")
 
@@ -160,8 +160,60 @@ def _artifacts(game_packages: Any, record_identity: Mapping[str, Any]) -> list[d
     return artifacts
 
 
-def organize_packages(collection: MihoyoPackageCollection) -> dict[str, Any]:
-    """Build and strictly validate one official MiHoYo PC package record."""
+def _patch_artifacts(patches: Any, route_to: str, record_identity: Mapping[str, Any]) -> list[dict[str, Any]]:
+    if not isinstance(patches, list):
+        raise MihoyoPackageOrganizationError("main.patches 必须是数组")
+
+    artifacts: list[dict[str, Any]] = []
+    identities: set[tuple[str, str, str]] = set()
+    for patch_index, patch in enumerate(patches):
+        patch_field = f"main.patches[{patch_index}]"
+        if not isinstance(patch, Mapping):
+            raise MihoyoPackageOrganizationError(f"{patch_field} 必须是对象")
+        route_from = patch.get("version")
+        if not isinstance(route_from, str) or not route_from.strip():
+            raise MihoyoPackageOrganizationError(f"{patch_field}.version 必须是非空字符串")
+        if route_from == route_to:
+            raise MihoyoPackageOrganizationError(f"{patch_field}.version 不能与目标版本相同")
+        game_packages = patch.get("game_pkgs")
+        if not isinstance(game_packages, list) or not game_packages:
+            raise MihoyoPackageOrganizationError(f"{patch_field}.game_pkgs 必须是非空数组")
+
+        for package_index, package in enumerate(game_packages):
+            field = f"{patch_field}.game_pkgs[{package_index}]"
+            if not isinstance(package, Mapping):
+                raise MihoyoPackageOrganizationError(f"{field} 必须是对象")
+            url = package.get("url")
+            name, _, _ = _package_name(url, field)
+            identity = (route_from, route_to, name.casefold())
+            if identity in identities:
+                raise MihoyoPackageOrganizationError(f"{field} 与同一路由的 patch 文件名重复")
+            identities.add(identity)
+            md5 = package.get("md5")
+            if not isinstance(md5, str) or not _MD5.fullmatch(md5):
+                raise MihoyoPackageOrganizationError(f"{field}.md5 必须是 32 位十六进制字符串")
+
+            artifact: dict[str, Any] = {
+                "kind": "patch",
+                "component": "game",
+                "package_type": "differential",
+                "delivery_mode": "archive",
+                "name": name,
+                "route_from": route_from,
+                "route_to": route_to,
+                "size": _non_negative_int(package.get("size"), f"{field}.size"),
+                "decompressed_size": _non_negative_int(
+                    package.get("decompressed_size"), f"{field}.decompressed_size"
+                ),
+                "checksum": {"md5": md5.lower()},
+                "urls": [{"url": url, "provider": "mihoyo", "source_kind": "official", "priority": 0}],
+            }
+            artifact["artifact_id"] = artifact_id(artifact, record_identity)
+            artifacts.append(artifact)
+    return artifacts
+
+
+def _record_and_main(collection: MihoyoPackageCollection) -> tuple[dict[str, Any], Mapping[str, Any], Mapping[str, Any]]:
     if not isinstance(collection, MihoyoPackageCollection):
         raise MihoyoPackageOrganizationError("采集结果必须是 MihoyoPackageCollection")
     if not isinstance(collection.payload, Mapping):
@@ -195,7 +247,23 @@ def organize_packages(collection: MihoyoPackageCollection) -> dict[str, Any]:
             "source_url": collection.source_url,
         },
     }
-    record["artifacts"] = _artifacts(major.get("game_pkgs"), record)
+    return record, main, major
+
+
+def organize_packages(collection: MihoyoPackageCollection) -> dict[str, Any]:
+    """Build one package-only record without consuming patch or voice fields."""
+    record, _, major = _record_and_main(collection)
+    record["artifacts"] = _package_artifacts(major.get("game_pkgs"), record)
+    validate_v2_record(record)
+    return record
+
+
+def organize_packages_and_patches(collection: MihoyoPackageCollection) -> dict[str, Any]:
+    """Build one complete game package record without losing differential patches."""
+    record, main, major = _record_and_main(collection)
+    artifacts = _package_artifacts(major.get("game_pkgs"), record)
+    artifacts.extend(_patch_artifacts(main.get("patches"), record["version"], record))
+    record["artifacts"] = artifacts
     validate_v2_record(record)
     return record
 
@@ -209,5 +277,6 @@ __all__ = [
     "MihoyoPackageOrganizationError",
     "organize",
     "organize_packages",
+    "organize_packages_and_patches",
     "package_source_url",
 ]

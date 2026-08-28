@@ -184,7 +184,7 @@ class MihoyoPackageCollectorTests(unittest.TestCase):
 
     def test_organizer_failure_is_wrapped_with_cause(self):
         expected = MihoyoPackageOrganizationError("bad package response")
-        with patch.object(mihoyo_game_packages, "organize_packages", side_effect=expected):
+        with patch.object(mihoyo_game_packages, "organize_packages_and_patches", side_effect=expected):
             with self.assertRaises(AdapterError) as raised:
                 mihoyo_game_packages.discover_collection(collection(), Path("unused"))
         self.assertIs(raised.exception.__cause__, expected)
