@@ -71,7 +71,7 @@ V5 主线。
 ### `integration/pc`
 
 - 定位：PC 平台验证分支。
-- 当前只包含已经同步的 shared core 基线，PC 业务分支尚未开始晋级。
+- 当前包含已经同步的 shared core 基线和已验证的米哈游官方 PC package collector。
 - 新 PC 任务从该分支创建，验证后 squash merge 回该分支。
 
 ### `frontend`
@@ -389,12 +389,37 @@ python -m unittest backend.test_apk_data_baseline backend.test_indexes backend.t
 
 相关自动验证共包括 25 个 URL adapter/registry、23 个 probe 和 54 个 core/data 测试。
 
+### 米哈游 PC packages
+
+四款中国服米哈游 PC 游戏已经接入官方 HoYoPlay `getGamePackages`：
+
+| V5 游戏 | HoYoPlay game id | 官方 biz | 当前 archive 响应 |
+| --- | --- | --- | --- |
+| `hk4e` | `1Z8W5NHUQb` | `hk4e_cn` | 8 个连续分卷 |
+| `hkrpg` | `64kMb5iAWu` | `hkrpg_cn` | 12 个连续分卷 |
+| `nap` | `x6znKlJ0xK` | `nap_cn` | 10 个连续分卷 |
+| `bh3` | `osvnlOc0S8` | `bh3_cn` | 1 个完整 archive |
+
+四款统一使用官方 endpoint `https://hyp-api.mihoyo.com/hyp/hyp-connect/api/getGamePackages`
+和 launcher id `jGHBHlcOq1`。collector 只读取 `main.major.game_pkgs`，明确排除 patches、
+audio、pre-download、resource list 和 Sophon chunks。Amarea/HoyoFiles 没有进入默认链路。
+
+archive basename 的 `.001`、`.002` 等后缀被解析为 canonical `package_type=segment` 和
+从 1 开始的 `part`；无分卷后缀的单个 archive 使用 `package_type=full`。如果 full 与
+segments 同时出现，两者都会保留。官方响应中的十进制字符串 size 会严格规范化为
+canonical integer，MD5 规范化为小写；artifact id 只由共享 schema helper 生成。
+
+真实只读采集 4/4 成功并通过 schema、provenance 和 artifact identity 检查。需要注意：
+`getGamePackages` 的 archive 版本可能落后于同游戏当前 Sophon branch tag；本 adapter 只记录
+package endpoint 实际返回的版本，不把它冒充 Sophon 当前版本，也不在本任务混入 chunk 数据。
+package URL 尚未 probe，留给后续 `pc/probe-adapters`。
+
 ## 暂未迁移内容
 
 以下内容还没有进入 V5 的可信基线：
 
 - APK 公开 API 和后台 operation 接线（由后续 backend 阶段完成）；
-- PC packages、patches、voice、chunks、manifest 相关适配器；
+- PC patches、voice、chunks 和其他厂商 manifest/package 适配器；
 - PC probe adapters；
 - PC 数据基线；
 - backend API contract；
@@ -419,21 +444,21 @@ snapshot/apk-validated-baseline
 
 其中 `snapshot/apk-validated-baseline`、`frontend` 晋级和 `core/schema` 已完成。
 
-APK 平台模块已经完成，当前下一步建议进入 PC，先做 `pc/mihoyo-packages`。
+APK 平台模块和首个 PC packages 任务已经完成，当前下一步是 `pc/mihoyo-patches`。
 
 分支路径：
 
 ```text
 integration/pc
-  -> pc/mihoyo-packages
+  -> pc/mihoyo-patches
   -> validation
   -> squash merge -> integration/pc
 ```
 
 预计修改范围：
 
-- 米哈游 PC 官方完整包资源采集；
-- canonical v2 package artifacts；
+- 米哈游 PC 官方差分包资源采集；
+- canonical v2 patch artifacts；
 - 对应 parser/organizer 测试和官方来源验证。
 
 PC 开发不得修改 Android collector、organizer、probe 或 registry。
@@ -441,21 +466,20 @@ PC 开发不得修改 Android collector、organizer、probe 或 registry。
 这一阶段不要迁入：
 
 - `data/`
-- `url_adapters/`
 - `probe_adapters/`
 - API route；
 - frontend 文件；
 - APK 采集器；
 - APK 验活器；
-- PC 专项逻辑。
+- packages、voice、chunks 和其他厂商 PC 专项逻辑。
 
 ## 近期路线
 
 推荐顺序：
 
 ```text
-pc/mihoyo-packages
-  -> pc/mihoyo-patches
+pc/mihoyo-patches
+  -> pc/mihoyo-voice
 ```
 
 PC 开发应等共享 core 稳定后再开始。`pc/data-baseline` 不要现在创建，等 PC 格式和适配器
