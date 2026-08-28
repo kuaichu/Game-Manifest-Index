@@ -102,6 +102,10 @@ V5 主线。
   - 用于迁入 12 款 Android 的官方采集器和厂商专项 organizer。
   - 已测试并 squash merge 到 `integration/apk`。
 
+- `apk/probe-adapters`
+  - 用于迁入四个厂商的 Android URL 探活与 canonical current 更新。
+  - 已测试并 squash merge 到 `integration/apk`。
+
 这些任务分支后续不再继续开发，可冻结或删除。
 
 ## 不可破坏的语义约束
@@ -315,11 +319,40 @@ python -m compileall -q url_adapters
 结果：18 个 adapter 测试和 54 个 core/data 回归通过。真实联网采集需等 APK probe 与
 registry 接入完成后在 `integration/apk` 统一验收。
 
+### APK probe adapters
+
+四个厂商的 Android URL 专项探活、URL dispatch 和 canonical v2 current 更新已从
+已验证 APK 快照中选择性迁入。
+
+- 输入：版本记录中的官方 APK URL candidate，以及 vendor/game context；
+- 输出：规范化 probe observation；写回时只替换目标 candidate 的 `current`；
+- 来源：只探测 collector 已发现的官方 CDN URL，不承担版本 discovery；
+- 依赖：Python 标准库、系统 curl、当前 schema v2；
+- 游戏：覆盖全部 12 款 Android，8 个专项 probe 模块，其中共享模块按 game context 区分；
+- V4 来源：transport、厂商 dispatch、重定向后二次 dispatch 和 BH3 特殊策略来自已验证实现；
+- V5 调整：写回收敛为 v2-only，拒绝 legacy record；非正 timeout 在请求前阻断。
+
+`apply_result()` 不改变原 URL、provider、source_kind、priority、artifact identity、checksum、
+references 或 file time，不写顶层 status、artifact attributes、reason、confidence 等旧字段。
+写入字段仅限 `state/http_code/checked_at/response_size/etag/crc64/last_modified/final_url`，且
+`final_url` 只在跳转后地址实际变化时出现。
+
+已验证：
+
+```text
+python -m unittest probe_adapters.test_common probe_adapters.test_service probe_adapters.test_registry
+python -m unittest discover -s url_adapters -p 'test_*.py'
+python -m unittest backend.test_apk_data_baseline backend.test_indexes backend.test_version_store backend.test_schema_v2
+```
+
+结果：23 个 probe、18 个 URL adapter 和 54 个 core/data 测试通过。另对米哈游、鹰角、
+库洛和完美世界各 1 个基线官方 APK URL 执行 timeout 10 秒的真实只读探活，4/4 为
+`available`、HTTP 206；未写回仓库数据。
+
 ## 暂未迁移内容
 
 以下内容还没有进入 V5 的可信基线：
 
-- APK probe adapters；
 - APK registry 和 API 接线；
 - PC packages、patches、voice、chunks、manifest 相关适配器；
 - PC probe adapters；
@@ -346,24 +379,24 @@ snapshot/apk-validated-baseline
 
 其中 `snapshot/apk-validated-baseline`、`frontend` 晋级和 `core/schema` 已完成。
 
-当前下一步建议做 `apk/probe-adapters`。
+当前下一步建议做 `apk/registry-integration`。
 
 分支路径：
 
 ```text
 integration/apk
-  -> apk/probe-adapters
+  -> apk/registry-integration
   -> validation
   -> squash merge -> integration/apk
 ```
 
 预计修改范围：
 
-- 四个厂商的 APK URL 探活器；
-- 统一 `urls[].current` 更新；
-- probe 边界和厂商匹配测试。
+- 12 款 Android collector 注册；
+- probe service 与 collector 接线；
+- 对应 API/操作入口的最小接入测试。
 
-只从 `snapshot/apk-validated-baseline` 选择性提取已验证 probe 行为，不整分支合并。
+保持 Android/PC registry 隔离，默认 discovery 只注册厂商官方入口。
 
 这一阶段不要迁入：
 
@@ -381,8 +414,7 @@ integration/apk
 推荐顺序：
 
 ```text
-apk/probe-adapters
-  -> apk/registry-integration
+apk/registry-integration
   -> APK 真实联网验收
   -> integration/v5
 ```
