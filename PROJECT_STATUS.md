@@ -144,6 +144,15 @@ V5 主线。
 
 ## 已完成内容
 
+### Kuro Wuthering Waves PC file manifests
+
+`url_adapters/pc/kuro_manifests.py` 已实现 Kuro GameStarter 官方 `wuwa` Windows
+launcher/index manifest 采集：严格校验 launcher 与 file index、按官方 CDN 顺序做
+MD5 fallback、生成 schema v2 file-manifest artifacts，并以原子方式保存外部 manifest
+文档。`pns` 和其他游戏明确拒绝；文档只保留规范化 resource/deleteFiles 及官方同步
+provenance。真实官方验收得到 `3.6.0`、3 个 CDN、1 个 full 和 46 个 patch manifests；
+full 含 699 个 resources，47 份独立文档与 canonical record 引用逐一一致。
+
 ### V4 APK 已验证流程
 
 当前已确认：V4 APK 主流程正常，不需要重写。
@@ -511,21 +520,22 @@ snapshot/apk-validated-baseline
 
 其中 `snapshot/apk-validated-baseline`、`frontend` 晋级和 `core/schema` 已完成。
 
-APK 平台模块和米哈游 PC packages/patches/voice/chunks 已完成，当前下一步是 `pc/kuro-manifests`。
+APK 平台模块、米哈游 PC packages/patches/voice/chunks 和 Kuro manifests 已完成，当前下一步是
+`pc/perfectworld-packages`。
 
 分支路径：
 
 ```text
 integration/pc
-  -> pc/kuro-manifests
+  -> pc/perfectworld-packages
   -> validation
   -> squash merge -> integration/pc
 ```
 
 预计修改范围：
 
-- 库洛 PC 官方 manifest 采集；
-- canonical v2 file manifest/reference；
+- 完美世界 PC 官方 package 来源调查和采集；
+- canonical v2 package artifacts；
 - 对应 parser/organizer 测试和官方来源验证。
 
 PC 开发不得修改 Android collector、organizer、probe 或 registry。
@@ -538,15 +548,15 @@ PC 开发不得修改 Android collector、organizer、probe 或 registry。
 - frontend 文件；
 - APK 采集器；
 - APK 验活器；
-- 米哈游 PC 专项逻辑、其他厂商 package/probe/registry。
+- 已完成的米哈游/Kuro PC 专项逻辑、其他厂商 package/probe/registry。
 
 ## 近期路线
 
 推荐顺序：
 
 ```text
-pc/kuro-manifests
-  -> pc/perfectworld-packages
+pc/perfectworld-packages
+  -> pc/probe-adapters
 ```
 
 PC 开发应等共享 core 稳定后再开始。`pc/data-baseline` 不要现在创建，等 PC 格式和适配器
