@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "hkrpg",
+  "platform": "android",
+  "channel": "official",
+  "version": "1.6.0",
+  "version_code": null,
+  "file_time": "2023-12-15T01:07:43Z",
+  "domain_id": "hkrpg-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "StarRail_1.6.0.apk",
+      "urls": [
+        {
+          "url": "https://autopatchcn.bhsr.com/client/cn/20231215090743_ffCg5V2j0gON2tvr/mihoyo_8/StarRail_1.6.0.apk",
+          "provider": "mihoyo",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 206,
+            "checked_at": "2026-08-24T11:44:14Z",
+            "state": "available",
+            "etag": "C35CCE33CE80ABA310185C259243468B-10"
+          }
+        }
+      ],
+      "size": 234003804,
+      "checksum": {
+        "crc64": "15979929506523728243"
+      },
+      "artifact_id": "a1_3d330b4bd1731432475b08e0aa39bfef"
+    }
+  ],
+  "references": []
+}

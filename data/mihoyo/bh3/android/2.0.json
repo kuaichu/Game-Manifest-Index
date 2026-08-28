@@ -1,0 +1,34 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "platform": "android",
+  "channel": "official",
+  "version": "2.0",
+  "version_code": null,
+  "file_time": "2018-01-11",
+  "domain_id": "bh3-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "20180111-android_versions_v2_0_Housewarming_Party_guofu.apk",
+      "urls": [
+        {
+          "url": "https://app.bh3.com/public/Android/20180111-android_versions_v2_0_Housewarming_Party_guofu.apk",
+          "provider": "mihoyo",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "checked_at": "2026-08-25T15:39:17Z",
+            "state": "unavailable"
+          }
+        }
+      ],
+      "artifact_id": "a1_0a1969cc5cbdd90701a67e0030ac93a4"
+    }
+  ],
+  "references": []
+}

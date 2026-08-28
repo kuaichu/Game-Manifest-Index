@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "platform": "android",
+  "channel": "official",
+  "version": "7.0",
+  "version_code": null,
+  "file_time": "2023-09-25T08:05:54Z",
+  "domain_id": "bh3-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "20230920-235123-gf_android_ota-versions-v7_0-RePromise_to_Luna_gw.apk",
+      "urls": [
+        {
+          "url": "https://bundle.bh3.com/ptpublic/rel/20230925103219_8WqdhyRJLpCQJNBY/CPS/20230920-235123-gf_android_ota-versions-v7_0-RePromise_to_Luna_gw.apk",
+          "provider": "mihoyo",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 206,
+            "checked_at": "2026-08-25T15:39:20Z",
+            "state": "available",
+            "etag": "A18B3F3600DE4AED411C9748FCF1296B-10"
+          }
+        }
+      ],
+      "size": 722100914,
+      "checksum": {
+        "crc64": "6281394725036287918"
+      },
+      "artifact_id": "a1_97b327a49ca1859414252c79e0cdc52e"
+    }
+  ],
+  "references": []
+}

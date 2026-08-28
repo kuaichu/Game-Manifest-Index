@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh2",
+  "platform": "android",
+  "channel": "official",
+  "version": "13.3.8",
+  "version_code": null,
+  "file_time": "2026-08-07T02:10:03Z",
+  "domain_id": "bh2-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "Original.StripResource_13.3.8_342_UuQ.apk",
+      "urls": [
+        {
+          "url": "https://static.benghuai.com/Download/v13_3/Original.StripResource_13.3.8_342_UuQ.apk",
+          "provider": "mihoyo",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 206,
+            "checked_at": "2026-08-24T11:44:12Z",
+            "state": "available",
+            "etag": "070DD32FBEC9F595276A0304D8270C1E-25"
+          }
+        }
+      ],
+      "size": 261215062,
+      "checksum": {
+        "crc64": "6511025084864256016"
+      },
+      "artifact_id": "a1_05649c3f47dd7f03e7561a5da721283b"
+    }
+  ],
+  "references": []
+}

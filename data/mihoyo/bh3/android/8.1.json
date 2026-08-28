@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "platform": "android",
+  "channel": "official",
+  "version": "8.1",
+  "version_code": null,
+  "file_time": "2025-01-20T03:04:40Z",
+  "domain_id": "bh3-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "20250116-012226-gf_android_ota-versions-v8_1-DrumminginNew_gw.apk",
+      "urls": [
+        {
+          "url": "https://bundle.bh3.com/ptpublic/rel/20250120104717_JKPilwZ9G9BSw6JF/cps/20250116-012226-gf_android_ota-versions-v8_1-DrumminginNew_gw.apk",
+          "provider": "mihoyo",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 206,
+            "checked_at": "2026-08-25T15:39:22Z",
+            "state": "available",
+            "etag": "7D26188068D2837F096E5F31C1A59CF8-10"
+          }
+        }
+      ],
+      "size": 766723976,
+      "checksum": {
+        "crc64": "6424156841678027828"
+      },
+      "artifact_id": "a1_6bec9ef4d744b8fa0ff030031dc56898"
+    }
+  ],
+  "references": []
+}

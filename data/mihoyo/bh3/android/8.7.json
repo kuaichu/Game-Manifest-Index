@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "platform": "android",
+  "channel": "official",
+  "version": "8.7",
+  "version_code": null,
+  "file_time": "2026-01-29T03:00:58Z",
+  "domain_id": "bh3-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "20260122-005217-gf_android_ota-versions-v8_7-Passage_To_NewDawns_ym.apk",
+      "urls": [
+        {
+          "url": "https://autopatchcn.bh3.com/ptpublic/rel/20260129104916_BoBPLPFIyJkDEQgJ/CPS/20260122-005217-gf_android_ota-versions-v8_7-Passage_To_NewDawns_ym.apk",
+          "provider": "mihoyo",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 206,
+            "checked_at": "2026-08-25T15:39:22Z",
+            "state": "available",
+            "etag": "51065C584A266B8338AD5BC4A650DA85-10"
+          }
+        }
+      ],
+      "size": 695651102,
+      "checksum": {
+        "crc64": "11705476450051753356"
+      },
+      "artifact_id": "a1_17a6777e6031684df803fdd5c7d97441"
+    }
+  ],
+  "references": []
+}

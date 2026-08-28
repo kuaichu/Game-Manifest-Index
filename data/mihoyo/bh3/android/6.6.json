@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "platform": "android",
+  "channel": "official",
+  "version": "6.6",
+  "version_code": null,
+  "file_time": "2023-04-16T07:36:13Z",
+  "domain_id": "bh3-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "20230413-122623-gf_android_ota-versions-v6_6-Woven_from_Last_Snow_gw.apk",
+      "urls": [
+        {
+          "url": "https://bundle.bh3.com/public/Android/20230413-122623-gf_android_ota-versions-v6_6-Woven_from_Last_Snow_gw.apk",
+          "provider": "mihoyo",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 206,
+            "checked_at": "2026-08-25T15:39:20Z",
+            "state": "available",
+            "etag": "82F720216188B715CB2FE3710C2E0CA7-63"
+          }
+        }
+      ],
+      "size": 651976589,
+      "checksum": {
+        "crc64": "493548980192183841"
+      },
+      "artifact_id": "a1_a38da798e30f3f333ca590bb679d44f0"
+    }
+  ],
+  "references": []
+}

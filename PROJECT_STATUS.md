@@ -94,6 +94,10 @@ V5 主线。
   - 用于生成和读取 Android/PC `index.json`。
   - 已测试并 squash merge 到 `integration/v5`。
 
+- `apk/data-baseline`
+  - 用于迁入 12 款 Android 的已验证历史数据和索引。
+  - 已测试并 squash merge 到 `integration/apk`。
+
 这些任务分支后续不再继续开发，可冻结或删除。
 
 ## 不可破坏的语义约束
@@ -254,11 +258,33 @@ python -m unittest backend.test_indexes backend.test_version_store backend.test_
 
 结果：52 个测试通过。
 
+### APK 数据基线
+
+已从只读 `snapshot/apk-validated-baseline` 选择性迁入 12 款 Android 的已验证数据。
+
+当前内容：
+
+- 269 个 schema v2 版本记录；
+- 12 个 `index.json`；
+- 12 款游戏，覆盖米哈游、鹰角、库洛和完美世界。
+
+历史记录继续保守使用 URL 级 `source_kind: legacy`，没有补写或伪造官方同步
+provenance。数据文件与 snapshot 对应文件逐一一致，当前索引生成器可无差异重建全部
+12 个索引。
+
+已验证：
+
+```text
+python -m unittest backend.test_apk_data_baseline
+python -m unittest backend.test_indexes backend.test_version_store backend.test_schema_v2
+```
+
+结果：54 个测试通过。
+
 ## 暂未迁移内容
 
 以下内容还没有进入 V5 的可信基线：
 
-- APK 数据基线；
 - APK URL adapters；
 - APK probe adapters；
 - APK registry 和 API 接线；
@@ -287,24 +313,24 @@ snapshot/apk-validated-baseline
 
 其中 `snapshot/apk-validated-baseline`、`frontend` 晋级和 `core/schema` 已完成。
 
-当前下一步建议进入 APK 正式迁移，先做 `apk/data-baseline`。
+当前下一步建议做 `apk/url-adapters`。
 
 分支路径：
 
 ```text
 integration/apk
-  -> apk/data-baseline
+  -> apk/url-adapters
   -> validation
   -> squash merge -> integration/apk
 ```
 
 预计修改范围：
 
-- 已验证的 12 款 Android 历史版本记录；
-- 对应 Android `index.json`；
-- 数据合法性和索引一致性验证。
+- 12 款 Android 的厂商官方采集入口；
+- 厂商专项 organizer；
+- 对应采集和整理测试。
 
-只从 `snapshot/apk-validated-baseline` 选择性提取已验证 APK 数据，不整分支合并。
+只从 `snapshot/apk-validated-baseline` 选择性提取已验证 adapter 行为，不整分支合并。
 
 这一阶段不要迁入：
 
@@ -322,8 +348,7 @@ integration/apk
 推荐顺序：
 
 ```text
-apk/data-baseline
-  -> apk/url-adapters
+apk/url-adapters
   -> apk/probe-adapters
   -> apk/registry-integration
   -> APK 真实联网验收

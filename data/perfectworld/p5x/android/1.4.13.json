@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "vendor": "perfectworld",
+  "game_id": "p5x",
+  "platform": "android",
+  "channel": "official",
+  "version": "1.4.13",
+  "version_code": 273,
+  "file_time": "2025-12-30T11:07:50Z",
+  "domain_id": "p5x-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "p5x_1_official_20251230.apk",
+      "urls": [
+        {
+          "url": "https://p5xapk.wmupd.com/webops/p5x/p5x_1_official_20251230.apk",
+          "provider": "perfectworld",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 206,
+            "checked_at": "2026-08-24T11:44:15Z",
+            "state": "available",
+            "etag": "6111EB68083B61CD255F64CD775E6D9C-192"
+          }
+        }
+      ],
+      "size": 2013130037,
+      "checksum": {
+        "crc64": "11595139842780767428"
+      },
+      "artifact_id": "a1_49169c895377355d338f2d2ea805a023"
+    }
+  ],
+  "references": []
+}

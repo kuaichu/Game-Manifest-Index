@@ -1,0 +1,38 @@
+{
+  "schema_version": 2,
+  "vendor": "hypergryph",
+  "game_id": "arknights",
+  "platform": "android",
+  "channel": "official",
+  "version": "2.4.21",
+  "version_code": null,
+  "file_time": "2025-01-09",
+  "domain_id": "arknights-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "arknights-hg-2421.apk",
+      "urls": [
+        {
+          "url": "https://ak.hycdn.cn/apk/202411291024-2421-u4qncegvfv5sesfovkaq/arknights-hg-2421.apk",
+          "provider": "hypergryph",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 403,
+            "checked_at": "2026-08-24T11:44:10Z",
+            "etag": "EE2CBCE7DB9E183258B0672DCE0E100A-180"
+          }
+        }
+      ],
+      "checksum": {
+        "crc64": "11724162932252426444"
+      },
+      "artifact_id": "a1_6f80e38fcc722bc8cedcba2420ed3144"
+    }
+  ],
+  "references": []
+}

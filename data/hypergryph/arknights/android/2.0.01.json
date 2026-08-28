@@ -1,0 +1,38 @@
+{
+  "schema_version": 2,
+  "vendor": "hypergryph",
+  "game_id": "arknights",
+  "platform": "android",
+  "channel": "official",
+  "version": "2.0.01",
+  "version_code": null,
+  "file_time": "2024-09-09T02:29:20Z",
+  "domain_id": "arknights-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "arknights-hg-2001.apk",
+      "urls": [
+        {
+          "url": "https://ak.hycdn.cn/apk/202304281114-2001-3l0xy1rm0mm8u2ibbzmc/arknights-hg-2001.apk",
+          "provider": "hypergryph",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 403,
+            "checked_at": "2026-08-24T11:44:10Z",
+            "etag": "C8721156EDC02BA0530543F3210D0AF7-400"
+          }
+        }
+      ],
+      "checksum": {
+        "crc64": "1930246029447673292"
+      },
+      "artifact_id": "a1_8de0cff270b73b3d3859f4034abef19d"
+    }
+  ],
+  "references": []
+}

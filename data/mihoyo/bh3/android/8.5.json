@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "platform": "android",
+  "channel": "official",
+  "version": "8.5",
+  "version_code": null,
+  "file_time": "2025-09-19T08:03:03Z",
+  "domain_id": "bh3-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "20250911-052146-gf_android_ota-versions-v8_5-A_Lightful_Love_gw.apk",
+      "urls": [
+        {
+          "url": "https://autopatchcn.bh3.com/ptpublic/rel/20250919160133_7I3uYOQENmLOcD8O/CPS/20250911-052146-gf_android_ota-versions-v8_5-A_Lightful_Love_gw.apk",
+          "provider": "mihoyo",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 206,
+            "checked_at": "2026-08-25T15:39:22Z",
+            "state": "available",
+            "etag": "4B5B4BB557F0E1F819285560030681EC-10"
+          }
+        }
+      ],
+      "size": 680451531,
+      "checksum": {
+        "crc64": "6530353949649087170"
+      },
+      "artifact_id": "a1_6dc5871792c70eb84cd9b09e06b82e63"
+    }
+  ],
+  "references": []
+}

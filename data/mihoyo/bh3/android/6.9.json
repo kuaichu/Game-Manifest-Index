@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "platform": "android",
+  "channel": "official",
+  "version": "6.9",
+  "version_code": null,
+  "file_time": "2023-08-14T07:06:10Z",
+  "domain_id": "bh3-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "20230809-234720-gf_android_ota-versions-v6_9-Cutting_Dreams_at_Dawn_mys.apk",
+      "urls": [
+        {
+          "url": "https://bundle.bh3.com/ptpublic/rel/20230814114102_KD8RjBDLGc0wU5j9/CPS/20230809-234720-gf_android_ota-versions-v6_9-Cutting_Dreams_at_Dawn_mys.apk",
+          "provider": "mihoyo",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 206,
+            "checked_at": "2026-08-25T15:39:20Z",
+            "state": "available",
+            "etag": "41ADE09F06022697823A10BAC63E7598-10"
+          }
+        }
+      ],
+      "size": 530170531,
+      "checksum": {
+        "crc64": "10593805650161331086"
+      },
+      "artifact_id": "a1_f0b058e0e705138fcae0d3a59377cb2b"
+    }
+  ],
+  "references": []
+}
