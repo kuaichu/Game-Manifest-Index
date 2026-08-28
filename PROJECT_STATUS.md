@@ -707,7 +707,7 @@ integration/pc
   -> backend/api-contract（已完成）
   -> backend/sync-operations（已完成）
   -> backend/version-admin（已完成）
-  -> frontend-version-admin（已完成，待按任务分支规则晋级）
+  -> frontend-version-admin（已完成并晋级 `integration/v5@5e61b78`）
   -> PHASE 10 全链路验收
 ```
 
