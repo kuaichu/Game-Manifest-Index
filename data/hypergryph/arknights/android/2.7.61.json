@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "vendor": "hypergryph",
+  "game_id": "arknights",
+  "platform": "android",
+  "channel": "official",
+  "version": "2.7.61",
+  "version_code": null,
+  "file_time": "2026-07-27T11:52:44Z",
+  "domain_id": "arknights-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "arknights-hg-2761.apk",
+      "urls": [
+        {
+          "url": "https://ak.hycdn.cn/GzD1CpaWgmSq1wew/76.0/package/1/1/Android/76.0.0_jbAnLFy2dtzNQvii/arknights-hg-2761.apk",
+          "provider": "hypergryph",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 206,
+            "checked_at": "2026-08-24T11:44:10Z",
+            "state": "available",
+            "etag": "9594A4ED832564D11603BBD2EAB254EF-400"
+          }
+        }
+      ],
+      "size": 2109579544,
+      "checksum": {
+        "crc64": "3855965081290858041"
+      },
+      "artifact_id": "a1_700e8332914225dc7728d361c49447d1"
+    }
+  ],
+  "references": []
+}

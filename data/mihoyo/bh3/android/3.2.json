@@ -1,0 +1,34 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "platform": "android",
+  "channel": "official",
+  "version": "3.2",
+  "version_code": null,
+  "file_time": "2019-05-31T12:13:55Z",
+  "domain_id": "bh3-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "20190531-201355-gf_android_ota-versions-v3_2-Nursery_Rhymes_with_Illusion_guofu1.apk",
+      "urls": [
+        {
+          "url": "https://app.bh3.com/public/Android/20190531-201355-gf_android_ota-versions-v3_2-Nursery_Rhymes_with_Illusion_guofu1.apk",
+          "provider": "mihoyo",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "checked_at": "2026-08-25T15:39:17Z",
+            "state": "unavailable"
+          }
+        }
+      ],
+      "artifact_id": "a1_1a9e81303df27aba907d0f0f4b4125d5"
+    }
+  ],
+  "references": []
+}

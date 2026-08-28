@@ -1,0 +1,338 @@
+{
+  "vendor": "mihoyo",
+  "game_id": "hk4e",
+  "platform": "android",
+  "versions": [
+    {
+      "version": "7.0.0",
+      "updated_at": "2026-08-03T07:53:01Z",
+      "available": true,
+      "size": 478735343
+    },
+    {
+      "version": "6.7.0",
+      "updated_at": "2026-06-23T03:59:35Z",
+      "available": true,
+      "size": 466303603
+    },
+    {
+      "version": "6.6.0",
+      "updated_at": "2026-05-09T11:16:52Z",
+      "available": true,
+      "size": 454916540
+    },
+    {
+      "version": "6.5.1",
+      "updated_at": "2026-04-07T11:47:24Z",
+      "available": true,
+      "size": 448411642
+    },
+    {
+      "version": "6.4.0",
+      "updated_at": "2026-02-09T07:15:32Z",
+      "available": true,
+      "size": 435050838
+    },
+    {
+      "version": "6.3.0",
+      "updated_at": "2026-01-05T11:43:54Z",
+      "available": true,
+      "size": 438004471
+    },
+    {
+      "version": "6.2.0",
+      "updated_at": "2025-11-24T10:24:49Z",
+      "available": true,
+      "size": 425923926
+    },
+    {
+      "version": "6.1.0",
+      "updated_at": "2025-10-13T11:09:16Z",
+      "available": true,
+      "size": 418077006
+    },
+    {
+      "version": "6.0.0",
+      "updated_at": "2025-09-01T02:39:26Z",
+      "available": true,
+      "size": 395432136
+    },
+    {
+      "version": "5.8.0",
+      "updated_at": "2025-07-18T10:26:28Z",
+      "available": true,
+      "size": 382668824
+    },
+    {
+      "version": "5.7.0",
+      "updated_at": "2025-06-06T10:04:10Z",
+      "available": true,
+      "size": 377906132
+    },
+    {
+      "version": "5.6.0",
+      "updated_at": "2025-04-27T07:34:13Z",
+      "available": true,
+      "size": 377254140
+    },
+    {
+      "version": "5.5.0",
+      "updated_at": "2025-03-14T10:58:25Z",
+      "available": true,
+      "size": 383653626
+    },
+    {
+      "version": "5.4.0",
+      "updated_at": "2025-01-25T12:15:45Z",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "5.3.0",
+      "updated_at": "2024-12-23T10:05:29Z",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "5.2.0",
+      "updated_at": "2024-11-08T10:43:19Z",
+      "available": true,
+      "size": 351634710
+    },
+    {
+      "version": "5.1.0",
+      "updated_at": "2024-09-27T10:40:40Z",
+      "available": true,
+      "size": 331501027
+    },
+    {
+      "version": "5.0.0",
+      "updated_at": "2024-08-16T09:56:08Z",
+      "available": true,
+      "size": 360527809
+    },
+    {
+      "version": "4.8.0",
+      "updated_at": "2024-07-09T11:39:22Z",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "4.7.0",
+      "updated_at": "2024-05-28T06:25:46Z",
+      "available": true,
+      "size": 339838849
+    },
+    {
+      "version": "4.6.0",
+      "updated_at": "2024-04-16T02:36:48Z",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "4.5.0",
+      "updated_at": "2024-03-01T12:21:46Z",
+      "available": true,
+      "size": 348339739
+    },
+    {
+      "version": "4.4.0",
+      "updated_at": "2024-01-22T06:02:32Z",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "4.3.0",
+      "updated_at": "2023-12-11T07:07:50Z",
+      "available": true,
+      "size": 411616178
+    },
+    {
+      "version": "4.2.0",
+      "updated_at": "2023-10-30T03:47:12Z",
+      "available": true,
+      "size": 399052020
+    },
+    {
+      "version": "4.1.0",
+      "updated_at": "2023-09-19T02:50:32Z",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "4.0.0",
+      "updated_at": "2023-08-07T03:47:07Z",
+      "available": true,
+      "size": 385910767
+    },
+    {
+      "version": "3.8.0",
+      "updated_at": "2023-06-25T07:27:48Z",
+      "available": true,
+      "size": 344803167
+    },
+    {
+      "version": "3.7.0",
+      "updated_at": "2023-05-13T12:02:08Z",
+      "available": true,
+      "size": 341542887
+    },
+    {
+      "version": "3.6.0",
+      "updated_at": "2023-04-03T02:52:45Z",
+      "available": true,
+      "size": 367046163
+    },
+    {
+      "version": "3.5.0",
+      "updated_at": "2023-02-20T03:50:21Z",
+      "available": true,
+      "size": 384709360
+    },
+    {
+      "version": "3.4.0",
+      "updated_at": "2023-01-09T07:11:20Z",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "3.3.0",
+      "updated_at": "2022-11-25T06:55:52Z",
+      "available": true,
+      "size": 369290808
+    },
+    {
+      "version": "3.2.0",
+      "updated_at": "2022-10-24T02:53:31Z",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "3.1.0",
+      "updated_at": "2022-09-19T13:32:00Z",
+      "available": true,
+      "size": 292959792
+    },
+    {
+      "version": "3.0.0",
+      "updated_at": "2022-08-15T12:42:59Z",
+      "available": true,
+      "size": 281028246
+    },
+    {
+      "version": "2.8.0",
+      "updated_at": "2022-07-04T07:38:09Z",
+      "available": true,
+      "size": 253219890
+    },
+    {
+      "version": "2.7.0",
+      "updated_at": "2022-05-16T11:13:50Z",
+      "available": true,
+      "size": 226262375
+    },
+    {
+      "version": "2.6.0",
+      "updated_at": "2022-03-21T10:33:36Z",
+      "available": true,
+      "size": 237396887
+    },
+    {
+      "version": "2.5.0",
+      "updated_at": "2022-02-03T13:21:34Z",
+      "available": true,
+      "size": 216461331
+    },
+    {
+      "version": "2.4.0",
+      "updated_at": "2021-12-21T12:43:38Z",
+      "available": true,
+      "size": 247590790
+    },
+    {
+      "version": "2.3.0",
+      "updated_at": "2021-11-15T03:24:23Z",
+      "available": true,
+      "size": 258637118
+    },
+    {
+      "version": "2.2.0",
+      "updated_at": "2021-09-28T11:57:00Z",
+      "available": true,
+      "size": 255873460
+    },
+    {
+      "version": "2.1.0",
+      "updated_at": "2021-08-28T08:39:04Z",
+      "available": true,
+      "size": 328904707
+    },
+    {
+      "version": "2.0.0",
+      "updated_at": "2021-07-13T11:04:06Z",
+      "available": true,
+      "size": 354784450
+    },
+    {
+      "version": "1.6.0",
+      "updated_at": "2021-05-31T12:50:20Z",
+      "available": true,
+      "size": 282049418
+    },
+    {
+      "version": "1.5.1",
+      "updated_at": "2021-05-19T04:19:33Z",
+      "available": true,
+      "size": 269325557
+    },
+    {
+      "version": "1.5.0",
+      "updated_at": "2021-04-28",
+      "available": true,
+      "size": 270255618
+    },
+    {
+      "version": "1.4.0",
+      "updated_at": "2021-03-09T06:42:30Z",
+      "available": true,
+      "size": 206294286
+    },
+    {
+      "version": "1.3.0",
+      "updated_at": "2021-01-25T10:01:24Z",
+      "available": true,
+      "size": 190508425
+    },
+    {
+      "version": "1.2.0",
+      "updated_at": "2020-12-15T03:58:50Z",
+      "available": true,
+      "size": 158013346
+    },
+    {
+      "version": "1.1.1",
+      "updated_at": "2020-11-06T09:32:33Z",
+      "available": true,
+      "size": 152568499
+    },
+    {
+      "version": "1.1.0",
+      "updated_at": "2020-11-04T08:12:39Z",
+      "available": false,
+      "size": 152568901
+    },
+    {
+      "version": "1.0.0",
+      "updated_at": "2020-09-22T14:26:08Z",
+      "available": true,
+      "size": 143024280
+    },
+    {
+      "version": "0.9.3",
+      "updated_at": "2020-06-24",
+      "available": false,
+      "size": null
+    }
+  ],
+  "domain_id": "hk4e-android"
+}

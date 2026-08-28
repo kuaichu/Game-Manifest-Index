@@ -1,0 +1,35 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh2",
+  "platform": "android",
+  "channel": "official",
+  "version": "12.3.54",
+  "version_code": null,
+  "file_time": null,
+  "domain_id": "bh2-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "Mix_12.3.54_332.shell.apk",
+      "urls": [
+        {
+          "url": "https://static.benghuai.com/Download/v12_3/Mix_12.3.54_332.shell.apk",
+          "provider": "mihoyo",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 404,
+            "checked_at": "2026-08-24T11:44:12Z",
+            "state": "unavailable"
+          }
+        }
+      ],
+      "artifact_id": "a1_cad09caf034dbd0b60c2c5d5c1d2d186"
+    }
+  ],
+  "references": []
+}

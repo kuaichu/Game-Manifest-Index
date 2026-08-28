@@ -46,7 +46,7 @@ V5 主线。
 
 ### `integration/v5`
 
-- 当前已知基线提交：`ccb6e00 docs: add V5 project status`
+- 当前提交：以 Git 中 `integration/v5` 的实际分支指针为准。
 - 定位：V5 开发期当前最新可信基线。
 - 当前已包含：
   - `.gitignore`
@@ -58,6 +58,21 @@ V5 主线。
   - 已晋级的 `core/indexes`
 
 日常新任务应从最新 `integration/v5` 或对应平台 integration 分支切出。
+
+### `integration/apk`
+
+- 定位：APK 平台验证分支。
+- 当前已包含完整 core、12 款 Android 数据基线、官方 URL adapters、probe adapters 和
+  默认 collector registry。
+- 当前平台验收：12/12 官方采集成功，12/12 专项 probe 为 `available` / HTTP 206，
+  schema、artifact identity、indexes 和 provenance 检查通过。
+- 晋级规则：使用 normal merge 合入 `integration/v5`，不得 squash 整个平台分支。
+
+### `integration/pc`
+
+- 定位：PC 平台验证分支。
+- 当前只包含已经同步的 shared core 基线，PC 业务分支尚未开始晋级。
+- 新 PC 任务从该分支创建，验证后 squash merge 回该分支。
 
 ### `frontend`
 
@@ -93,6 +108,22 @@ V5 主线。
 - `core/indexes`
   - 用于生成和读取 Android/PC `index.json`。
   - 已测试并 squash merge 到 `integration/v5`。
+
+- `apk/data-baseline`
+  - 用于迁入 12 款 Android 的已验证历史数据和索引。
+  - 已测试并 squash merge 到 `integration/apk`。
+
+- `apk/url-adapters`
+  - 用于迁入 12 款 Android 的官方采集器和厂商专项 organizer。
+  - 已测试并 squash merge 到 `integration/apk`。
+
+- `apk/probe-adapters`
+  - 用于迁入四个厂商的 Android URL 探活与 canonical current 更新。
+  - 已测试并 squash merge 到 `integration/apk`。
+
+- `apk/registry-integration`
+  - 用于注册 12 款 Android 的默认官方 collector 并提供内部 discovery API。
+  - 已测试并 squash merge 到 `integration/apk`。
 
 这些任务分支后续不再继续开发，可冻结或删除。
 
@@ -254,14 +285,115 @@ python -m unittest backend.test_indexes backend.test_version_store backend.test_
 
 结果：52 个测试通过。
 
+### APK 数据基线
+
+已从只读 `snapshot/apk-validated-baseline` 选择性迁入 12 款 Android 的已验证数据。
+
+当前内容：
+
+- 269 个 schema v2 版本记录；
+- 12 个 `index.json`；
+- 12 款游戏，覆盖米哈游、鹰角、库洛和完美世界。
+
+历史记录继续保守使用 URL 级 `source_kind: legacy`，没有补写或伪造官方同步
+provenance。数据文件与 snapshot 对应文件逐一一致，当前索引生成器可无差异重建全部
+12 个索引。
+
+已验证：
+
+```text
+python -m unittest backend.test_apk_data_baseline
+python -m unittest backend.test_indexes backend.test_version_store backend.test_schema_v2
+```
+
+结果：54 个测试通过。
+
+### APK URL adapters
+
+12 款 Android 的厂商官方采集和 canonical v2 整理逻辑已从已验证 APK 快照中
+选择性迁入。
+
+| 厂商 | 游戏 | 输入 | 输出 | 直接依赖 | 行为变化 |
+| --- | --- | --- | --- | --- | --- |
+| 米哈游 | `hk4e`、`hkrpg`、`nap` | 官方 `download_porter` | 单 APK canonical v2 | curl、后续 APK probe、VersionStore | 成功路径无变化；probe 改为延迟导入 |
+| 米哈游 | `bh3` | 独立官方 `download_porter` | 共享米哈游 organizer 的 canonical v2 | 同上 | organizer 异常统一包装为 adapter 错误 |
+| 米哈游 | `bh2` | 官方 download page | 共享米哈游 organizer 的 canonical v2 | 同上 | organizer 异常统一包装为 adapter 错误 |
+| 鹰角 | `arknights`、`endfield` | 官方 launcher latest | 单 APK canonical v2 | curl、后续 APK probe、VersionStore | 成功路径无变化；probe 改为延迟导入 |
+| 库洛 | `wuwa`、`pns` | 官方 Android manifest | 单 APK canonical v2 | curl、后续 APK probe、VersionStore | 成功路径无变化；probe 改为延迟导入 |
+| 完美世界 | `tof`、`p5x`、`nte` | 官方 gameDownload JS + APK manifest | 单 APK canonical v2 | curl、`remotezip`、`pyaxmlparser`、后续 APK probe、VersionStore | 成功路径无变化；probe 改为延迟导入 |
+
+所有 endpoint 与 V4 已验证快照逐字符一致；输出继续使用
+`provenance.source_kind=official_sync`，URL candidate 使用对应厂商 provider 和
+`source_kind=official`。默认代码不包含 Amarea、HoYoFiles、GitHub、社区或其他第三方
+fallback。旧 flat 米哈游 adapter 没有迁入，也不存在默认入口。
+
+已验证：
+
+```text
+python -m unittest discover -s url_adapters -p 'test_*.py'
+python -m unittest backend.test_apk_data_baseline backend.test_indexes backend.test_version_store backend.test_schema_v2
+python -m compileall -q url_adapters
+```
+
+结果：18 个 adapter 测试和 54 个 core/data 回归通过。真实联网采集需等 APK probe 与
+registry 接入完成后在 `integration/apk` 统一验收。
+
+### APK probe adapters
+
+四个厂商的 Android URL 专项探活、URL dispatch 和 canonical v2 current 更新已从
+已验证 APK 快照中选择性迁入。
+
+- 输入：版本记录中的官方 APK URL candidate，以及 vendor/game context；
+- 输出：规范化 probe observation；写回时只替换目标 candidate 的 `current`；
+- 来源：只探测 collector 已发现的官方 CDN URL，不承担版本 discovery；
+- 依赖：Python 标准库、系统 curl、当前 schema v2；
+- 游戏：覆盖全部 12 款 Android，8 个专项 probe 模块，其中共享模块按 game context 区分；
+- V4 来源：transport、厂商 dispatch、重定向后二次 dispatch 和 BH3 特殊策略来自已验证实现；
+- V5 调整：写回收敛为 v2-only，拒绝 legacy record；非正 timeout 在请求前阻断。
+
+`apply_result()` 不改变原 URL、provider、source_kind、priority、artifact identity、checksum、
+references 或 file time，不写顶层 status、artifact attributes、reason、confidence 等旧字段。
+写入字段仅限 `state/http_code/checked_at/response_size/etag/crc64/last_modified/final_url`，且
+`final_url` 只在跳转后地址实际变化时出现。
+
+已验证：
+
+```text
+python -m unittest probe_adapters.test_common probe_adapters.test_service probe_adapters.test_registry
+python -m unittest discover -s url_adapters -p 'test_*.py'
+python -m unittest backend.test_apk_data_baseline backend.test_indexes backend.test_version_store backend.test_schema_v2
+```
+
+结果：23 个 probe、18 个 URL adapter 和 54 个 core/data 测试通过。另对米哈游、鹰角、
+库洛和完美世界各 1 个基线官方 APK URL 执行 timeout 10 秒的真实只读探活，4/4 为
+`available`、HTTP 206；未写回仓库数据。
+
+### APK registry integration 与平台验收
+
+内部 discovery registry 精确注册 12 款 Android 的 canonical v2 collector，提供单任务和
+并发 `discover_games()` API。默认 registry 不含 legacy、old、第三方 collector 或 PC adapter，
+也不提供第三方 fallback。每个采集结果在返回前重新通过 schema v2 校验。
+
+公开 HTTP route、后台 operation、可持久化批量 probe 和 CLI 依赖 PHASE 8 的
+`backend/api-contract` / `backend/sync-operations`，没有在 APK registry 分支中提前迁入。
+
+在全新系统临时目录完成了 12 款 Android 的真实官方联网平台验收：
+
+- 12/12 discovery 成功并写出 canonical v2；
+- 12/12 命中对应厂商专项 probe；
+- 12/12 `available`、HTTP 206；
+- 12/12 probe 写回后 schema 仍有效且 artifact_id 不变；
+- 12/12 索引重建成功并与临时记录一致；
+- provenance、provider、source_kind 和 endpoint 均符合官方来源约束；
+- 未发现 canonical 禁止字段或 PC adapter 混入。
+
+相关自动验证共包括 25 个 URL adapter/registry、23 个 probe 和 54 个 core/data 测试。
+
 ## 暂未迁移内容
 
 以下内容还没有进入 V5 的可信基线：
 
-- APK 数据基线；
-- APK URL adapters；
-- APK probe adapters；
-- APK registry 和 API 接线；
+- APK 公开 API 和后台 operation 接线（由后续 backend 阶段完成）；
 - PC packages、patches、voice、chunks、manifest 相关适配器；
 - PC probe adapters；
 - PC 数据基线；
@@ -287,24 +419,24 @@ snapshot/apk-validated-baseline
 
 其中 `snapshot/apk-validated-baseline`、`frontend` 晋级和 `core/schema` 已完成。
 
-当前下一步建议进入 APK 正式迁移，先做 `apk/data-baseline`。
+APK 平台模块已经完成，当前下一步建议进入 PC，先做 `pc/mihoyo-packages`。
 
 分支路径：
 
 ```text
-integration/apk
-  -> apk/data-baseline
+integration/pc
+  -> pc/mihoyo-packages
   -> validation
-  -> squash merge -> integration/apk
+  -> squash merge -> integration/pc
 ```
 
 预计修改范围：
 
-- 已验证的 12 款 Android 历史版本记录；
-- 对应 Android `index.json`；
-- 数据合法性和索引一致性验证。
+- 米哈游 PC 官方完整包资源采集；
+- canonical v2 package artifacts；
+- 对应 parser/organizer 测试和官方来源验证。
 
-只从 `snapshot/apk-validated-baseline` 选择性提取已验证 APK 数据，不整分支合并。
+PC 开发不得修改 Android collector、organizer、probe 或 registry。
 
 这一阶段不要迁入：
 
@@ -322,12 +454,8 @@ integration/apk
 推荐顺序：
 
 ```text
-apk/data-baseline
-  -> apk/url-adapters
-  -> apk/probe-adapters
-  -> apk/registry-integration
-  -> APK 真实联网验收
-  -> integration/v5
+pc/mihoyo-packages
+  -> pc/mihoyo-patches
 ```
 
 PC 开发应等共享 core 稳定后再开始。`pc/data-baseline` 不要现在创建，等 PC 格式和适配器

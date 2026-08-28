@@ -1,0 +1,26 @@
+{
+  "vendor": "kuro",
+  "game_id": "pns",
+  "platform": "android",
+  "versions": [
+    {
+      "version": "4.7.0",
+      "updated_at": "2026-08-17T10:38:41Z",
+      "available": true,
+      "size": 2090436000
+    },
+    {
+      "version": "4.6.0",
+      "updated_at": "2026-07-15T10:59:19Z",
+      "available": true,
+      "size": 2086642875
+    },
+    {
+      "version": "4.5.0",
+      "updated_at": "2026-05-29T07:21:14Z",
+      "available": true,
+      "size": 2083232369
+    }
+  ],
+  "domain_id": "pns-android"
+}

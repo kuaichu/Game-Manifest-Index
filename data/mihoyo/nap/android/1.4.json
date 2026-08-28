@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "nap",
+  "platform": "android",
+  "channel": "official",
+  "version": "1.4",
+  "version_code": null,
+  "file_time": "2024-12-07T03:57:03Z",
+  "domain_id": "nap-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "ZenlessZoneZero_1.4.apk",
+      "urls": [
+        {
+          "url": "https://autopatchcn.juequling.com/package_download/op/client_app/download/20241207115703_W2DoEai7K4DBHJD5/gw/ZenlessZoneZero_1.4.apk",
+          "provider": "mihoyo",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 206,
+            "checked_at": "2026-08-25T14:12:56Z",
+            "state": "available",
+            "etag": "9E15EB5A75C43364A36FC9FDC48834DF-10"
+          }
+        }
+      ],
+      "size": 402601377,
+      "checksum": {
+        "crc64": "15602370685534051467"
+      },
+      "artifact_id": "a1_61d73391b3dbbcbb8c5e8ae6f7ba2955"
+    }
+  ],
+  "references": []
+}

@@ -1,0 +1,146 @@
+{
+  "vendor": "hypergryph",
+  "game_id": "arknights",
+  "platform": "android",
+  "versions": [
+    {
+      "version": "2.7.61",
+      "updated_at": "2026-07-27T11:52:44Z",
+      "available": true,
+      "size": 2109579544
+    },
+    {
+      "version": "2.7.41",
+      "updated_at": "2026-05-29T06:50:18Z",
+      "available": true,
+      "size": 2062252913
+    },
+    {
+      "version": "2.4.41",
+      "updated_at": "2025-02-20",
+      "available": null,
+      "size": null
+    },
+    {
+      "version": "2.4.21",
+      "updated_at": "2025-01-09",
+      "available": null,
+      "size": null
+    },
+    {
+      "version": "2.4.01",
+      "updated_at": "2025-01-20T07:56:33Z",
+      "available": null,
+      "size": null
+    },
+    {
+      "version": "2.3.01",
+      "updated_at": "2024-09-11T02:59:47Z",
+      "available": null,
+      "size": 1913410430
+    },
+    {
+      "version": "2.2.41",
+      "updated_at": "2024-09-11T02:39:58Z",
+      "available": null,
+      "size": null
+    },
+    {
+      "version": "2.2.21",
+      "updated_at": "2024-04-02",
+      "available": null,
+      "size": null
+    },
+    {
+      "version": "2.1.41",
+      "updated_at": "2024-01-18",
+      "available": null,
+      "size": null
+    },
+    {
+      "version": "2.1.01",
+      "updated_at": "2024-09-09T02:46:59Z",
+      "available": null,
+      "size": null
+    },
+    {
+      "version": "2.0.40",
+      "updated_at": "2024-09-09T02:36:34Z",
+      "available": null,
+      "size": null
+    },
+    {
+      "version": "2.0.01",
+      "updated_at": "2024-09-09T02:29:20Z",
+      "available": null,
+      "size": null
+    },
+    {
+      "version": "1.9.81",
+      "updated_at": "2024-09-09T02:19:39Z",
+      "available": null,
+      "size": null
+    },
+    {
+      "version": "1.9.01",
+      "updated_at": "2024-09-06T04:01:41Z",
+      "available": null,
+      "size": null
+    },
+    {
+      "version": "1.8.01",
+      "updated_at": "2024-09-06T03:44:42Z",
+      "available": null,
+      "size": null
+    },
+    {
+      "version": "1.5.81",
+      "updated_at": "2024-09-06T03:29:03Z",
+      "available": null,
+      "size": 1628461303
+    },
+    {
+      "version": "1.5.01",
+      "updated_at": "2024-09-06T03:18:15Z",
+      "available": null,
+      "size": null
+    },
+    {
+      "version": "1.4.01",
+      "updated_at": "2021-04-15",
+      "available": null,
+      "size": null
+    },
+    {
+      "version": "1.2.10",
+      "updated_at": "2024-09-06T02:53:12Z",
+      "available": null,
+      "size": null
+    },
+    {
+      "version": "1.2.01",
+      "updated_at": "2024-09-06T02:50:29Z",
+      "available": null,
+      "size": null
+    },
+    {
+      "version": "1.1.90",
+      "updated_at": "2024-09-06T02:43:50Z",
+      "available": null,
+      "size": null
+    },
+    {
+      "version": "1.1.80",
+      "updated_at": "2024-09-06T02:33:47Z",
+      "available": null,
+      "size": null
+    },
+    {
+      "version": "1.1.50",
+      "updated_at": "2020-08-11",
+      "available": null,
+      "size": null
+    }
+  ],
+  "domain_id": "arknights-android"
+}

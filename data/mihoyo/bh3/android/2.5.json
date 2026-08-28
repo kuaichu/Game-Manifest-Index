@@ -1,0 +1,34 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "platform": "android",
+  "channel": "official",
+  "version": "2.5",
+  "version_code": null,
+  "file_time": "2018-07-26",
+  "domain_id": "bh3-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "20180726-android_versions-v2_5_hail_my_proud_queen_guofu.apk",
+      "urls": [
+        {
+          "url": "http://app.bh3.com/public/Android/20180726-android_versions-v2_5_hail_my_proud_queen_guofu.apk",
+          "provider": "mihoyo",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "checked_at": "2026-08-25T15:39:17Z",
+            "state": "unavailable"
+          }
+        }
+      ],
+      "artifact_id": "a1_a1aef9a36faa6cb52c7b5802e41b3016"
+    }
+  ],
+  "references": []
+}

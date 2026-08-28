@@ -1,0 +1,34 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "platform": "android",
+  "channel": "official",
+  "version": "1.1",
+  "version_code": null,
+  "file_time": "2016-11-08T03:29:40Z",
+  "domain_id": "bh3-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "20161108-112940-gf_android-versions-v1_1-4R-705fcfd-ASB-il2cpp_guofu.apk",
+      "urls": [
+        {
+          "url": "http://app.bh3.com/public/Android/20161108-112940-gf_android-versions-v1_1-4R-705fcfd-ASB-il2cpp_guofu.apk",
+          "provider": "mihoyo",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "checked_at": "2026-08-25T15:39:17Z",
+            "state": "unavailable"
+          }
+        }
+      ],
+      "artifact_id": "a1_9f1fe8a77e073c3dc9c9284763ee443c"
+    }
+  ],
+  "references": []
+}

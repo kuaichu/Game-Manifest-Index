@@ -1,0 +1,38 @@
+{
+  "schema_version": 2,
+  "vendor": "hypergryph",
+  "game_id": "arknights",
+  "platform": "android",
+  "channel": "official",
+  "version": "1.2.10",
+  "version_code": null,
+  "file_time": "2024-09-06T02:53:12Z",
+  "domain_id": "arknights-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "arknights-hg-1210.apk",
+      "urls": [
+        {
+          "url": "https://ak.hycdn.cn/apk/202012161718-1210-2f98d22a22c6bca91335/arknights-hg-1210.apk",
+          "provider": "hypergryph",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 403,
+            "checked_at": "2026-08-24T11:44:10Z",
+            "etag": "FD807A878CF95388ACB092300069F4A3-400"
+          }
+        }
+      ],
+      "checksum": {
+        "crc64": "1803309549207243160"
+      },
+      "artifact_id": "a1_36393aae4209a4fb949814a211cebcc2"
+    }
+  ],
+  "references": []
+}

@@ -1,0 +1,39 @@
+{
+  "schema_version": 2,
+  "vendor": "hypergryph",
+  "game_id": "arknights",
+  "platform": "android",
+  "channel": "official",
+  "version": "1.5.81",
+  "version_code": null,
+  "file_time": "2024-09-06T03:29:03Z",
+  "domain_id": "arknights-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "arknights-hg-1581.apk",
+      "urls": [
+        {
+          "url": "https://ak.hycdn.cn/apk/202109151624-1581-fnj60dalawa9hrco20a7/arknights-hg-1581.apk",
+          "provider": "hypergryph",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 403,
+            "checked_at": "2026-08-24T11:44:09Z",
+            "etag": "9046F14512E5FA56BA4729E38681646B-400"
+          }
+        }
+      ],
+      "size": 1628461303,
+      "checksum": {
+        "crc64": "15644247771670657856"
+      },
+      "artifact_id": "a1_627e33115f3507624248e386c0329674"
+    }
+  ],
+  "references": []
+}

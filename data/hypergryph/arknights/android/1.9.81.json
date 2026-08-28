@@ -1,0 +1,38 @@
+{
+  "schema_version": 2,
+  "vendor": "hypergryph",
+  "game_id": "arknights",
+  "platform": "android",
+  "channel": "official",
+  "version": "1.9.81",
+  "version_code": null,
+  "file_time": "2024-09-09T02:19:39Z",
+  "domain_id": "arknights-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "arknights-hg-1981.apk",
+      "urls": [
+        {
+          "url": "https://ak.hycdn.cn/apk/202303031911-1981-2immsmdktq3dvi0ukxvd/arknights-hg-1981.apk",
+          "provider": "hypergryph",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 403,
+            "checked_at": "2026-08-24T11:44:10Z",
+            "etag": "B2D4CCD44C123297DEA336A841C3B412-400"
+          }
+        }
+      ],
+      "checksum": {
+        "crc64": "12020228171406236012"
+      },
+      "artifact_id": "a1_40ce0dc1bd99f552f36e898940baad50"
+    }
+  ],
+  "references": []
+}

@@ -1,0 +1,34 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "platform": "android",
+  "channel": "official",
+  "version": "1.3",
+  "version_code": null,
+  "file_time": "2017-02-28T12:20:36Z",
+  "domain_id": "bh3-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "20170228-202036-gf_android_ota-versions-v1_3_bugfix-updateota-2de1573-ASB-il2cpp_guofu.apk",
+      "urls": [
+        {
+          "url": "http://app.bh3.com/public/Android/20170228-202036-gf_android_ota-versions-v1_3_bugfix-updateota-2de1573-ASB-il2cpp_guofu.apk",
+          "provider": "mihoyo",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "checked_at": "2026-08-25T15:39:17Z",
+            "state": "unavailable"
+          }
+        }
+      ],
+      "artifact_id": "a1_582853f1dcb1450dbdaf2950f5014d31"
+    }
+  ],
+  "references": []
+}

@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "platform": "android",
+  "channel": "official",
+  "version": "7.1",
+  "version_code": null,
+  "file_time": "2023-11-06T07:41:07Z",
+  "domain_id": "bh3-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "20231102-000511-gf_android_ota-versions-v7_1-Starbound_Painter_baidu.apk",
+      "urls": [
+        {
+          "url": "https://bundle.bh3.com/ptpublic/rel/20231106153627_b1OpytRR6oCFFnkm/CPS/20231102-000511-gf_android_ota-versions-v7_1-Starbound_Painter_baidu.apk",
+          "provider": "mihoyo",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 206,
+            "checked_at": "2026-08-25T15:39:20Z",
+            "state": "available",
+            "etag": "7175AC8C4DD6BC3C82595C2FFC6243BE-10"
+          }
+        }
+      ],
+      "size": 845542287,
+      "checksum": {
+        "crc64": "13208908645430383912"
+      },
+      "artifact_id": "a1_1c854836c5874587635cd01f1dff6af3"
+    }
+  ],
+  "references": []
+}

@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "platform": "android",
+  "channel": "official",
+  "version": "8.4",
+  "version_code": null,
+  "file_time": "2025-07-17T07:28:35Z",
+  "domain_id": "bh3-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "20250709-232754-gf_android_ota-versions-v8_4-For_the_Stars_gw.apk",
+      "urls": [
+        {
+          "url": "https://autopatchcn.bh3.com/ptpublic/rel/20250717152657_HmMWzKltujR0bm3L/CPS/20250709-232754-gf_android_ota-versions-v8_4-For_the_Stars_gw.apk",
+          "provider": "mihoyo",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 206,
+            "checked_at": "2026-08-25T15:39:22Z",
+            "state": "available",
+            "etag": "A3F452DEE571984CA36A3CF49CC813BF-10"
+          }
+        }
+      ],
+      "size": 668953782,
+      "checksum": {
+        "crc64": "5460404837819769433"
+      },
+      "artifact_id": "a1_62d2bf8100cf4294b768b648611a89bc"
+    }
+  ],
+  "references": []
+}

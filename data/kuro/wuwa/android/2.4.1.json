@@ -1,0 +1,35 @@
+{
+  "schema_version": 2,
+  "vendor": "kuro",
+  "game_id": "wuwa",
+  "platform": "android",
+  "channel": "official",
+  "version": "2.4.1",
+  "version_code": null,
+  "file_time": "2025-07-09T02:52:31Z",
+  "domain_id": "wuwa-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "KR_TF_41-鸣潮_2.4.1_141938334__库洛_投放包_1_0198dea9f935f0df478aeae416b85a83_shelled.apk",
+      "urls": [
+        {
+          "url": "https://mirrors-package-mc.aki-game.com/client/download/20250709105231_grUsSFZZmVEXfwkHyM/KR_TF_41-%E9%B8%A3%E6%BD%AE_2.4.1_141938334__%E5%BA%93%E6%B4%9B_%E6%8A%95%E6%94%BE%E5%8C%85_1_0198dea9f935f0df478aeae416b85a83_shelled.apk",
+          "provider": "kuro",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 404,
+            "checked_at": "2026-08-24T11:44:11Z",
+            "state": "unavailable"
+          }
+        }
+      ],
+      "artifact_id": "a1_16605f613d94fa339ca5c90946ef9fd7"
+    }
+  ],
+  "references": []
+}

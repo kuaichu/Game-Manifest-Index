@@ -1,0 +1,34 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "platform": "android",
+  "channel": "official",
+  "version": "3.3",
+  "version_code": null,
+  "file_time": "2019-07-11T07:36:03Z",
+  "domain_id": "bh3-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "20190711-153603-gf_android_ota-R3_3-Refactoring_of_Angel_guofu.apk",
+      "urls": [
+        {
+          "url": "https://app.bh3.com/public/Android/20190711-153603-gf_android_ota-R3_3-Refactoring_of_Angel_guofu.apk",
+          "provider": "mihoyo",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "checked_at": "2026-08-25T15:39:17Z",
+            "state": "unavailable"
+          }
+        }
+      ],
+      "artifact_id": "a1_fbe994f221e4585c4b1d7ede143712f9"
+    }
+  ],
+  "references": []
+}

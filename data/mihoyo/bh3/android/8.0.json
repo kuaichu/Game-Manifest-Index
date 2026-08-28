@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "platform": "android",
+  "channel": "official",
+  "version": "8.0",
+  "version_code": null,
+  "file_time": "2024-12-07T23:02:19Z",
+  "domain_id": "bh3-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "20241204-232347-gf_android_ota-versions-v8_0-InSearchoftheSun_gw.apk",
+      "urls": [
+        {
+          "url": "https://bundle.bh3.com/ptpublic/rel/20241208070032_L5tMaxvchIF0LKZg/CPS/20241204-232347-gf_android_ota-versions-v8_0-InSearchoftheSun_gw.apk",
+          "provider": "mihoyo",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 206,
+            "checked_at": "2026-08-25T15:39:21Z",
+            "state": "available",
+            "etag": "07B6BF65662BC918B1377BEC7EDCA48C-10"
+          }
+        }
+      ],
+      "size": 692344942,
+      "checksum": {
+        "crc64": "14329267824581901752"
+      },
+      "artifact_id": "a1_da23a70f4b3e6a8d03e82e4344d4eb64"
+    }
+  ],
+  "references": []
+}

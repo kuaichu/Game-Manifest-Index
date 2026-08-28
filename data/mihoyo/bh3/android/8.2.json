@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "platform": "android",
+  "channel": "official",
+  "version": "8.2",
+  "version_code": null,
+  "file_time": "2025-03-21T03:13:08Z",
+  "domain_id": "bh3-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "20250314-114608-gf_android_ota-versions-v8_2-Roving_Among_Clouds_gw.apk",
+      "urls": [
+        {
+          "url": "https://autopatchcn.bh3.com/ptpublic/rel/20250321105946_GHQTTjbASRjRe2s6/CPS/20250314-114608-gf_android_ota-versions-v8_2-Roving_Among_Clouds_gw.apk",
+          "provider": "mihoyo",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 206,
+            "checked_at": "2026-08-25T15:39:22Z",
+            "state": "available",
+            "etag": "49C6A0DB974FE04D7214942483384246-10"
+          }
+        }
+      ],
+      "size": 658160042,
+      "checksum": {
+        "crc64": "327950167083747546"
+      },
+      "artifact_id": "a1_96bc8723b59de1ac312b887146f7c132"
+    }
+  ],
+  "references": []
+}

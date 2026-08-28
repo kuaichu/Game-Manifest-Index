@@ -1,0 +1,34 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "platform": "android",
+  "channel": "official",
+  "version": "7.6",
+  "version_code": null,
+  "file_time": "2024-06-24T02:42:31Z",
+  "domain_id": "bh3-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "20240620-002924-gf_android_ota-versions-v7_6-Fading_Dreams_gw.apk",
+      "urls": [
+        {
+          "url": "https://autopatchcn.bh3.com/ptpublic/rel/20240624104231_kQdR9e8gTqYZeAgW/CPS/20240620-002924-gf_android_ota-versions-v7_6-Fading_Dreams_gw.apk",
+          "provider": "mihoyo",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 403,
+            "checked_at": "2026-08-25T15:39:21Z"
+          }
+        }
+      ],
+      "artifact_id": "a1_c293f8a72b6c30d0f1bc9ddbca862425"
+    }
+  ],
+  "references": []
+}

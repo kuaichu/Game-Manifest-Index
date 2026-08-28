@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "platform": "android",
+  "channel": "official",
+  "version": "8.8",
+  "version_code": null,
+  "file_time": "2026-03-27T02:53:05Z",
+  "domain_id": "bh3-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "20260318-234707-gf_android_ota-versions-v8_8-Sea_of_Data_gw.apk",
+      "urls": [
+        {
+          "url": "https://autopatchcn.bh3.com/ptpublic/rel/20260327105202_TW2dPPbXkM2Z88Le/CPS/20260318-234707-gf_android_ota-versions-v8_8-Sea_of_Data_gw.apk",
+          "provider": "mihoyo",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 206,
+            "checked_at": "2026-08-25T15:39:22Z",
+            "state": "available",
+            "etag": "0289579D8BBF54900692C5814AB0FD2A-10"
+          }
+        }
+      ],
+      "size": 694489776,
+      "checksum": {
+        "crc64": "12388160502879843255"
+      },
+      "artifact_id": "a1_b1ceb886ba7e46ab64f7a3fe19d43ed8"
+    }
+  ],
+  "references": []
+}

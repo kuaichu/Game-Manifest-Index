@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "vendor": "perfectworld",
+  "game_id": "p5x",
+  "platform": "android",
+  "channel": "official",
+  "version": "1.4.0",
+  "version_code": 243,
+  "file_time": "2025-04-08T07:21:53Z",
+  "domain_id": "p5x-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "laohu_p5x_20250408.apk",
+      "urls": [
+        {
+          "url": "https://p5xapk.wmupd.com/webops/p5x/laohu_p5x_20250408.apk",
+          "provider": "perfectworld",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 206,
+            "checked_at": "2026-08-24T11:44:15Z",
+            "state": "available",
+            "etag": "BD1C385B8678FCADDEFEC1318791B9F2-173"
+          }
+        }
+      ],
+      "size": 1812944992,
+      "checksum": {
+        "crc64": "1091280117757571515"
+      },
+      "artifact_id": "a1_0fed748110e38e10ada9309dcef05f71"
+    }
+  ],
+  "references": []
+}

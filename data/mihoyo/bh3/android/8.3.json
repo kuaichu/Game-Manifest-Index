@@ -1,0 +1,39 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "platform": "android",
+  "channel": "official",
+  "version": "8.3",
+  "version_code": null,
+  "file_time": "2025-05-23T03:56:48Z",
+  "domain_id": "bh3-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "20250514-232040-gf_android_ota-versions-v8_3-Spacetime_Warp_gw.apk",
+      "urls": [
+        {
+          "url": "https://autopatchcn.bh3.com/ptpublic/rel/20250523115648_9RU48di9UxAQIixO/CPS/20250514-232040-gf_android_ota-versions-v8_3-Spacetime_Warp_gw.apk",
+          "provider": "mihoyo",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "checked_at": "2026-08-25T16:33:16Z",
+            "state": "unavailable",
+            "etag": "D5A243BB59065896E8A425A1537567E9-10"
+          }
+        }
+      ],
+      "size": 661362858,
+      "checksum": {
+        "crc64": "13615178433576632909"
+      },
+      "artifact_id": "a1_881994b464d3c0ed0f06333195b212b5"
+    }
+  ],
+  "references": []
+}

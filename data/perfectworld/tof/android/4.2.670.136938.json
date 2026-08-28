@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "vendor": "perfectworld",
+  "game_id": "tof",
+  "platform": "android",
+  "channel": "official",
+  "version": "4.2.670.136938",
+  "version_code": 670,
+  "file_time": "2024-07-11T10:48:10Z",
+  "domain_id": "tof-android",
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "ht_QRSL-20240711.apk",
+      "urls": [
+        {
+          "url": "https://htapk.wmupd.com/webops/ht/ht_QRSL-20240711.apk",
+          "provider": "perfectworld",
+          "source_kind": "legacy",
+          "priority": 0,
+          "current": {
+            "http_code": 206,
+            "checked_at": "2026-08-24T11:44:15Z",
+            "state": "available",
+            "etag": "5FAF3262496FE481C6BB9BE845A75718-149"
+          }
+        }
+      ],
+      "size": 1559683250,
+      "checksum": {
+        "crc64": "6140127737111448214"
+      },
+      "artifact_id": "a1_584e87f6e701696772fb1c84c41b5b2e"
+    }
+  ],
+  "references": []
+}

@@ -1,0 +1,1 @@
+"""Android URL discovery adapters."""

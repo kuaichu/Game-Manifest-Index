@@ -1,0 +1,350 @@
+{
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "platform": "android",
+  "versions": [
+    {
+      "version": "9.0",
+      "updated_at": "2026-07-15T08:07:50Z",
+      "available": true,
+      "size": 699364583
+    },
+    {
+      "version": "8.9",
+      "updated_at": "2026-05-21T10:45:58Z",
+      "available": true,
+      "size": 698069680
+    },
+    {
+      "version": "8.8",
+      "updated_at": "2026-03-27T02:53:05Z",
+      "available": true,
+      "size": 694489776
+    },
+    {
+      "version": "8.7",
+      "updated_at": "2026-01-29T03:00:58Z",
+      "available": true,
+      "size": 695651102
+    },
+    {
+      "version": "8.6",
+      "updated_at": "2025-11-26T02:34:42Z",
+      "available": true,
+      "size": 694020894
+    },
+    {
+      "version": "8.5",
+      "updated_at": "2025-09-19T08:03:03Z",
+      "available": true,
+      "size": 680451531
+    },
+    {
+      "version": "8.4",
+      "updated_at": "2025-07-17T07:28:35Z",
+      "available": true,
+      "size": 668953782
+    },
+    {
+      "version": "8.3",
+      "updated_at": "2025-05-23T03:56:48Z",
+      "available": false,
+      "size": 661362858
+    },
+    {
+      "version": "8.2",
+      "updated_at": "2025-03-21T03:13:08Z",
+      "available": true,
+      "size": 658160042
+    },
+    {
+      "version": "8.1",
+      "updated_at": "2025-01-20T03:04:40Z",
+      "available": true,
+      "size": 766723976
+    },
+    {
+      "version": "8.0",
+      "updated_at": "2024-12-07T23:02:19Z",
+      "available": true,
+      "size": 692344942
+    },
+    {
+      "version": "7.9",
+      "updated_at": "2024-10-25T07:18:16Z",
+      "available": null,
+      "size": null
+    },
+    {
+      "version": "7.8",
+      "updated_at": "2024-09-12T08:24:05Z",
+      "available": null,
+      "size": null
+    },
+    {
+      "version": "7.7",
+      "updated_at": "2024-08-05T02:39:51Z",
+      "available": null,
+      "size": null
+    },
+    {
+      "version": "7.6",
+      "updated_at": "2024-06-24T02:42:31Z",
+      "available": null,
+      "size": null
+    },
+    {
+      "version": "7.5",
+      "updated_at": "2025-06-25T02:51:44Z",
+      "available": null,
+      "size": 600051270
+    },
+    {
+      "version": "7.4",
+      "updated_at": "2024-03-25T07:17:33Z",
+      "available": true,
+      "size": 571277789
+    },
+    {
+      "version": "7.3",
+      "updated_at": "2024-01-29T03:08:00Z",
+      "available": true,
+      "size": 586476686
+    },
+    {
+      "version": "7.2",
+      "updated_at": "2023-12-18T07:42:36Z",
+      "available": true,
+      "size": 538409750
+    },
+    {
+      "version": "7.1",
+      "updated_at": "2023-11-06T07:41:07Z",
+      "available": true,
+      "size": 845542287
+    },
+    {
+      "version": "7.0",
+      "updated_at": "2023-09-25T08:05:54Z",
+      "available": true,
+      "size": 722100914
+    },
+    {
+      "version": "6.9",
+      "updated_at": "2023-08-14T07:06:10Z",
+      "available": true,
+      "size": 530170531
+    },
+    {
+      "version": "6.8",
+      "updated_at": "2023-07-03T02:26:11Z",
+      "available": true,
+      "size": 530428840
+    },
+    {
+      "version": "6.6",
+      "updated_at": "2023-04-16T07:36:13Z",
+      "available": true,
+      "size": 651976589
+    },
+    {
+      "version": "6.5",
+      "updated_at": "2023-03-06T02:28:51Z",
+      "available": true,
+      "size": 645319429
+    },
+    {
+      "version": "6.4",
+      "updated_at": "2023-01-16T02:20:46Z",
+      "available": true,
+      "size": 669218608
+    },
+    {
+      "version": "6.2",
+      "updated_at": "2023-02-28T10:25:46Z",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "6.1",
+      "updated_at": "2023-02-28T10:25:46Z",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "5.6",
+      "updated_at": "2023-02-28T10:25:46Z",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "5.2",
+      "updated_at": "2023-02-28T10:25:46Z",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "5.0.1",
+      "updated_at": "2023-02-28T10:25:46Z",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "4.9",
+      "updated_at": "2023-02-28T10:25:46Z",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "4.8",
+      "updated_at": "2023-02-28T10:25:46Z",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "4.3",
+      "updated_at": "2020-09-21T12:57:26Z",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "3.9.1",
+      "updated_at": "2020-04-23T13:22:46Z",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "3.8",
+      "updated_at": "2020-02-27T09:36:53Z",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "3.7",
+      "updated_at": "2020-01-09T09:16:48Z",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "3.6",
+      "updated_at": "2019-11-21T12:33:21Z",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "3.5",
+      "updated_at": "2019-10-18T08:20:47Z",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "3.4",
+      "updated_at": "2019-08-23T13:06:58Z",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "3.3",
+      "updated_at": "2019-07-11T07:36:03Z",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "3.2",
+      "updated_at": "2019-05-31T12:13:55Z",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "2.5",
+      "updated_at": "2018-07-26",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "2.2",
+      "updated_at": "2018-03-29",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "2.1.1",
+      "updated_at": "2018-02-08",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "2.0",
+      "updated_at": "2018-01-11",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "1.9",
+      "updated_at": "2017-11-23",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "1.8",
+      "updated_at": "2017-10-12",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "1.7",
+      "updated_at": "2017-08-28",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "1.6",
+      "updated_at": "2017-06-30",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "1.5",
+      "updated_at": "2017-05-25",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "1.4",
+      "updated_at": "2017-04-07T10:49:18Z",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "1.3",
+      "updated_at": "2017-02-28T12:20:36Z",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "1.2",
+      "updated_at": "2016-12-30T10:04:34Z",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "1.1",
+      "updated_at": "2016-11-08T03:29:40Z",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "1.0.2",
+      "updated_at": "2016-10-21",
+      "available": false,
+      "size": null
+    },
+    {
+      "version": "0.9.9",
+      "updated_at": "2016-09-27T12:40:34Z",
+      "available": false,
+      "size": null
+    }
+  ],
+  "domain_id": "bh3-android"
+}
