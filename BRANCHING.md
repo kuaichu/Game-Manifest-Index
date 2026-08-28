@@ -176,3 +176,129 @@ out-of-scope changes must not be merged.
 
 Tests and docs travel with the feature branch that needs them. Do not create generic
 `tests`, `docs`, `requirements`, `config`, or `utils` branches.
+
+## Merge Strategy
+
+Use different merge strategies for task branches and long-lived integration branches.
+
+### Task Branch to Integration Branch
+
+For temporary task branches:
+
+```text
+core/*
+backend/*
+frontend/*
+apk/*
+pc/*
+```
+
+Prefer squash merge after validation.
+
+Examples:
+
+```text
+apk/url-adapters
+  -> squash merge -> integration/apk
+
+pc/mihoyo-packages
+  -> squash merge -> integration/pc
+
+core/schema
+  -> squash merge -> integration/v5
+```
+
+This keeps implementation and debugging commits out of the long-lived integration
+history.
+
+After a successful squash merge, freeze or delete the task branch.
+
+### integration/v5 to Platform Integration
+
+When shared core changes require APK or PC branches to catch up:
+
+```text
+integration/v5
+  -> integration/apk
+
+integration/v5
+  -> integration/pc
+```
+
+Use a normal merge.
+
+Do not squash this synchronization merge. This preserves ancestry between the
+long-lived integration branches.
+
+### Platform Integration to integration/v5
+
+After platform acceptance:
+
+```text
+integration/apk
+  -> integration/v5
+
+integration/pc
+  -> integration/v5
+```
+
+Use a normal merge commit.
+
+Do not squash or cherry-pick an entire platform integration branch back into
+`integration/v5`.
+
+### integration/v5 to main
+
+After full V5 validation:
+
+```text
+integration/v5
+  -> main
+```
+
+Prefer fast-forward when possible. Otherwise use a normal merge commit.
+
+Tag important validated states after promotion.
+
+## Branch Creation Rule
+
+Create task branches from the latest validated parent branch.
+
+- `apk/*` starts from the latest `integration/apk`.
+- `pc/*` starts from the latest `integration/pc`.
+- `core/*`, `backend/*`, and `frontend/*` normally start from the latest
+  `integration/v5`.
+
+Before creating a new task branch, update the parent branch first.
+
+Do not create new task branches from another unfinished task branch unless the dependency
+is explicit and approved.
+
+## Protected Branch Rule
+
+Agents must not directly modify or commit to:
+
+- `main`
+- `integration/v5`
+- `integration/apk`
+- `integration/pc`
+- `snapshot/*`
+
+Changes must be produced on a task branch first.
+
+Promotion into integration branches occurs only after validation and diff review.
+
+## Semantic Stability Rule
+
+Refactoring does not authorize semantic changes.
+
+A task branch must not silently change:
+
+- official data sources or endpoints;
+- source provenance;
+- JSON field meaning;
+- artifact identity;
+- public API contracts;
+- platform ownership between APK and PC.
+
+If such a change is required, declare it explicitly before implementation.
