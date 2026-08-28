@@ -54,6 +54,7 @@ V5 主线。
   - `PROJECT_STATUS.md`
   - 已晋级的前端基线
   - 已晋级的 `core/schema`
+  - 已晋级的 `core/version-store`
 
 日常新任务应从最新 `integration/v5` 或对应平台 integration 分支切出。
 
@@ -82,6 +83,10 @@ V5 主线。
 
 - `core/schema`
   - 用于迁移新版 schema、校验和 artifact identity。
+  - 已测试并 squash merge 到 `integration/v5`。
+
+- `core/version-store`
+  - 用于新版记录的安全保存、路径和覆盖规则。
   - 已测试并 squash merge 到 `integration/v5`。
 
 这些任务分支后续不再继续开发，可冻结或删除。
@@ -186,11 +191,38 @@ python -m unittest backend.test_schema_v2
 
 结果：26 个测试通过。
 
+### `core/version-store`
+
+新版记录的通用保存能力已从 APK 快照中选择性迁入 V5。
+
+当前文件：
+
+- `backend/version_store.py`
+- `backend/storage_locks.py`
+- `backend/test_version_store.py`
+
+当前能力：
+
+- Android/PC canonical 数据路径；
+- 新记录及已有 v2 记录校验；
+- 损坏文件、identity 冲突和不安全路径阻断；
+- matching legacy 记录原样保护；
+- 已有 `is_visible` 人工字段保留；
+- 默认不覆盖、显式覆盖和原子写入；
+- 进程内及跨进程数据写锁。
+
+已验证：
+
+```text
+python -m unittest backend.test_version_store backend.test_schema_v2
+```
+
+结果：40 个测试通过。
+
 ## 暂未迁移内容
 
 以下内容还没有进入 V5 的可信基线：
 
-- 通用 version store；
 - Android/PC `index.json` 生成与读取；
 - APK 数据基线；
 - APK URL adapters；
@@ -221,31 +253,24 @@ snapshot/apk-validated-baseline
 
 其中 `snapshot/apk-validated-baseline`、`frontend` 晋级和 `core/schema` 已完成。
 
-当前下一步建议做 `core/version-store`。
+当前下一步建议做 `core/indexes`。
 
 分支路径：
 
 ```text
 integration/v5
-  -> core/version-store
+  -> core/indexes
   -> validation
   -> squash merge -> integration/v5
 ```
 
 预计修改范围：
 
-- 通用保存和读取；
-- 数据路径规则；
-- 覆盖规则；
-- record identity 检查；
-- 人工字段保留；
-- storage 相关测试。
+- Android `index.json` 生成和读取；
+- PC `index.json` 生成和读取；
+- 对应索引规则和测试。
 
-优先参考 snapshot 中这些文件：
-
-- `backend/version_store.py`
-- `backend/storage_locks.py`
-- `backend/test_version_store.py`
+优先参考 snapshot 中与索引直接相关的已验证实现和测试。
 
 这一阶段不要迁入：
 
@@ -263,8 +288,7 @@ integration/v5
 推荐顺序：
 
 ```text
-core/version-store
-  -> core/indexes
+core/indexes
   -> integration/apk
   -> apk/data-baseline
   -> apk/url-adapters
