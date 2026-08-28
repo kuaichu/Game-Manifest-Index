@@ -17,13 +17,16 @@ from url_adapters.pc.mihoyo_package_organizer import (
 )
 
 
-def package(name, marker="a", *, size=12, decompressed_size=20):
-    return {
+def package(name, marker="a", *, size=12, decompressed_size=20, language=None):
+    value = {
         "url": f"https://autopatchcn.example.test/client/{name}",
         "md5": marker * 32,
         "size": size,
         "decompressed_size": decompressed_size,
     }
+    if language is not None:
+        value["language"] = language
+    return value
 
 
 def payload(game_id="hk4e", game_packages=None):
@@ -41,10 +44,14 @@ def payload(game_id="hk4e", game_packages=None):
                             package("YuanShen_5.5.0.zip.001", "a"),
                             package("YuanShen_5.5.0.zip.002", "b"),
                         ],
-                        "audio_pkgs": [package("Audio_Chinese.zip", "c")],
+                        "audio_pkgs": [package("Audio_Chinese.zip", "c", language="zh-cn")],
                         "res_list_url": "https://official.example.test/res_list",
                     },
-                    "patches": [{"version": "5.4.0", "game_pkgs": [package("patch.zip", "d")]}],
+                    "patches": [{
+                        "version": "5.4.0",
+                        "game_pkgs": [package("patch.zip", "d")],
+                        "audio_pkgs": [],
+                    }],
                 },
                 "pre_download": {"major": {"game_pkgs": [package("future.zip", "e")]}},
             }]
@@ -184,7 +191,7 @@ class MihoyoPackageCollectorTests(unittest.TestCase):
 
     def test_organizer_failure_is_wrapped_with_cause(self):
         expected = MihoyoPackageOrganizationError("bad package response")
-        with patch.object(mihoyo_game_packages, "organize_packages_and_patches", side_effect=expected):
+        with patch.object(mihoyo_game_packages, "organize_complete", side_effect=expected):
             with self.assertRaises(AdapterError) as raised:
                 mihoyo_game_packages.discover_collection(collection(), Path("unused"))
         self.assertIs(raised.exception.__cause__, expected)

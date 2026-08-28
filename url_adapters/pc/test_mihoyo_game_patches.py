@@ -15,13 +15,16 @@ from url_adapters.pc.mihoyo_package_organizer import (
 )
 
 
-def package(name, marker="a", *, size="12", decompressed_size="20"):
-    return {
+def package(name, marker="a", *, size="12", decompressed_size="20", language=None):
+    value = {
         "url": f"https://autopatchcn.example.test/client/{name}",
         "md5": marker * 32,
         "size": size,
         "decompressed_size": decompressed_size,
     }
+    if language is not None:
+        value["language"] = language
+    return value
 
 
 def collection(patches, *, game_id="hk4e"):
@@ -38,9 +41,13 @@ def collection(patches, *, game_id="hk4e"):
                     "major": {
                         "version": "5.5.0",
                         "game_pkgs": [package("YuanShen_5.5.0.zip.001")],
-                        "audio_pkgs": [package("Audio_Chinese.zip", "c")],
+                        "audio_pkgs": [package("Audio_Chinese.zip", "c", language="zh-cn")],
                     },
-                    "patches": patches,
+                    "patches": [
+                        {**patch, "audio_pkgs": patch.get("audio_pkgs", [])}
+                        if isinstance(patch, dict) else patch
+                        for patch in patches
+                    ] if isinstance(patches, list) else patches,
                 },
                 "pre_download": {"major": {"game_pkgs": [package("future.zip", "d")]}},
             }]},
@@ -112,8 +119,7 @@ class MihoyoGamePatchTests(unittest.TestCase):
         invalid_cases = [
             ([{"version": "", "game_pkgs": []}], "非空字符串"),
             ([{"version": "5.5.0", "game_pkgs": []}], "目标版本相同"),
-            ([{"version": "5.4.0", "game_pkgs": None}], "必须是非空数组"),
-            ([{"version": "5.4.0", "game_pkgs": []}], "必须是非空数组"),
+            ([{"version": "5.4.0", "game_pkgs": None}], "必须是数组"),
             (None, "main.patches 必须是数组"),
         ]
         for patches, message in invalid_cases:

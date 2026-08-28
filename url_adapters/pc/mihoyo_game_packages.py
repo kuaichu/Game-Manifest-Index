@@ -13,7 +13,7 @@ from url_adapters.pc.mihoyo_package_organizer import (
     GAME_IDENTITIES,
     MihoyoPackageCollection,
     MihoyoPackageOrganizationError,
-    organize_packages_and_patches,
+    organize_complete,
     package_source_url,
 )
 
@@ -47,9 +47,9 @@ def collect(game_id: str, timeout: int) -> MihoyoPackageCollection:
 
 
 def discover_collection(collection: MihoyoPackageCollection, output_root: Path) -> Path:
-    """Persist packages and game patches from one HoYoPlay response atomically."""
+    """Persist game and voice packages/patches from one response atomically."""
     try:
-        return persist_v2_record(organize_packages_and_patches(collection), output_root)
+        return persist_v2_record(organize_complete(collection), output_root)
     except (MihoyoPackageOrganizationError, VersionStoreError) as error:
         raise AdapterError(str(error)) from error
 

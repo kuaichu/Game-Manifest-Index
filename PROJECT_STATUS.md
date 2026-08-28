@@ -71,7 +71,7 @@ V5 主线。
 ### `integration/pc`
 
 - 定位：PC 平台验证分支。
-- 当前包含已经同步的 shared core 基线，以及已验证的米哈游官方 PC package/patch collector。
+- 当前包含已经同步的 shared core 基线，以及已验证的米哈游官方 PC package/patch/voice collector。
 - 新 PC 任务从该分支创建，验证后 squash merge 回该分支。
 
 ### `frontend`
@@ -402,8 +402,8 @@ python -m unittest backend.test_apk_data_baseline backend.test_indexes backend.t
 
 四款统一使用官方 endpoint `https://hyp-api.mihoyo.com/hyp/hyp-connect/api/getGamePackages`
 和 launcher id `jGHBHlcOq1`。纯 package organizer 只读取 `main.major.game_pkgs`；正式持久化
-入口在 patch 阶段扩展为 packages + game patches 的 combined record。audio、pre-download、
-resource list 和 Sophon chunks 仍明确排除。Amarea/HoyoFiles 没有进入默认链路。
+入口已逐阶段扩展为 game packages/patches + voice packages/patches 的 complete record。
+pre-download、resource list 和 Sophon chunks 仍明确排除。Amarea/HoyoFiles 没有进入默认链路。
 
 archive basename 的 `.001`、`.002` 等后缀被解析为 canonical `package_type=segment` 和
 从 1 开始的 `part`；无分卷后缀的单个 archive 使用 `package_type=full`。如果 full 与
@@ -438,12 +438,33 @@ patch artifacts：`main.patches[*].version` 是 `route_from`，`main.major.versi
 保持不变；没有为此修改 core store。voice 任务也必须继续扩展 combined record，不能写入
 voice-only record 覆盖已有 artifacts。
 
+### 米哈游 PC voice
+
+官方 `main.major.audio_pkgs` 已映射为 canonical optional voice packages；
+`main.patches[*].audio_pkgs` 已映射为带 language 和 route 的 differential voice patches。
+官方语言严格限定为响应实证的 `zh-cn`、`en-us`、`ja-jp`、`ko-kr`，未知值不会被静默猜测。
+
+当前真实只读响应：
+
+- `hk4e`: 4 个 major voice packages，2 条 route 各 4 个 voice patches；
+- `hkrpg`: 4 个 major voice packages，1 条 route 含 4 个 voice patches；
+- `nap`: 4 个 major voice packages，2 条 route 各 4 个 voice patches；
+- `bh3`: 当前无 major voice 或 voice patch。
+
+当前官方 voice URL 全部是单 archive，没有分卷。organizer 仍只在 basename 明确出现 `.001` 等
+连续后缀时才为 voice package 写 `segment + part`；voice patch 永不写 `part`。同语言、同 route
+多文件依靠 basename + language + routes 区分 identity。
+
+正常持久化入口现在一次写入 game packages、game patches、voice packages 和 voice patches；
+package-only 与 game-only combined organizer 继续保留各自纯解析契约。真实 4/4 完整记录已通过
+schema、provenance、artifact identity 和临时持久化检查，package/patch artifacts 未丢失。
+
 ## 暂未迁移内容
 
 以下内容还没有进入 V5 的可信基线：
 
 - APK 公开 API 和后台 operation 接线（由后续 backend 阶段完成）；
-- PC voice、chunks 和其他厂商 manifest/package 适配器；
+- PC chunks 和其他厂商 manifest/package 适配器；
 - PC probe adapters；
 - PC 数据基线；
 - backend API contract；
@@ -468,21 +489,21 @@ snapshot/apk-validated-baseline
 
 其中 `snapshot/apk-validated-baseline`、`frontend` 晋级和 `core/schema` 已完成。
 
-APK 平台模块和 PC packages/patches 任务已经完成，当前下一步是 `pc/mihoyo-voice`。
+APK 平台模块和 PC packages/patches/voice 任务已经完成，当前下一步是 `pc/mihoyo-chunks`。
 
 分支路径：
 
 ```text
 integration/pc
-  -> pc/mihoyo-voice
+  -> pc/mihoyo-chunks
   -> validation
   -> squash merge -> integration/pc
 ```
 
 预计修改范围：
 
-- 米哈游 PC 官方语音包资源采集；
-- canonical v2 voice package artifacts；
+- 米哈游 PC 官方 Sophon chunk manifest 采集；
+- canonical v2 chunk manifest reference；
 - 对应 parser/organizer 测试和官方来源验证。
 
 PC 开发不得修改 Android collector、organizer、probe 或 registry。
@@ -495,15 +516,15 @@ PC 开发不得修改 Android collector、organizer、probe 或 registry。
 - frontend 文件；
 - APK 采集器；
 - APK 验活器；
-- packages、patches、chunks 和其他厂商 PC 专项逻辑。
+- archive packages/patches/voice、其他厂商 PC 专项逻辑。
 
 ## 近期路线
 
 推荐顺序：
 
 ```text
-pc/mihoyo-voice
-  -> pc/mihoyo-chunks
+pc/mihoyo-chunks
+  -> pc/kuro-manifests
 ```
 
 PC 开发应等共享 core 稳定后再开始。`pc/data-baseline` 不要现在创建，等 PC 格式和适配器

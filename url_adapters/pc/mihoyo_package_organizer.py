@@ -26,6 +26,7 @@ GAME_IDENTITIES: Final = {
 _ARCHIVE_NAME = re.compile(r"\.(?:zip|7z)$", re.IGNORECASE)
 _SEGMENT_NAME = re.compile(r"^(?P<archive>.+\.(?:zip|7z))\.(?P<part>[0-9]{3,})$", re.IGNORECASE)
 _MD5 = re.compile(r"^[0-9a-fA-F]{32}$")
+_VOICE_LANGUAGES: Final = frozenset({"zh-cn", "en-us", "ja-jp", "ko-kr"})
 
 
 class MihoyoPackageOrganizationError(ValueError):
@@ -176,8 +177,8 @@ def _patch_artifacts(patches: Any, route_to: str, record_identity: Mapping[str, 
         if route_from == route_to:
             raise MihoyoPackageOrganizationError(f"{patch_field}.version 不能与目标版本相同")
         game_packages = patch.get("game_pkgs")
-        if not isinstance(game_packages, list) or not game_packages:
-            raise MihoyoPackageOrganizationError(f"{patch_field}.game_pkgs 必须是非空数组")
+        if not isinstance(game_packages, list):
+            raise MihoyoPackageOrganizationError(f"{patch_field}.game_pkgs 必须是数组")
 
         for package_index, package in enumerate(game_packages):
             field = f"{patch_field}.game_pkgs[{package_index}]"
@@ -199,6 +200,118 @@ def _patch_artifacts(patches: Any, route_to: str, record_identity: Mapping[str, 
                 "package_type": "differential",
                 "delivery_mode": "archive",
                 "name": name,
+                "route_from": route_from,
+                "route_to": route_to,
+                "size": _non_negative_int(package.get("size"), f"{field}.size"),
+                "decompressed_size": _non_negative_int(
+                    package.get("decompressed_size"), f"{field}.decompressed_size"
+                ),
+                "checksum": {"md5": md5.lower()},
+                "urls": [{"url": url, "provider": "mihoyo", "source_kind": "official", "priority": 0}],
+            }
+            artifact["artifact_id"] = artifact_id(artifact, record_identity)
+            artifacts.append(artifact)
+    return artifacts
+
+
+def _voice_package_artifacts(audio_packages: Any, record_identity: Mapping[str, Any]) -> list[dict[str, Any]]:
+    if not isinstance(audio_packages, list):
+        raise MihoyoPackageOrganizationError("main.major.audio_pkgs 必须是数组")
+
+    artifacts: list[dict[str, Any]] = []
+    identities: set[tuple[str, str]] = set()
+    segment_parts: dict[tuple[str, str], set[int]] = defaultdict(set)
+    for index, package in enumerate(audio_packages):
+        field = f"main.major.audio_pkgs[{index}]"
+        if not isinstance(package, Mapping):
+            raise MihoyoPackageOrganizationError(f"{field} 必须是对象")
+        language = package.get("language")
+        if not isinstance(language, str) or language not in _VOICE_LANGUAGES:
+            raise MihoyoPackageOrganizationError(f"{field}.language 不是支持的官方语音语言")
+        url = package.get("url")
+        name, part, archive_name = _package_name(url, field)
+        identity = (language, name.casefold())
+        if identity in identities:
+            raise MihoyoPackageOrganizationError(f"{field} 与同语言的 voice 文件名重复")
+        identities.add(identity)
+        md5 = package.get("md5")
+        if not isinstance(md5, str) or not _MD5.fullmatch(md5):
+            raise MihoyoPackageOrganizationError(f"{field}.md5 必须是 32 位十六进制字符串")
+
+        artifact: dict[str, Any] = {
+            "kind": "package",
+            "component": "voice",
+            "package_type": "segment" if part is not None else "optional",
+            "delivery_mode": "archive",
+            "name": name,
+            "language": language,
+            "size": _non_negative_int(package.get("size"), f"{field}.size"),
+            "decompressed_size": _non_negative_int(
+                package.get("decompressed_size"), f"{field}.decompressed_size"
+            ),
+            "checksum": {"md5": md5.lower()},
+            "urls": [{"url": url, "provider": "mihoyo", "source_kind": "official", "priority": 0}],
+        }
+        if part is not None:
+            artifact["part"] = part
+            assert archive_name is not None
+            key = (language, archive_name.casefold())
+            if part in segment_parts[key]:
+                raise MihoyoPackageOrganizationError(f"{archive_name} 出现重复 voice 分卷 {part}")
+            segment_parts[key].add(part)
+        artifact["artifact_id"] = artifact_id(artifact, record_identity)
+        artifacts.append(artifact)
+
+    for (_, archive_name), parts in segment_parts.items():
+        expected = set(range(1, max(parts) + 1))
+        if parts != expected:
+            raise MihoyoPackageOrganizationError(f"{archive_name} voice 分卷必须从 1 开始且连续")
+    return artifacts
+
+
+def _voice_patch_artifacts(patches: Any, route_to: str, record_identity: Mapping[str, Any]) -> list[dict[str, Any]]:
+    if not isinstance(patches, list):
+        raise MihoyoPackageOrganizationError("main.patches 必须是数组")
+
+    artifacts: list[dict[str, Any]] = []
+    identities: set[tuple[str, str, str, str]] = set()
+    for patch_index, patch in enumerate(patches):
+        patch_field = f"main.patches[{patch_index}]"
+        if not isinstance(patch, Mapping):
+            raise MihoyoPackageOrganizationError(f"{patch_field} 必须是对象")
+        route_from = patch.get("version")
+        if not isinstance(route_from, str) or not route_from.strip():
+            raise MihoyoPackageOrganizationError(f"{patch_field}.version 必须是非空字符串")
+        if route_from == route_to:
+            raise MihoyoPackageOrganizationError(f"{patch_field}.version 不能与目标版本相同")
+        audio_packages = patch.get("audio_pkgs")
+        if not isinstance(audio_packages, list):
+            raise MihoyoPackageOrganizationError(f"{patch_field}.audio_pkgs 必须是数组")
+
+        for package_index, package in enumerate(audio_packages):
+            field = f"{patch_field}.audio_pkgs[{package_index}]"
+            if not isinstance(package, Mapping):
+                raise MihoyoPackageOrganizationError(f"{field} 必须是对象")
+            language = package.get("language")
+            if not isinstance(language, str) or language not in _VOICE_LANGUAGES:
+                raise MihoyoPackageOrganizationError(f"{field}.language 不是支持的官方语音语言")
+            url = package.get("url")
+            name, _, _ = _package_name(url, field)
+            identity = (route_from, route_to, language, name.casefold())
+            if identity in identities:
+                raise MihoyoPackageOrganizationError(f"{field} 与同一路由/语言的 voice patch 文件名重复")
+            identities.add(identity)
+            md5 = package.get("md5")
+            if not isinstance(md5, str) or not _MD5.fullmatch(md5):
+                raise MihoyoPackageOrganizationError(f"{field}.md5 必须是 32 位十六进制字符串")
+
+            artifact: dict[str, Any] = {
+                "kind": "patch",
+                "component": "voice",
+                "package_type": "differential",
+                "delivery_mode": "archive",
+                "name": name,
+                "language": language,
                 "route_from": route_from,
                 "route_to": route_to,
                 "size": _non_negative_int(package.get("size"), f"{field}.size"),
@@ -268,6 +381,18 @@ def organize_packages_and_patches(collection: MihoyoPackageCollection) -> dict[s
     return record
 
 
+def organize_complete(collection: MihoyoPackageCollection) -> dict[str, Any]:
+    """Build the complete archive record for game and voice packages/patches."""
+    record, main, major = _record_and_main(collection)
+    artifacts = _package_artifacts(major.get("game_pkgs"), record)
+    artifacts.extend(_patch_artifacts(main.get("patches"), record["version"], record))
+    artifacts.extend(_voice_package_artifacts(major.get("audio_pkgs"), record))
+    artifacts.extend(_voice_patch_artifacts(main.get("patches"), record["version"], record))
+    record["artifacts"] = artifacts
+    validate_v2_record(record)
+    return record
+
+
 organize = organize_packages
 
 
@@ -276,6 +401,7 @@ __all__ = [
     "MihoyoPackageCollection",
     "MihoyoPackageOrganizationError",
     "organize",
+    "organize_complete",
     "organize_packages",
     "organize_packages_and_patches",
     "package_source_url",
