@@ -16,7 +16,7 @@ GMI V5 是 Game Manifest Index 的干净重建版本。
 APK 迁移从已经验证可用的 V4 工作现场开始。PC 迁移暂缓历史数据导入，等格式和适配器
 稳定后再建立 PC 数据基线，避免把未定型数据混入可信主线。
 
-## 目录角色
+## 项目身份和目录角色
 
 - `E:\Project\Active\GMI V5`
   - 当前干净 V5 仓库。
@@ -32,6 +32,9 @@ APK 迁移从已经验证可用的 V4 工作现场开始。PC 迁移暂缓历史
   - 当前工作树已封存到 V5 的 `snapshot/apk-validated-baseline` 分支。
   - 这个来源只能用于查看、diff、提取已确认文件和对比行为。
 
+V4/V3 只能作为参考材料。V5 不允许从旧项目整仓合并，也不允许把旧项目的脏工作树重新打包成
+V5 主线。
+
 ## 当前真实分支
 
 ### `main`
@@ -43,11 +46,12 @@ APK 迁移从已经验证可用的 V4 工作现场开始。PC 迁移暂缓历史
 
 ### `integration/v5`
 
-- 本文创建前的基线提交：`c3cea64 feat(core): add version schema`
+- 当前已知基线提交：`ccb6e00 docs: add V5 project status`
 - 定位：V5 开发期当前最新可信基线。
 - 当前已包含：
   - `.gitignore`
   - `BRANCHING.md`
+  - `PROJECT_STATUS.md`
   - 已晋级的前端基线
   - 已晋级的 `core/schema`
 
@@ -82,7 +86,41 @@ APK 迁移从已经验证可用的 V4 工作现场开始。PC 迁移暂缓历史
 
 这些任务分支后续不再继续开发，可冻结或删除。
 
+## 不可破坏的语义约束
+
+重构不等于允许改变行为。任何任务分支都不得静默改变以下语义：
+
+- 官方采集源或官方 endpoint；
+- source provenance；
+- JSON 字段含义；
+- artifact identity；
+- public API contract；
+- APK/PC 平台归属边界。
+
+官方采集源不能自行替换成第三方。Amarea/HoyoFiles 只能用于历史补全，不能替代官方采集链路。
+
+如果确实需要改变上述语义，必须先明确声明原因、影响范围和验证方式，再进入实现。
+
 ## 已完成内容
+
+### V4 APK 已验证流程
+
+当前已确认：V4 APK 主流程正常，不需要重写。
+
+已验证流程为：
+
+```text
+厂商专项采集
+  -> 厂商专项整理
+  -> 新格式检查
+  -> 通用写入
+  -> 从 artifacts[].urls[] 读取 URL
+  -> 匹配厂商验活器
+  -> 结果写入 urls[].current
+```
+
+12 款 Android 的 APK 相关测试已验证通过。V5 迁移 APK 时应提取这套已确认行为，而不是把
+`snapshot/apk-validated-baseline` 整体合入。
 
 ### 分支和协作规则
 
@@ -169,9 +207,21 @@ python -m unittest backend.test_schema_v2
 这些内容必须按 `BRANCHING.md` 的规则，通过独立任务分支迁移、验证、审查，再晋级到
 对应 integration 分支。
 
-## 下一步
+## 当前下一步
 
-下一步建议做 `core/version-store`。
+原定近期顺序是：
+
+```text
+snapshot/apk-validated-baseline
+  -> frontend 晋级 integration/v5
+  -> core/schema
+  -> core/version-store
+  -> core/indexes
+```
+
+其中 `snapshot/apk-validated-baseline`、`frontend` 晋级和 `core/schema` 已完成。
+
+当前下一步建议做 `core/version-store`。
 
 分支路径：
 
