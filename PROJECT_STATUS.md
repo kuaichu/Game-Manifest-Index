@@ -46,7 +46,8 @@ V5 主线。
 
 ### `integration/v5`
 
-- 当前提交：以 Git 中 `integration/v5` 的实际分支指针为准。
+- 当前可信指针：以 Git 中 `integration/v5` 的实际分支指针为准。
+- PHASE 8 起始父提交：`639b117 Merge validated PC platform`。
 - 定位：V5 开发期当前最新可信基线。
 - 当前已包含：
   - `.gitignore`
@@ -56,6 +57,7 @@ V5 主线。
   - 已晋级的 `core/schema`
   - 已晋级的 `core/version-store`
   - 已晋级的 `core/indexes`
+  - 已通过 normal merge 晋级的完整 APK 与 PC 平台基线
 
 日常新任务应从最新 `integration/v5` 或对应平台 integration 分支切出。
 
@@ -563,12 +565,30 @@ collector 产生的 `official_sync` provenance；历史 record 只使用真实
 manifest/reference 安全、8 个 index 无差异重建、Android data 与 `integration/pc` 无差异及
 Git-object migration rerun。
 
+### Backend public API contract
+
+`backend/api-contract` 已实现 FastAPI 只读 public contract，覆盖当前前端实际调用的 games、
+domains、versions、version detail、artifacts/tree、compare、leads、chunk manifests、文件列表/
+详情和 bounded chunk content 共 16 个 GET routes。所有响应由显式 mapper 从 canonical v2、
+indexes 和独立 manifest 文档投影，不直接暴露 `schema_version`、仓库路径或 Sophon secret。
+
+Android 与 PC 均继续使用同一 flat `VersionRecord` 前端契约；只含 chunk reference 的合法 PC
+历史记录使用明确空 package 字段，不伪造下载 URL。Kuro 与 Perfect World file manifests 从
+checked-in 文档只读加载；Perfect World 下载地址按已验证 `object` identity 生成，没有可证明
+base URL 的历史 Kuro 文档仍可浏览文件元数据但不补造下载链接。Mihoyo Sophon manifest/Chunk
+读取使用官方 HTTPS host allowlist、有限 timeout/redirect/响应大小、checksum/protobuf/stat
+校验和无隐式 retry；recipe secret 不进入响应、日志或错误。
+
+API 专项 37 项与 schema/index/version-store 55 项回归通过；另核验 12 games/20 domains、442
+records/1,768 artifacts、63 chunk documents/1,410 public entries、48 个 checked-in file-manifest
+版本均可按对应 contract 读取。没有新增 `/admin` route，也没有提前迁入 sync/probe/scheduler、
+version admin 或 retention。
+
 ## 暂未迁移内容
 
 以下内容还没有进入 V5 的可信基线：
 
-- APK 公开 API 和后台 operation 接线（由后续 backend 阶段完成）；
-- backend API contract；
+- APK/PC 后台 operation 接线（由后续 backend 阶段完成）；
 - backend sync operations；
 - backend version admin；
 - retention policy。
@@ -592,7 +612,9 @@ snapshot/apk-validated-baseline
 
 APK 平台模块，以及米哈游、Kuro、Perfect World 的当前 PC 采集、URL probe 与内部 registry
 已完成验证。`pc/data-baseline` 已完成数据迁移、官方 current discovery、基线审计与
-`integration/pc` 平台验收；下一步按 normal merge 晋级 `integration/v5`，再进入 PHASE 8。
+`integration/pc` 平台验收；PHASE 7 已 normal merge 到 `integration/v5@639b117`，当前
+`backend/api-contract` 公开只读 API contract 已实现并通过任务级验证；下一任务是
+`backend/sync-operations`。
 
 分支路径：
 
@@ -614,12 +636,13 @@ integration/pc
 
 ## 近期路线
 
-推荐顺序：
+当前推进顺序：
 
 ```text
 integration/pc
-  -> normal merge -> integration/v5
-  -> backend/api-contract
+  -> normal merge -> integration/v5@639b117（已完成）
+  -> backend/api-contract（已完成）
+  -> backend/sync-operations
 ```
 
 后端业务能力建议在数据和适配器基础稳定后推进：
