@@ -144,6 +144,18 @@ V5 主线。
 
 ## 已完成内容
 
+### Perfect World PC PatcherSDK file manifests
+
+`url_adapters/pc/perfectworld_patcher.py` 已选择性适配成熟 PatcherSDK 协议，支持 `nte`、
+`p5x`、`tof` 的官方 Windows `config.xml` 与 `ResList.bin.zip`：有限请求、AES/zlib
+解码、ZIP/XML/path/object 严格校验，并为每款当前版本生成一个 canonical
+`package/full/file_manifest` artifact 和独立 `files.json`。PatchList 文件级对象只保存在
+文档中，不伪造成缺少版本路由的 patch；不猜测 voice 或 segment。
+
+真实官方临时验收：`nte 1.3.13` 为 73 files/397 patch objects，`p5x 1.0.74` 为
+3/833，`tof 6.3.3` 为 95/660；三款 schema、对象相对路径、provenance、artifact
+identity 与临时持久化均通过，未下载游戏对象。
+
 ### Kuro Wuthering Waves PC file manifests
 
 `url_adapters/pc/kuro_manifests.py` 已实现 Kuro GameStarter 官方 `wuwa` Windows
@@ -520,43 +532,42 @@ snapshot/apk-validated-baseline
 
 其中 `snapshot/apk-validated-baseline`、`frontend` 晋级和 `core/schema` 已完成。
 
-APK 平台模块、米哈游 PC packages/patches/voice/chunks 和 Kuro manifests 已完成，当前下一步是
-`pc/perfectworld-packages`。
+APK 平台模块，以及米哈游、Kuro、Perfect World 的当前 PC 采集专项已完成，当前下一步是
+`pc/probe-adapters`。
 
 分支路径：
 
 ```text
 integration/pc
-  -> pc/perfectworld-packages
+  -> pc/probe-adapters
   -> validation
   -> squash merge -> integration/pc
 ```
 
 预计修改范围：
 
-- 完美世界 PC 官方 package 来源调查和采集；
-- canonical v2 package artifacts；
-- 对应 parser/organizer 测试和官方来源验证。
+- 米哈游、Kuro、Perfect World PC URL candidate 探活；
+- 只更新 canonical `artifacts[].urls[].current`；
+- 对应厂商 URL dispatch、边界测试和真实代表 URL 验收。
 
 PC 开发不得修改 Android collector、organizer、probe 或 registry。
 
 这一阶段不要迁入：
 
 - `data/`
-- `probe_adapters/`
 - API route；
 - frontend 文件；
 - APK 采集器；
 - APK 验活器；
-- 已完成的米哈游/Kuro PC 专项逻辑、其他厂商 package/probe/registry。
+- 已完成的 PC collector/organizer 语义、registry 和历史数据。
 
 ## 近期路线
 
 推荐顺序：
 
 ```text
-pc/perfectworld-packages
-  -> pc/probe-adapters
+pc/probe-adapters
+  -> pc/registry-integration
 ```
 
 PC 开发应等共享 core 稳定后再开始。`pc/data-baseline` 不要现在创建，等 PC 格式和适配器
