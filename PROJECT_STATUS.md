@@ -71,7 +71,8 @@ V5 主线。
 ### `integration/pc`
 
 - 定位：PC 平台验证分支。
-- 当前包含已经同步的 shared core 基线，以及已验证的米哈游官方 PC package/patch/voice collector。
+- 当前包含已同步的 shared core，以及米哈游 package/patch/voice/chunk、Kuro manifest、
+  Perfect World package manifest 和 PC probe 的已验证实现；当前 registry 任务完成后晋级该分支。
 - 新 PC 任务从该分支创建，验证后 squash merge 回该分支。
 
 ### `frontend`
@@ -514,13 +515,34 @@ record 不变；官方文档可能作为 orphan manifest 留存，需后续人�
 绝区零 `3.1.0` 实际按 archive -> chunk -> archive refresh 顺序验收：24 个 archive artifacts
 全程保留，chunk reference 从 0 增至 1 后继续保留，artifact ids 和 archive provenance 不变。
 
+### PC registry integration 与平台验收
+
+内部 discovery registry 与 Android registry 分离，精确注册 8 款 Windows 游戏：米哈游
+`hk4e/hkrpg/nap/bh3` 按 packages -> chunks 串行执行，Kuro `wuwa` 和 Perfect World
+`tof/p5x/nte` 各执行一个官方 manifest/package stage；不同游戏之间有限并发。公开 API、
+batch probe、scheduler、CLI 和 index rebuild 仍留给 PHASE 8 调用方，没有提前进入 registry。
+
+每个 stage 返回后都会重新检查 schema、请求 identity 与 canonical 路径；米哈游同版本的后续
+chunk stage 必须保留已有 artifact IDs 和 references。单个预期采集失败会记录到对应 stage 并
+继续其他 stage/游戏，意外 `RuntimeError` 仍向调用方传播。Android 默认 scope、12 款注册关系和
+原结果契约保持不变。
+
+在全新系统临时目录完成 8 款官方 metadata 平台验收：8/8 discovery 成功，生成 11 份
+canonical records、118 个唯一 artifact IDs、4 份 Mihoyo chunk manifests、47 份 Kuro
+manifests（full 699 resources）和 3 份 Perfect World files 文档；NAP `3.1.0` 同一记录同时
+保留 24 个 archive artifacts 与 chunk reference。全部记录通过 schema、identity、provenance、
+manifest/reference 路径和 canonical 禁止字段检查，并重建 8 个 Windows indexes。
+
+每款抽取一个实际 artifact URL 做有限 Range/metadata probe：`hkrpg`、`nap`、`wuwa`、
+`nte/p5x/tof` 为 available/HTTP 206；`hk4e` 当前 archive 为 404，`bh3` 当前对象仍是未恢复的
+OSS Archive，按官方证据标 unavailable 且不伪造 HTTP code。probe 写回只改变精确 candidate
+的 `current`，其余 record 深比较保持不变。
+
 ## 暂未迁移内容
 
 以下内容还没有进入 V5 的可信基线：
 
 - APK 公开 API 和后台 operation 接线（由后续 backend 阶段完成）；
-- 其他厂商 manifest/package 适配器；
-- PC probe adapters；
 - PC 数据基线；
 - backend API contract；
 - backend sync operations；
@@ -544,8 +566,9 @@ snapshot/apk-validated-baseline
 
 其中 `snapshot/apk-validated-baseline`、`frontend` 晋级和 `core/schema` 已完成。
 
-APK 平台模块，以及米哈游、Kuro、Perfect World 的当前 PC 采集和 URL probe 专项已完成，
-当前下一步是 `pc/registry-integration`。
+APK 平台模块，以及米哈游、Kuro、Perfect World 的当前 PC 采集、URL probe 与内部 registry
+已完成验证。registry task squash 晋级并在 `integration/pc` 复验后，下一步是
+`pc/data-baseline`。
 
 分支路径：
 
@@ -554,6 +577,8 @@ integration/pc
   -> pc/registry-integration
   -> validation
   -> squash merge -> integration/pc
+  -> platform validation
+  -> pc/data-baseline
 ```
 
 预计修改范围：
@@ -562,9 +587,10 @@ integration/pc
 - 单任务和批量 discovery/probe 接线；
 - 默认链路官方来源、平台隔离和持久化边界测试。
 
-PC 开发不得修改 Android collector、organizer、probe 或 registry。
+registry 任务没有修改 Android collector、organizer 或 probe；Android registry/default scope
+通过回归测试保持原行为。
 
-这一阶段不要迁入：
+后续 `pc/data-baseline` 仍不要提前迁入：
 
 - `data/`
 - API route；
