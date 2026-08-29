@@ -649,6 +649,10 @@ def _public_version(record: dict[str, Any]) -> dict[str, Any]:
 
 def _summary(record: dict[str, Any]) -> dict[str, Any]:
     artifacts = [_public_artifact(record, item) for item in record.get("artifacts", []) if isinstance(item, dict)]
+    has_chunk = any(
+        isinstance(reference, dict) and reference.get("kind") == "chunk_manifest"
+        for reference in record.get("references", [])
+    )
     kinds: dict[str, dict[str, Any]] = {}
     states = {state: 0 for state in AVAILABILITY_STATES}
     for artifact in artifacts:
@@ -669,7 +673,7 @@ def _summary(record: dict[str, Any]) -> dict[str, Any]:
         "artifact_count": len(artifacts),
         "artifact_kinds": kinds,
         "availability_states": states,
-        "attributes": {},
+        "attributes": {"has_chunk": True} if has_chunk else {},
         "provenance": _public_provenance(record.get("provenance")),
         "is_visible": True,
     }

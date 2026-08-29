@@ -29,6 +29,7 @@ import {
   preferredArtifactAction,
   preferredDomainArtifactAction,
   displayVersionLabel,
+  versionSupportsMode,
 } from "../domain-presentation";
 import { gameIcons } from "../game-icons";
 import { publisherGroups } from "../game-meta";
@@ -748,15 +749,20 @@ async function loadRegistry(): Promise<void> {
       requestedMode = "files";
       requestedVersion = String(route.query.version || "");
     }
-    const matchedVersion = loadedVersions.find(
-      (item) => item.version === requestedVersion || displayVersionLabel(item.version, item.attributes) === requestedVersion,
-    )?.version;
-    const targetVersion = matchedVersion || loadedVersions[0]?.version;
-    if (!targetVersion) return;
     const targetDomainRow = loadedDomains.find((item) => item.id === targetDomain);
     const hasRequestedMode = Boolean(requestedMode && targetDomainRow?.capabilities.includes(requestedMode));
     const targetMode = hasRequestedMode ? requestedMode : targetDomainRow?.capabilities[0];
     if (!targetMode) return;
+    const scopesHoYoVersions = targetDomainRow?.adapter === "hoyo"
+      && ["packages", "patches", "chunks"].includes(targetMode);
+    const modeVersions = scopesHoYoVersions
+      ? loadedVersions.filter((item) => versionSupportsMode(item, targetMode, targetDomainRow?.adapter))
+      : loadedVersions;
+    const matchedVersion = modeVersions.find(
+      (item) => item.version === requestedVersion || displayVersionLabel(item.version, item.attributes) === requestedVersion,
+    )?.version;
+    const targetVersion = matchedVersion || modeVersions[0]?.version || loadedVersions[0]?.version;
+    if (!targetVersion) return;
     const requestedCompareFrom = String(route.query.from || "");
     const targetIndex = loadedVersions.findIndex((item) => item.version === targetVersion);
     const fallbackCompareFrom =
@@ -785,7 +791,7 @@ async function loadRegistry(): Promise<void> {
         : fallbackCompareFrom;
     if (targetMode === "compare" && validCompareFrom) cleanQuery.from = validCompareFrom;
     const queryChanged = JSON.stringify(route.query) !== JSON.stringify(cleanQuery);
-    if (!requestedGame || !requestedDomain || !requestedVersion || !requestedMode || queryChanged) {
+    if (!requestedGame || !requestedDomain || requestedVersion !== targetVersion || requestedMode !== targetMode || queryChanged) {
       if (!isCurrent()) return;
       await router.replace({
         name: "archive",
@@ -836,9 +842,20 @@ async function navigateMode(targetDomain: ArchiveDomain, targetMode: string): Pr
   const destDomain = (targetMode === "compare" && domain.value?.capabilities.includes("compare"))
     ? domain.value
     : targetDomain;
+  const sameDomain = destDomain.id === domainId.value;
+  const scopesHoYoVersions = destDomain.adapter === "hoyo"
+    && ["packages", "patches", "chunks"].includes(targetMode);
+  const currentSupportsMode = !scopesHoYoVersions || (sameDomain && selectedSummary.value
+    ? versionSupportsMode(selectedSummary.value, targetMode, destDomain.adapter)
+    : false);
+  const targetVersion = currentSupportsMode
+    ? selectedVersion.value
+    : sameDomain
+      ? versions.value.find((item) => versionSupportsMode(item, targetMode, destDomain.adapter))?.version || selectedVersion.value
+      : destDomain.latest_version || "";
   await navigate({
     domainId: destDomain.id,
-    version: selectedVersion.value || destDomain.latest_version || "",
+    version: targetVersion,
     mode: targetMode,
   });
 }

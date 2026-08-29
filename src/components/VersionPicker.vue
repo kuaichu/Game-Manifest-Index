@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type { ArchiveDomain, VersionSummary } from "../types";
-import { artifactCountForMode, artifactKindForMode, availabilityStatesForMode, buildVersionBadges, displayVersionLabel } from "../domain-presentation";
+import { artifactCountForMode, artifactKindForMode, availabilityStatesForMode, buildVersionBadges, displayVersionLabel, versionSupportsMode } from "../domain-presentation";
 import { versionFamily } from "../version-grouping";
 
 const props = withDefaults(
@@ -30,7 +30,12 @@ const family = (version: string) => {
 
 const groups = computed(() => {
   const output = new Map<string, VersionSummary[]>();
-  for (const item of props.versions) {
+  const scopesHoYoVersions = props.domain?.adapter === "hoyo"
+    && ["packages", "patches", "chunks"].includes(props.mode || "");
+  const visibleVersions = scopesHoYoVersions
+    ? props.versions.filter((item) => versionSupportsMode(item, props.mode!, props.domain?.adapter))
+    : props.versions;
+  for (const item of visibleVersions) {
     const key = family(item.version);
     if (!output.has(key)) output.set(key, []);
     output.get(key)!.push(item);
@@ -56,8 +61,9 @@ const pickerRows = computed(() => {
     const seen = new Map<string, { item: VersionSummary; states: Record<string, number> }>();
     for (const item of items) {
       const base = displayVersion(item);
-      const manifestFiles = (props.domain?.adapter === "wuwa" || props.domain?.adapter === "perfectworld_patcher") && props.mode === "files";
-      const modeStates = manifestFiles ? availabilityStatesForMode(item, "files", props.domain?.adapter) : item.availability_states;
+      const modeStates = props.mode
+        ? availabilityStatesForMode(item, props.mode, props.domain?.adapter)
+        : item.availability_states;
       const states = {
         available: Number(modeStates?.available || 0),
         unavailable: Number(modeStates?.unavailable || 0),
@@ -129,18 +135,17 @@ function caps(row: {
   item: VersionSummary;
   states: Record<string, number>;
 }): Array<{ label: string; tone: string }> {
-  const manifestFiles = (props.domain?.adapter === "wuwa" || props.domain?.adapter === "perfectworld_patcher") && props.mode === "files";
-  if (manifestFiles) {
-    return buildVersionBadges(props.domain, row.item, formatFileDate, props.showAvailability, "files");
-  }
-  if (props.domain?.adapter === "android") {
+  if (props.mode || props.domain?.adapter === "android") {
     const total = row.states.available + row.states.unavailable + row.states.unknown;
+    const modeCount = props.mode
+      ? artifactCountForMode(row.item, props.mode, props.domain?.adapter)
+      : row.item.artifact_count;
     const merged = {
       ...row.item,
-      artifact_count: total || row.item.artifact_count,
+      artifact_count: total || modeCount || row.item.artifact_count,
       availability_states: row.states,
     } as VersionSummary;
-    return buildVersionBadges(props.domain, merged, formatFileDate, props.showAvailability);
+    return buildVersionBadges(props.domain, merged, formatFileDate, props.showAvailability, props.mode);
   }
   return buildVersionBadges(props.domain, row.item, formatFileDate, props.showAvailability);
 }
@@ -155,7 +160,12 @@ function timeBadge(row: {
 }
 
 function isLatestVersion(version: string): boolean {
-  return props.versions.length > 0 && props.versions[0].version === version;
+  const scopesHoYoVersions = props.domain?.adapter === "hoyo"
+    && ["packages", "patches", "chunks"].includes(props.mode || "");
+  const latest = scopesHoYoVersions
+    ? props.versions.find((item) => versionSupportsMode(item, props.mode!, props.domain?.adapter))
+    : props.versions[0];
+  return latest?.version === version;
 }
 
 function isPatchVersion(version: string): boolean {
@@ -187,6 +197,7 @@ function isRowUnavailable(row: {
     : kind ? row.item.artifact_kinds?.[kind]?.count || 0 : (available + unavailable + Number(row.states.unknown || 0)) || Number(row.item.artifact_count || 0);
 
   if (props.mode && count === 0) {
+    if (versionSupportsMode(row.item, props.mode, props.domain?.adapter)) return false;
     if (props.mode === "files" && props.domain?.adapter === "hoyo") {
       const pkg = row.item.artifact_kinds?.package;
       const chunk = row.item.artifact_kinds?.chunk;
@@ -244,8 +255,10 @@ function atomicBadges(row: {
       const kind = props.mode ? artifactKindForMode(props.mode) : "";
       const count = manifestFiles ? artifactCountForMode(row.item, "files", props.domain?.adapter) : kind ? row.item.artifact_kinds?.[kind]?.count || 0 : 0;
       const modeHasKind = Boolean(kind || manifestFiles);
-      if (modeHasKind && count === 0 && !(props.mode === "files" && props.domain?.adapter === "hoyo")) {
+      if (modeHasKind && count === 0 && !versionSupportsMode(row.item, props.mode || "", props.domain?.adapter)) {
         result.push({ label: "无数据", tone: "slate" });
+      } else if (modeHasKind && count === 0 && unknown === 0) {
+        result.push({ label: "未判定", tone: "slate" });
       } else if (isRowUnavailable(row)) {
         result.push({ label: props.domain?.adapter === "android" ? "不可用" : "链接失效", tone: "red" });
       } else {

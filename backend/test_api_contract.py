@@ -243,6 +243,7 @@ class TemporaryContractTests(unittest.TestCase):
 
         versions = self.get("/api/v1/domains/hk4e-pc/versions").json()["items"]
         self.assertEqual([item["version"] for item in versions], ["3.0.0", "2.0.0"])
+        self.assertTrue(versions[0]["attributes"]["has_chunk"])
         domains = self.get("/api/v1/games/hk4e/domains").json()
         pc_domain = next(item for item in domains if item["id"] == "hk4e-pc")
         self.assertEqual(pc_domain["latest_version"], "3.0.0")

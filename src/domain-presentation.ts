@@ -445,6 +445,17 @@ export function artifactCountForMode(summary: VersionSummary | null, mode: strin
   return kind ? Number(summary.artifact_kinds?.[kind]?.count || 0) : Number(summary.artifact_count || 0);
 }
 
+export function versionSupportsMode(summary: VersionSummary, mode: string, adapter?: string): boolean {
+  if (mode === "chunks") {
+    return artifactCountForMode(summary, mode, adapter) > 0 || Boolean(summary.attributes?.has_chunk);
+  }
+  if (mode === "files" && adapter === "hoyo") {
+    return Boolean(summary.attributes?.has_chunk) || Number(summary.artifact_kinds?.package?.count || 0) > 0;
+  }
+  const kind = artifactKindForMode(mode);
+  return kind ? artifactCountForMode(summary, mode, adapter) > 0 : true;
+}
+
 export function artifactUrlStateCounts(artifact: Artifact): Record<AvailabilityState, number> {
   const counts: Record<AvailabilityState, number> = { available: 0, unavailable: 0, unknown: 0 };
   for (const candidate of artifact.urls) {

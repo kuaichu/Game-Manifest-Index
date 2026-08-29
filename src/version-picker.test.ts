@@ -111,6 +111,72 @@ describe("full-history version picker", () => {
   });
 });
 
+describe("mode-specific HoYo version picker", () => {
+  afterEach(() => { document.body.innerHTML = ""; });
+
+  const domain = {
+    id: "hkrpg-pc", game_id: "hkrpg", kind: "mixed", platform: "windows",
+    capabilities: ["packages", "patches", "chunks"], adapter: "hoyo",
+    version_count: 3, latest_version: "4.5.0", capability_contract: { features: {} },
+  } as ArchiveDomain;
+  const versions = [
+    {
+      version: "4.5.0", current_revision_id: 3, revision_count: 1,
+      observed_at: "2026-08-29T00:00:00Z", packed_size: 0, unpacked_size: 0,
+      artifact_count: 0, artifact_kinds: {}, availability_states: {},
+      attributes: { has_chunk: true }, provenance: {},
+    },
+    {
+      version: "4.4.0", current_revision_id: 2, revision_count: 1,
+      observed_at: "2026-08-01T00:00:00Z", packed_size: 14, unpacked_size: 14,
+      artifact_count: 14,
+      artifact_kinds: { package: { count: 14, size: 14, availability_states: { available: 14 } } },
+      availability_states: { available: 14 }, attributes: {}, provenance: {},
+    },
+    {
+      version: "3.3.0", current_revision_id: 1, revision_count: 1,
+      observed_at: "2026-07-01T00:00:00Z", packed_size: 15, unpacked_size: 15,
+      artifact_count: 15,
+      artifact_kinds: {
+        package: { count: 14, size: 14, availability_states: { available: 14 } },
+        patch: { count: 1, size: 1, availability_states: { unavailable: 1 } },
+      },
+      availability_states: { available: 14, unavailable: 1 }, attributes: {}, provenance: {},
+    },
+  ] as VersionSummary[];
+
+  async function mountPicker(mode: string) {
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const app = createApp({ render: () => h(VersionPicker, {
+      versions, modelValue: mode === "chunks" ? "4.5.0" : "4.4.0", domain, mode, onSelect: () => {},
+    }) });
+    app.mount(root);
+    (root.querySelector(".select-button") as HTMLButtonElement).click();
+    await nextTick();
+    return { app, root };
+  }
+
+  it("shows only package versions and does not mix patch failures into package status", async () => {
+    const { app, root } = await mountPicker("packages");
+    const rows = Array.from(root.querySelectorAll(".version-row"));
+    expect(rows.map((row) => row.querySelector(".version-number")?.textContent)).toEqual(["4.4.0", "3.3.0"]);
+    const threeThree = rows.find((row) => row.textContent?.includes("3.3.0"));
+    expect(threeThree?.textContent).toContain("可用");
+    expect(threeThree?.textContent).not.toContain("含失效");
+    app.unmount();
+  });
+
+  it("recognizes a reference-only Chunk version without calling it empty", async () => {
+    const { app, root } = await mountPicker("chunks");
+    const rows = Array.from(root.querySelectorAll(".version-row"));
+    expect(rows.map((row) => row.querySelector(".version-number")?.textContent)).toEqual(["4.5.0"]);
+    expect(rows[0]?.textContent).toContain("Chunk");
+    expect(rows[0]?.textContent).not.toContain("无数据");
+    app.unmount();
+  });
+});
+
 describe("multi-channel Android versions", () => {
   it("collapses same-base channel versions into a single picker row", async () => {
     const versions = [

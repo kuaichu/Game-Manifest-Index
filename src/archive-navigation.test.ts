@@ -155,6 +155,50 @@ describe("archive cross-game navigation", () => {
     app.unmount();
   });
 
+  it("redirects an unsupported HoYo package version to the latest version with packages", async () => {
+    const game = { id: "hkrpg", name: "崩坏：星穹铁道", sub_name: "Honkai: Star Rail", icon_source: "", sort_order: 0 };
+    const domain = {
+      id: "hkrpg-pc", game_id: "hkrpg", kind: "mixed", platform: "windows",
+      capabilities: ["packages", "patches", "chunks"], adapter: "hoyo",
+      version_count: 2, latest_version: "4.5.0", sort_order: 0, capability_contract: { features: {} },
+    };
+    const versions = [
+      {
+        version: "4.5.0", current_revision_id: 2, revision_count: 1, observed_at: "2026-08-29T00:00:00Z",
+        packed_size: 0, unpacked_size: 0, artifact_count: 0, artifact_kinds: {}, availability_states: {},
+        attributes: { has_chunk: true }, provenance: {},
+      },
+      {
+        version: "4.4.0", current_revision_id: 1, revision_count: 1, observed_at: "2026-08-01T00:00:00Z",
+        packed_size: 1, unpacked_size: 1, artifact_count: 1,
+        artifact_kinds: { package: { count: 1, size: 1, availability_states: { available: 1 } } },
+        availability_states: { available: 1 }, attributes: {}, provenance: {},
+      },
+    ];
+    vi.spyOn(api, "games").mockResolvedValue([game] as never);
+    vi.spyOn(api, "domains").mockResolvedValue([domain] as never);
+    vi.spyOn(api, "versions").mockResolvedValue(versions as never);
+    const artifacts = vi.spyOn(api, "artifacts").mockResolvedValue(emptyPage as never);
+
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: "/games/:gameId/:domainId?/:version?/:mode?", name: "archive", component: ArchiveView }],
+    });
+    await router.push("/games/hkrpg/hkrpg-pc/4.5.0/packages");
+    await router.isReady();
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const app = createApp(ArchiveView);
+    app.use(router);
+    app.mount(root);
+    await flushUpdates();
+    await flushUpdates();
+
+    expect(router.currentRoute.value.fullPath).toBe("/games/hkrpg/hkrpg-pc/4.4.0/packages");
+    expect(artifacts.mock.calls.some(([domainId, version]) => domainId === "hkrpg-pc" && version === "4.4.0")).toBe(true);
+    app.unmount();
+  });
+
   it("renders NTE full-history selection and evidence-only partial/404 candidates", async () => {
     const game = { id: "nte", name: "异环", sub_name: "Neverness to Everness", icon_source: "", sort_order: 0 };
     const domain = {
