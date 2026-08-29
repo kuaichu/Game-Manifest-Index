@@ -6,6 +6,7 @@ import json
 import os
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
 
@@ -24,6 +25,9 @@ from backend.manifest_readers import (
     _proto_class,
 )
 from backend.schema_v2 import artifact_id
+
+# Fixed clock for probe-evidence freshness assertions; never the real system date.
+FROZEN_NOW = datetime(2026, 8, 29, 12, 0, 0, tzinfo=timezone.utc)
 
 
 def artifact(name: str, *, kind: str = "package", delivery: str = "direct", size: int = 10,
@@ -265,14 +269,63 @@ class TemporaryContractTests(unittest.TestCase):
         self.assertNotIn("source_url", item["provenance"])
         self.assertNotIn("secret", json.dumps(item))
 
+    def get_probed_url(self, path: str):
+        with patch("backend.api_contract._utc_now", lambda: FROZEN_NOW):
+            return self.get(path).json()["items"][0]["urls"][0]
+
     def test_current_projection_marks_probed_currents_verified(self):
-        item = self.get("/api/v1/domains/hk4e-android/versions/2.0.0/artifacts?q=common").json()["items"][0]
-        current = item["urls"][0]["current"]
+        url = self.get_probed_url("/api/v1/domains/hk4e-android/versions/2.0.0/artifacts?q=common")
+        current = url["current"]
         self.assertEqual(current["reason"], "HTTP 206")
         self.assertEqual(current["evidence_status"], "verified")
         self.assertEqual(current["source_kind"], "live_probe")
         self.assertEqual(current["observed_at"], "2026-08-29T01:00:00Z")
-        self.assertEqual(item["urls"][0]["evidence_status"], "verified")
+        self.assertEqual(current["expires_at"], "2026-08-29T21:00:00Z")
+        self.assertEqual(url["evidence_status"], "verified")
+
+    def test_probe_evidence_freshness_boundary_is_20_hours(self):
+        cases = {
+            # FROZEN_NOW is 2026-08-29T12:00:00Z; a full 20 hours turns stale.
+            "5.0.0": ("2026-08-28T16:01:00Z", "verified"),
+            "5.1.0": ("2026-08-28T16:00:00Z", "stale"),
+            "5.2.0": ("2026-08-20T00:00:00Z", "stale"),
+        }
+        for version, (checked_at, _) in cases.items():
+            write_record(self.root, record("mihoyo", "hk4e", "android", version, [
+                artifact("common.apk", kind="apk", current={"state": "available", "http_code": 206, "checked_at": checked_at}),
+            ]))
+        rebuild_indexes(self.root)
+        for version, (checked_at, expected) in cases.items():
+            url = self.get_probed_url(f"/api/v1/domains/hk4e-android/versions/{version}/artifacts?q=common")
+            self.assertEqual(url["current"]["evidence_status"], expected, version)
+            self.assertEqual(url["current"]["source_kind"], "live_probe")
+            self.assertEqual(url["current"]["observed_at"], checked_at)
+            self.assertEqual(url["current"]["expires_at"], "2026-08-29T12:01:00Z" if version == "5.0.0" else "2026-08-29T12:00:00Z" if version == "5.1.0" else "2026-08-20T20:00:00Z")
+            self.assertEqual(url["evidence_status"], expected)
+
+    def test_stale_evidence_keeps_the_real_state(self):
+        write_record(self.root, record("mihoyo", "hk4e", "android", "6.0.0", [
+            artifact("common.apk", kind="apk", current={"state": "unavailable", "http_code": 404, "checked_at": "2026-08-20T00:00:00Z"}),
+        ]))
+        write_record(self.root, record("mihoyo", "hk4e", "android", "6.1.0", [
+            artifact("common.apk", kind="apk", current={"state": "unknown", "http_code": 503, "checked_at": "2026-08-20T00:00:00Z"}),
+        ]))
+        rebuild_indexes(self.root)
+        unavailable = self.get_probed_url("/api/v1/domains/hk4e-android/versions/6.0.0/artifacts?q=common")
+        unknown = self.get_probed_url("/api/v1/domains/hk4e-android/versions/6.1.0/artifacts?q=common")
+        self.assertEqual((unavailable["current"]["state"], unavailable["current"]["evidence_status"]), ("unavailable", "stale"))
+        self.assertEqual((unknown["current"]["state"], unknown["current"]["evidence_status"]), ("unknown", "stale"))
+
+    def test_future_checked_at_is_not_verified(self):
+        write_record(self.root, record("mihoyo", "hk4e", "android", "6.2.0", [
+            artifact("common.apk", kind="apk", current={"state": "available", "http_code": 206, "checked_at": "2026-08-29T13:00:00Z"}),
+        ]))
+        rebuild_indexes(self.root)
+        url = self.get_probed_url("/api/v1/domains/hk4e-android/versions/6.2.0/artifacts?q=common")
+        self.assertEqual(url["current"]["evidence_status"], "unverified")
+        self.assertEqual(url["current"]["source_kind"], "canonical_current")
+        self.assertIsNone(url["current"]["expires_at"])
+        self.assertEqual(url["evidence_status"], "unverified")
 
     def test_probed_outcomes_keep_their_real_state(self):
         states = {
@@ -286,7 +339,7 @@ class TemporaryContractTests(unittest.TestCase):
             ]))
         rebuild_indexes(self.root)
         for version, expected in states.items():
-            url = self.get(f"/api/v1/domains/hk4e-android/versions/{version}/artifacts?q=common").json()["items"][0]["urls"][0]
+            url = self.get_probed_url(f"/api/v1/domains/hk4e-android/versions/{version}/artifacts?q=common")
             self.assertEqual(url["current"]["evidence_status"], "verified")
             self.assertEqual(url["current"]["source_kind"], "live_probe")
             self.assertEqual(url["current"]["state"], expected["state"])
@@ -301,9 +354,10 @@ class TemporaryContractTests(unittest.TestCase):
         ]))
         rebuild_indexes(self.root)
         for version in ("4.0.0", "4.1.0"):
-            url = self.get(f"/api/v1/domains/hk4e-android/versions/{version}/artifacts?q=common").json()["items"][0]["urls"][0]
+            url = self.get_probed_url(f"/api/v1/domains/hk4e-android/versions/{version}/artifacts?q=common")
             self.assertEqual(url["current"]["evidence_status"], "unverified")
             self.assertEqual(url["current"]["source_kind"], "canonical_current")
+            self.assertIsNone(url["current"]["expires_at"])
             self.assertEqual(url["evidence_status"], "unverified")
 
     def test_missing_current_keeps_unverified_url_evidence(self):

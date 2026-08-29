@@ -738,14 +738,19 @@ describe("archive cross-game navigation", () => {
     };
     const version = {
       version: "5.5.0", current_revision_id: 1, revision_count: 1, observed_at: "2026-08-29T00:00:00Z",
-      packed_size: 2, unpacked_size: 2, artifact_count: 2, artifact_kinds: { package: { count: 2, size: 2 } },
-      availability_states: { available: 1, unavailable: 1 }, attributes: {},
+      packed_size: 3, unpacked_size: 3, artifact_count: 3, artifact_kinds: { package: { count: 3, size: 3 } },
+      availability_states: { available: 1, unavailable: 1, unknown: 1 }, attributes: {},
     };
     const probedAt = "2026-08-29T01:00:00Z";
     const verifiedCurrent = (state: string, reason: string) => ({
       state, reason, confidence: "low", retained: false, checked_at: probedAt,
       source_kind: "live_probe", source_confidence: "low", observed_at: probedAt, expires_at: null, evidence_status: "verified",
     });
+    const staleCurrent = {
+      state: "available", reason: "HTTP 206", confidence: "low", retained: false, checked_at: "2026-08-27T00:00:00Z",
+      source_kind: "live_probe", source_confidence: "low", observed_at: "2026-08-27T00:00:00Z",
+      expires_at: "2026-08-27T20:00:00Z", evidence_status: "stale",
+    };
     const items = [
       {
         id: 1, kind: "package", name: "game.zip", part: 1, size: 1, checksum_type: "md5", checksum_value: "1".repeat(32), attributes: {},
@@ -754,6 +759,10 @@ describe("archive cross-game navigation", () => {
       {
         id: 2, kind: "package", name: "old.zip", part: 1, size: 1, checksum_type: "md5", checksum_value: "2".repeat(32), attributes: {},
         urls: [{ id: 2, url: "https://autopatchcn.yuanshen.com/old.zip", priority: 0, source_kind: "official", provider: "mihoyo", evidence_status: "verified", current: verifiedCurrent("unavailable", "HTTP 404") }],
+      },
+      {
+        id: 3, kind: "package", name: "stale.zip", part: 1, size: 1, checksum_type: "md5", checksum_value: "3".repeat(32), attributes: {},
+        urls: [{ id: 3, url: "https://autopatchcn.yuanshen.com/stale.zip", priority: 0, source_kind: "official", provider: "mihoyo", evidence_status: "stale", current: staleCurrent }],
       },
     ];
     vi.spyOn(api, "games").mockResolvedValue([game] as never);
@@ -776,15 +785,230 @@ describe("archive cross-game navigation", () => {
     await flushUpdates();
 
     const cards = Array.from(root.querySelectorAll(".file-card"));
-    expect(cards).toHaveLength(2);
+    expect(cards).toHaveLength(3);
     const badges = cards.map((card) => card.querySelector(".availability")?.textContent?.trim());
-    expect(badges).toEqual(["可用", "失效"]);
+    expect(badges).toEqual(["可用", "失效", "证据已陈旧"]);
     const downloadLinks = cards.map((card) => card.querySelector(".file-actions a.icon-button"));
     expect((downloadLinks[0] as HTMLAnchorElement)?.getAttribute("href")).toBe("https://autopatchcn.yuanshen.com/game.zip");
-    const lockedDownload = cards[1].querySelector(".file-actions button.is-locked") as HTMLButtonElement;
-    expect(lockedDownload).not.toBeNull();
-    expect(lockedDownload.disabled).toBe(true);
-    expect(cards[1].querySelector(".file-actions a.icon-button")).toBeNull();
+    for (const card of cards.slice(1)) {
+      const lockedDownload = card.querySelector(".file-actions button.is-locked") as HTMLButtonElement;
+      expect(lockedDownload).not.toBeNull();
+      expect(lockedDownload.disabled).toBe(true);
+      expect(card.querySelector(".file-actions a.icon-button")).toBeNull();
+    }
+
+    app.unmount();
+  });
+
+  it("keeps the destination page intact when a superseded refresh returns late", async () => {
+    const games = [
+      { id: "nte", name: "NTE", sub_name: "异环", platform: "PC", icon_source: "", version_count: 1, latest_version: "1.2.15", sort_order: 0 },
+      { id: "endfield", name: "Arknights: Endfield", sub_name: "明日方舟：终末地", platform: "PC", icon_source: "", version_count: 1, latest_version: "1.3.3", sort_order: 1 },
+    ];
+    const nteDomain = {
+      id: "nte-pc", game_id: "nte", kind: "files", platform: "Windows", capabilities: ["files"],
+      capability_contract: {}, adapter: "generic", version_count: 1, latest_version: "1.2.15", sort_order: 0,
+    };
+    const endfieldDomain = {
+      id: "endfield-pc", game_id: "endfield", kind: "packages", platform: "Windows", capabilities: ["packages"],
+      capability_contract: {}, adapter: "endfield", version_count: 1, latest_version: "1.3.3", sort_order: 0,
+    };
+    const nteVersions = [{ version: "1.2.15", attributes: {}, artifact_kinds: {}, artifact_count: 0 }];
+    const endfieldVersions = [{ version: "1.3.3", attributes: {}, artifact_kinds: {}, artifact_count: 0 }];
+
+    vi.spyOn(api, "games").mockResolvedValue(structuredClone(games) as never);
+    vi.spyOn(api, "domains").mockImplementation(async (gameId) => (
+      gameId === "endfield" ? [endfieldDomain] : [nteDomain]
+    ) as never);
+    const versions = vi.spyOn(api, "versions").mockImplementation((domainId) => (
+      domainId === "endfield-pc" ? Promise.resolve(endfieldVersions) : Promise.resolve(nteVersions)
+    ) as never);
+    const artifacts = vi.spyOn(api, "artifacts").mockResolvedValue(emptyPage as never);
+
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: "/games/:gameId/:domainId?/:version?/:mode?", name: "archive", component: ArchiveView }],
+    });
+    await router.push("/games/nte/nte-pc/1.2.15/files");
+    await router.isReady();
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const app = createApp(ArchiveView);
+    app.use(router);
+    app.mount(root);
+    await flushUpdates();
+
+    // The invalidation refresh starts but its games request stays pending.
+    const pendingGames: Array<(value: typeof games) => void> = [];
+    vi.spyOn(api, "games").mockImplementation(() => new Promise((resolve) => { pendingGames.push(resolve); }));
+    window.dispatchEvent(new CustomEvent("gmi-availability-invalidated", { detail: { jobId: "job-1" } }));
+    await flushUpdates();
+    expect(pendingGames).toHaveLength(1);
+
+    // The user leaves for another game while the refresh is still pending.
+    await router.push("/games/endfield");
+    await flushUpdates();
+    expect(pendingGames).toHaveLength(2);
+
+    // The new page's request completes first.
+    pendingGames[1](structuredClone(games));
+    await flushUpdates();
+    await flushUpdates();
+    expect(router.currentRoute.value.fullPath).toBe("/games/endfield/endfield-pc/1.3.3/packages");
+
+    // The superseded refresh returns late and must change nothing.
+    pendingGames[0](structuredClone(games));
+    await flushUpdates();
+    await flushUpdates();
+    expect(router.currentRoute.value.fullPath).toBe("/games/endfield/endfield-pc/1.3.3/packages");
+    expect(versions).toHaveBeenCalledTimes(2);
+    expect(versions).toHaveBeenLastCalledWith("endfield-pc", expect.anything());
+    expect(artifacts).toHaveBeenLastCalledWith("endfield-pc", "1.3.3", expect.anything(), expect.anything());
+    expect(root.textContent).not.toContain("正在读取归档 API");
+    expect(root.textContent).not.toContain("1.2.15");
+    expect(root.textContent).toContain("1.3.3");
+
+    app.unmount();
+  });
+
+  it("commits only the last refresh when two invalidations arrive back to back", async () => {
+    const game = { id: "wuwa", name: "鸣潮", sub_name: "Wuthering Waves", platform: "PC", icon_source: "", version_count: 1, latest_version: "3.3.0", sort_order: 0 };
+    const domain = {
+      id: "wuwa-pc", game_id: "wuwa", kind: "mixed", platform: "windows",
+      capabilities: ["files"], adapter: "generic",
+      version_count: 1, latest_version: "3.3.0", sort_order: 0,
+      capability_contract: {},
+    };
+    const version = { version: "3.3.0", attributes: {}, artifact_kinds: {}, artifact_count: 0 };
+    vi.spyOn(api, "games").mockResolvedValue([game] as never);
+    vi.spyOn(api, "domains").mockResolvedValue([domain] as never);
+    const versions = vi.spyOn(api, "versions").mockResolvedValue([version] as never);
+    vi.spyOn(api, "artifacts").mockResolvedValue(emptyPage as never);
+
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: "/games/:gameId/:domainId?/:version?/:mode?", name: "archive", component: ArchiveView }],
+    });
+    await router.push("/games/wuwa/wuwa-pc/3.3.0/files");
+    await router.isReady();
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const app = createApp(ArchiveView);
+    app.use(router);
+    app.mount(root);
+    await flushUpdates();
+
+    const pendingGames: Array<(value: typeof game[]) => void> = [];
+    vi.spyOn(api, "games").mockImplementation(() => new Promise((resolve) => { pendingGames.push(resolve); }));
+    window.dispatchEvent(new CustomEvent("gmi-availability-invalidated", { detail: { jobId: "job-1" } }));
+    await flushUpdates();
+    window.dispatchEvent(new CustomEvent("gmi-availability-invalidated", { detail: { jobId: "job-2" } }));
+    await flushUpdates();
+    expect(pendingGames).toHaveLength(2);
+
+    versions.mockClear();
+    pendingGames[1]([game]);
+    await flushUpdates();
+    await flushUpdates();
+    expect(versions).toHaveBeenCalledTimes(1);
+
+    pendingGames[0]([game]);
+    await flushUpdates();
+    await flushUpdates();
+    expect(versions).toHaveBeenCalledTimes(1);
+
+    app.unmount();
+  });
+
+  it("ignores pending refresh responses after unmount", async () => {
+    const game = { id: "wuwa", name: "鸣潮", sub_name: "Wuthering Waves", platform: "PC", icon_source: "", version_count: 1, latest_version: "3.3.0", sort_order: 0 };
+    const domain = {
+      id: "wuwa-pc", game_id: "wuwa", kind: "mixed", platform: "windows",
+      capabilities: ["files"], adapter: "generic",
+      version_count: 1, latest_version: "3.3.0", sort_order: 0,
+      capability_contract: {},
+    };
+    const version = { version: "3.3.0", attributes: {}, artifact_kinds: {}, artifact_count: 0 };
+    vi.spyOn(api, "games").mockResolvedValue([game] as never);
+    vi.spyOn(api, "domains").mockResolvedValue([domain] as never);
+    const versions = vi.spyOn(api, "versions").mockResolvedValue([version] as never);
+    vi.spyOn(api, "artifacts").mockResolvedValue(emptyPage as never);
+
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: "/games/:gameId/:domainId?/:version?/:mode?", name: "archive", component: ArchiveView }],
+    });
+    await router.push("/games/wuwa/wuwa-pc/3.3.0/files");
+    await router.isReady();
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const app = createApp(ArchiveView);
+    app.use(router);
+    app.mount(root);
+    await flushUpdates();
+
+    const pendingGames: Array<(value: typeof game[]) => void> = [];
+    vi.spyOn(api, "games").mockImplementation(() => new Promise((resolve) => { pendingGames.push(resolve); }));
+    window.dispatchEvent(new CustomEvent("gmi-availability-invalidated", { detail: { jobId: "job-1" } }));
+    await flushUpdates();
+    expect(pendingGames).toHaveLength(1);
+
+    versions.mockClear();
+    app.unmount();
+    pendingGames[0]([game]);
+    await flushUpdates();
+    expect(versions).not.toHaveBeenCalled();
+  });
+
+  it("loads the previous route again on browser back navigation", async () => {
+    const games = [
+      { id: "nte", name: "NTE", sub_name: "异环", platform: "PC", icon_source: "", version_count: 1, latest_version: "1.2.15", sort_order: 0 },
+      { id: "endfield", name: "Arknights: Endfield", sub_name: "明日方舟：终末地", platform: "PC", icon_source: "", version_count: 1, latest_version: "1.3.3", sort_order: 1 },
+    ];
+    const nteDomain = {
+      id: "nte-pc", game_id: "nte", kind: "files", platform: "Windows", capabilities: ["files"],
+      capability_contract: {}, adapter: "generic", version_count: 1, latest_version: "1.2.15", sort_order: 0,
+    };
+    const endfieldDomain = {
+      id: "endfield-pc", game_id: "endfield", kind: "packages", platform: "Windows", capabilities: ["packages"],
+      capability_contract: {}, adapter: "endfield", version_count: 1, latest_version: "1.3.3", sort_order: 0,
+    };
+    const nteVersions = [{ version: "1.2.15", attributes: {}, artifact_kinds: {}, artifact_count: 0 }];
+    const endfieldVersions = [{ version: "1.3.3", attributes: {}, artifact_kinds: {}, artifact_count: 0 }];
+    vi.spyOn(api, "games").mockResolvedValue(games as never);
+    vi.spyOn(api, "domains").mockImplementation(async (gameId) => (
+      gameId === "endfield" ? [endfieldDomain] : [nteDomain]
+    ) as never);
+    const versions = vi.spyOn(api, "versions").mockImplementation((domainId) => (
+      domainId === "endfield-pc" ? Promise.resolve(endfieldVersions) : Promise.resolve(nteVersions)
+    ) as never);
+    vi.spyOn(api, "artifacts").mockResolvedValue(emptyPage as never);
+
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: "/games/:gameId/:domainId?/:version?/:mode?", name: "archive", component: ArchiveView }],
+    });
+    await router.push("/games/nte/nte-pc/1.2.15/files");
+    await router.isReady();
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const app = createApp(ArchiveView);
+    app.use(router);
+    app.mount(root);
+    await flushUpdates();
+    await flushUpdates();
+
+    await router.push("/games/endfield");
+    await flushUpdates();
+    await flushUpdates();
+    expect(router.currentRoute.value.params).toMatchObject({ gameId: "endfield", domainId: "endfield-pc" });
+
+    versions.mockClear();
+    await router.back();
+    await flushUpdates();
+    await flushUpdates();
+    expect(router.currentRoute.value.fullPath).toBe("/games/nte/nte-pc/1.2.15/files");
+    expect(versions).toHaveBeenCalledWith("nte-pc", expect.anything());
 
     app.unmount();
   });

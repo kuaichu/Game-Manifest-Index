@@ -13,7 +13,7 @@ import os
 import re
 import stat
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
@@ -493,17 +493,26 @@ def _primary_artifact(record: dict[str, Any]) -> dict[str, Any] | None:
     return selected
 
 
-def _probe_checked_at(current: dict[str, Any]) -> str | None:
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+# Live-probe evidence counts as verified for 20 hours after checked_at
+# (the current probe rotation rule), then stays visible as stale.
+PROBE_EVIDENCE_TTL = timedelta(hours=20)
+
+
+def _probe_checked_at(current: dict[str, Any]) -> tuple[str, datetime] | None:
     # Only a UTC ISO-8601 timestamp, exactly the shape the probe adapters
     # persist, proves this current was written by a completed live probe.
     value = current.get("checked_at")
     if not isinstance(value, str) or not value.endswith("Z"):
         return None
     try:
-        datetime.fromisoformat(value[:-1] + "+00:00")
+        parsed = datetime.fromisoformat(value[:-1] + "+00:00")
     except ValueError:
         return None
-    return value
+    return value, parsed
 
 
 def _public_current(current: Any) -> dict[str, Any] | None:
@@ -512,18 +521,27 @@ def _public_current(current: Any) -> dict[str, Any] | None:
     state = current.get("state") if current.get("state") in AVAILABILITY_STATES else "unknown"
     checked_at = current.get("checked_at") if isinstance(current.get("checked_at"), str) else None
     http_code = current.get("http_code") if isinstance(current.get("http_code"), int) and not isinstance(current.get("http_code"), bool) else None
-    verified = _probe_checked_at(current) is not None
+    probe = _probe_checked_at(current)
+    now = _utc_now()
+    evidence_status = "unverified"
+    source_kind = "canonical_current"
+    expires_at = None
+    # A future checked_at cannot prove a completed probe; treat it as unverified.
+    if probe is not None and probe[1] <= now:
+        evidence_status = "verified" if now - probe[1] < PROBE_EVIDENCE_TTL else "stale"
+        source_kind = "live_probe"
+        expires_at = (probe[1] + PROBE_EVIDENCE_TTL).isoformat().replace("+00:00", "Z")
     return {
         "state": state,
         "reason": f"HTTP {http_code}" if http_code is not None else "",
         "confidence": "low",
         "retained": False,
         "checked_at": checked_at,
-        "source_kind": "live_probe" if verified else "canonical_current",
+        "source_kind": source_kind,
         "source_confidence": "low",
         "observed_at": checked_at,
-        "expires_at": None,
-        "evidence_status": "verified" if verified else "unverified",
+        "expires_at": expires_at,
+        "evidence_status": evidence_status,
     }
 
 

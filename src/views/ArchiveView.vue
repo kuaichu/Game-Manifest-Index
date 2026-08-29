@@ -90,6 +90,9 @@ const error = ref<Error | null>(null);
 const registryError = ref<Error | null>(null);
 const scopedNotFound = ref("");
 let registryController: AbortController | null = null;
+let registryRequestId = 0;
+let registryTargetGame = "";
+let registryTargetDomain = "";
 let artifactController: AbortController | null = null;
 let artifactRequestId = 0;
 
@@ -685,11 +688,14 @@ async function loadRegistry(): Promise<void> {
   registryController?.abort();
   const request = new AbortController();
   registryController = request;
+  const requestId = ++registryRequestId;
+  const isCurrent = () => registryRequestId === requestId && !request.signal.aborted;
   loading.value = true;
   registryError.value = null;
   scopedNotFound.value = "";
   try {
     const loadedGames = await api.games(request.signal);
+    if (!isCurrent()) return;
     games.value = loadedGames;
     if (!loadedGames.length) {
       domains.value = [];
@@ -705,11 +711,13 @@ async function loadRegistry(): Promise<void> {
     }
     const targetGame = requestedGame || loadedGames[0]?.id;
     if (!targetGame) return;
+    registryTargetGame = targetGame;
     const loadedDomains = [...(await api.domains(targetGame, request.signal))].sort((left, right) => {
       const score = (item: ArchiveDomain) =>
         item.adapter === "android" || item.capabilities.every((capability) => capability === "apk") ? 10 : 0;
       return score(left) - score(right);
     });
+    if (!isCurrent()) return;
     domains.value = loadedDomains;
     const rawRequestedDomain = String(route.params.domainId || "");
     const aliasDomain = rawRequestedDomain === "pc"
@@ -725,7 +733,9 @@ async function loadRegistry(): Promise<void> {
     }
     const targetDomain = requestedDomain || preferredDomain(loadedDomains)?.id;
     if (!targetDomain) return;
+    registryTargetDomain = targetDomain;
     const loadedVersions = await api.versions(targetDomain, request.signal);
+    if (!isCurrent()) return;
     versions.value = loadedVersions;
     versionsDomainId.value = targetDomain;
     let requestedVersion = String(route.params.version || "");
@@ -772,15 +782,18 @@ async function loadRegistry(): Promise<void> {
     if (targetMode === "compare" && validCompareFrom) cleanQuery.from = validCompareFrom;
     const queryChanged = JSON.stringify(route.query) !== JSON.stringify(cleanQuery);
     if (!requestedGame || !requestedDomain || !requestedVersion || !requestedMode || queryChanged) {
+      if (!isCurrent()) return;
       await router.replace({
         name: "archive",
         params: { gameId: targetGame, domainId: targetDomain, version: targetVersion, mode: targetMode },
         query: cleanQuery,
       });
     }
+    if (!isCurrent()) return;
     await loadArtifacts(false);
   } catch (reason) {
     if (isAbortError(reason)) return;
+    if (!isCurrent()) return;
     registryError.value = reason instanceof Error ? reason : new Error(String(reason));
   } finally {
     if (registryController === request) loading.value = false;
@@ -1119,7 +1132,14 @@ watch(
     () => String(route.params.domainId || ""),
   ],
   () => {
-    if (!loading.value) void loadRegistry();
+    // While a load is in flight, its own normalize/alias replace lands on the
+    // exact params it is already loading; any other change supersedes it.
+    if (
+      loading.value &&
+      registryTargetGame === String(route.params.gameId || "") &&
+      registryTargetDomain === String(route.params.domainId || "")
+    ) return;
+    void loadRegistry();
   },
 );
 watch(
