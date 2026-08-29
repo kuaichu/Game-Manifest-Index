@@ -352,8 +352,11 @@ class TemporaryContractTests(unittest.TestCase):
         write_record(self.root, record("mihoyo", "hk4e", "android", "4.1.0", [
             artifact("common.apk", kind="apk", current={"state": "available", "http_code": 200, "checked_at": "not-a-timestamp"}),
         ]))
+        write_record(self.root, record("mihoyo", "hk4e", "android", "4.1.1", [
+            artifact("common.apk", kind="apk", current={"state": "available", "http_code": 200, "checked_at": "2026-08-29Z"}),
+        ]))
         rebuild_indexes(self.root)
-        for version in ("4.0.0", "4.1.0"):
+        for version in ("4.0.0", "4.1.0", "4.1.1"):
             url = self.get_probed_url(f"/api/v1/domains/hk4e-android/versions/{version}/artifacts?q=common")
             self.assertEqual(url["current"]["evidence_status"], "unverified")
             self.assertEqual(url["current"]["source_kind"], "canonical_current")

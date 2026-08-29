@@ -686,6 +686,10 @@ function legacyArchiveUrl(lead: ArchiveLead): string | undefined {
 
 async function loadRegistry(): Promise<void> {
   registryController?.abort();
+  artifactController?.abort();
+  artifactController = null;
+  artifactRequestId += 1;
+  chunkLoading.value = false;
   const request = new AbortController();
   registryController = request;
   const requestId = ++registryRequestId;
@@ -933,7 +937,9 @@ async function loadArtifacts(append: boolean): Promise<void> {
   }
   const requestId = ++artifactRequestId;
   artifactController?.abort();
-  artifactController = new AbortController();
+  const request = new AbortController();
+  artifactController = request;
+  const isCurrent = () => artifactRequestId === requestId && artifactController === request && !request.signal.aborted;
   if (!append) {
     selectedCategory.value = "all";
     chunkCategoryFilter.value = "all";
@@ -947,8 +953,8 @@ async function loadArtifacts(append: boolean): Promise<void> {
       chunkError.value = null;
       try {
         const [collRes, detailRes, artRes] = await Promise.allSettled([
-          api.chunkManifestCollection(domainId.value, artifactController.signal),
-          api.chunkManifests(domainId.value, selectedVersion.value, artifactController.signal),
+          api.chunkManifestCollection(domainId.value, request.signal),
+          api.chunkManifests(domainId.value, selectedVersion.value, request.signal),
           api.artifacts(
             domainId.value,
             selectedVersion.value,
@@ -957,9 +963,10 @@ async function loadArtifacts(append: boolean): Promise<void> {
               kind: "chunk",
               limit: 100,
             },
-            artifactController.signal,
+            request.signal,
           ),
         ]);
+        if (!isCurrent()) return;
         if (collRes.status === "fulfilled") {
           chunkCollection.value = collRes.value?.items || [];
         } else {
@@ -978,7 +985,7 @@ async function loadArtifacts(append: boolean): Promise<void> {
           chunkError.value = err instanceof Error ? err.message : "读取 Chunk Manifest 失败";
         }
       } finally {
-        chunkLoading.value = false;
+        if (isCurrent()) chunkLoading.value = false;
       }
       return;
     }
@@ -989,9 +996,10 @@ async function loadArtifacts(append: boolean): Promise<void> {
       chunkError.value = null;
       try {
         const [collRes, detailRes] = await Promise.allSettled([
-          api.chunkManifestCollection(domainId.value, artifactController.signal),
-          api.chunkManifests(domainId.value, selectedVersion.value, artifactController.signal),
+          api.chunkManifestCollection(domainId.value, request.signal),
+          api.chunkManifests(domainId.value, selectedVersion.value, request.signal),
         ]);
+        if (!isCurrent()) return;
         if (collRes.status === "fulfilled") {
           chunkCollection.value = collRes.value?.items || [];
         }
@@ -1006,14 +1014,16 @@ async function loadArtifacts(append: boolean): Promise<void> {
           chunkError.value = err instanceof Error ? err.message : "读取 Chunk Manifest 失败";
         }
       } finally {
-        chunkLoading.value = false;
+        if (isCurrent()) chunkLoading.value = false;
       }
       return;
     }
     if (mode.value === "legacy") {
       artifacts.value = [];
       nextCursor.value = null;
-      leads.value = await api.leads(domainId.value, artifactController.signal);
+      const loadedLeads = await api.leads(domainId.value, request.signal);
+      if (!isCurrent()) return;
+      leads.value = loadedLeads;
       return;
     }
     leads.value = [];
@@ -1028,7 +1038,7 @@ async function loadArtifacts(append: boolean): Promise<void> {
       return;
     }
     if (usesArtifactTree.value) {
-      artifacts.value = await api.allArtifacts(
+      const loadedArtifacts = await api.allArtifacts(
         domainId.value,
         selectedVersion.value,
         {
@@ -1036,8 +1046,10 @@ async function loadArtifacts(append: boolean): Promise<void> {
           query: query.value.trim(),
           state: availabilityStateForRequest.value,
         },
-        artifactController.signal,
+        request.signal,
       );
+      if (!isCurrent()) return;
+      artifacts.value = loadedArtifacts;
       nextCursor.value = null;
       return;
     }
@@ -1049,12 +1061,14 @@ async function loadArtifacts(append: boolean): Promise<void> {
       const loaded: Artifact[] = [];
       const queryText = query.value.trim().toLocaleLowerCase();
       for (const [index, version] of channelTargets.entries()) {
-        if (artifactController.signal.aborted) return;
-        const record = await api.versionRecord(domainId.value, version, artifactController.signal);
+        if (!isCurrent()) return;
+        const record = await api.versionRecord(domainId.value, version, request.signal);
+        if (!isCurrent()) return;
         if (queryText && !JSON.stringify(record).toLocaleLowerCase().includes(queryText)) continue;
         if (availabilityStateForRequest.value && versionRecordState(record) !== availabilityStateForRequest.value) continue;
         loaded.push(versionRecordArtifact(record, index + 1));
       }
+      if (!isCurrent()) return;
       artifacts.value = loaded;
       nextCursor.value = null;
       return;
@@ -1062,7 +1076,7 @@ async function loadArtifacts(append: boolean): Promise<void> {
     if (channelTargets.length > 1) {
       const loaded: Artifact[] = [];
       for (const version of channelTargets) {
-        if (artifactController.signal.aborted) return;
+        if (!isCurrent()) return;
         const page = await api.artifacts(
           domainId.value,
           version,
@@ -1072,11 +1086,13 @@ async function loadArtifacts(append: boolean): Promise<void> {
             kind: artifactKindForMode(mode.value),
             limit: 500,
           },
-          artifactController.signal,
+          request.signal,
         );
+        if (!isCurrent()) return;
         loaded.push(...page.items);
       }
       const seenArtifacts = new Set<string>();
+      if (!isCurrent()) return;
       artifacts.value = loaded.filter((item) => {
         const key = String(item.name);
         if (seenArtifacts.has(key)) return false;
@@ -1096,12 +1112,13 @@ async function loadArtifacts(append: boolean): Promise<void> {
         kind: artifactKindForMode(mode.value),
         limit: 50,
       },
-      artifactController.signal,
+      request.signal,
     );
+    if (!isCurrent()) return;
     artifacts.value = append ? [...artifacts.value, ...page.items] : page.items;
     nextCursor.value = page.next_cursor;
   } catch (reason) {
-    if (isAbortError(reason)) return;
+    if (!isCurrent() || isAbortError(reason)) return;
     error.value = reason instanceof Error ? reason : new Error(String(reason));
   } finally {
     if (requestId === artifactRequestId) {
@@ -1230,6 +1247,8 @@ onMounted(() => {
   window.addEventListener("storage", onAvailabilityStorageInvalidated);
 });
 onBeforeUnmount(() => {
+  registryRequestId += 1;
+  artifactRequestId += 1;
   registryController?.abort();
   artifactController?.abort();
   if (searchTimer !== null) window.clearTimeout(searchTimer);

@@ -506,11 +506,13 @@ def _probe_checked_at(current: dict[str, Any]) -> tuple[str, datetime] | None:
     # Only a UTC ISO-8601 timestamp, exactly the shape the probe adapters
     # persist, proves this current was written by a completed live probe.
     value = current.get("checked_at")
-    if not isinstance(value, str) or not value.endswith("Z"):
+    if not isinstance(value, str) or re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z", value) is None:
         return None
     try:
         parsed = datetime.fromisoformat(value[:-1] + "+00:00")
     except ValueError:
+        return None
+    if parsed.utcoffset() != timedelta(0):
         return None
     return value, parsed
 
