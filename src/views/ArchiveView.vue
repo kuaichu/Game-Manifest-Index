@@ -1667,7 +1667,7 @@ function chunkMatchingField(artifact: Artifact): string {
           :domain="domain"
           :mode="mode"
           :label-override="mode === 'legacy' ? '候选线索' : undefined"
-          :show-availability="false"
+          :show-availability="true"
           @select="navigate({ version: $event })"
         />
         <div class="mode-field">
