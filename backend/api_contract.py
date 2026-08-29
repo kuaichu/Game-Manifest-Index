@@ -356,6 +356,7 @@ class ApiContract:
                             fail(500, "index_mismatch", "版本索引摘要不匹配")
                     unindexed_versions = [version for version in visible_versions if version not in set(indexed_versions)]
                     records = [by_version[version] for version in indexed_versions + sorted(unindexed_versions, key=_version_key, reverse=True)]
+                    records.sort(key=lambda item: _version_key(item["version"]), reverse=True)
                     if records:
                         result[domain_id] = DomainData(vendor, game_id, disk_platform, platform, domain_id, directory, tuple(records))
         return result
@@ -700,7 +701,7 @@ def _domain_projection(domain: DomainData, sort_order: int) -> dict[str, Any]:
         },
         "adapter": adapter,
         "version_count": len(domain.records),
-        "latest_version": domain.records[0]["version"],
+        "latest_version": max((record["version"] for record in domain.records), key=_version_key),
         "source_current_version": None,
         "catalog_version_count": len(domain.records),
         "is_enabled": True,

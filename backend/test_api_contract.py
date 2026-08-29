@@ -226,6 +226,19 @@ class TemporaryContractTests(unittest.TestCase):
         index_path.write_text(json.dumps(index), encoding="utf-8")
         self.assertEqual(self.get("/api/v1/games", 500).json()["error"]["code"], "index_mismatch")
 
+    def test_chunk_only_higher_version_is_globally_sorted(self):
+        chunk_only = record(
+            "mihoyo", "hk4e", "windows", "3.0.0", [],
+            references=[{"kind": "chunk_manifest", "path": "chunk-manifests/3.0.0.json", "build_id": "build-3", "source": {"source_kind": "official_sync"}}],
+        )
+        write_record(self.root, chunk_only)
+
+        versions = self.get("/api/v1/domains/hk4e-pc/versions").json()["items"]
+        self.assertEqual([item["version"] for item in versions], ["3.0.0", "2.0.0"])
+        domains = self.get("/api/v1/games/hk4e/domains").json()
+        pc_domain = next(item for item in domains if item["id"] == "hk4e-pc")
+        self.assertEqual(pc_domain["latest_version"], "3.0.0")
+
     def test_missing_indexed_record_is_500(self):
         (self.root / "mihoyo" / "hk4e" / "android" / "2.0.0.json").unlink()
         self.assertEqual(self.get("/api/v1/games", 500).json()["error"]["code"], "index_mismatch")
