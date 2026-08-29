@@ -2,6 +2,12 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { ApiError, adminApi, isAbortError } from "../api";
+import {
+  adminUiCapabilities,
+  externalScheduleNotice,
+  manualVersionSavedMessage,
+  supportsApkVersionEditor,
+} from "../admin-ui-capabilities";
 import { gameIcons } from "../game-icons";
 import CustomSelect from "../components/CustomSelect.vue";
 import {
@@ -54,13 +60,13 @@ const currentTabMeta = computed(() => {
   switch (tab.value) {
     case "games":
       return {
-        title: "游戏入口管理",
-        subtitle: "配置支持的游戏元数据、展示名称与图标资源",
+        title: "游戏入口目录",
+        subtitle: "查看当前静态游戏目录；V5 尚未提供目录写入能力",
       };
     case "domains":
       return {
-        title: "数据模块管理",
-        subtitle: "配置各游戏的数据分发模块、适配器契约与能力规范",
+        title: "数据模块目录",
+        subtitle: "查看数据分发模块、适配器契约与能力；V5 尚未提供目录写入能力",
       };
     case "content":
       return {
@@ -74,8 +80,8 @@ const currentTabMeta = computed(() => {
       };
     case "retention":
       return {
-        title: "数据保留与自动清理",
-        subtitle: "配置本地缓存生命周期、旧运维记录与探活历史轮转，支持安全手动立即清理",
+        title: "数据保留能力未接入",
+        subtitle: "当前 V5 后端没有 retention API，此入口不可用",
       };
     default:
       return {
@@ -150,6 +156,10 @@ const selectedDomainGameName = computed(() => {
 const selectedDomainPlatform = computed(() => {
   return selectedDomainObj.value?.platform || "Android";
 });
+
+const selectedDomainSupportsManualVersion = computed(() =>
+  supportsApkVersionEditor(selectedDomainObj.value?.platform),
+);
 
 const currentVersionItem = computed(() =>
   versions.value.find((v) => v.version === selectedVersion.value) || null,
@@ -1199,7 +1209,7 @@ async function refreshAllData(): Promise<void> {
         await loadEditableVersion(selectedDomainId.value, selectedVersion.value);
       }
     }
-    if (tab.value === "retention") {
+    if (adminUiCapabilities.retention && tab.value === "retention") {
       await Promise.all([
         loadRetentionConfig(signal),
         loadRetentionStatus(signal, true),
@@ -1375,7 +1385,7 @@ async function saveProbeSchedule(): Promise<void> {
   if (!confirmed) return;
   await withLoading(async (signal) => {
     probeSchedule.value = await adminApi.saveProbeSchedule(probeSchedule.value, token.value, signal);
-    success.value = "探活计划已保存。当前仅保存配置，需由系统计划任务按间隔触发。";
+    success.value = `探活计划参数已保存。${externalScheduleNotice}`;
   });
 }
 
@@ -1499,6 +1509,10 @@ async function loadRetentionStatus(signal?: AbortSignal, force = false): Promise
 }
 
 async function openRetention(): Promise<void> {
+  if (!adminUiCapabilities.retention) {
+    error.value = "当前 V5 后端尚未提供数据保留与自动清理能力。";
+    return;
+  }
   tab.value = "retention";
   startRetentionStatusPolling();
   await withLoading(async (signal) => {
@@ -1947,7 +1961,7 @@ async function saveSyncSchedule(): Promise<void> {
       enabled: saved.enabled,
       times,
     };
-    success.value = "采集计划已保存。当前仅保存配置，需由系统计划任务按配置触发。";
+    success.value = `采集计划参数已保存。${externalScheduleNotice}`;
   });
 }
 
@@ -2003,6 +2017,7 @@ function selectGame(id: string): void {
 }
 
 function startGame(): void {
+  if (!adminUiCapabilities.catalogMutations) return;
   newGame.value = true;
   gameDraft.value = {
     id: "",
@@ -2023,6 +2038,10 @@ function preventEnterSubmit(event: KeyboardEvent): void {
 }
 
 async function saveGame(): Promise<void> {
+  if (!adminUiCapabilities.catalogMutations) {
+    error.value = "当前 V5 游戏目录为只读。";
+    return;
+  }
   const actionText = newGame.value
     ? `确定要创建新游戏【${gameDraft.value.name || gameDraft.value.id}】吗？`
     : `确定要保存游戏【${gameDraft.value.name || gameDraft.value.id}】的配置修改吗？`;
@@ -2040,6 +2059,10 @@ async function saveGame(): Promise<void> {
 }
 
 async function removeGame(): Promise<void> {
+  if (!adminUiCapabilities.catalogMutations) {
+    error.value = "当前 V5 游戏目录为只读。";
+    return;
+  }
   if (!newGame.value && !window.confirm(`确定要彻底删除空游戏【${gameDraft.value.name || gameDraft.value.id}】吗？仅空游戏可删除，此操作不可撤销。`)) return;
   await withLoading(async (signal) => {
     await adminApi.deleteGame(gameDraft.value.id, token.value, signal);
@@ -2102,6 +2125,7 @@ function selectDomain(id: string): void {
 }
 
 function startDomain(): void {
+  if (!adminUiCapabilities.catalogMutations) return;
   newDomain.value = true;
   const targetGameId = (domainGameFilter.value && domainGameFilter.value !== "all")
     ? domainGameFilter.value
@@ -2250,6 +2274,10 @@ function domainPayload(): Partial<AdminDomain> {
 }
 
 async function saveDomain(): Promise<void> {
+  if (!adminUiCapabilities.catalogMutations) {
+    error.value = "当前 V5 数据模块目录为只读。";
+    return;
+  }
   const actionText = newDomain.value
     ? `确定要创建新数据模块【${domainDraft.value.id}】吗？`
     : `确定要保存数据模块【${domainDraft.value.id}】的配置修改吗？`;
@@ -2267,6 +2295,10 @@ async function saveDomain(): Promise<void> {
 }
 
 async function removeDomain(): Promise<void> {
+  if (!adminUiCapabilities.catalogMutations) {
+    error.value = "当前 V5 数据模块目录为只读。";
+    return;
+  }
   if (!window.confirm(`确定要彻底删除空模块【${domainDraft.value.id}】吗？仅没有版本和候选记录的空模块可删除，此操作不可撤销。`)) return;
   await withLoading(async (signal) => {
     await adminApi.deleteDomain(domainDraft.value.id, token.value, signal);
@@ -2285,6 +2317,11 @@ function formatBytes(bytes: number | null | undefined): string {
 }
 
 async function loadEditableVersion(domainId = selectedDomainId.value, version = selectedVersion.value): Promise<void> {
+  const domain = catalog.value.domains.find((item) => item.id === domainId);
+  if (!supportsApkVersionEditor(domain?.platform)) {
+    editableLoaded.value = false;
+    return;
+  }
   if (!domainId || !version) {
     editableLoaded.value = false;
     return;
@@ -2395,6 +2432,10 @@ async function discardChanges(): Promise<void> {
 }
 
 async function saveEditableVersion(): Promise<void> {
+  if (!selectedDomainSupportsManualVersion.value) {
+    error.value = "当前手工编辑器只支持单 APK 的 Android 版本；PC 版本请通过官方采集流程维护。";
+    return;
+  }
   if (!selectedDomainId.value || !selectedVersion.value || !isEditableDirty.value) return;
 
   const artifactsPayload = buildArtifactsPayload();
@@ -2759,6 +2800,10 @@ function buildCreateArtifactsPayload(): ManualArtifactPayload[] {
 }
 
 async function addVersion(): Promise<void> {
+  if (!selectedDomainSupportsManualVersion.value) {
+    error.value = "当前手工录入只支持单 APK 的 Android 版本；PC 版本请通过官方采集流程维护。";
+    return;
+  }
   const ver = createDraft.value.version.trim();
   if (!selectedDomainId.value || !ver) {
     error.value = "请输入新版本的版本号";
@@ -2863,8 +2908,7 @@ async function addVersion(): Promise<void> {
       contentSubTab.value = "edit";
       createDraft.value = defaultCreateDraft();
 
-      const probeMsg = result.probe_error ? `（自动验活提示: ${result.probe_error}）` : "，并在后台自动验活成功！";
-      success.value = `新版本 ${ver} 已成功录入发布${probeMsg}`;
+      success.value = manualVersionSavedMessage(ver, result.probe_error);
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         error.value = `版本【${ver}】已存在，请勿重复新增 (HTTP 409)。`;
@@ -2973,11 +3017,12 @@ onBeforeUnmount(() => {
           class="rail-item"
           :class="{ active: tab === 'retention' }"
           type="button"
-          title="数据保留与自动清理"
+          :disabled="!adminUiCapabilities.retention"
+          title="当前 V5 后端尚未提供数据保留与自动清理接口"
           @click="openRetention"
         >
           <span class="rail-icon">🧹</span>
-          <span class="rail-label">清理</span>
+          <span class="rail-label">未接入</span>
         </button>
       </div>
 
@@ -3084,7 +3129,7 @@ onBeforeUnmount(() => {
                 <span class="pane-kicker">GAMES</span>
                 <strong>{{ filteredGames.length }} 个游戏入口</strong>
               </div>
-              <button class="admin-btn primary small create-module-btn" type="button" @click="startGame">
+              <button v-if="adminUiCapabilities.catalogMutations" class="admin-btn primary small create-module-btn" type="button" @click="startGame">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 <span>新增游戏</span>
               </button>
@@ -3143,13 +3188,13 @@ onBeforeUnmount(() => {
               <div v-if="!filteredGames.length" class="admin-empty-state">
                 <div class="empty-icon">🎮</div>
                 <span>未找到匹配的游戏入口</span>
-                <button type="button" class="empty-action-link" @click="startGame">点击新建游戏</button>
+                <span>当前目录为只读</span>
               </div>
             </div>
           </aside>
 
           <!-- 右侧卡片化编辑器 -->
-          <form class="admin-form-pane game-form-pane" @keydown.enter="preventEnterSubmit" @submit.prevent="saveGame">
+          <form v-if="adminUiCapabilities.catalogMutations" class="admin-form-pane game-form-pane" @keydown.enter="preventEnterSubmit" @submit.prevent="saveGame">
             <!-- 头部 Hero 横幅 -->
             <div class="domain-hero-banner game-hero-banner">
               <div class="hero-identity">
@@ -3533,6 +3578,42 @@ onBeforeUnmount(() => {
               </div>
             </div>
           </form>
+          <div v-else class="admin-form-pane game-form-pane">
+            <div class="domain-hero-banner game-hero-banner">
+              <div class="hero-identity">
+                <div class="hero-icon-container">
+                  <img
+                    v-if="gameIconPreview"
+                    :src="gameIconPreview"
+                    :alt="gameDraft.name"
+                    class="hero-game-avatar"
+                  />
+                  <b v-else class="hero-fallback-letter">{{ gameDraft.id.slice(0, 1).toUpperCase() || '?' }}</b>
+                </div>
+                <div class="hero-text-block">
+                  <div class="hero-kicker-row"><span class="kicker-tag">READ-ONLY CATALOG</span></div>
+                  <div class="hero-title-row"><h2>{{ gameDraft.name || '未选择游戏' }}</h2></div>
+                </div>
+              </div>
+            </div>
+            <div class="admin-alert info">
+              游戏目录由当前 V5 静态注册关系和数据投影生成；后端尚未提供创建、编辑或删除能力。
+            </div>
+            <div v-if="gameDraft.id" class="form-section-card">
+              <div class="section-card-title">目录信息</div>
+              <div class="admin-field-grid compact-3col">
+                <div class="admin-field"><span class="field-label">游戏 ID</span><code>{{ gameDraft.id }}</code></div>
+                <div class="admin-field"><span class="field-label">英文 / 副标题</span><strong>{{ gameDraft.sub_name || '—' }}</strong></div>
+                <div class="admin-field"><span class="field-label">当前平台</span><strong>{{ gameDraft.platform || '—' }}</strong></div>
+              </div>
+              <div class="form-actions-bar">
+                <div class="actions-left"><span>{{ currentGameDomainCount }} 个关联数据模块</span></div>
+                <div class="actions-right">
+                  <button class="admin-btn primary" type="button" @click="openDomainsForGame(gameDraft.id)">查看关联模块</button>
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
 
         <!-- 模块 2：数据模块管理 (Domains Master-Detail) -->
@@ -3544,7 +3625,7 @@ onBeforeUnmount(() => {
                 <span class="pane-kicker">MODULES</span>
                 <strong>{{ filteredDomains.length }} 个数据分发模块</strong>
               </div>
-              <button class="admin-btn primary small create-module-btn" type="button" @click="startDomain">
+              <button v-if="adminUiCapabilities.catalogMutations" class="admin-btn primary small create-module-btn" type="button" @click="startDomain">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 <span>新增模块</span>
               </button>
@@ -3621,13 +3702,13 @@ onBeforeUnmount(() => {
               <div v-if="!filteredDomains.length" class="admin-empty-state">
                 <div class="empty-icon">📂</div>
                 <span>未找到匹配的数据模块</span>
-                <button type="button" class="empty-action-link" @click="startDomain">点击新建模块</button>
+                <span>当前目录为只读</span>
               </div>
             </div>
           </aside>
 
           <!-- 右侧卡片化编辑器 -->
-          <form class="admin-form-pane domain-form-pane" @keydown.enter="preventEnterSubmit" @submit.prevent="saveDomain">
+          <form v-if="adminUiCapabilities.catalogMutations" class="admin-form-pane domain-form-pane" @keydown.enter="preventEnterSubmit" @submit.prevent="saveDomain">
             <!-- 头部 Hero 横幅 -->
             <div class="domain-hero-banner">
               <div class="hero-identity">
@@ -4030,6 +4111,36 @@ onBeforeUnmount(() => {
               </div>
             </div>
           </form>
+          <div v-else class="admin-form-pane domain-form-pane">
+            <div class="domain-hero-banner">
+              <div class="hero-identity">
+                <div class="hero-icon-container"><span class="hero-kind-icon">{{ domainKindIcon(domainDraft.kind) }}</span></div>
+                <div class="hero-text-block">
+                  <div class="hero-kicker-row"><span class="kicker-tag">READ-ONLY CATALOG</span></div>
+                  <div class="hero-title-row"><h2>{{ domainDraft.id || '未选择数据模块' }}</h2></div>
+                </div>
+              </div>
+            </div>
+            <div class="admin-alert info">
+              数据模块目录由现有 canonical 数据和适配器能力投影生成；后端尚未提供创建、编辑或删除能力。
+            </div>
+            <div v-if="domainDraft.id" class="form-section-card">
+              <div class="section-card-title">模块信息</div>
+              <div class="admin-field-grid compact-3col">
+                <div class="admin-field"><span class="field-label">所属游戏</span><strong>{{ currentDomainGameName }}</strong></div>
+                <div class="admin-field"><span class="field-label">平台 / 类型</span><strong>{{ domainDraft.platform }} / {{ domainDraft.kind }}</strong></div>
+                <div class="admin-field"><span class="field-label">能力</span><code>{{ domainDraft.capabilities || '—' }}</code></div>
+                <div class="admin-field"><span class="field-label">适配器</span><code>{{ domainDraft.adapter || '—' }}</code></div>
+                <div class="admin-field"><span class="field-label">版本数</span><strong>{{ currentDomainObj?.version_count ?? 0 }}</strong></div>
+              </div>
+              <div class="form-actions-bar">
+                <div class="actions-left"><span>目录配置不可在当前控制台修改</span></div>
+                <div class="actions-right">
+                  <button class="admin-btn primary" type="button" @click="openContent(domainDraft.id)">查看版本</button>
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
 
         <!-- 模块 3：版本内容管理 (Content Management) -->
@@ -4350,7 +4461,7 @@ onBeforeUnmount(() => {
             </div>
 
             <!-- 右侧：版本工作台（编辑版本 / 新建版本） -->
-            <div class="content-work-card">
+            <div v-if="selectedDomainSupportsManualVersion" class="content-work-card">
               <!-- 子功能切换 Tab -->
               <div class="content-sub-tabs">
                 <button
@@ -4907,6 +5018,19 @@ onBeforeUnmount(() => {
                 </div>
               </form>
             </div>
+            <div v-else class="content-work-card">
+              <div class="version-status-topbar">
+                <div class="version-header-meta">
+                  <div class="version-title-row"><h2>PC 版本只读</h2></div>
+                </div>
+              </div>
+              <div class="admin-empty-state">
+                <div class="empty-icon">🖥️</div>
+                <strong>当前单 APK 表单不适用于 PC 资源</strong>
+                <span>PC package、patch、voice、file manifest 与 chunk manifest 具有不同身份结构，当前不提供手工新增或编辑。</span>
+                <span>请使用已接入的官方采集与探活流程维护记录；左侧版本列表仍可用于只读浏览。</span>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -5087,8 +5211,8 @@ onBeforeUnmount(() => {
             <div class="probe-card">
               <div class="card-title-group">
                 <div class="kicker-tag">AUTOMATION & SCHEDULES</div>
-                <h3>定时调度策略配置</h3>
-                <p class="card-subtitle">配置后台每日定时采集与定时探活周期计划</p>
+                <h3>外部调度计划参数</h3>
+                <p class="card-subtitle">{{ externalScheduleNotice }}</p>
               </div>
 
               <!-- 每日采集计划 -->
@@ -5096,21 +5220,21 @@ onBeforeUnmount(() => {
                 <label class="admin-toggle-label">
                   <input v-model="syncSchedule.enabled" class="admin-toggle-checkbox" type="checkbox" />
                   <span class="toggle-slider"></span>
-                  <span class="toggle-text">{{ syncSchedule.enabled ? '每日定时采集已启用' : '每日定时采集已停用' }}</span>
+                  <span class="toggle-text">{{ syncSchedule.enabled ? '采集计划参数已启用' : '采集计划参数已停用' }}</span>
                 </label>
               </div>
               <div class="schedule-inputs-row">
                 <label class="admin-field">
-                  <span class="field-label">时间点 1 (北京时间)</span>
+                  <span class="field-label">时间点 1（时区由外部任务定义）</span>
                   <input v-model="syncSchedule.times[0]" class="admin-input" type="time" />
                 </label>
                 <label class="admin-field">
-                  <span class="field-label">时间点 2 (北京时间)</span>
+                  <span class="field-label">时间点 2（时区由外部任务定义）</span>
                   <input v-model="syncSchedule.times[1]" class="admin-input" type="time" />
                 </label>
               </div>
               <button class="admin-btn secondary full-width" type="button" :disabled="loading" @click="saveSyncSchedule">
-                <span>保存每日采集调度计划</span>
+                <span>保存采集计划参数</span>
               </button>
 
               <hr style="border: 0; border-top: 1px solid var(--line-soft); margin: 6px 0;" />
@@ -5120,7 +5244,7 @@ onBeforeUnmount(() => {
                 <label class="admin-toggle-label">
                   <input v-model="probeSchedule.enabled" class="admin-toggle-checkbox" type="checkbox" />
                   <span class="toggle-slider"></span>
-                  <span class="toggle-text">{{ probeSchedule.enabled ? '定时探活已启用' : '定时探活已停用' }}</span>
+                  <span class="toggle-text">{{ probeSchedule.enabled ? '探活计划参数已启用' : '探活计划参数已停用' }}</span>
                 </label>
               </div>
               <div class="schedule-inputs-row">
@@ -5140,7 +5264,7 @@ onBeforeUnmount(() => {
                 </div>
               </div>
               <button class="admin-btn secondary full-width" type="button" :disabled="loading" @click="saveProbeSchedule">
-                <span>保存定时探活计划</span>
+                <span>保存探活计划参数</span>
               </button>
             </div>
           </div>
@@ -5402,7 +5526,7 @@ onBeforeUnmount(() => {
         </section>
 
         <!-- 模块 5：数据保留与自动清理 (Retention & Cleanup Console) -->
-        <section v-else-if="tab === 'retention'" class="admin-retention-dashboard">
+        <section v-else-if="tab === 'retention' && adminUiCapabilities.retention" class="admin-retention-dashboard">
           <!-- 上方双列：策略配置 + 最近执行状态 -->
           <div class="retention-top-grid">
             <!-- 卡片 1: 保留与自动清理策略配置 -->

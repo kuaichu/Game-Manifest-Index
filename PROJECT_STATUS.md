@@ -39,14 +39,16 @@ V5 主线。
 
 ### `main`
 
-- 提交：`c6bf94b Initial empty baseline`
-- 内容：空树。
+- 初始空基线：`c6bf94b Initial empty baseline`。
+- 已晋级代码基线：`f5ff865`；最终指针以 Git 中 `main` 的实际分支指针为准。
+- 内容：完成 PHASE 10 验收的完整 V5 产品状态。
 - 定位：V5 最终可信产品状态。
-- 规则：开发期间不直接提交，不直接开发。只有 `integration/v5` 完成最终验收后才合入。
+- 规则：仍不直接开发；后续只接收通过 `integration/v5` 验证的晋级。
 
 ### `integration/v5`
 
-- 当前提交：以 Git 中 `integration/v5` 的实际分支指针为准。
+- 当前可信指针：以 Git 中 `integration/v5` 的实际分支指针为准。
+- PHASE 8 起始父提交：`639b117 Merge validated PC platform`。
 - 定位：V5 开发期当前最新可信基线。
 - 当前已包含：
   - `.gitignore`
@@ -56,6 +58,7 @@ V5 主线。
   - 已晋级的 `core/schema`
   - 已晋级的 `core/version-store`
   - 已晋级的 `core/indexes`
+  - 已通过 normal merge 晋级的完整 APK 与 PC 平台基线
 
 日常新任务应从最新 `integration/v5` 或对应平台 integration 分支切出。
 
@@ -563,15 +566,134 @@ collector 产生的 `official_sync` provenance；历史 record 只使用真实
 manifest/reference 安全、8 个 index 无差异重建、Android data 与 `integration/pc` 无差异及
 Git-object migration rerun。
 
+### Backend public API contract
+
+`backend/api-contract` 已实现 FastAPI 只读 public contract，覆盖当前前端实际调用的 games、
+domains、versions、version detail、artifacts/tree、compare、leads、chunk manifests、文件列表/
+详情和 bounded chunk content 共 16 个 GET routes。所有响应由显式 mapper 从 canonical v2、
+indexes 和独立 manifest 文档投影，不直接暴露 `schema_version`、仓库路径或 Sophon secret。
+
+Android 与 PC 均继续使用同一 flat `VersionRecord` 前端契约；只含 chunk reference 的合法 PC
+历史记录使用明确空 package 字段，不伪造下载 URL。Kuro 与 Perfect World file manifests 从
+checked-in 文档只读加载；Perfect World 下载地址按已验证 `object` identity 生成，没有可证明
+base URL 的历史 Kuro 文档仍可浏览文件元数据但不补造下载链接。Mihoyo Sophon manifest/Chunk
+读取使用官方 HTTPS host allowlist、有限 timeout/redirect/响应大小、checksum/protobuf/stat
+校验和无隐式 retry；recipe secret 不进入响应、日志或错误。
+
+API 专项 37 项与 schema/index/version-store 55 项回归通过；另核验 12 games/20 domains、442
+records/1,768 artifacts、63 chunk documents/1,410 public entries、48 个 checked-in file-manifest
+版本均可按对应 contract 读取。该 API contract 任务没有提前迁入 sync/probe、version admin 或
+retention；后续 `backend/sync-operations` 在同一个 app factory 上独立注册受保护 admin routes。
+
+### Backend sync / probe operations
+
+`backend/sync-operations` 已实现受 Bearer token 保护的 discovery / probe 运维契约：生产 app
+注册 14 个 frontend 已使用的 admin routes，但只有配置至少 16 字符且无空白的
+`GMI_ADMIN_TOKEN` 后才启用；未配置返回 503，错误 token 返回 401。schedule 与 operation
+snapshot 写入可配置的非数据 `state_root`，使用有界、原子 JSON 文件；默认 `.cache/` 与
+VersionStore 的 `data/.cache/` 已显式忽略。运维任务保持单活动任务、daemon worker、协作取消、
+重启中断转 failed 和增量日志游标语义。
+
+手动 operation 支持 `discover`、`probe` 或固定的 discover→probe 顺序，并按 `all/android/pc`
+scope 精确调用现有 official registries；同一 game id 在 all scope 下分别运行 Android 与 PC。
+discovery 成功后每个受影响 domain 只重建一次 index。批量探活仅处理路径/identity/schema 均
+有效的 canonical v2 Android / Windows 记录：逐 record 串行更新 candidates、records 间有限
+并发，通过现有 probe/apply/VersionStore 与共享写锁保留 artifact identity、非 probe 字段和
+`is_visible`，最后重建受影响 index。单 URL 无 public stable URL id 时只读；携带 id 时才精确
+定位、持久化并重建索引。job snapshot 和日志不保存 URL、token 或 canonical record。
+
+sync schedule 只保存 `{enabled,times}`，probe schedule 只保存
+`{enabled,interval_hours,mode}`。前端现有文案和旧项目都只定义“保存配置，由系统计划任务触发”，
+没有定义内部 timer；因此本阶段没有发明 daemon scheduler。外部 scheduler 的部署方式、时区、
+漏跑补偿以及 sync schedule 应触发 discover 还是 discover+probe 仍为 **UNKNOWN**。
+
+sync/probe 专项 36 项、public API 37 项、schema/index/version-store 55 项、registry 20 项和
+probe service/registry 17 项通过；所有联网和写入边界均使用临时 data/state root 与 fakes，未对
+checked-in baseline 做真实写入。
+
+### Backend version admin
+
+`backend/version-admin` 已实现受 Bearer token 保护的 catalog/versions 查询、手工版本写入、editable
+读取与更新、visibility 切换和 canonical 版本删除。扫描严格校验路径、文件 identity、schema
+和安全属性；隐藏版本仍可由管理员读取，公共 index 按 `is_visible` 过滤，全部隐藏时 public API
+会安全省略该 domain。手工 Android 写入严格保持单 APK/单 URL，使用 `manual` provenance，写入
+后明确提示尚未自动探活；editable 往返保留 references、provenance、visibility、官方 candidate
+provider/current、canonical checksum 与 artifact identity。删除只移除 canonical record 并重建
+index，独立 manifest 按既有保守策略保留为 orphan。
+
+当前新增 14 个 version-admin method/routes。game/domain CRUD 与独立 artifact 编辑明确返回 409
+`unsupported`，不假写静态 catalog 或用 `part` 猜测 PC artifact identity。revision/capture 字段仅
+返回兼容前端的零值，不建立虚构 ledger。version-admin 专项 11 项、sync/admin 36 项、public API
+37 项、schema/index/version-store 55 项、registry 20 项和 probe 17 项通过；真实 checked-in 数据
+只读审计覆盖 12 games、20 domains、442 个 admin versions 和 20 个 latest editable 投影。
+外部 scheduler 的部署、触发与 UNKNOWN 调度语义保持不变。
+
+task `6dff472` 已 squash 晋级为 `integration/v5@dc97a78`，task/integration tree 一致。
+
+### Frontend 管理能力对齐
+
+`frontend-version-admin` 已按 PHASE 8 的稳定后端契约收口管理界面。由于冻结的历史分支
+`frontend` 占用 Git ref namespace，无法同时创建 `frontend/version-admin`，因此本任务使用等价的
+短期分支名；父分支仍为最新 `integration/v5`，晋级规则不变。
+
+游戏和数据模块目录现在只展示静态注册关系与 canonical 数据投影，不再暴露必然返回
+`catalog_mutation_unsupported` 的创建、编辑或删除操作。Android 域继续提供后端实际支持的单 APK
+手工新增和编辑；Windows 域明确显示只读说明，不再把 package、patch、voice、file manifest 或
+chunk manifest 塞进 APK 专用表单。手工新增版本成功提示忠实显示后端 `probe_error`，不会虚构后台
+自动探活成功。
+
+retention 入口保留为禁用的“未接入”状态，不会请求当前不存在的 API，也不再宣称清理引擎就绪。
+sync/probe schedule 只标为计划参数：服务不会启动内置计时器，真实触发、时区、漏跑策略与采集动作
+仍由外部计划任务定义，保持 **UNKNOWN** 而不猜测。
+
+前端专项 7 项能力测试和完整 183 项 Vitest 均通过，`npm run build` 通过。测试使用 jsdom，不涉及
+客户端内置浏览器或用户浏览器会话。
+
+### PHASE 10 全链路验收
+
+`integration/v5@f5ff865` 已完成最终代码与数据验收，并从空 `main@c6bf94b` fast-forward 晋级。
+本节是晋级后的纯状态记录，不改变已验收业务代码或数据。
+
+自动验证：
+
+- `python -m unittest discover`：275 项通过；
+- `python -m compileall -q backend url_adapters probe_adapters scripts`：通过；
+- `npm test`：16 个测试文件、183 项通过；
+- `npm run build`：Vue 类型检查与 production build 通过；
+- `git diff --check`：通过。
+
+真实官方联网验收全部在系统临时目录执行，没有写入 checked-in `data/`：
+
+- Android 12/12 discovery 成功，12/12 代表 APK probe 均为 available / HTTP 206；
+- PC 8/8 discovery 成功；hkrpg、nap、wuwa、tof、p5x、nte 代表 probe 为 available / HTTP 206；
+- hk4e 当前官方 archive 返回 404，BH3 当前对象仍为未恢复 Archive，均按真实证据保持
+  unavailable，BH3 未伪造 HTTP code；
+- 共验证 20 个域、23 条临时 canonical records、20 个临时 indexes；probe 写回只改变目标
+  candidate `current`，artifact identity 和其他字段保持不变。
+
+checked-in 数据与 API 审计：
+
+- 442 条 canonical records（269 Android / 173 Windows）、1,768 个全局唯一 artifact IDs；
+- Android 历史 269 条继续使用 URL 级 `legacy`，没有伪造顶层官方 provenance；PC provenance
+  为 60 条 `legacy_migration`、102 条 `third_party_history`、11 条 `official_sync`；
+- 20 个 indexes 在临时副本中由正式生成器重建后逐 JSON 一致；
+- FastAPI 联调覆盖 16 public + 28 admin method/routes、12 games、20 domains、442 public/admin
+  versions、20 latest editable、16 个可比较域和 4 个 chunk 域，并验证 admin 认证、unsupported 409
+  与结构化错误 envelope；
+- 孤立 `snapshot/apk-validated-baseline@bfb2023` 不在正式 ancestry；APK/PC 平台分别以双父 normal
+  merge `05017fe` / `639b117` 晋级。`snapshot/v5-global-*` 只是指向既有 integration 提交的历史
+  分支指针，没有产生 snapshot merge。
+
+仓库没有真实浏览器 E2E harness；前端关键路径由 jsdom 组件/路由/API 测试和 production build
+验证，未调用客户端内置浏览器或用户浏览器。retention policy 与外部 scheduler 部署、触发、时区、
+漏跑和采集动作仍为明确未实现/UNKNOWN，不属于本次 V5 可信能力。
+
 ## 暂未迁移内容
 
 以下内容还没有进入 V5 的可信基线：
 
-- APK 公开 API 和后台 operation 接线（由后续 backend 阶段完成）；
-- backend API contract；
-- backend sync operations；
-- backend version admin；
 - retention policy。
+- 外部 scheduler 部署与上述 UNKNOWN 调度语义。
 
 这些内容必须按 `BRANCHING.md` 的规则，通过独立任务分支迁移、验证、审查，再晋级到
 对应 integration 分支。
@@ -590,9 +712,10 @@ snapshot/apk-validated-baseline
 
 其中 `snapshot/apk-validated-baseline`、`frontend` 晋级和 `core/schema` 已完成。
 
-APK 平台模块，以及米哈游、Kuro、Perfect World 的当前 PC 采集、URL probe 与内部 registry
-已完成验证。`pc/data-baseline` 已完成数据迁移、官方 current discovery、基线审计与
-`integration/pc` 平台验收；下一步按 normal merge 晋级 `integration/v5`，再进入 PHASE 8。
+PHASE 1–9 已按任务分支和 integration 规则完成。PHASE 10 已完成自动、真实联网、API、前端关键
+路径、数据与 Git 历史验收；已验证代码基线 `integration/v5@f5ff865` 已 fast-forward 到 `main`。
+当前纯状态任务只记录已完成的晋级证据；晋级该记录后，`main` 与 `integration/v5` 应保持同一指针，
+正式验证 tag 应指向该共同提交。
 
 分支路径：
 
@@ -614,12 +737,17 @@ integration/pc
 
 ## 近期路线
 
-推荐顺序：
+当前推进顺序：
 
 ```text
 integration/pc
-  -> normal merge -> integration/v5
-  -> backend/api-contract
+  -> normal merge -> integration/v5@639b117（已完成）
+  -> backend/api-contract（已完成）
+  -> backend/sync-operations（已完成）
+  -> backend/version-admin（已完成）
+  -> frontend-version-admin（已完成并晋级 `integration/v5@5e61b78`）
+  -> PHASE 10 全链路验收（已完成）
+  -> fast-forward -> main（已完成；main、integration/v5 与正式验证 tag 已同步）
 ```
 
 后端业务能力建议在数据和适配器基础稳定后推进：
