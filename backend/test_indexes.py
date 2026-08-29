@@ -23,6 +23,31 @@ def write_record(directory, name, value):
 
 
 class IndexTests(unittest.TestCase):
+    def test_nondefault_resource_index_is_isolated_from_same_version_default_domain(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            default = root / "hypergryph" / "endfield" / "pc"
+            resources = default / "domains" / "endfield-resources"
+            resources.mkdir(parents=True)
+            write_record(default, "1.0.json", make_record("windows", "1.0", vendor="hypergryph", game_id="endfield", domain="endfield-pc"))
+            resource = {"kind": "resource", "component": "resource", "name": "data/a.bin", "size": 7,
+                        "checksum": {"md5": "a" * 32}, "urls": [{"url": "https://example.invalid/a"}]}
+            write_record(resources, "1.0.json", make_record("windows", "1.0", vendor="hypergryph", game_id="endfield", domain="endfield-resources", artifacts=[resource]))
+            paths = rebuild_indexes(root)
+            default_index = read_index(default / "index.json")
+            resource_index = read_index(resources / "index.json")
+            self.assertIn(default / "index.json", paths)
+            self.assertIn(resources / "index.json", paths)
+            self.assertEqual(default_index["domain_id"], "endfield-pc")
+            self.assertEqual(resource_index["domain_id"], "endfield-resources")
+            self.assertEqual(resource_index["versions"][0]["size"], 7)
+
+    def test_nondefault_index_path_rejects_unregistered_or_unsafe_domains(self):
+        root = Path("data")
+        for domain in ("other-resources", "../endfield-resources"):
+            with self.subTest(domain=domain), self.assertRaises(ValueError):
+                index_path(root, "hypergryph", "endfield", "windows", domain)
+
     def test_android_projection_and_numeric_sort(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

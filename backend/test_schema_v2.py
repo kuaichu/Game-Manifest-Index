@@ -50,6 +50,31 @@ def make_record(**overrides):
 
 
 class SchemaV2Tests(unittest.TestCase):
+    def test_resource_artifact_has_strict_file_semantics(self):
+        resource = {
+            "kind": "resource",
+            "component": "resource",
+            "name": "Windows/Client/data.bin",
+            "size": 12,
+            "checksum": {"md5": "a" * 32},
+            "urls": [{"url": "https://example.test/data.bin", "provider": "test", "source_kind": "official", "priority": 0}],
+        }
+        value = make_record(platform="windows", domain_id="endfield-resources", artifacts=[resource])
+        validate_v2_record(value)
+        for key, invalid_value in (
+            ("component", "game"), ("package_type", "full"), ("delivery_mode", "direct"),
+            ("part", 1), ("name", "../data.bin"), ("size", -1),
+            ("checksum", {"sha256": "b" * 64}), ("urls", []),
+        ):
+            with self.subTest(key=key):
+                invalid = copy.deepcopy(resource)
+                invalid[key] = invalid_value
+                errors = validate_v2_record(
+                    make_record(platform="windows", domain_id="endfield-resources", artifacts=[invalid]),
+                    raise_on_error=False,
+                )
+                self.assertTrue(errors)
+
     def test_identity_is_stable_and_ignores_position_and_classification(self):
         record_identity = {
             "vendor": "test",

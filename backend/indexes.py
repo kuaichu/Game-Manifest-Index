@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from backend.storage_locks import DATA_LOCK, data_file_lock
+from backend.domain_registry import is_nondefault_pc_domain, nondefault_pc_domains
 
 
 class IndexReadError(ValueError):
@@ -35,10 +36,18 @@ def _safe_component(value: Any, field: str) -> str:
     return value
 
 
-def index_path(root: Path, vendor: str, game_id: str, platform: str) -> Path:
+def index_path(root: Path, vendor: str, game_id: str, platform: str, domain_id: str | None = None) -> Path:
     """Return the index path; ``windows`` is the JSON platform spelling."""
     disk = _disk_platform(platform)
-    return Path(root) / _safe_component(vendor, "vendor") / _safe_component(game_id, "game_id") / disk / "index.json"
+    vendor = _safe_component(vendor, "vendor")
+    game_id = _safe_component(game_id, "game_id")
+    base = Path(root) / vendor / game_id / disk
+    if domain_id is None or domain_id == f"{game_id}-{'android' if disk == 'android' else 'pc'}":
+        return base / "index.json"
+    domain_id = _safe_component(domain_id, "domain_id")
+    if disk != "pc" or not is_nondefault_pc_domain(vendor, game_id, domain_id):
+        raise ValueError("domain_id must be a registered non-default PC domain")
+    return base / "domains" / domain_id / "index.json"
 
 
 def _version_key(value: str) -> tuple[int, ...]:
@@ -86,6 +95,8 @@ def _entry(record: Mapping[str, Any], platform: str) -> dict[str, Any] | None:
         game = [a for a in artifacts if isinstance(a, Mapping) and a.get("component") == "game"]
         full = [a for a in game if a.get("package_type") == "full"]
         chosen = full or [a for a in game if a.get("package_type") == "segment"]
+        if not chosen:
+            chosen = [a for a in artifacts if isinstance(a, Mapping) and a.get("kind") == "resource"]
         if not chosen and not _has_browsable_reference(record):
             return None
     sizes = [a.get("size") for a in chosen]
@@ -168,10 +179,12 @@ def _write_atomic(path: Path, value: Mapping[str, Any]) -> None:
             pass
 
 
-def _rebuild_locked(root: Path, vendor: str, game_id: str, platform: str) -> Path:
-    path = index_path(root, vendor, game_id, platform)
+def _rebuild_locked(root: Path, vendor: str, game_id: str, platform: str, domain_id: str | None = None) -> Path:
+    path = index_path(root, vendor, game_id, platform, domain_id)
     directory = path.parent
     scanned = _scan(directory, vendor, game_id, platform)
+    if domain_id is not None:
+        scanned = [pair for pair in scanned if pair[0].get("domain_id") == domain_id]
     versions = [item for _, item in scanned]
     if not versions:
         if path.exists() or path.is_symlink():
@@ -188,7 +201,7 @@ def _rebuild_locked(root: Path, vendor: str, game_id: str, platform: str) -> Pat
     return path
 
 
-def rebuild_index(root: Path, vendor: str, game_id: str, platform: str) -> Path:
+def rebuild_index(root: Path, vendor: str, game_id: str, platform: str, domain_id: str | None = None) -> Path:
     vendor = _safe_component(vendor, "vendor")
     game_id = _safe_component(game_id, "game_id")
     canonical = "windows" if platform in {"pc", "windows"} else platform
@@ -198,17 +211,17 @@ def rebuild_index(root: Path, vendor: str, game_id: str, platform: str) -> Path:
         root.mkdir(exist_ok=True)
     if not _safe_directory(root):
         raise OSError(f"unsafe data root: {root}")
-    path = index_path(root, vendor, game_id, platform)
+    path = index_path(root, vendor, game_id, platform, domain_id)
     with DATA_LOCK:
         with data_file_lock(root):
             current = root
-            for part in (vendor, game_id, "pc" if canonical == "windows" else canonical):
+            for part in path.parent.relative_to(root).parts:
                 current = current / part
                 if not _safe_directory(current):
                     current.mkdir()
                 if not _safe_directory(current):
                     raise OSError(f"unsafe index directory: {current}")
-            return _rebuild_locked(root, vendor, game_id, canonical)
+            return _rebuild_locked(root, vendor, game_id, canonical, domain_id)
 
 
 def rebuild_indexes(root: Path) -> list[Path]:
@@ -228,6 +241,13 @@ def rebuild_indexes(root: Path) -> list[Path]:
                         directory = game_dir / disk
                         if _safe_directory(directory):
                             result.append(_rebuild_locked(root, vendor_dir.name, game_dir.name, platform))
+                            if platform == "windows":
+                                domains_dir = directory / "domains"
+                                if _safe_directory(domains_dir):
+                                    for domain_id in nondefault_pc_domains(vendor_dir.name, game_dir.name):
+                                        domain_dir = domains_dir / domain_id
+                                        if _safe_directory(domain_dir):
+                                            result.append(_rebuild_locked(root, vendor_dir.name, game_dir.name, platform, domain_id))
     return result
 
 

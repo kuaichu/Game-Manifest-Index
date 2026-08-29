@@ -24,6 +24,7 @@ from fastapi.responses import JSONResponse, Response
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from backend.indexes import IndexReadError, _entry as index_entry, read_index
+from backend.domain_registry import nondefault_pc_domains
 from backend.manifest_readers import (
     HttpUpstream,
     ManifestBadRequest,
@@ -59,7 +60,7 @@ MAX_DOCUMENT_BYTES = 16 * 1024 * 1024
 SAFE_COMPONENT = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 VENDORS = ("mihoyo", "hypergryph", "kuro", "perfectworld")
 PLATFORMS = (("android", "android"), ("pc", "windows"))
-ARTIFACT_KINDS = frozenset({"apk", "package", "patch"})
+ARTIFACT_KINDS = frozenset({"apk", "package", "patch", "resource"})
 TREE_KINDS = ARTIFACT_KINDS | {"all", "file"}
 AVAILABILITY_STATES = frozenset({"available", "unavailable", "unknown"})
 LOCAL_OFFICIAL_HOSTS = {
@@ -245,6 +246,90 @@ class ApiContract:
             raise ApiFault(500, "corrupt_manifest", "Manifest 路径损坏") from error
         return current
 
+    def _registered_domain(
+        self, vendor: str, game_id: str, domain_id: str, directory: Path,
+    ) -> DomainData | None:
+        """Load one explicitly registered non-default PC domain."""
+        if not _present(directory):
+            return None
+        if not _ordinary(directory, directory=True):
+            fail(500, "unsafe_data_path", "数据目录不安全")
+        try:
+            children = list(directory.iterdir())
+        except OSError as error:
+            raise ApiFault(500, "corrupt_data", "归档目录无法读取") from error
+        records: list[dict[str, Any]] = []
+        for path in children:
+            if path.name == "index.json":
+                continue
+            if path.suffix != ".json" or not _ordinary(path, directory=False):
+                fail(500, "unsafe_data_path", "归档文件不安全")
+            record = self._read_json(path, MAX_RECORD_BYTES, "corrupt_record")
+            try:
+                validate_v2_record(record)
+            except SchemaValidationError as error:
+                raise ApiFault(500, "corrupt_record", "版本记录校验失败") from error
+            expected = {
+                "vendor": vendor,
+                "game_id": game_id,
+                "platform": "windows",
+                "domain_id": domain_id,
+                "version": path.stem,
+            }
+            if any(record.get(key) != value for key, value in expected.items()):
+                fail(500, "record_identity_mismatch", "版本记录身份不匹配")
+            if record.get("is_visible") is not False:
+                records.append(record)
+        index_path = directory / "index.json"
+        if not _ordinary(index_path, directory=False):
+            if _present(index_path):
+                fail(500, "corrupt_index", "版本索引损坏")
+            if records:
+                fail(500, "missing_index", "版本索引缺失")
+            return None
+        try:
+            if index_path.stat().st_size > MAX_INDEX_BYTES:
+                fail(500, "corrupt_index", "版本索引超过大小限制")
+            index = read_index(index_path)
+        except ApiFault:
+            raise
+        except IndexReadError as error:
+            raise ApiFault(500, "corrupt_index", "版本索引损坏") from error
+        expected_index = {
+            "vendor": vendor,
+            "game_id": game_id,
+            "platform": "windows",
+            "domain_id": domain_id,
+        }
+        if index is None or set(index) != {*expected_index, "versions"}:
+            fail(500, "corrupt_index", "版本索引字段不符合契约")
+        if any(index.get(key) != value for key, value in expected_index.items()):
+            fail(500, "index_mismatch", "版本索引身份不匹配")
+        entries = index.get("versions")
+        if not isinstance(entries, list) or any(
+            not isinstance(item, dict) or not isinstance(item.get("version"), str) for item in entries
+        ):
+            fail(500, "corrupt_index", "版本索引损坏")
+        by_version = {record["version"]: record for record in records}
+        indexed_versions = [item["version"] for item in entries]
+        eligible_versions = [record["version"] for record in records if index_entry(record, "windows") is not None]
+        if len(set(indexed_versions)) != len(indexed_versions) or sorted(indexed_versions) != sorted(eligible_versions):
+            fail(500, "index_mismatch", "版本索引与记录不一致")
+        for item in entries:
+            record = by_version.get(item["version"])
+            expected_entry = index_entry(record, "windows") if record is not None else None
+            if expected_entry is None or set(item) != set(expected_entry) or any(
+                item.get(key) != value for key, value in expected_entry.items()
+            ):
+                fail(500, "index_mismatch", "版本索引摘要不匹配")
+        indexed = set(indexed_versions)
+        ordered = [by_version[version] for version in indexed_versions]
+        ordered.extend(sorted((record for record in records if record["version"] not in indexed), key=lambda item: _version_key(item["version"]), reverse=True))
+        ordered.sort(key=lambda item: _version_key(item["version"]), reverse=True)
+        if not ordered:
+            return None
+        return DomainData(vendor, game_id, "pc", "windows", domain_id, directory, tuple(ordered))
+
     def inventory(self) -> dict[str, DomainData]:
         if not _ordinary(self.data_root, directory=True):
             fail(500, "data_root_invalid", "数据目录不可用")
@@ -375,6 +460,23 @@ class ApiContract:
                     records.sort(key=lambda item: _version_key(item["version"]), reverse=True)
                     if records:
                         result[domain_id] = DomainData(vendor, game_id, disk_platform, platform, domain_id, directory, tuple(records))
+        for (vendor, game_id) in ((vendor, game_id) for vendor in VENDORS for game_id in GAME_IDS):
+            domains_root = self.data_root / vendor / game_id / "pc" / "domains"
+            if not _present(domains_root):
+                continue
+            if not _ordinary(domains_root, directory=True):
+                fail(500, "unsafe_data_path", "数据目录不安全")
+            for domain_id in nondefault_pc_domains(vendor, game_id):
+                domain = self._registered_domain(
+                    vendor,
+                    game_id,
+                    domain_id,
+                    domains_root / domain_id,
+                )
+                if domain is not None:
+                    if domain_id in result:
+                        fail(500, "duplicate_domain", "归档域归属冲突")
+                    result[domain_id] = domain
         return result
 
     def domain(self, domain_id: str) -> DomainData:
@@ -486,6 +588,10 @@ def _primary_artifact(record: dict[str, Any]) -> dict[str, Any] | None:
     if selected is None and record["platform"] == "windows" and any(
         isinstance(reference, dict) and reference.get("kind") == "chunk_manifest"
         for reference in record.get("references", [])
+    ):
+        return None
+    if selected is None and record["platform"] == "windows" and artifacts and all(
+        item.get("kind") == "resource" for item in artifacts
     ):
         return None
     if selected is None:
@@ -680,6 +786,8 @@ def _summary(record: dict[str, Any]) -> dict[str, Any]:
 
 
 def _domain_adapter(domain: DomainData) -> str:
+    if domain.domain_id == "endfield-resources":
+        return "endfield-resources"
     if domain.platform == "android":
         return "android"
     source_names = {
@@ -713,11 +821,13 @@ def _domain_projection(domain: DomainData, sort_order: int) -> dict[str, Any]:
         capabilities.append("packages")
     if "patch" in kinds:
         capabilities.append("patches")
+    if "resource" in kinds:
+        capabilities.append("resources")
     if has_chunk:
         capabilities.append("chunks")
     if has_chunk or has_files:
         capabilities.append("files")
-    if any(item.get("urls") for item in artifacts):
+    if kinds != {"resource"} and any(item.get("urls") for item in artifacts):
         capabilities.append("archive")
     if len(domain.records) > 1:
         capabilities.append("compare")
@@ -739,7 +849,7 @@ def _domain_projection(domain: DomainData, sort_order: int) -> dict[str, Any]:
     return {
         "id": domain.domain_id,
         "game_id": domain.game_id,
-        "kind": "apk" if domain.platform == "android" else "files" if has_files else "packages",
+        "kind": "apk" if domain.platform == "android" else "resources" if kinds == {"resource"} else "files" if has_files else "packages",
         "platform": domain.platform,
         "capabilities": capabilities,
         "capability_contract": {
@@ -1171,6 +1281,27 @@ def create_api_app(data_root: Path, upstream: Any | None = None, *, state_root: 
             public = [item for item in public if _artifact_state(item) == availability_state]
         if q:
             public = [item for item in public if q.casefold() in item["name"].casefold()]
+        if kind == "resource":
+            folder_stats: dict[str, dict[str, Any]] = {}
+            for item in public:
+                relative = item["name"] if not prefix else item["name"][len(prefix) + 1 :] if item["name"].startswith(prefix + "/") else ""
+                if not relative or "/" not in relative:
+                    continue
+                segment = relative.split("/", 1)[0]
+                path = f"{prefix}/{segment}" if prefix else segment
+                folder = folder_stats.setdefault(path, {"name": segment, "path": path, "artifact_count": 0, "total_size": 0})
+                folder["artifact_count"] += 1
+                folder["total_size"] += item["size"]
+            direct = [item for item in public if (not prefix and "/" not in item["name"]) or (prefix and item["name"].startswith(prefix + "/") and "/" not in item["name"][len(prefix) + 1 :])]
+            direct.sort(key=lambda item: (item["name"].casefold(), item["id"]))
+            combined = sorted(folder_stats.values(), key=lambda item: item["name"].casefold()) + direct
+            page, next_cursor = _paginate(combined, limit, cursor)
+            return {
+                "prefix": prefix,
+                "folders": [item for item in page if "artifact_count" in item],
+                "items": [item for item in page if "artifact_count" not in item],
+                "next_cursor": next_cursor,
+            }
         direct = [item for item in public if (not prefix and "/" not in item["name"]) or (prefix and item["name"].startswith(prefix + "/") and "/" not in item["name"][len(prefix) + 1 :])]
         direct.sort(key=lambda item: (item["name"].casefold(), item["id"]))
         page, next_cursor = _paginate(direct, limit, cursor)
