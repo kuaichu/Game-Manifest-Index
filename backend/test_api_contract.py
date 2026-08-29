@@ -240,6 +240,7 @@ class TemporaryContractTests(unittest.TestCase):
             references=[{"kind": "chunk_manifest", "path": "chunk-manifests/3.0.0.json", "build_id": "build-3", "source": {"source_kind": "official_sync"}}],
         )
         write_record(self.root, chunk_only)
+        rebuild_indexes(self.root)
 
         versions = self.get("/api/v1/domains/hk4e-pc/versions").json()["items"]
         self.assertEqual([item["version"] for item in versions], ["3.0.0", "2.0.0"])

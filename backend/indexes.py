@@ -57,6 +57,22 @@ def _availability(artifact: Mapping[str, Any]) -> bool | None:
     return True if state == "available" else False if state == "unavailable" else None
 
 
+def _has_browsable_reference(record: Mapping[str, Any]) -> bool:
+    references = record.get("references")
+    if not isinstance(references, list):
+        return False
+    for reference in references:
+        if not isinstance(reference, Mapping) or reference.get("kind") != "chunk_manifest":
+            continue
+        path = reference.get("path")
+        if not isinstance(path, str) or not path or "\\" in path or "\x00" in path or ":" in path:
+            continue
+        if path.startswith("/") or any(part in {"", ".", ".."} for part in path.split("/")):
+            continue
+        return True
+    return False
+
+
 def _entry(record: Mapping[str, Any], platform: str) -> dict[str, Any] | None:
     artifacts = record.get("artifacts")
     if not isinstance(artifacts, list):
@@ -70,7 +86,7 @@ def _entry(record: Mapping[str, Any], platform: str) -> dict[str, Any] | None:
         game = [a for a in artifacts if isinstance(a, Mapping) and a.get("component") == "game"]
         full = [a for a in game if a.get("package_type") == "full"]
         chosen = full or [a for a in game if a.get("package_type") == "segment"]
-        if not chosen:
+        if not chosen and not _has_browsable_reference(record):
             return None
     sizes = [a.get("size") for a in chosen]
     if any(isinstance(size, bool) or not isinstance(size, int) or size < 0 for size in sizes):
@@ -80,7 +96,9 @@ def _entry(record: Mapping[str, Any], platform: str) -> dict[str, Any] | None:
     else:
         size = sizes[0] if sizes else None
     states = [_availability(a) for a in chosen]
-    if len(states) == 1:
+    if not states:
+        available = None
+    elif len(states) == 1:
         available = states[0]
     elif any(state is False for state in states):
         available = False
