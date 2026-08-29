@@ -44,6 +44,7 @@ from backend.mihoyo_package_files import (
     PackageFilesCacheError,
     PackageFilesNotFound,
     PackageFilesTimeout,
+    PackageFilesUnsupported,
     PackageFilesUpstream,
     list_files as list_mihoyo_package_files,
     file_detail as mihoyo_package_file_detail,
@@ -748,6 +749,8 @@ def _manifest_error(error: Exception) -> ApiFault:
         return ApiFault(500, "corrupt_manifest", str(error))
     if isinstance(error, (ManifestTimeout, PackageFilesTimeout)):
         return ApiFault(504, "upstream_timeout", str(error))
+    if isinstance(error, PackageFilesUnsupported):
+        return ApiFault(422, "package_format_unsupported", str(error))
     if isinstance(error, (ManifestUpstream, PackageFilesUpstream)):
         return ApiFault(502, "upstream_error", str(error))
     return ApiFault(500, "internal_error", "服务器内部错误")

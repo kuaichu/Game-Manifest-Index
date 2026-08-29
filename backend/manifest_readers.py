@@ -123,7 +123,7 @@ class HttpUpstream:
                                 raise ManifestUpstream("官方资源重定向越界")
                             current = target
                             continue
-                        if response.status_code == 404:
+                        if response.status_code in {404, 410}:
                             raise ManifestNotFound("官方资源不存在")
                         if response.status_code < 200 or response.status_code >= 300:
                             raise ManifestUpstream("官方资源请求失败")
@@ -170,7 +170,7 @@ class HttpUpstream:
         try:
             with httpx.Client(timeout=self.timeout, follow_redirects=False, transport=self.transport, trust_env=False) as client:
                 with client.stream("GET", url, headers={"Accept": "application/octet-stream", "Range": f"bytes={start}-{end}"}) as response:
-                    if response.status_code == 404:
+                    if response.status_code in {404, 410}:
                         raise ManifestNotFound("官方资源不存在")
                     if response.status_code != 206:
                         raise ManifestUpstream("官方资源不支持 Range")

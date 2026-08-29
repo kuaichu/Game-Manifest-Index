@@ -12,7 +12,8 @@ from fastapi.testclient import TestClient
 
 from backend.api_contract import create_api_app
 from backend.indexes import rebuild_indexes
-from backend.manifest_readers import ManifestNotFound
+from backend.manifest_readers import ManifestNotFound, ManifestUpstream
+from backend.mihoyo_package_files import PackageFilesUpstream, _ArchiveReader, _scattered_root
 from backend.schema_v2 import artifact_id
 
 
@@ -52,6 +53,48 @@ class PackageUpstream:
         body = self.archives[url]
         value = body[start : end + 1]
         return value, {"content-range": f"bytes {start}-{end}/{len(body)}", "content-length": str(len(value))}
+
+
+class MissingOrFormatUpstream:
+    def __init__(self, *, archive: bytes | None = None, range_missing: bool = False):
+        self.archive = archive
+        self.range_missing = range_missing
+
+    def get_bytes(self, url: str, *, allowed_hosts, max_bytes: int, expected_size=None):
+        raise ManifestNotFound("official resource missing")
+
+    def get_range(self, url: str, *, start: int, end: int, allowed_hosts, max_bytes: int):
+        if self.range_missing:
+            raise ManifestNotFound("official resource missing")
+        assert self.archive is not None
+        body = self.archive[start : end + 1]
+        return body, {"content-range": f"bytes {start}-{end}/{len(self.archive)}", "content-length": str(len(body))}
+
+
+class MixedRangeUpstream:
+    def __init__(self, upstream_url: str):
+        self.upstream_url = upstream_url
+
+    def get_bytes(self, url: str, *, allowed_hosts, max_bytes: int, expected_size=None):
+        raise ManifestNotFound("official resource missing")
+
+    def get_range(self, url: str, *, start: int, end: int, allowed_hosts, max_bytes: int):
+        if url == self.upstream_url:
+            raise ManifestUpstream("invalid range response")
+        raise ManifestNotFound("official resource missing")
+
+
+class TailThenMissingUpstream:
+    def __init__(self, url: str):
+        self.url = url
+        self.tail_done = False
+
+    def get_range(self, url: str, *, start: int, end: int, allowed_hosts, max_bytes: int):
+        if not self.tail_done:
+            self.tail_done = True
+            body = b"x" * (end - start + 1)
+            return body, {"content-range": f"bytes {start}-{end}/10", "content-length": str(len(body))}
+        raise ManifestNotFound("official resource missing")
 
 
 class MihoyoPackageFilesTests(unittest.TestCase):
@@ -99,6 +142,88 @@ class MihoyoPackageFilesTests(unittest.TestCase):
 
     def client(self, upstream: PackageUpstream) -> TestClient:
         return TestClient(create_api_app(self.root, upstream, state_root=self.state_root))
+
+    def test_scattered_root_rewrites_package_dir_case_insensitively_with_canonical_spelling(self):
+        cases = (
+            ("nap", "https://autopatchcn.juequling.com/client/PC/volumezip/Game.7z", "https://autopatchcn.juequling.com/client/PC/SplitAudioZip"),
+            ("nap", "https://autopatchcn.juequling.com/client/PC/VolumeZip/Game.7z", "https://autopatchcn.juequling.com/client/PC/SplitAudioZip"),
+            ("hkrpg", "https://autopatchcn.bhsr.com/client/PC/DOWNLOAD/Game.7z", "https://autopatchcn.bhsr.com/client/PC/unzip"),
+            ("bh3", "https://autopatchcn.bh3.com/client/pc/GAME.7z", "https://autopatchcn.bh3.com/client/PC/extract"),
+        )
+        for game_id, url, expected in cases:
+            self.assertEqual(_scattered_root(game_id, url), expected)
+
+    def test_direct_pkg_version_matrix_uses_each_games_canonical_scattered_root(self):
+        cases = (
+            ("hk4e", "5.5.0", "https://autopatchcn.yuanshen.com/client_app/download/pc_zip/release/YuanShen.zip", "https://autopatchcn.yuanshen.com/client_app/download/pc_zip/release/ScatteredFiles"),
+            ("hkrpg", "4.4.0", "https://autopatchcn.bhsr.com/client/cn/release/PC/download/StarRail.7z", "https://autopatchcn.bhsr.com/client/cn/release/PC/unzip"),
+            ("nap", "3.1.0", "https://autopatchcn.juequling.com/client/cn/release/VolumeZip/Zenless.7z", "https://autopatchcn.juequling.com/client/cn/release/SplitAudioZip"),
+            ("bh3", "4.2.0", "https://autopatchcn.bh3.com/client/cn/release/PC/BH3.7z", "https://autopatchcn.bh3.com/client/cn/release/PC/extract"),
+        )
+        raw = b'{"remoteName":"Game.exe","fileSize":1,"md5":"' + b"a" * 32 + b'"}\n'
+        for game_id, version, url, scattered_url in cases:
+            with self.subTest(game_id=game_id):
+                self.write(self.record(game_id, version, [self.package(game_id, version, url, size=10)]))
+                upstream = PackageUpstream(direct=raw)
+                response = self.client(upstream).get(
+                    f"/api/v1/domains/{game_id}-pc/versions/{version}/files", params={"source": "package"}
+                )
+                self.assertEqual(response.status_code, 200, response.text)
+                self.assertEqual(response.json()["fetch_mode"], "official_scattered_files")
+                self.assertEqual(upstream.calls[0], ("bytes", scattered_url + "/pkg_version"))
+
+    def test_pkg_version_and_all_range_candidates_missing_is_stable_not_found(self):
+        url = "https://autopatchcn.bhsr.com/client/cn/release/PC/download/StarRail.7z"
+        value = self.record("hkrpg", "4.4.0", [self.package("hkrpg", "4.4.0", url, size=100)])
+        self.write(value)
+        response = self.client(MissingOrFormatUpstream(range_missing=True)).get(
+            "/api/v1/domains/hkrpg-pc/versions/4.4.0/files", params={"source": "package"}
+        )
+        self.assertEqual((response.status_code, response.json()["error"]["code"], response.json()["error"]["message"]), (404, "file_not_found", "官方历史资源不可用"))
+        self.assertNotIn("EOCD", response.text)
+
+    def test_pkg_version_missing_but_range_7z_is_unsupported_without_eocd(self):
+        url = "https://autopatchcn.bhsr.com/client/cn/release/PC/download/StarRail.7z"
+        value = self.record("hkrpg", "4.4.0", [self.package("hkrpg", "4.4.0", url, size=100)])
+        self.write(value)
+        archive = b"7z\xbc\xaf'\x1c" + b"\x00" * 94
+        response = self.client(MissingOrFormatUpstream(archive=archive)).get(
+            "/api/v1/domains/hkrpg-pc/versions/4.4.0/files", params={"source": "package"}
+        )
+        self.assertEqual((response.status_code, response.json()["error"]["code"], response.json()["error"]["message"]), (422, "package_format_unsupported", "该完整包格式暂不支持读取文件列表"))
+        self.assertNotIn("EOCD", response.text)
+
+    def test_mixed_range_failure_and_missing_is_upstream_not_private_missing(self):
+        first = "https://autopatchcn.bhsr.com/client/cn/release/PC/download/first.7z"
+        second = "https://autopatchcn.bhsr.com/client/cn/release/PC/download/second.7z"
+        artifact = self.package("hkrpg", "4.4.0", first, size=100)
+        artifact["urls"].append({"url": second, "provider": "mihoyo", "source_kind": "official", "priority": 0})
+        value = self.record("hkrpg", "4.4.0", [artifact])
+        self.write(value)
+        response = self.client(MixedRangeUpstream(first)).get(
+            "/api/v1/domains/hkrpg-pc/versions/4.4.0/files", params={"source": "package"}
+        )
+        self.assertEqual((response.status_code, response.json()["error"]["code"]), (502, "upstream_error"))
+        self.assertNotIn("file_not_found", response.text)
+
+    def test_mixed_range_failure_and_missing_in_read_archive_is_upstream(self):
+        first = "https://autopatchcn.bhsr.com/client/cn/release/PC/download/first.7z"
+        second = "https://autopatchcn.bhsr.com/client/cn/release/PC/download/second.7z"
+        reader = _ArchiveReader(
+            [[{"url": first, "size": 1}, {"url": second, "size": 1}]],
+            MixedRangeUpstream(first),
+        )
+        with self.assertRaises(PackageFilesUpstream):
+            reader.read_archive(0, 1)
+        with self.assertRaises(PackageFilesUpstream):
+            reader.tail()
+
+    def test_successful_tail_then_missing_range_is_upstream_not_not_found(self):
+        url = "https://autopatchcn.bhsr.com/client/cn/release/PC/download/game.7z"
+        reader = _ArchiveReader([[{"url": url, "size": 10}]], TailThenMissingUpstream(url))
+        self.assertEqual(len(reader.tail()), 10)
+        with self.assertRaises(PackageFilesUpstream):
+            reader.read_archive(0, 1)
 
     def test_full_archive_direct_pkg_version_and_download_url(self):
         url = "https://autopatchcn.bhsr.com/client/cn/release/PC/download/StarRail.7z"
