@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from backend.schema_v2 import artifact_id, record_identity, validate_v2_record
 from backend import version_store
-from backend.version_store import VersionStoreError, persist_v2_record, write_v2_record
+from backend.version_store import VersionStoreError, persist_v2_record, v2_record_path, write_v2_record
 
 
 def record(platform: str = "android") -> dict:
@@ -51,6 +51,32 @@ def refresh_artifact_id(value: dict) -> dict:
 
 
 class VersionStoreTests(unittest.TestCase):
+    def test_registered_pc_domain_is_isolated_without_moving_default_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            default = record("windows")
+            default.update({"vendor": "hypergryph", "game_id": "endfield", "domain_id": "endfield-pc"})
+            refresh_artifact_id(default)
+            resources = copy.deepcopy(default)
+            resources["vendor"] = "hypergryph"
+            resources["game_id"] = "endfield"
+            resources["domain_id"] = "endfield-resources"
+            resources["artifacts"][0].update({"kind": "resource", "component": "resource", "name": "data/file.bin", "checksum": {"md5": "a" * 32}})
+            for key in ("package_type", "delivery_mode", "part", "decompressed_size", "manifest"):
+                resources["artifacts"][0].pop(key, None)
+            refresh_artifact_id(resources)
+            default_path = write_v2_record(default, root)
+            self.assertEqual(default_path, root / "hypergryph" / "endfield" / "pc" / "7.0.0.json")
+            path = write_v2_record(resources, root)
+            self.assertEqual(path, root / "hypergryph" / "endfield" / "pc" / "domains" / "endfield-resources" / "7.0.0.json")
+            self.assertNotEqual(json.loads(default_path.read_text())["domain_id"], json.loads(path.read_text())["domain_id"])
+
+    def test_registered_pc_domain_path_rejects_traversal(self) -> None:
+        value = record("windows")
+        value.update({"vendor": "hypergryph", "game_id": "endfield", "domain_id": "../endfield-resources"})
+        with self.assertRaises(VersionStoreError):
+            v2_record_path(value, Path("data"))
+
     def test_record_identity_normalizes_nfc_and_persist_refreshes_equivalent_v2(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

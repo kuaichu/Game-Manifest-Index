@@ -94,8 +94,8 @@ _REFERENCE_SOURCE_FIELDS: Final = {
     "source_repo",
     "source_commit",
 }
-_ALLOWED_KINDS: Final = {"apk", "package", "patch"}
-_ALLOWED_COMPONENTS: Final = {"game", "voice", "launcher", "other"}
+_ALLOWED_KINDS: Final = {"apk", "package", "patch", "resource"}
+_ALLOWED_COMPONENTS: Final = {"game", "voice", "launcher", "other", "resource"}
 _ALLOWED_PACKAGE_TYPES: Final = {"full", "segment", "optional", "differential"}
 _ALLOWED_DELIVERY_MODES: Final = {"direct", "archive", "file_manifest"}
 _ALLOWED_CURRENT_STATES: Final = {"available", "unavailable", "unknown"}
@@ -317,7 +317,11 @@ def _validate_artifact(value: Any, path: str, errors: list[str]) -> None:
         _add(errors, path, "must be an object")
         return
     _check_unknown(errors, value, _ARTIFACT_FIELDS, path, _LEGACY_ARTIFACT_FIELDS)
-    for key in ("artifact_id", "kind", "component", "package_type", "delivery_mode", "name"):
+    is_resource = value.get("kind") == "resource"
+    required = ("artifact_id", "kind", "component", "name") if is_resource else (
+        "artifact_id", "kind", "component", "package_type", "delivery_mode", "name"
+    )
+    for key in required:
         if key not in value:
             _add(errors, f"{path}.{key}", "is required")
         elif not _non_empty_string(value[key]):
@@ -332,6 +336,23 @@ def _validate_artifact(value: Any, path: str, errors: list[str]) -> None:
     ):
         if key in value and isinstance(value[key], str) and value[key] not in allowed:
             _add(errors, f"{path}.{key}", f"must be one of {sorted(allowed)}")
+    if is_resource:
+        if value.get("component") != "resource":
+            _add(errors, f"{path}.component", "must be resource for resource artifacts")
+        for key in ("package_type", "delivery_mode", "part", "language", "route_from", "route_to", "decompressed_size", "manifest"):
+            if key in value:
+                _add(errors, f"{path}.{key}", "is not allowed for resource artifacts")
+        if "name" in value and not _safe_relative_posix_path(value["name"]):
+            _add(errors, f"{path}.name", "must be a safe relative POSIX path for resource artifacts")
+        if "size" not in value:
+            _add(errors, f"{path}.size", "is required for resource artifacts")
+        checksum = value.get("checksum")
+        if not isinstance(checksum, Mapping) or set(checksum) != {"md5"}:
+            _add(errors, f"{path}.checksum", "must contain exactly md5 for resource artifacts")
+        elif not isinstance(checksum.get("md5"), str) or re.fullmatch(r"[0-9a-f]{32}", checksum["md5"]) is None:
+            _add(errors, f"{path}.checksum.md5", "must be 32 lowercase hexadecimal characters for resource artifacts")
+    elif value.get("component") == "resource":
+        _add(errors, f"{path}.component", "is only allowed for resource artifacts")
     if "language" in value:
         language = value["language"]
         if not _non_empty_string(language):
@@ -381,6 +402,8 @@ def _validate_artifact(value: Any, path: str, errors: list[str]) -> None:
         else:
             for index, item in enumerate(value["urls"]):
                 _validate_url(item, f"{path}.urls[{index}]", errors)
+            if is_resource and not value["urls"]:
+                _add(errors, f"{path}.urls", "must not be empty for resource artifacts")
     else:
         _add(errors, f"{path}.urls", "is required")
     if "source" in value:

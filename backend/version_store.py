@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from backend.schema_v2 import RECORD_IDENTITY_FIELDS, record_identity, validate_v2_record
+from backend.domain_registry import is_nondefault_pc_domain
 from backend.storage_locks import DATA_LOCK, data_file_lock
 
 
@@ -57,7 +58,16 @@ def v2_record_path(record: Mapping[str, Any], root: Path) -> Path:
     disk_platform = {"android": "android", "windows": "pc"}.get(record.get("platform"))
     if disk_platform is None:
         raise VersionStoreError("platform 不是支持的 v2 平台")
-    return Path(root) / vendor / game_id / disk_platform / f"{version}.json"
+    domain_id = _safe_component(record.get("domain_id"), "domain_id")
+    default_domain = f"{game_id}-{'android' if disk_platform == 'android' else 'pc'}"
+    base = Path(root) / vendor / game_id / disk_platform
+    if domain_id == default_domain:
+        return base / f"{version}.json"
+    if disk_platform == "pc" and is_nondefault_pc_domain(vendor, game_id, domain_id):
+        return base / "domains" / domain_id / f"{version}.json"
+    # Preserve the legacy/default location for every other identity.  Only an
+    # explicitly registered secondary domain changes the on-disk layout.
+    return base / f"{version}.json"
 
 
 _LEGACY_IDENTITY_FIELDS = ("vendor", "game_id", "platform", "version")
@@ -150,9 +160,10 @@ def _prepare_v2_target_directory_locked(root: Path, target: Path) -> Path:
     if _is_reparse_or_link(root, root_info.st_mode) or not stat.S_ISDIR(root_info.st_mode):
         raise VersionStoreError(f"v2 输出根目录不安全：{root}")
     relative_parts = target.relative_to(root).parts
-    vendor_dir = _directory(root, relative_parts[0])
-    game_dir = _directory(vendor_dir, relative_parts[1])
-    return _directory(game_dir, relative_parts[2])
+    current = root
+    for part in relative_parts[:-1]:
+        current = _directory(current, part)
+    return current
 
 
 def _persist_v2_record_locked(

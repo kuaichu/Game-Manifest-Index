@@ -218,6 +218,51 @@ class TemporaryContractTests(unittest.TestCase):
         domains = sum((self.get(f"/api/v1/games/{game['id']}/domains").json() for game in games), [])
         self.assertEqual({item["id"] for item in domains}, {"hk4e-android", "hk4e-pc", "wuwa-pc", "nte-pc"})
 
+    def test_registered_resource_domain_coexists_and_supports_generic_api(self):
+        default = record("hypergryph", "endfield", "windows", "1.0.0", [artifact("game.zip")])
+        write_record(self.root, default)
+        resource_dir = self.root / "hypergryph" / "endfield" / "pc" / "domains" / "endfield-resources"
+        resource_dir.mkdir(parents=True)
+
+        def resource_record(version: str, names: list[str]) -> dict:
+            resources = []
+            for name in names:
+                item = artifact(name, kind="resource", size=len(name))
+                item["component"] = "resource"
+                for key in ("package_type", "delivery_mode", "decompressed_size"):
+                    item.pop(key, None)
+                resources.append(item)
+            value = record("hypergryph", "endfield", "windows", version, resources)
+            value["domain_id"] = "endfield-resources"
+            identity = {key: value[key] for key in ("vendor", "game_id", "domain_id", "platform", "channel", "version")}
+            for item in resources:
+                item["artifact_id"] = artifact_id(item, record_identity=identity)
+            return value
+
+        for version, names in (("1.0.0", ["data/common.bin"]), ("1.1.0", ["data/common.bin", "data/new.bin"])):
+            (resource_dir / f"{version}.json").write_text(json.dumps(resource_record(version, names)), encoding="utf-8")
+        rebuild_indexes(self.root)
+
+        domains = self.get("/api/v1/games/endfield/domains").json()
+        self.assertEqual({item["id"] for item in domains}, {"endfield-pc", "endfield-resources"})
+        resource_domain = next(item for item in domains if item["id"] == "endfield-resources")
+        self.assertEqual(resource_domain["kind"], "resources")
+        self.assertEqual(resource_domain["adapter"], "endfield-resources")
+        self.assertEqual(resource_domain["capabilities"], ["resources", "compare"])
+        versions = self.get("/api/v1/domains/endfield-resources/versions").json()["items"]
+        self.assertEqual([item["version"] for item in versions], ["1.1.0", "1.0.0"])
+        detail = self.get("/api/v1/domains/endfield-resources/versions/1.0.0").json()
+        self.assertEqual((detail["filename"], detail["url"], detail["size"]), ("", "", 0))
+        items = self.get("/api/v1/domains/endfield-resources/versions/1.1.0/artifacts?kind=resource").json()["items"]
+        self.assertEqual({item["name"] for item in items}, {"data/common.bin", "data/new.bin"})
+        tree = self.get("/api/v1/domains/endfield-resources/versions/1.1.0/artifact-tree?kind=resource&prefix=data").json()
+        self.assertEqual({item["name"] for item in tree["items"]}, {"data/common.bin", "data/new.bin"})
+        root_tree = self.get("/api/v1/domains/endfield-resources/versions/1.1.0/artifact-tree?kind=resource").json()
+        self.assertEqual(root_tree["folders"], [{"name": "data", "path": "data", "artifact_count": 2, "total_size": 27}])
+        compared = self.get("/api/v1/domains/endfield-resources/compare?from_version=1.0.0&to_version=1.1.0&kind=resource").json()
+        self.assertEqual(compared["summary"]["added"], 1)
+        self.get("/api/v1/domains/..%2Fendfield-resources/versions", 404)
+
     def test_hidden_record_is_404(self):
         hidden = record("mihoyo", "hk4e", "android", "hidden", [artifact("hidden.apk", kind="apk")], visible=False)
         write_record(self.root, hidden)
