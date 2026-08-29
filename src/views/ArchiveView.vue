@@ -790,7 +790,6 @@ async function loadRegistry(): Promise<void> {
 async function navigate(params: Record<string, string>): Promise<void> {
   const nextParams = { ...route.params, ...params };
   const targetMode = String(nextParams.mode || mode.value);
-  const targetDomain = String(nextParams.domainId || domainId.value);
   const targetVersion = String(nextParams.version || selectedVersion.value);
   const nextQuery: Record<string, string> = {};
   if (SEARCHABLE_MODES.has(targetMode) && String(route.query.q || "").trim()) {
@@ -808,12 +807,9 @@ async function navigate(params: Record<string, string>): Promise<void> {
     if (route.query.path) nextQuery.path = String(route.query.path);
   }
   const requestedFrom = String(route.query.from || "");
-  if (
-    targetMode === "compare" &&
-    targetDomain === domainId.value &&
-    requestedFrom &&
-    requestedFrom !== targetVersion
-  ) {
+  // Keep a user-selected compare base across platform switches; loadRegistry()
+  // validates it against the destination domain and falls back if absent.
+  if (targetMode === "compare" && requestedFrom && requestedFrom !== targetVersion) {
     nextQuery.from = requestedFrom;
   }
   await router.push({ name: "archive", params: nextParams, query: nextQuery });
@@ -1199,11 +1195,19 @@ watch(
     }
   },
 );
+function onAvailabilityInvalidated(): void {
+  void loadRegistry();
+}
+function onAvailabilityStorageInvalidated(event: StorageEvent): void {
+  if (event.key === "gmi-availability-invalidated-at" && event.newValue) onAvailabilityInvalidated();
+}
 onMounted(() => {
   loadRegistry();
   window.addEventListener("click", onWindowRawIndexClick);
   window.addEventListener("keydown", onWindowKeyDown);
   window.addEventListener("gmi-close-raw-index", onCloseRawIndex);
+  window.addEventListener("gmi-availability-invalidated", onAvailabilityInvalidated);
+  window.addEventListener("storage", onAvailabilityStorageInvalidated);
 });
 onBeforeUnmount(() => {
   registryController?.abort();
@@ -1212,6 +1216,8 @@ onBeforeUnmount(() => {
   window.removeEventListener("click", onWindowRawIndexClick);
   window.removeEventListener("keydown", onWindowKeyDown);
   window.removeEventListener("gmi-close-raw-index", onCloseRawIndex);
+  window.removeEventListener("gmi-availability-invalidated", onAvailabilityInvalidated);
+  window.removeEventListener("storage", onAvailabilityStorageInvalidated);
 });
 
 function formatBytes(value: number): string {

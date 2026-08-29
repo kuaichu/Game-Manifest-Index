@@ -552,4 +552,241 @@ describe("archive cross-game navigation", () => {
     app.unmount();
   });
 
+  it("keeps a user-selected compare base when switching compare platforms", async () => {
+    const game = { id: "hk4e", name: "原神", sub_name: "Genshin Impact", icon_source: "", sort_order: 0 };
+    const pcDomain = {
+      id: "hk4e-pc", game_id: "hk4e", kind: "mixed", platform: "windows",
+      capabilities: ["packages", "compare"], adapter: "hoyo",
+      version_count: 3, latest_version: "5.5.0", sort_order: 0,
+      capability_contract: { features: { compare: "supported" } },
+    };
+    const androidDomain = {
+      id: "hk4e-android", game_id: "hk4e", kind: "apk", platform: "android",
+      capabilities: ["apk", "compare"], adapter: "android",
+      version_count: 3, latest_version: "5.5.0", sort_order: 1,
+      capability_contract: { features: { compare: "supported" } },
+    };
+    const versionsFor = () => ["5.5.0", "5.4.0", "5.3.0"].map((version, index) => ({
+      version, current_revision_id: 3 - index, revision_count: 1, observed_at: "2026-07-11T00:00:00Z",
+      packed_size: 1, unpacked_size: 1, artifact_count: 1, artifact_kinds: { package: { count: 1, size: 1 } }, availability_states: {}, attributes: {},
+    }));
+
+    vi.spyOn(api, "games").mockResolvedValue([game] as never);
+    vi.spyOn(api, "domains").mockResolvedValue([pcDomain, androidDomain] as never);
+    vi.spyOn(api, "versions").mockResolvedValue(versionsFor() as never);
+    const compare = vi.spyOn(api, "compare").mockResolvedValue({
+      from_version: "5.3.0", to_version: "5.5.0",
+      summary: { added: 0, removed: 0, changed: 1, size_delta: 1 },
+      items: [], next_cursor: null,
+    } as never);
+
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: "/games/:gameId/:domainId?/:version?/:mode?", name: "archive", component: ArchiveView }],
+    });
+    await router.push("/games/hk4e/hk4e-pc/5.5.0/compare");
+    await router.isReady();
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const app = createApp(ArchiveView);
+    app.use(router);
+    app.mount(root);
+    await flushUpdates();
+    await flushUpdates();
+
+    // The admin selects the non-default base 5.3.0 (default would be 5.4.0).
+    await router.replace({ name: "archive", params: router.currentRoute.value.params, query: { from: "5.3.0" } });
+    await flushUpdates();
+
+    (root.querySelectorAll(".compare-platform-tab")[1] as HTMLButtonElement).click();
+    await flushUpdates();
+    await flushUpdates();
+
+    expect(router.currentRoute.value.fullPath).toBe("/games/hk4e/hk4e-android/5.5.0/compare?from=5.3.0");
+    expect(compare).toHaveBeenCalledWith("hk4e-android", expect.objectContaining({
+      fromVersion: "5.3.0", toVersion: "5.5.0",
+    }), expect.any(AbortSignal));
+    expect(root.querySelector(".mode-tab.active")?.textContent?.trim()).toBe("版本对比");
+
+    app.unmount();
+  });
+
+  it("falls back to a legal compare base when the selected base is missing on the target platform", async () => {
+    const game = { id: "hk4e", name: "原神", sub_name: "Genshin Impact", icon_source: "", sort_order: 0 };
+    const pcDomain = {
+      id: "hk4e-pc", game_id: "hk4e", kind: "mixed", platform: "windows",
+      capabilities: ["packages", "compare"], adapter: "hoyo",
+      version_count: 3, latest_version: "5.5.0", sort_order: 0,
+      capability_contract: { features: { compare: "supported" } },
+    };
+    const androidDomain = {
+      id: "hk4e-android", game_id: "hk4e", kind: "apk", platform: "android",
+      capabilities: ["apk", "compare"], adapter: "android",
+      version_count: 3, latest_version: "5.5.0", sort_order: 1,
+      capability_contract: { features: { compare: "supported" } },
+    };
+    const pcVersions = ["5.5.0", "5.4.0", "5.3.0"].map((version, index) => ({
+      version, current_revision_id: 3 - index, revision_count: 1, observed_at: "2026-07-11T00:00:00Z",
+      packed_size: 1, unpacked_size: 1, artifact_count: 1, artifact_kinds: { package: { count: 1, size: 1 } }, availability_states: {}, attributes: {},
+    }));
+    const androidVersions = ["5.5.0", "5.2.0", "5.1.0"].map((version, index) => ({
+      version, current_revision_id: 3 - index, revision_count: 1, observed_at: "2026-07-11T00:00:00Z",
+      packed_size: 1, unpacked_size: 1, artifact_count: 1, artifact_kinds: { apk: { count: 1, size: 1 } }, availability_states: {}, attributes: {},
+    }));
+
+    vi.spyOn(api, "games").mockResolvedValue([game] as never);
+    vi.spyOn(api, "domains").mockResolvedValue([pcDomain, androidDomain] as never);
+    vi.spyOn(api, "versions").mockImplementation(async (domainId) => (
+      domainId === "hk4e-android" ? androidVersions : pcVersions
+    ) as never);
+    const compare = vi.spyOn(api, "compare").mockResolvedValue({
+      from_version: "5.2.0", to_version: "5.5.0",
+      summary: { added: 1, removed: 0, changed: 0, size_delta: 1 },
+      items: [], next_cursor: null,
+    } as never);
+
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: "/games/:gameId/:domainId?/:version?/:mode?", name: "archive", component: ArchiveView }],
+    });
+    await router.push("/games/hk4e/hk4e-pc/5.5.0/compare?from=5.3.0");
+    await router.isReady();
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const app = createApp(ArchiveView);
+    app.use(router);
+    app.mount(root);
+    await flushUpdates();
+    await flushUpdates();
+
+    (root.querySelectorAll(".compare-platform-tab")[1] as HTMLButtonElement).click();
+    await flushUpdates();
+    await flushUpdates();
+
+    expect(router.currentRoute.value.fullPath).toBe("/games/hk4e/hk4e-android/5.5.0/compare?from=5.2.0");
+    expect(compare).toHaveBeenCalledWith("hk4e-android", expect.objectContaining({
+      fromVersion: "5.2.0", toVersion: "5.5.0",
+    }), expect.any(AbortSignal));
+
+    app.unmount();
+  });
+
+  it("reloads archive data on availability invalidation and stops after unmount", async () => {
+    const game = { id: "wuwa", name: "鸣潮", sub_name: "Wuthering Waves", icon_source: "", sort_order: 0 };
+    const domain = {
+      id: "wuwa-pc", game_id: "wuwa", kind: "mixed", platform: "windows",
+      capabilities: ["files"], adapter: "generic",
+      version_count: 1, latest_version: "3.3.0", sort_order: 0,
+      capability_contract: {},
+    };
+    const version = { version: "3.3.0", attributes: {}, artifact_kinds: {}, artifact_count: 0 };
+    vi.spyOn(api, "games").mockResolvedValue([game] as never);
+    vi.spyOn(api, "domains").mockResolvedValue([domain] as never);
+    vi.spyOn(api, "versions").mockResolvedValue([version] as never);
+    const artifacts = vi.spyOn(api, "artifacts").mockResolvedValue(emptyPage as never);
+
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: "/games/:gameId/:domainId?/:version?/:mode?", name: "archive", component: ArchiveView }],
+    });
+    await router.push("/games/wuwa/wuwa-pc/3.3.0/files");
+    await router.isReady();
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const app = createApp(ArchiveView);
+    app.use(router);
+    app.mount(root);
+    await flushUpdates();
+
+    artifacts.mockClear();
+    vi.mocked(api.games).mockClear();
+    // Same-tab notification triggers a reload of the current page data.
+    window.dispatchEvent(new CustomEvent("gmi-availability-invalidated", { detail: { jobId: "job-1" } }));
+    await flushUpdates();
+    expect(api.games).toHaveBeenCalledTimes(1);
+    expect(artifacts.mock.calls.some(([domainId, selected]) => domainId === "wuwa-pc" && selected === "3.3.0")).toBe(true);
+
+    // Cross-tab notification arrives through the storage event.
+    window.dispatchEvent(new StorageEvent("storage", { key: "gmi-availability-invalidated-at", newValue: "job-1:1" }));
+    await flushUpdates();
+    expect(api.games).toHaveBeenCalledTimes(2);
+
+    // Unrelated storage keys are ignored.
+    window.dispatchEvent(new StorageEvent("storage", { key: "unrelated-key", newValue: "x" }));
+    await flushUpdates();
+    expect(api.games).toHaveBeenCalledTimes(2);
+
+    app.unmount();
+    window.dispatchEvent(new CustomEvent("gmi-availability-invalidated", { detail: { jobId: "job-2" } }));
+    window.dispatchEvent(new StorageEvent("storage", { key: "gmi-availability-invalidated-at", newValue: "job-2:2" }));
+    await flushUpdates();
+    expect(api.games).toHaveBeenCalledTimes(2);
+  });
+
+  it("exposes verified live-probe actions and keeps verified unavailable downloads locked", async () => {
+    const game = { id: "hk4e", name: "原神", sub_name: "Genshin Impact", icon_source: "", sort_order: 0 };
+    const domain = {
+      id: "hk4e-pc", game_id: "hk4e", kind: "mixed", platform: "windows",
+      capabilities: ["packages"], adapter: "hoyo",
+      version_count: 1, latest_version: "5.5.0", sort_order: 0,
+      capability_contract: {
+        artifact_fields: { urls: "supported", availability: "supported", size: "supported", checksum: "supported" },
+        url_source_kinds: ["official", "mirror"],
+        actions: { open: "conditional", copy: "conditional", download: "conditional" },
+        availability_source_kinds: ["live_probe"], live_probe: true,
+      },
+    };
+    const version = {
+      version: "5.5.0", current_revision_id: 1, revision_count: 1, observed_at: "2026-08-29T00:00:00Z",
+      packed_size: 2, unpacked_size: 2, artifact_count: 2, artifact_kinds: { package: { count: 2, size: 2 } },
+      availability_states: { available: 1, unavailable: 1 }, attributes: {},
+    };
+    const probedAt = "2026-08-29T01:00:00Z";
+    const verifiedCurrent = (state: string, reason: string) => ({
+      state, reason, confidence: "low", retained: false, checked_at: probedAt,
+      source_kind: "live_probe", source_confidence: "low", observed_at: probedAt, expires_at: null, evidence_status: "verified",
+    });
+    const items = [
+      {
+        id: 1, kind: "package", name: "game.zip", part: 1, size: 1, checksum_type: "md5", checksum_value: "1".repeat(32), attributes: {},
+        urls: [{ id: 1, url: "https://autopatchcn.yuanshen.com/game.zip", priority: 0, source_kind: "official", provider: "mihoyo", evidence_status: "verified", current: verifiedCurrent("available", "HTTP 206") }],
+      },
+      {
+        id: 2, kind: "package", name: "old.zip", part: 1, size: 1, checksum_type: "md5", checksum_value: "2".repeat(32), attributes: {},
+        urls: [{ id: 2, url: "https://autopatchcn.yuanshen.com/old.zip", priority: 0, source_kind: "official", provider: "mihoyo", evidence_status: "verified", current: verifiedCurrent("unavailable", "HTTP 404") }],
+      },
+    ];
+    vi.spyOn(api, "games").mockResolvedValue([game] as never);
+    vi.spyOn(api, "domains").mockResolvedValue([domain] as never);
+    vi.spyOn(api, "versions").mockResolvedValue([version] as never);
+    vi.spyOn(api, "artifacts").mockResolvedValue({ items, next_cursor: null } as never);
+
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: "/games/:gameId/:domainId?/:version?/:mode?", name: "archive", component: ArchiveView }],
+    });
+    await router.push("/games/hk4e/hk4e-pc/5.5.0/packages");
+    await router.isReady();
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const app = createApp(ArchiveView);
+    app.use(router);
+    app.mount(root);
+    await flushUpdates();
+    await flushUpdates();
+
+    const cards = Array.from(root.querySelectorAll(".file-card"));
+    expect(cards).toHaveLength(2);
+    const badges = cards.map((card) => card.querySelector(".availability")?.textContent?.trim());
+    expect(badges).toEqual(["可用", "失效"]);
+    const downloadLinks = cards.map((card) => card.querySelector(".file-actions a.icon-button"));
+    expect((downloadLinks[0] as HTMLAnchorElement)?.getAttribute("href")).toBe("https://autopatchcn.yuanshen.com/game.zip");
+    const lockedDownload = cards[1].querySelector(".file-actions button.is-locked") as HTMLButtonElement;
+    expect(lockedDownload).not.toBeNull();
+    expect(lockedDownload.disabled).toBe(true);
+    expect(cards[1].querySelector(".file-actions a.icon-button")).toBeNull();
+
+    app.unmount();
+  });
+
 });

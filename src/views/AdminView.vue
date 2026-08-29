@@ -46,6 +46,9 @@ type Tab = "games" | "domains" | "content" | "probe" | "retention";
 
 const TOKEN_STORAGE_KEY = "game-manifest-index-web-admin-token-v1";
 const OPERATION_JOB_KEY = "game-manifest-index-web-operation-job-v1";
+const AVAILABILITY_INVALIDATION_EVENT = "gmi-availability-invalidated";
+const AVAILABILITY_INVALIDATION_STORAGE_KEY = "gmi-availability-invalidated-at";
+let lastInvalidatedOperationJobId: string | null = null;
 
 const router = useRouter();
 const token = ref(localStorage.getItem(TOKEN_STORAGE_KEY) || sessionStorage.getItem(TOKEN_STORAGE_KEY) || "");
@@ -1695,6 +1698,17 @@ function stopOperationPolling(): void {
   }
 }
 
+function notifyAvailabilityInvalidated(jobId: string): void {
+  if (lastInvalidatedOperationJobId === jobId) return;
+  lastInvalidatedOperationJobId = jobId;
+  window.dispatchEvent(new CustomEvent(AVAILABILITY_INVALIDATION_EVENT, { detail: { jobId } }));
+  try {
+    localStorage.setItem(AVAILABILITY_INVALIDATION_STORAGE_KEY, `${jobId}:${Date.now()}`);
+  } catch {
+    // Storage unavailable; the same-tab CustomEvent has already fired.
+  }
+}
+
 async function applyOperationJob(job: AdminOperationJob, isInitialRestore = false, incremental = false): Promise<void> {
   const sameJob = opJob.value?.job_id === job.job_id;
   opJob.value = job;
@@ -1726,6 +1740,7 @@ async function applyOperationJob(job: AdminOperationJob, isInitialRestore = fals
   if (!isInitialRestore) {
     if (job.status === "finished") {
       success.value = "运维操作已全部执行完成！";
+      if (job.actions.includes("probe")) notifyAvailabilityInvalidated(job.job_id);
       await refreshAllData();
     } else if (job.status === "cancelled") {
       error.value = "运维操作已被管理员手动取消。";

@@ -13,6 +13,7 @@ import os
 import re
 import stat
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
@@ -492,23 +493,37 @@ def _primary_artifact(record: dict[str, Any]) -> dict[str, Any] | None:
     return selected
 
 
+def _probe_checked_at(current: dict[str, Any]) -> str | None:
+    # Only a UTC ISO-8601 timestamp, exactly the shape the probe adapters
+    # persist, proves this current was written by a completed live probe.
+    value = current.get("checked_at")
+    if not isinstance(value, str) or not value.endswith("Z"):
+        return None
+    try:
+        datetime.fromisoformat(value[:-1] + "+00:00")
+    except ValueError:
+        return None
+    return value
+
+
 def _public_current(current: Any) -> dict[str, Any] | None:
     if not isinstance(current, dict):
         return None
     state = current.get("state") if current.get("state") in AVAILABILITY_STATES else "unknown"
     checked_at = current.get("checked_at") if isinstance(current.get("checked_at"), str) else None
     http_code = current.get("http_code") if isinstance(current.get("http_code"), int) and not isinstance(current.get("http_code"), bool) else None
+    verified = _probe_checked_at(current) is not None
     return {
         "state": state,
         "reason": f"HTTP {http_code}" if http_code is not None else "",
         "confidence": "low",
         "retained": False,
         "checked_at": checked_at,
-        "source_kind": "canonical_current",
+        "source_kind": "live_probe" if verified else "canonical_current",
         "source_confidence": "low",
         "observed_at": checked_at,
         "expires_at": None,
-        "evidence_status": "unverified",
+        "evidence_status": "verified" if verified else "unverified",
     }
 
 
@@ -537,7 +552,7 @@ def _public_artifact(record: dict[str, Any], artifact: dict[str, Any]) -> dict[s
                 "priority": candidate.get("priority") if isinstance(candidate.get("priority"), int) else index,
                 "source_kind": source_kind,
                 **({"provider": candidate["provider"]} if isinstance(candidate.get("provider"), str) else {}),
-                "evidence_status": "unverified",
+                "evidence_status": current["evidence_status"] if current is not None else "unverified",
                 "current": current,
             }
         )

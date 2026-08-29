@@ -82,6 +82,33 @@ function buttonByText(root: HTMLElement, text: string): HTMLButtonElement {
   return button;
 }
 
+function operationJob(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    job_id: "probe-job-1", status: "finished", phase: null,
+    actions: ["probe"], game_ids: ["demo"], scope: "all",
+    completed: 1, total: 1, phase_completed: 1, phase_total: 1,
+    succeeded: 1, failed: 0, current: null,
+    started_at: "2026-08-29T00:00:00Z", finished_at: "2026-08-29T00:01:00Z",
+    result: {}, error: null, logs: [],
+    ...overrides,
+  };
+}
+
+async function mountResumedOperation(jobFactory: () => Record<string, unknown>): Promise<{ app: ReturnType<typeof createApp>; root: HTMLElement }> {
+  let calls = 0;
+  vi.spyOn(adminApi, "operationStatus").mockImplementation((async () => {
+    calls += 1;
+    return calls === 1
+      ? jobFactory()
+      : { ...jobFactory(), status: "finished", phase: null, finished_at: "2026-08-29T00:01:00Z" };
+  }) as never);
+  sessionStorage.setItem("game-manifest-index-web-operation-job-v1", "probe-job-1");
+  const { app, root } = await mountAdmin("windows");
+  await vi.advanceTimersByTimeAsync(1100);
+  await vi.advanceTimersByTimeAsync(1100);
+  return { app, root };
+}
+
 describe("AdminView capability alignment", () => {
   afterEach(() => {
     localStorage.clear();
@@ -122,5 +149,38 @@ describe("AdminView capability alignment", () => {
     expect(root.textContent).toContain("时区、漏跑策略及采集动作由外部计划任务决定");
     expect(root.textContent).not.toContain("北京时间");
     app.unmount();
+  });
+
+  it("sends one availability invalidation when a probe operation finishes", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const events: CustomEvent[] = [];
+      const listener = (event: Event): void => { events.push(event as CustomEvent); };
+      window.addEventListener("gmi-availability-invalidated", listener);
+      const { app } = await mountResumedOperation(() => operationJob({ status: "running", phase: "probe", finished_at: null }));
+      expect(events).toHaveLength(1);
+      expect(events[0].detail).toEqual({ jobId: "probe-job-1" });
+      expect(localStorage.getItem("gmi-availability-invalidated-at")).toContain("probe-job-1");
+      app.unmount();
+      window.removeEventListener("gmi-availability-invalidated", listener);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not send availability invalidation for discovery-only operations", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const events: CustomEvent[] = [];
+      const listener = (event: Event): void => { events.push(event as CustomEvent); };
+      window.addEventListener("gmi-availability-invalidated", listener);
+      const { app } = await mountResumedOperation(() => operationJob({ status: "running", phase: "discover", actions: ["discover"], finished_at: null }));
+      expect(events).toHaveLength(0);
+      expect(localStorage.getItem("gmi-availability-invalidated-at")).toBeNull();
+      app.unmount();
+      window.removeEventListener("gmi-availability-invalidated", listener);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

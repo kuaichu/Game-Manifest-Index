@@ -511,6 +511,59 @@ class OperationTests(AdminFixture):
         self.assertEqual(incremental["log_offset"], after)
         self.assertEqual(len(incremental["logs"]), finished["log_total"] - after)
 
+    def test_probe_log_reports_version_kind_and_availability(self):
+        pc = record("windows", artifacts=[artifact("game.zip", ["https://autopatchcn.yuanshen.com/game.zip"], kind="package")])
+        write_v2_record(pc, self.data)
+        rebuild_index(self.data, "mihoyo", "hk4e", "windows")
+        client = self.client()
+        started = client.post(
+            "/api/v1/admin/operations/start", headers=self.auth(),
+            json={"actions": ["probe"], "scope": "all", "all_games": False, "game_ids": ["hk4e"]},
+        ).json()
+        logs = self.wait(client, started["job_id"])["logs"]
+        self.assertIn("[probe/android] hk4e v1.0.0 apk 可用", logs)
+        self.assertIn("[probe/windows] hk4e v1.0.0 package 可用", logs)
+        self.assertFalse(any(line.startswith("[probe/") and "成功" in line for line in logs))
+
+    def test_probe_log_distinguishes_unavailable_unknown_and_failed(self):
+        extra = record("android", version="2.0.0", artifacts=[artifact("alt.apk", ["https://autopatchcn.yuanshen.com/alt.apk"])])
+        write_v2_record(extra, self.data)
+        rebuild_index(self.data, "mihoyo", "hk4e", "android")
+        pc = record("windows", artifacts=[artifact("game.zip", ["https://autopatchcn.yuanshen.com/game.zip"], kind="package")])
+        write_v2_record(pc, self.data)
+        rebuild_index(self.data, "mihoyo", "hk4e", "windows")
+        def varying(url, **kwargs):
+            if kwargs.get("platform") == "windows":
+                raise ValueError("offline")
+            result = fake_probe(url, **kwargs)
+            result["available"] = None if "alt.apk" in url else False
+            return result
+        client = self.client(probe_fn=varying)
+        started = client.post(
+            "/api/v1/admin/operations/start", headers=self.auth(),
+            json={"actions": ["probe"], "scope": "all", "all_games": False, "game_ids": ["hk4e"]},
+        ).json()
+        logs = self.wait(client, started["job_id"])["logs"]
+        self.assertIn("[probe/android] hk4e v1.0.0 apk 失效", logs)
+        self.assertIn("[probe/android] hk4e v2.0.0 apk 未判定", logs)
+        self.assertIn("[probe/windows] hk4e v1.0.0 package 探活失败:ValueError", logs)
+        self.assertNotIn("offline", json.dumps(logs))
+        self.assertNotIn("https://", json.dumps(logs))
+
+    def test_discovery_log_format_is_unchanged(self):
+        def discovery(game_ids, root, timeout, workers, **kwargs):
+            item = {"game_id": game_ids[0], "platform": "android", "ok": True, "supported": True,
+                    "status": "finished", "version": "1.0.0", "new": False, "available": None, "error": None}
+            kwargs["progress"](item, 1, 1)
+            return {"selected": 1, "succeeded": 1, "failed": 0, "new_versions": 0, "items": [item], "cancelled": False}
+        client = self.client(discovery=discovery)
+        started = client.post(
+            "/api/v1/admin/operations/start", headers=self.auth(),
+            json={"actions": ["discover"], "scope": "android", "all_games": False, "game_ids": ["hk4e"]},
+        ).json()
+        logs = self.wait(client, started["job_id"])["logs"]
+        self.assertIn("[discover/android] hk4e 成功", logs)
+
     def test_discovery_rebuilds_each_domain_once(self):
         second = record("android", version="2.0.0")
         write_v2_record(second, self.data)

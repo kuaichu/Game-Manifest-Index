@@ -265,13 +265,53 @@ class TemporaryContractTests(unittest.TestCase):
         self.assertNotIn("source_url", item["provenance"])
         self.assertNotIn("secret", json.dumps(item))
 
-    def test_current_projection_is_conservative(self):
+    def test_current_projection_marks_probed_currents_verified(self):
         item = self.get("/api/v1/domains/hk4e-android/versions/2.0.0/artifacts?q=common").json()["items"][0]
         current = item["urls"][0]["current"]
         self.assertEqual(current["reason"], "HTTP 206")
-        self.assertEqual(current["confidence"], "low")
-        self.assertEqual(current["evidence_status"], "unverified")
-        self.assertNotEqual(current["source_kind"], "live_probe")
+        self.assertEqual(current["evidence_status"], "verified")
+        self.assertEqual(current["source_kind"], "live_probe")
+        self.assertEqual(current["observed_at"], "2026-08-29T01:00:00Z")
+        self.assertEqual(item["urls"][0]["evidence_status"], "verified")
+
+    def test_probed_outcomes_keep_their_real_state(self):
+        states = {
+            "3.0.0": {"state": "available", "http_code": 206, "checked_at": "2026-08-29T01:00:00Z"},
+            "3.1.0": {"state": "unavailable", "http_code": 404, "checked_at": "2026-08-29T01:10:00Z"},
+            "3.2.0": {"state": "unknown", "http_code": 503, "checked_at": "2026-08-29T01:20:00Z"},
+        }
+        for version, current in states.items():
+            write_record(self.root, record("mihoyo", "hk4e", "android", version, [
+                artifact("common.apk", kind="apk", current=current),
+            ]))
+        rebuild_indexes(self.root)
+        for version, expected in states.items():
+            url = self.get(f"/api/v1/domains/hk4e-android/versions/{version}/artifacts?q=common").json()["items"][0]["urls"][0]
+            self.assertEqual(url["current"]["evidence_status"], "verified")
+            self.assertEqual(url["current"]["source_kind"], "live_probe")
+            self.assertEqual(url["current"]["state"], expected["state"])
+            self.assertEqual(url["evidence_status"], "verified")
+
+    def test_current_without_valid_probe_timestamp_stays_unverified(self):
+        write_record(self.root, record("mihoyo", "hk4e", "android", "4.0.0", [
+            artifact("common.apk", kind="apk", current={"state": "available", "http_code": 200}),
+        ]))
+        write_record(self.root, record("mihoyo", "hk4e", "android", "4.1.0", [
+            artifact("common.apk", kind="apk", current={"state": "available", "http_code": 200, "checked_at": "not-a-timestamp"}),
+        ]))
+        rebuild_indexes(self.root)
+        for version in ("4.0.0", "4.1.0"):
+            url = self.get(f"/api/v1/domains/hk4e-android/versions/{version}/artifacts?q=common").json()["items"][0]["urls"][0]
+            self.assertEqual(url["current"]["evidence_status"], "unverified")
+            self.assertEqual(url["current"]["source_kind"], "canonical_current")
+            self.assertEqual(url["evidence_status"], "unverified")
+
+    def test_missing_current_keeps_unverified_url_evidence(self):
+        write_record(self.root, record("mihoyo", "hk4e", "android", "4.2.0", [artifact("common.apk", kind="apk")]))
+        rebuild_indexes(self.root)
+        url = self.get("/api/v1/domains/hk4e-android/versions/4.2.0/artifacts?q=common").json()["items"][0]["urls"][0]
+        self.assertIsNone(url["current"])
+        self.assertEqual(url["evidence_status"], "unverified")
 
     def test_artifact_filters_sort_and_cursor(self):
         page = self.get("/api/v1/domains/hk4e-android/versions/2.0.0/artifacts?kind=apk&availability_state=unknown&limit=1").json()

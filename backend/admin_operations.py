@@ -184,6 +184,16 @@ class OperationManager:
             self._log(f"开始 {name}，共 {total} 项")
             self._save()
 
+    @staticmethod
+    def _probe_outcome(item: dict[str, Any]) -> str:
+        if not item.get("ok"):
+            return f"探活失败:{item.get('error') or 'unknown'}"
+        if item.get("available") is True:
+            return "可用"
+        if item.get("available") is False:
+            return "失效"
+        return "未判定"
+
     def _progress(self, job_id: str, phase: str, base_completed: int, base_failed: int, item: dict[str, Any], done: int, total: int) -> None:
         with self._lock:
             if self._job is None or self._job["job_id"] != job_id:
@@ -198,8 +208,16 @@ class OperationManager:
             })
             target = item.get("game_id") or "-"
             platform = item.get("platform") or "-"
-            outcome = "成功" if item.get("ok") else f"失败:{item.get('error') or 'unknown'}"
-            self._log(f"[{phase}/{platform}] {target} {outcome}")
+            if phase == "probe":
+                head = f"[{phase}/{platform}] {target}"
+                if item.get("version"):
+                    head += f" v{item['version']}"
+                if item.get("kind"):
+                    head += f" {item['kind']}"
+                self._log(f"{head} {self._probe_outcome(item)}")
+            else:
+                outcome = "成功" if item.get("ok") else f"失败:{item.get('error') or 'unknown'}"
+                self._log(f"[{phase}/{platform}] {target} {outcome}")
             self._save()
 
     def _discover_scope(self, scope: str, game_ids: list[str], timeout: int, workers: int, progress: Callable[[dict[str, Any], int, int], None]) -> dict[str, Any]:
