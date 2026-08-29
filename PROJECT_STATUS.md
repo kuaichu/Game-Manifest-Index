@@ -747,7 +747,7 @@ integration/pc
   -> backend/version-admin（已完成）
   -> frontend-version-admin（已完成并晋级 `integration/v5@5e61b78`）
   -> PHASE 10 全链路验收（已完成）
-  -> fast-forward -> main（代码基线已完成；最终状态记录待同步）
+  -> fast-forward -> main（已完成；main、integration/v5 与正式验证 tag 已同步）
 ```
 
 后端业务能力建议在数据和适配器基础稳定后推进：
