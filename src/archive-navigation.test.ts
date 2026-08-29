@@ -263,8 +263,8 @@ describe("archive cross-game navigation", () => {
 
     (root.querySelector(".select-button") as HTMLButtonElement).click();
     await nextTick();
-    expect(root.textContent).toContain("42 可用");
-    expect(root.textContent).toContain("1 可用");
+    expect(root.textContent).toContain("42 个版本");
+    expect(root.textContent).toContain("1 个版本");
     expect(root.textContent).toContain("版本对比");
     expect(root.textContent).toContain("部分归档");
     expect(root.textContent).toContain("历史 404");

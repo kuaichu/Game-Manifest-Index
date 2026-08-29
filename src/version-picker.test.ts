@@ -175,6 +175,25 @@ describe("mode-specific HoYo version picker", () => {
     expect(rows[0]?.textContent).not.toContain("无数据");
     app.unmount();
   });
+
+  it("hides availability judgments when the archive page disables them", async () => {
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const app = createApp({ render: () => h(VersionPicker, {
+      versions, modelValue: "3.3.0", domain, mode: "packages", showAvailability: false, onSelect: () => {},
+    }) });
+    app.mount(root);
+    (root.querySelector(".select-button") as HTMLButtonElement).click();
+    await nextTick();
+
+    expect(Array.from(root.querySelectorAll(".group-meta")).map((item) => item.textContent)).toEqual(["1 个版本", "1 个版本"]);
+    const text = root.querySelector(".version-menu")?.textContent || "";
+    for (const judgment of ["可用", "不可用", "未判定", "含失效", "链接失效", "无数据"]) {
+      expect(text).not.toContain(judgment);
+    }
+    expect(text).toContain("完整包");
+    app.unmount();
+  });
 });
 
 describe("multi-channel Android versions", () => {
