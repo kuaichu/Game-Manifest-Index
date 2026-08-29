@@ -8,6 +8,276 @@
       "updated_at": null,
       "available": null,
       "size": 108166145942
+    },
+    {
+      "version": "6.3.2",
+      "updated_at": null,
+      "available": null,
+      "size": 108022682429
+    },
+    {
+      "version": "6.3.1",
+      "updated_at": null,
+      "available": null,
+      "size": 108022607750
+    },
+    {
+      "version": "6.2.4",
+      "updated_at": null,
+      "available": null,
+      "size": 106446514764
+    },
+    {
+      "version": "6.2.3",
+      "updated_at": null,
+      "available": null,
+      "size": 106433012097
+    },
+    {
+      "version": "6.2.2",
+      "updated_at": null,
+      "available": null,
+      "size": 106403088087
+    },
+    {
+      "version": "6.2.1",
+      "updated_at": null,
+      "available": null,
+      "size": 106401732796
+    },
+    {
+      "version": "6.1.6",
+      "updated_at": null,
+      "available": null,
+      "size": 103895622985
+    },
+    {
+      "version": "6.1.5",
+      "updated_at": null,
+      "available": null,
+      "size": 103895750118
+    },
+    {
+      "version": "6.1.3",
+      "updated_at": null,
+      "available": null,
+      "size": 103848899505
+    },
+    {
+      "version": "6.1.2",
+      "updated_at": null,
+      "available": null,
+      "size": 103832416517
+    },
+    {
+      "version": "6.1.1",
+      "updated_at": null,
+      "available": null,
+      "size": 103794364480
+    },
+    {
+      "version": "6.1.0",
+      "updated_at": null,
+      "available": null,
+      "size": 103809959827
+    },
+    {
+      "version": "6.0.4",
+      "updated_at": null,
+      "available": null,
+      "size": 102733894241
+    },
+    {
+      "version": "6.0.3",
+      "updated_at": null,
+      "available": null,
+      "size": 102677072105
+    },
+    {
+      "version": "6.0.2",
+      "updated_at": null,
+      "available": null,
+      "size": 102673052846
+    },
+    {
+      "version": "6.0.1",
+      "updated_at": null,
+      "available": null,
+      "size": 102678225019
+    },
+    {
+      "version": "5.8.17",
+      "updated_at": null,
+      "available": null,
+      "size": 97875028143
+    },
+    {
+      "version": "5.8.16",
+      "updated_at": null,
+      "available": null,
+      "size": 97852553536
+    },
+    {
+      "version": "5.8.14",
+      "updated_at": null,
+      "available": null,
+      "size": 97873636546
+    },
+    {
+      "version": "5.8.13",
+      "updated_at": null,
+      "available": null,
+      "size": 97867686369
+    },
+    {
+      "version": "5.8.12",
+      "updated_at": null,
+      "available": null,
+      "size": 97839491186
+    },
+    {
+      "version": "5.7.9",
+      "updated_at": null,
+      "available": null,
+      "size": 96809494077
+    },
+    {
+      "version": "5.7.8",
+      "updated_at": null,
+      "available": null,
+      "size": 96806079462
+    },
+    {
+      "version": "5.7.7",
+      "updated_at": null,
+      "available": null,
+      "size": 96781829389
+    },
+    {
+      "version": "5.7.5",
+      "updated_at": null,
+      "available": null,
+      "size": 96604832491
+    },
+    {
+      "version": "5.7.4",
+      "updated_at": null,
+      "available": null,
+      "size": 96801750649
+    },
+    {
+      "version": "5.7.3",
+      "updated_at": null,
+      "available": null,
+      "size": 96800309788
+    },
+    {
+      "version": "5.6.23",
+      "updated_at": null,
+      "available": null,
+      "size": 95725352836
+    },
+    {
+      "version": "5.6.22",
+      "updated_at": null,
+      "available": null,
+      "size": 95745600221
+    },
+    {
+      "version": "5.6.21",
+      "updated_at": null,
+      "available": null,
+      "size": 95745598173
+    },
+    {
+      "version": "5.6.20",
+      "updated_at": null,
+      "available": null,
+      "size": 95753697804
+    },
+    {
+      "version": "5.6.18",
+      "updated_at": null,
+      "available": null,
+      "size": 95190620231
+    },
+    {
+      "version": "5.6.17",
+      "updated_at": null,
+      "available": null,
+      "size": 95183453196
+    },
+    {
+      "version": "5.6.16",
+      "updated_at": null,
+      "available": null,
+      "size": 94405455907
+    },
+    {
+      "version": "5.6.15",
+      "updated_at": null,
+      "available": null,
+      "size": 94400823430
+    },
+    {
+      "version": "5.6.14",
+      "updated_at": null,
+      "available": null,
+      "size": 94375928733
+    },
+    {
+      "version": "5.5.11",
+      "updated_at": null,
+      "available": null,
+      "size": 88653261470
+    },
+    {
+      "version": "5.5.10",
+      "updated_at": null,
+      "available": null,
+      "size": 88717942475
+    },
+    {
+      "version": "5.5.9",
+      "updated_at": null,
+      "available": null,
+      "size": 88656615247
+    },
+    {
+      "version": "5.5.8",
+      "updated_at": null,
+      "available": null,
+      "size": 88622463311
+    },
+    {
+      "version": "5.5.7",
+      "updated_at": null,
+      "available": null,
+      "size": 88466248321
+    },
+    {
+      "version": "5.5.6",
+      "updated_at": null,
+      "available": null,
+      "size": 88667683566
+    },
+    {
+      "version": "5.5.5",
+      "updated_at": null,
+      "available": null,
+      "size": 88601750222
+    },
+    {
+      "version": "5.5.4",
+      "updated_at": null,
+      "available": null,
+      "size": 88601748174
+    },
+    {
+      "version": "5.5.3",
+      "updated_at": null,
+      "available": null,
+      "size": 88528608927
     }
   ],
   "domain_id": "tof-pc"

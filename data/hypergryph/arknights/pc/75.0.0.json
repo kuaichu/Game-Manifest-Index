@@ -1,0 +1,514 @@
+{
+  "schema_version": 2,
+  "vendor": "hypergryph",
+  "game_id": "arknights",
+  "domain_id": "arknights-pc",
+  "platform": "windows",
+  "channel": "official",
+  "version": "75.0.0",
+  "version_code": null,
+  "file_time": null,
+  "artifacts": [
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "production_075-75.0.0-d68d1242a14-40-HG.zip.001",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://ak.hycdn.cn/GzD1CpaWgmSq1wew/75.0/update/1/1/Windows/75.0.0_on1FEr6BLTxmDmQD/packs/production_075-75.0.0-d68d1242a14-40-HG.zip.001",
+          "provider": "ak.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Arknights archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "68ecfd27a3ba31f011205505c73bb8ad"
+      },
+      "part": 1,
+      "artifact_id": "a1_5c083f04b59eed07edadbcfdae097d5e"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "production_075-75.0.0-d68d1242a14-40-HG.zip.002",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://ak.hycdn.cn/GzD1CpaWgmSq1wew/75.0/update/1/1/Windows/75.0.0_on1FEr6BLTxmDmQD/packs/production_075-75.0.0-d68d1242a14-40-HG.zip.002",
+          "provider": "ak.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Arknights archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "1970cab876fc108d97b1b1f85f867668"
+      },
+      "part": 2,
+      "artifact_id": "a1_184db04b483f3e058b3ebe56a83f2bde"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "production_075-75.0.0-d68d1242a14-40-HG.zip.003",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://ak.hycdn.cn/GzD1CpaWgmSq1wew/75.0/update/1/1/Windows/75.0.0_on1FEr6BLTxmDmQD/packs/production_075-75.0.0-d68d1242a14-40-HG.zip.003",
+          "provider": "ak.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Arknights archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "b4b4ad188889461f6a441863193bda7f"
+      },
+      "part": 3,
+      "artifact_id": "a1_15d87c1f191977de0a158de554e805b8"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "production_075-75.0.0-d68d1242a14-40-HG.zip.004",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://ak.hycdn.cn/GzD1CpaWgmSq1wew/75.0/update/1/1/Windows/75.0.0_on1FEr6BLTxmDmQD/packs/production_075-75.0.0-d68d1242a14-40-HG.zip.004",
+          "provider": "ak.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Arknights archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "3ac52c73889319ff084f97794428f8f5"
+      },
+      "part": 4,
+      "artifact_id": "a1_5d4e4b1ea2eac52edfe89525bc90b512"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "production_075-75.0.0-d68d1242a14-40-HG.zip.005",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://ak.hycdn.cn/GzD1CpaWgmSq1wew/75.0/update/1/1/Windows/75.0.0_on1FEr6BLTxmDmQD/packs/production_075-75.0.0-d68d1242a14-40-HG.zip.005",
+          "provider": "ak.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Arknights archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "9637c1d195cc78d95497c8d85d201ebc"
+      },
+      "part": 5,
+      "artifact_id": "a1_a07059c99ff1fd428db62da2c0960a7f"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "production_075-75.0.0-d68d1242a14-40-HG.zip.006",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://ak.hycdn.cn/GzD1CpaWgmSq1wew/75.0/update/1/1/Windows/75.0.0_on1FEr6BLTxmDmQD/packs/production_075-75.0.0-d68d1242a14-40-HG.zip.006",
+          "provider": "ak.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Arknights archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "dd58ebe27c43c81973460a83404d3b52"
+      },
+      "part": 6,
+      "artifact_id": "a1_3bc51b38a2a755097924be0eaf1cdaac"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "production_075-75.0.0-d68d1242a14-40-HG.zip.007",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://ak.hycdn.cn/GzD1CpaWgmSq1wew/75.0/update/1/1/Windows/75.0.0_on1FEr6BLTxmDmQD/packs/production_075-75.0.0-d68d1242a14-40-HG.zip.007",
+          "provider": "ak.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Arknights archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "f65c8d848a8062faceade868a6455d64"
+      },
+      "part": 7,
+      "artifact_id": "a1_26f5b9061bcad1828623c2e90bb61b15"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "production_075-75.0.0-d68d1242a14-40-HG.zip.008",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://ak.hycdn.cn/GzD1CpaWgmSq1wew/75.0/update/1/1/Windows/75.0.0_on1FEr6BLTxmDmQD/packs/production_075-75.0.0-d68d1242a14-40-HG.zip.008",
+          "provider": "ak.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Arknights archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "e3b3629ee3f7c0c6b84291f86975fcd7"
+      },
+      "part": 8,
+      "artifact_id": "a1_c2696360170ed4254d886327edfed541"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "production_075-75.0.0-d68d1242a14-40-HG.zip.009",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://ak.hycdn.cn/GzD1CpaWgmSq1wew/75.0/update/1/1/Windows/75.0.0_on1FEr6BLTxmDmQD/packs/production_075-75.0.0-d68d1242a14-40-HG.zip.009",
+          "provider": "ak.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Arknights archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "eb99c80ca3af1ffc21d6df02abf2d218"
+      },
+      "part": 9,
+      "artifact_id": "a1_2c2f683a1d49ad162d41bf24c31888ad"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "production_075-75.0.0-d68d1242a14-40-HG.zip.010",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://ak.hycdn.cn/GzD1CpaWgmSq1wew/75.0/update/1/1/Windows/75.0.0_on1FEr6BLTxmDmQD/packs/production_075-75.0.0-d68d1242a14-40-HG.zip.010",
+          "provider": "ak.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Arknights archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "bde328e1c21c0dade053acba17db57be"
+      },
+      "part": 10,
+      "artifact_id": "a1_dc7ef1202b697be4d923f52f0fdf665a"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "production_075-75.0.0-d68d1242a14-40-HG.zip.011",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://ak.hycdn.cn/GzD1CpaWgmSq1wew/75.0/update/1/1/Windows/75.0.0_on1FEr6BLTxmDmQD/packs/production_075-75.0.0-d68d1242a14-40-HG.zip.011",
+          "provider": "ak.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Arknights archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "a66688dc73b8ee3b4ea8338c7fdf10be"
+      },
+      "part": 11,
+      "artifact_id": "a1_825364bca32c35c85a9f0191771d46ae"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "production_075-75.0.0-d68d1242a14-40-HG.zip.012",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://ak.hycdn.cn/GzD1CpaWgmSq1wew/75.0/update/1/1/Windows/75.0.0_on1FEr6BLTxmDmQD/packs/production_075-75.0.0-d68d1242a14-40-HG.zip.012",
+          "provider": "ak.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Arknights archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "955664216050673e29ceb603410061ab"
+      },
+      "part": 12,
+      "artifact_id": "a1_4078d695e3126fe2b3cccc1e158b3b83"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "production_075-75.0.0-d68d1242a14-40-HG.zip.013",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://ak.hycdn.cn/GzD1CpaWgmSq1wew/75.0/update/1/1/Windows/75.0.0_on1FEr6BLTxmDmQD/packs/production_075-75.0.0-d68d1242a14-40-HG.zip.013",
+          "provider": "ak.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Arknights archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "79482e950803b144a2cb5e24bd8062e5"
+      },
+      "part": 13,
+      "artifact_id": "a1_c5e080cc050787ee7dd2ee5cc1e9fdf6"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "production_075-75.0.0-d68d1242a14-40-HG.zip.014",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://ak.hycdn.cn/GzD1CpaWgmSq1wew/75.0/update/1/1/Windows/75.0.0_on1FEr6BLTxmDmQD/packs/production_075-75.0.0-d68d1242a14-40-HG.zip.014",
+          "provider": "ak.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Arknights archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "3113af6bfa101b6f459d689dee664172"
+      },
+      "part": 14,
+      "artifact_id": "a1_e843106da76d4682993a1909ca799ca9"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "production_075-75.0.0-d68d1242a14-40-HG.zip.015",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://ak.hycdn.cn/GzD1CpaWgmSq1wew/75.0/update/1/1/Windows/75.0.0_on1FEr6BLTxmDmQD/packs/production_075-75.0.0-d68d1242a14-40-HG.zip.015",
+          "provider": "ak.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Arknights archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "2587a52f938d959aaec232fe7e636a72"
+      },
+      "part": 15,
+      "artifact_id": "a1_3eb08ff6a0eef50a300b6ade0d801248"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "production_075-75.0.0-d68d1242a14-40-HG.zip.016",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://ak.hycdn.cn/GzD1CpaWgmSq1wew/75.0/update/1/1/Windows/75.0.0_on1FEr6BLTxmDmQD/packs/production_075-75.0.0-d68d1242a14-40-HG.zip.016",
+          "provider": "ak.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Arknights archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "bb5915e75542ee1a9822e626203ed9f7"
+      },
+      "part": 16,
+      "artifact_id": "a1_c59799e5a54c9fc2029024f7c055472d"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "production_075-75.0.0-d68d1242a14-40-HG.zip.017",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://ak.hycdn.cn/GzD1CpaWgmSq1wew/75.0/update/1/1/Windows/75.0.0_on1FEr6BLTxmDmQD/packs/production_075-75.0.0-d68d1242a14-40-HG.zip.017",
+          "provider": "ak.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Arknights archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "59774feab034d0fc55631f66b841a798"
+      },
+      "part": 17,
+      "artifact_id": "a1_630c82c6e86d17ccd73dab972dd6693f"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "production_075-75.0.0-d68d1242a14-40-HG.zip.018",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://ak.hycdn.cn/GzD1CpaWgmSq1wew/75.0/update/1/1/Windows/75.0.0_on1FEr6BLTxmDmQD/packs/production_075-75.0.0-d68d1242a14-40-HG.zip.018",
+          "provider": "ak.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Arknights archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "799a27ac65bdabf3d7c93d5f98e8f053"
+      },
+      "part": 18,
+      "artifact_id": "a1_110d1184fe967c9039c2b2814ebf63b9"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "production_075-75.0.0-d68d1242a14-40-HG.zip.019",
+      "size": 241554832,
+      "urls": [
+        {
+          "url": "https://ak.hycdn.cn/GzD1CpaWgmSq1wew/75.0/update/1/1/Windows/75.0.0_on1FEr6BLTxmDmQD/packs/production_075-75.0.0-d68d1242a14-40-HG.zip.019",
+          "provider": "ak.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Arknights archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "5e151f9f4188255659c8be5734c85cfc"
+      },
+      "part": 19,
+      "artifact_id": "a1_d7c24eb4ae30be2598a020c13d3564fa"
+    }
+  ],
+  "references": [],
+  "provenance": {
+    "source_kind": "legacy_migration",
+    "source_name": "Game-Manifest-Index legacy Arknights archive",
+    "source_repo": "Game-Manifest-Index"
+  },
+  "is_visible": true
+}

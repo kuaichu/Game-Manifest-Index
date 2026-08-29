@@ -17,9 +17,15 @@ def matches(vendor: str | None, game_id: str | None, url: str) -> bool:
         port = p.port
     except ValueError:
         return False
+    legacy_http = (
+        p.scheme == "http"
+        and port in (None, 80)
+        and p.hostname == "bundle.bh3.com"
+        and re.fullmatch(r"/tmp/pc/BH3_v[A-Za-z0-9._-]+\.7z", p.path) is not None
+    )
+    normal_https = p.scheme == "https" and port in (None, 443)
     if (
-        p.scheme != "https"
-        or port not in (None, 443)
+        not (legacy_http or normal_https)
         or p.username is not None
         or p.password is not None
         or p.query

@@ -4,6 +4,42 @@
   "platform": "windows",
   "versions": [
     {
+      "version": "9.0.0",
+      "updated_at": null,
+      "available": null,
+      "size": null
+    },
+    {
+      "version": "8.9.0",
+      "updated_at": null,
+      "available": null,
+      "size": null
+    },
+    {
+      "version": "8.8.0",
+      "updated_at": null,
+      "available": null,
+      "size": null
+    },
+    {
+      "version": "8.7.0",
+      "updated_at": null,
+      "available": null,
+      "size": null
+    },
+    {
+      "version": "8.6.0",
+      "updated_at": null,
+      "available": null,
+      "size": null
+    },
+    {
+      "version": "8.5.0",
+      "updated_at": null,
+      "available": null,
+      "size": null
+    },
+    {
       "version": "8.4.0",
       "updated_at": null,
       "available": null,
@@ -118,6 +154,12 @@
       "size": 11813659145
     },
     {
+      "version": "6.6.0",
+      "updated_at": null,
+      "available": null,
+      "size": 0
+    },
+    {
       "version": "6.5.0",
       "updated_at": "2023-03-05T03:31:40Z",
       "available": true,
@@ -128,6 +170,114 @@
       "updated_at": "2023-01-16T02:18:25Z",
       "available": true,
       "size": 10832841217
+    },
+    {
+      "version": "6.3.0",
+      "updated_at": null,
+      "available": null,
+      "size": 0
+    },
+    {
+      "version": "6.2.0",
+      "updated_at": null,
+      "available": null,
+      "size": 0
+    },
+    {
+      "version": "6.1.0",
+      "updated_at": null,
+      "available": null,
+      "size": 0
+    },
+    {
+      "version": "6.0.1",
+      "updated_at": null,
+      "available": null,
+      "size": 0
+    },
+    {
+      "version": "5.9.0",
+      "updated_at": null,
+      "available": null,
+      "size": 0
+    },
+    {
+      "version": "5.8.0",
+      "updated_at": null,
+      "available": null,
+      "size": 0
+    },
+    {
+      "version": "5.7.0",
+      "updated_at": null,
+      "available": null,
+      "size": 0
+    },
+    {
+      "version": "5.6.0",
+      "updated_at": null,
+      "available": null,
+      "size": 0
+    },
+    {
+      "version": "5.5.0",
+      "updated_at": null,
+      "available": null,
+      "size": 0
+    },
+    {
+      "version": "5.4.0",
+      "updated_at": null,
+      "available": null,
+      "size": 0
+    },
+    {
+      "version": "5.3.0",
+      "updated_at": null,
+      "available": null,
+      "size": 0
+    },
+    {
+      "version": "5.2.0",
+      "updated_at": null,
+      "available": null,
+      "size": 0
+    },
+    {
+      "version": "5.1.0",
+      "updated_at": null,
+      "available": null,
+      "size": 0
+    },
+    {
+      "version": "5.0.0",
+      "updated_at": null,
+      "available": null,
+      "size": 0
+    },
+    {
+      "version": "4.9.0",
+      "updated_at": null,
+      "available": null,
+      "size": 0
+    },
+    {
+      "version": "4.8.0",
+      "updated_at": null,
+      "available": null,
+      "size": 0
+    },
+    {
+      "version": "4.7.0",
+      "updated_at": null,
+      "available": null,
+      "size": 0
+    },
+    {
+      "version": "4.6.0",
+      "updated_at": null,
+      "available": null,
+      "size": 0
     },
     {
       "version": "4.5.0",
@@ -158,6 +308,36 @@
       "updated_at": "2020-08-19T11:46:44Z",
       "available": true,
       "size": 4553098731
+    },
+    {
+      "version": "4.1.0",
+      "updated_at": null,
+      "available": null,
+      "size": 0
+    },
+    {
+      "version": "3.9.1",
+      "updated_at": null,
+      "available": null,
+      "size": 0
+    },
+    {
+      "version": "3.8.0",
+      "updated_at": null,
+      "available": null,
+      "size": 0
+    },
+    {
+      "version": "3.7.0",
+      "updated_at": null,
+      "available": null,
+      "size": 0
+    },
+    {
+      "version": "3.5.0",
+      "updated_at": null,
+      "available": null,
+      "size": 0
     }
   ],
   "domain_id": "bh3-pc"

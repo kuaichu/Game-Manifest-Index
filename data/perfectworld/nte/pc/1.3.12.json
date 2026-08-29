@@ -1,0 +1,56 @@
+{
+  "vendor": "perfectworld",
+  "game_id": "nte",
+  "domain_id": "nte-pc",
+  "platform": "windows",
+  "channel": "official",
+  "version": "1.3.12",
+  "schema_version": 2,
+  "version_code": null,
+  "file_time": null,
+  "artifacts": [
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "file_manifest",
+      "name": "ResList.bin.zip",
+      "size": 85475171295,
+      "manifest": {
+        "path": "manifests/1.3.12/files.json",
+        "base_urls": [
+          {
+            "url": "https://yhcdn1.wmupd.com/clientRes/publish_PC/Res/",
+            "provider": "perfectworld",
+            "source_kind": "official",
+            "priority": 0
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://yhcdn1.wmupd.com/clientRes/publish_PC/Version/Windows/version/1.3.12/ResList.bin.zip",
+          "provider": "perfectworld",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "official launcher legacy Git",
+        "source_url": "https://yhcdn1.wmupd.com/clientRes/publish_PC/Version/Windows/config.xml",
+        "source_repo": "Game-Manifest-Index",
+        "source_commit": "8609a814dd8eebfde66a32fd464ed4d1bc8db6a2"
+      },
+      "artifact_id": "a1_08ed0e2e12b7adcb4a75bd6f6cba25be"
+    }
+  ],
+  "references": [],
+  "provenance": {
+    "source_kind": "legacy_migration",
+    "source_name": "official launcher legacy Git",
+    "source_url": "https://yhcdn1.wmupd.com/clientRes/publish_PC/Version/Windows/config.xml",
+    "source_repo": "Game-Manifest-Index",
+    "source_commit": "8609a814dd8eebfde66a32fd464ed4d1bc8db6a2"
+  }
+}

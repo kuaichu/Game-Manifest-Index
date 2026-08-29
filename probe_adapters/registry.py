@@ -18,6 +18,8 @@ from probe_adapters.android import (
 )
 from probe_adapters.common import ProbeError
 from probe_adapters.pc import (
+    hypergryph_arknights,
+    hypergryph_endfield,
     kuro_cdn,
     mihoyo_autopatch as pc_mihoyo_autopatch,
     mihoyo_bh3_cdn as pc_mihoyo_bh3_cdn,
@@ -35,7 +37,14 @@ ANDROID_ADAPTERS = (
     kuro_pns_txcdn,
     perfectworld_webops,
 )
-PC_ADAPTERS = (pc_mihoyo_autopatch, pc_mihoyo_bh3_cdn, kuro_cdn, perfectworld_patcher)
+PC_ADAPTERS = (
+    hypergryph_arknights,
+    hypergryph_endfield,
+    pc_mihoyo_autopatch,
+    pc_mihoyo_bh3_cdn,
+    kuro_cdn,
+    perfectworld_patcher,
+)
 
 
 def _valid_platform(platform: str | None) -> str | None:

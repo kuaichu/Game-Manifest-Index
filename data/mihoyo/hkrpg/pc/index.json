@@ -4,6 +4,12 @@
   "platform": "windows",
   "versions": [
     {
+      "version": "4.5.0",
+      "updated_at": null,
+      "available": null,
+      "size": null
+    },
+    {
       "version": "4.4.0",
       "updated_at": null,
       "available": null,
@@ -74,6 +80,78 @@
       "updated_at": "2025-03-27T10:29:02Z",
       "available": true,
       "size": 48230997592
+    },
+    {
+      "version": "3.1.0",
+      "updated_at": null,
+      "available": null,
+      "size": 45681042039
+    },
+    {
+      "version": "3.0.0",
+      "updated_at": null,
+      "available": null,
+      "size": 43149825254
+    },
+    {
+      "version": "2.7.0",
+      "updated_at": null,
+      "available": null,
+      "size": 35167061984
+    },
+    {
+      "version": "2.6.0",
+      "updated_at": null,
+      "available": null,
+      "size": 35455499196
+    },
+    {
+      "version": "2.5.0",
+      "updated_at": null,
+      "available": null,
+      "size": 36694961656
+    },
+    {
+      "version": "2.4.0",
+      "updated_at": null,
+      "available": null,
+      "size": 36662630749
+    },
+    {
+      "version": "2.3.0",
+      "updated_at": null,
+      "available": null,
+      "size": 35308293537
+    },
+    {
+      "version": "2.2.0",
+      "updated_at": null,
+      "available": null,
+      "size": 33959600744
+    },
+    {
+      "version": "2.1.0",
+      "updated_at": null,
+      "available": null,
+      "size": 30383244625
+    },
+    {
+      "version": "2.0.0",
+      "updated_at": null,
+      "available": null,
+      "size": 29461650576
+    },
+    {
+      "version": "1.6.0",
+      "updated_at": null,
+      "available": null,
+      "size": 22116794598
+    },
+    {
+      "version": "1.5.0",
+      "updated_at": null,
+      "available": null,
+      "size": 20484036990
     },
     {
       "version": "1.4.0",

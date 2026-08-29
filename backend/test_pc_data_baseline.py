@@ -30,16 +30,16 @@ GAMES = (
     ("perfectworld", "tof"), ("perfectworld", "p5x"), ("perfectworld", "nte"),
 )
 EXPECTED_RECORDS = {
-    ("mihoyo", "hk4e"): 56, ("mihoyo", "hkrpg"): 18,
-    ("mihoyo", "nap"): 19, ("mihoyo", "bh3"): 32,
-    ("kuro", "wuwa"): 45, ("perfectworld", "tof"): 1,
-    ("perfectworld", "p5x"): 1, ("perfectworld", "nte"): 1,
+    ("mihoyo", "hk4e"): 56, ("mihoyo", "hkrpg"): 30,
+    ("mihoyo", "nap"): 20, ("mihoyo", "bh3"): 56,
+    ("kuro", "wuwa"): 45, ("perfectworld", "tof"): 46,
+    ("perfectworld", "p5x"): 1, ("perfectworld", "nte"): 56,
 }
 EXPECTED_ARTIFACTS = {
-    ("mihoyo", "hk4e"): 697, ("mihoyo", "hkrpg"): 244,
-    ("mihoyo", "nap"): 437, ("mihoyo", "bh3"): 27,
-    ("kuro", "wuwa"): 91, ("perfectworld", "tof"): 1,
-    ("perfectworld", "p5x"): 1, ("perfectworld", "nte"): 1,
+    ("mihoyo", "hk4e"): 697, ("mihoyo", "hkrpg"): 417,
+    ("mihoyo", "nap"): 438, ("mihoyo", "bh3"): 51,
+    ("kuro", "wuwa"): 91, ("perfectworld", "tof"): 46,
+    ("perfectworld", "p5x"): 1, ("perfectworld", "nte"): 56,
 }
 EXPECTED_REFERENCES = {
     ("mihoyo", "hk4e"): 25, ("mihoyo", "hkrpg"): 12,
@@ -227,12 +227,17 @@ class PcDataBaselineTests(unittest.TestCase):
                 self.assertEqual(sorted(parts), list(range(1, len(parts) + 1)), (path, key))
             references[game] += len(record["references"])
             self.assertTrue(FORBIDDEN.isdisjoint(record))
-            self.assertNotIn("zh-tw", json.dumps(record, ensure_ascii=False).lower())
+            if "zh-tw" in json.dumps(record, ensure_ascii=False).lower():
+                self.assertEqual(game, ("mihoyo", "hkrpg"))
+                self.assertTrue(any(
+                    artifact.get("component") == "voice" and artifact.get("language") == "zh-tw"
+                    for artifact in record["artifacts"]
+                ))
         self.assertEqual(counts, EXPECTED_RECORDS)
         self.assertEqual(artifacts, EXPECTED_ARTIFACTS)
         self.assertEqual(references, EXPECTED_REFERENCES)
         self.assertEqual(seen_current, CURRENT_RECORDS)
-        self.assertEqual(len(ids), 1499)
+        self.assertEqual(len(ids), 1797)
 
     def test_manifest_and_reference_paths_are_safe_and_parseable(self):
         referenced = set()

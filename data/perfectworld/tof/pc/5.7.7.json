@@ -1,0 +1,53 @@
+{
+  "schema_version": 2,
+  "vendor": "perfectworld",
+  "game_id": "tof",
+  "domain_id": "tof-pc",
+  "platform": "windows",
+  "channel": "official",
+  "version": "5.7.7",
+  "version_code": null,
+  "file_time": null,
+  "artifacts": [
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "file_manifest",
+      "name": "ResList.bin.zip",
+      "size": 96781829389,
+      "manifest": {
+        "path": "manifests/5.7.7/files.json",
+        "base_urls": [
+          {
+            "url": "https://htcdn1.wmupd.com/clientRes/Windows55/Res/",
+            "provider": "perfectworld",
+            "source_kind": "official",
+            "priority": 0
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://htcdn1.wmupd.com/clientRes/Windows55/Version/Windows/version/5.7.7/ResList.bin.zip",
+          "provider": "htcdn1.wmupd.com",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy PatcherSDK archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "artifact_id": "a1_14cfe555b63b8ee418cea232f3a83ff5"
+    }
+  ],
+  "references": [],
+  "provenance": {
+    "source_kind": "legacy_migration",
+    "source_name": "Game-Manifest-Index legacy PatcherSDK archive",
+    "source_repo": "Game-Manifest-Index"
+  },
+  "is_visible": true
+}
