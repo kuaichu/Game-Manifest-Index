@@ -42,7 +42,6 @@ MAX_RANGE_BYTES = MAX_CENTRAL_BYTES
 MAX_TOTAL_RANGE_BYTES = 64 * 1024 * 1024
 MAX_FILES = 200_000
 TAIL_BYTES = 128 * 1024
-DEFAULT_TIMEOUT = 20.0
 CACHE_SCHEMA_VERSION = 1
 
 SCATTERED_ROOTS = {
@@ -86,6 +85,10 @@ class PackageFilesTimeout(PackageFilesError):
 
 
 class PackageFilesUpstream(PackageFilesError):
+    pass
+
+
+class PackageFilesUnsupported(PackageFilesError):
     pass
 
 
@@ -232,10 +235,10 @@ def _scattered_root(game_id: str, artifact_url: str) -> str:
     suffix = "/" + SCATTERED_ROOTS[game_id].strip("/")
     parsed = urlsplit(base)
     path = parsed.path.rstrip("/")
-    if path.endswith(suffix):
+    if path.casefold().endswith(suffix.casefold()):
         return base
     package_dir = PACKAGE_DIRS.get(game_id)
-    if package_dir and path.endswith(package_dir):
+    if package_dir and path.casefold().endswith(package_dir.casefold()):
         path = path[: -len(package_dir)] + suffix
     else:
         path += suffix
@@ -251,11 +254,15 @@ def _direct_bases(groups: list[list[dict[str, Any]]], game_id: str) -> list[str]
     return result
 
 
+class _PackageFilesMissing(PackageFilesError):
+    """A candidate was explicitly reported as unavailable by the upstream."""
+
+
 def _upstream_error(error: Exception, message: str) -> PackageFilesError:
     if isinstance(error, (ManifestTimeout, TimeoutError)) or "timed out" in str(error).lower():
         return PackageFilesTimeout(message)
     if isinstance(error, ManifestNotFound):
-        return PackageFilesUpstream(message)
+        return _PackageFilesMissing(message)
     return PackageFilesUpstream(message)
 
 
@@ -269,8 +276,7 @@ def _header(headers: Any, name: str) -> str | None:
     return None
 
 
-def _download_direct(upstream: Any, url: str, timeout: float) -> bytes:
-    del timeout  # HttpUpstream owns the configured timeout; fakes may ignore it.
+def _download_direct(upstream: Any, url: str) -> bytes:
     try:
         body, headers = upstream.get_bytes(url, allowed_hosts=OFFICIAL_PACKAGE_HOSTS, max_bytes=MAX_DIRECT_BYTES)
     except Exception as error:  # the public boundary maps only our safe error types
@@ -290,10 +296,9 @@ def _download_direct(upstream: Any, url: str, timeout: float) -> bytes:
 
 
 class _ArchiveReader:
-    def __init__(self, groups: list[list[dict[str, Any]]], upstream: Any, timeout: float):
+    def __init__(self, groups: list[list[dict[str, Any]]], upstream: Any):
         self.groups = groups
         self.upstream = upstream
-        self.timeout = timeout
         self.network_bytes = 0
         self._sizes = [self._size(group[0]) for group in groups]
 
@@ -353,16 +358,22 @@ class _ArchiveReader:
         while left:
             index, local = self._map(current)
             take = min(left, self._sizes[index] - local)
-            error: PackageFilesError | None = None
+            errors: list[PackageFilesError] = []
             for candidate in self.groups[index]:
                 try:
                     result.extend(self._range(candidate, local, local + take - 1))
-                    error = None
                     break
                 except PackageFilesError as exc:
-                    error = exc
-            if error is not None:
-                raise error
+                    errors.append(exc)
+            else:
+                non_missing = next((error for error in errors if not isinstance(error, _PackageFilesMissing)), None)
+                if non_missing is not None:
+                    raise non_missing
+                if errors:
+                    if self.network_bytes:
+                        raise PackageFilesUpstream("package Range 请求失败")
+                    raise PackageFilesNotFound("官方历史资源不可用")
+                raise PackageFilesUpstream("package Range 请求失败")
             current += take
             left -= take
         return bytes(result)
@@ -370,20 +381,26 @@ class _ArchiveReader:
     def tail(self) -> bytes:
         index = len(self.groups) - 1
         start = max(0, self._sizes[index] - TAIL_BYTES)
-        error: PackageFilesError | None = None
+        errors: list[PackageFilesError] = []
         for candidate in self.groups[index]:
             try:
                 return self._range(candidate, start, self._sizes[index] - 1)
             except PackageFilesError as exc:
-                error = exc
-        if error is not None:
-            raise error
+                errors.append(exc)
+        non_missing = next((error for error in errors if not isinstance(error, _PackageFilesMissing)), None)
+        if non_missing is not None:
+            raise non_missing
+        if errors:
+            raise PackageFilesNotFound("官方历史资源不可用")
         raise PackageFilesUpstream("package 尾部读取失败")
 
     def extract_pkg_version(self) -> bytes:
         tail = self.tail()
         eocd = tail.rfind(b"PK\x05\x06")
         if eocd < 0 or len(tail) - eocd < 22:
+            head = self.read_archive(0, min(8, self._sizes[0]))
+            if not head.startswith(b"PK"):
+                raise PackageFilesUnsupported("该完整包格式暂不支持读取文件列表")
             raise PackageFilesUpstream("package EOCD 不存在")
         _, _, _, entries_disk, entries, cd_size, cd_offset, _ = struct.unpack_from("<4s4H2LH", tail, eocd)
         if 0xFFFF in (entries_disk, entries) or 0xFFFFFFFF in (cd_size, cd_offset):
@@ -563,7 +580,7 @@ def _cache_dir(state_root: Path, game_id: str, version: str, groups: list[list[d
     return Path(state_root) / "cache" / "package-files" / game_id / version / key
 
 
-def _load_files(state_root: Path, record: Mapping[str, Any], game_id: str, version: str, identity: str, upstream: Any, timeout: float) -> tuple[list[dict[str, Any]], int, dict[str, Any]]:
+def _load_files(state_root: Path, record: Mapping[str, Any], game_id: str, version: str, identity: str, upstream: Any) -> tuple[list[dict[str, Any]], int, dict[str, Any]]:
     groups = _candidate_groups(record, game_id, version, identity)
     cache = _cache_dir(Path(state_root), game_id, version, groups)
     index_path, raw_path = cache / "files.json", cache / "pkg_version"
@@ -603,14 +620,14 @@ def _load_files(state_root: Path, record: Mapping[str, Any], game_id: str, versi
             raise PackageFilesCacheError("package 文件缓存损坏")
         for base in _direct_bases(groups, game_id):
             try:
-                raw = _download_direct(upstream, base + "/pkg_version", timeout)
+                raw = _download_direct(upstream, base + "/pkg_version")
                 files = _parse_pkg_version(raw, base)
                 _atomic_write(raw_path, raw)
                 _atomic_json(index_path, {"schema_version": CACHE_SCHEMA_VERSION, "fetch_mode": "official_scattered_files", "download_base": base, "network_bytes": len(raw), "raw_sha256": hashlib.sha256(raw).hexdigest(), "files": files})
                 return files, len(raw), {"fetch_mode": "official_scattered_files", "download_base": base}
-            except PackageFilesError:
+            except _PackageFilesMissing:
                 continue
-        reader = _ArchiveReader(groups, upstream, timeout)
+        reader = _ArchiveReader(groups, upstream)
         raw = reader.extract_pkg_version()
         files = _parse_pkg_version(raw)
         _atomic_write(raw_path, raw)
@@ -667,19 +684,19 @@ def _directory_page(files: list[dict[str, Any]], path: str, q: str | None, limit
     }
 
 
-def list_files(state_root: Path, record: Mapping[str, Any], game_id: str, version: str, identity: str = "game", path: str = "", q: str | None = None, limit: int = 100, cursor: str | None = None, upstream: Any | None = None, timeout: float = DEFAULT_TIMEOUT) -> dict[str, Any]:
-    files, network_bytes, meta = _load_files(Path(state_root), record, game_id, version, identity, upstream, timeout)
+def list_files(state_root: Path, record: Mapping[str, Any], game_id: str, version: str, identity: str = "game", path: str = "", q: str | None = None, limit: int = 100, cursor: str | None = None, upstream: Any | None = None) -> dict[str, Any]:
+    files, network_bytes, meta = _load_files(Path(state_root), record, game_id, version, identity, upstream)
     result = _directory_page(files, path, q, limit, cursor)
     result.update({"source": "package_pkg_version", "fetch_mode": meta["fetch_mode"], "identity": identity, "network_bytes": network_bytes, "range_bytes": network_bytes})
     return result
 
 
-def file_detail(state_root: Path, record: Mapping[str, Any], game_id: str, version: str, identity: str, path: str, upstream: Any | None = None, timeout: float = DEFAULT_TIMEOUT) -> dict[str, Any]:
+def file_detail(state_root: Path, record: Mapping[str, Any], game_id: str, version: str, identity: str, path: str, upstream: Any | None = None) -> dict[str, Any]:
     try:
         wanted = strict_relative_posix(path)
     except ManifestBadRequest as error:
         raise PackageFilesBadRequest("path 无效") from error
-    files, network_bytes, meta = _load_files(Path(state_root), record, game_id, version, identity, upstream, timeout)
+    files, network_bytes, meta = _load_files(Path(state_root), record, game_id, version, identity, upstream)
     for item in files:
         if item["path"] == wanted:
             result = {key: value for key, value in item.items() if key != "type" and key != "chunks"}
@@ -689,5 +706,5 @@ def file_detail(state_root: Path, record: Mapping[str, Any], game_id: str, versi
 
 
 __all__ = [
-    "PackageFilesBadRequest", "PackageFilesCacheError", "PackageFilesError", "PackageFilesNotFound", "PackageFilesTimeout", "PackageFilesUpstream", "file_detail", "list_files",
+    "PackageFilesBadRequest", "PackageFilesCacheError", "PackageFilesError", "PackageFilesNotFound", "PackageFilesTimeout", "PackageFilesUnsupported", "PackageFilesUpstream", "file_detail", "list_files",
 ]
