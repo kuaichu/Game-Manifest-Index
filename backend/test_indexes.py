@@ -8,13 +8,14 @@ from backend.indexes import IndexReadError, index_path, read_index, rebuild_inde
 
 
 def make_record(platform, version, *, vendor="v", game_id="g", domain="d", visible=True,
-                artifacts=None, state="available", size=10):
+                artifacts=None, references=None, state="available", size=10):
     if artifacts is None:
         artifacts = [{"kind": "apk" if platform == "android" else "package", "component": "game",
                       "package_type": "full", "size": size,
                       "urls": [{"url": "https://example.invalid/a", "current": {"state": state}}]}]
     return {"vendor": vendor, "game_id": game_id, "domain_id": domain, "platform": platform,
-            "version": version, "file_time": "t", "is_visible": visible, "artifacts": artifacts}
+            "version": version, "file_time": "t", "is_visible": visible, "artifacts": artifacts,
+            "references": [] if references is None else references}
 
 
 def write_record(directory, name, value):
@@ -54,6 +55,35 @@ class IndexTests(unittest.TestCase):
                          for part, size in ((1, 4), (2, 6))]
             write_record(directory, "v.json", make_record("windows", "1", artifacts=artifacts))
             self.assertEqual(read_index(rebuild_index(root, "v", "g", "pc"))["versions"][0]["size"], 10)
+
+    def test_pc_chunk_manifest_reference_only_version_is_indexed(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            directory = root / "v" / "g" / "pc"
+            directory.mkdir(parents=True)
+            write_record(directory, "v.json", make_record(
+                "windows", "1", artifacts=[],
+                references=[{"kind": "chunk_manifest", "path": "chunk-manifests/1.json"}],
+            ))
+            self.assertEqual(
+                read_index(rebuild_index(root, "v", "g", "pc"))["versions"],
+                [{"version": "1", "updated_at": "t", "available": None, "size": None}],
+            )
+
+    def test_pc_does_not_index_non_browsable_reference_only_version(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            directory = root / "v" / "g" / "pc"
+            directory.mkdir(parents=True)
+            write_record(directory, "bad-kind.json", make_record(
+                "windows", "1", artifacts=[],
+                references=[{"kind": "other", "path": "chunk-manifests/1.json"}],
+            ))
+            write_record(directory, "bad-path.json", make_record(
+                "windows", "2", artifacts=[],
+                references=[{"kind": "chunk_manifest", "path": "../chunk-manifests/2.json"}],
+            ))
+            self.assertFalse(rebuild_index(root, "v", "g", "pc").exists())
 
     def test_pc_availability_aggregation(self):
         with tempfile.TemporaryDirectory() as temp:
