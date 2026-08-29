@@ -730,10 +730,10 @@ describe("archive cross-game navigation", () => {
       capabilities: ["packages"], adapter: "hoyo",
       version_count: 1, latest_version: "5.5.0", sort_order: 0,
       capability_contract: {
-        artifact_fields: { urls: "supported", availability: "supported", size: "supported", checksum: "supported" },
-        url_source_kinds: ["official", "mirror"],
-        actions: { open: "conditional", copy: "conditional", download: "conditional" },
-        availability_source_kinds: ["live_probe"], live_probe: true,
+        artifact_fields: { availability: "supported", size: "supported", checksum: "supported" },
+        url_source_kinds: ["official"],
+        actions: { download: "conditional" },
+        availability_source_kinds: [], live_probe: false,
       },
     };
     const version = {

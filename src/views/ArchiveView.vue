@@ -1423,7 +1423,7 @@ function artifactDownloadUrl(artifact: Artifact): string | undefined {
 function archiveAvailabilityLabel(artifact: Artifact): string {
   return artifactActionLabel(artifact);
 }
-function preferredAvailableUrl(artifact: Artifact, action: "open" | "copy" = "open"): string | undefined {
+function preferredAvailableUrl(artifact: Artifact, action: "open" | "copy" | "download" = "download"): string | undefined {
   return preferredDomainArtifactAction(domain.value, artifact, action)?.url;
 }
 function actionableCandidate(artifact: Artifact, sourceKind: string) {
