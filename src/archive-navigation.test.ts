@@ -603,6 +603,52 @@ describe("archive cross-game navigation", () => {
     app.unmount();
   });
 
+  it("shows the canonical APK file time on the Android APK page", async () => {
+    const game = { id: "hk4e", name: "原神", sub_name: "Genshin Impact", icon_source: "", sort_order: 0 };
+    const domain = {
+      id: "hk4e-android", game_id: "hk4e", kind: "apk", platform: "android",
+      capabilities: ["apk"], adapter: "android", version_count: 1, latest_version: "5.5.0", sort_order: 0,
+      capability_contract: {
+        artifact_fields: { size: "supported", checksum: "supported", urls: "supported", availability: "supported" },
+        version_fields: { observed_at: "supported" },
+      },
+    };
+    const version = {
+      version: "5.5.0", current_revision_id: 1, revision_count: 1, observed_at: "2025-03-14T10:58:25Z",
+      packed_size: 383653626, unpacked_size: 0, artifact_count: 1,
+      artifact_kinds: { apk: { count: 1, size: 383653626, availability_states: { available: 1 } } },
+      availability_states: { available: 1 }, attributes: {}, provenance: {},
+    };
+    const record = {
+      vendor: "mihoyo", game_id: "hk4e", platform: "android", channel: "official", version: "5.5.0",
+      version_code: null, filename: "yuanshen_5.5.0.apk", url: "https://autopatchcn.yuanshen.com/yuanshen.apk",
+      size: 383653626, checksum: { etag: null, crc64: "13006711456810827503", md5: null },
+      file_time: "2025-03-14T10:58:25Z", status: { http_code: 206, available: true, last_checked_at: "2026-08-29T01:00:00Z" },
+    };
+    vi.spyOn(api, "games").mockResolvedValue([game] as never);
+    vi.spyOn(api, "domains").mockResolvedValue([domain] as never);
+    vi.spyOn(api, "versions").mockResolvedValue([version] as never);
+    vi.spyOn(api, "versionRecord").mockResolvedValue(record as never);
+
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: "/games/:gameId/:domainId?/:version?/:mode?", name: "archive", component: ArchiveView }],
+    });
+    await router.push("/games/hk4e/hk4e-android/5.5.0/apk");
+    await router.isReady();
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const app = createApp(ArchiveView);
+    app.use(router);
+    app.mount(root);
+    await flushUpdates();
+    await flushUpdates();
+
+    expect(root.querySelector(".panel-meta-inline")?.textContent).toContain("文件时间");
+    expect(root.querySelector(".panel-meta-inline")?.textContent).toContain("2025.03.14 18:58");
+    app.unmount();
+  });
+
   it("keeps a user-selected compare base when switching compare platforms", async () => {
     const game = { id: "hk4e", name: "原神", sub_name: "Genshin Impact", icon_source: "", sort_order: 0 };
     const pcDomain = {

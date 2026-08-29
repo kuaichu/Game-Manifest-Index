@@ -590,6 +590,7 @@ const versionMetaSummary = computed(() => {
     (chunkDetail.value?.manifests?.[0]?.last_modified_at || "");
   const releaseTime = summary.source_released_at;
   const updateTime = summary.source_updated_at;
+  const apkFileTime = mode.value === "apk" ? summary.observed_at : null;
   const importedTime = summary.archived_at || summary.imported_at;
 
   if (mode.value === "chunks" && manifestTime) {
@@ -611,6 +612,11 @@ const versionMetaSummary = computed(() => {
     const formatted = formatObservedDate(updateTime);
     if (formatted && formatted !== "不支持" && formatted !== "-") {
       items.push({ label: "更新时间", value: formatted, isMono: true });
+    }
+  } else if (apkFileTime) {
+    const formatted = formatObservedDate(apkFileTime);
+    if (formatted && formatted !== "不支持" && formatted !== "-") {
+      items.push({ label: "文件时间", value: formatted, isMono: true });
     }
   } else if (importedTime) {
     const formatted = formatObservedDate(importedTime);
