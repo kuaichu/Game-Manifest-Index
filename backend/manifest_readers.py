@@ -153,6 +153,53 @@ class HttpUpstream:
             raise ManifestUpstream("官方资源请求失败") from error
         raise ManifestUpstream("官方资源请求失败")
 
+    def get_range(
+        self,
+        url: str,
+        *,
+        start: int,
+        end: int,
+        allowed_hosts: frozenset[str],
+        max_bytes: int,
+    ) -> tuple[bytes, Mapping[str, str]]:
+        """Fetch one bounded byte range without following redirects."""
+        _validated_https_url(url, allowed_hosts)
+        if start < 0 or end < start or end - start + 1 > max_bytes:
+            raise ManifestUpstream("官方资源 Range 无效")
+        expected = end - start + 1
+        try:
+            with httpx.Client(timeout=self.timeout, follow_redirects=False, transport=self.transport, trust_env=False) as client:
+                with client.stream("GET", url, headers={"Accept": "application/octet-stream", "Range": f"bytes={start}-{end}"}) as response:
+                    if response.status_code == 404:
+                        raise ManifestNotFound("官方资源不存在")
+                    if response.status_code != 206:
+                        raise ManifestUpstream("官方资源不支持 Range")
+                    content_range = response.headers.get("content-range", "")
+                    if not re.fullmatch(rf"bytes {start}-{end}/[1-9][0-9]*", content_range):
+                        raise ManifestUpstream("官方资源 Content-Range 无效")
+                    length = response.headers.get("content-length")
+                    if length is not None:
+                        try:
+                            if int(length) != expected:
+                                raise ManifestUpstream("官方资源 Range 长度无效")
+                        except ValueError as error:
+                            raise ManifestUpstream("官方资源 Range 长度无效") from error
+                    body = bytearray()
+                    for block in response.iter_bytes(64 * 1024):
+                        body.extend(block)
+                        if len(body) > expected or len(body) > max_bytes:
+                            raise ManifestUpstream("官方资源 Range 过大")
+                    if len(body) != expected:
+                        raise ManifestUpstream("官方资源 Range 响应不完整")
+                    return bytes(body), dict(response.headers)
+        except ManifestError:
+            raise
+        except httpx.TimeoutException as error:
+            raise ManifestTimeout("官方资源请求超时") from error
+        except httpx.HTTPError as error:
+            raise ManifestUpstream("官方资源请求失败") from error
+        raise ManifestUpstream("官方资源请求失败")
+
 
 def strict_relative_posix(value: Any, *, allow_empty: bool = False) -> str:
     if not isinstance(value, str) or (not value and not allow_empty):
