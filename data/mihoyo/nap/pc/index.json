@@ -116,6 +116,12 @@
       "updated_at": "2024-06-21T04:08:14Z",
       "available": true,
       "size": 53835050475
+    },
+    {
+      "version": "0.2.0",
+      "updated_at": null,
+      "available": null,
+      "size": 0
     }
   ],
   "domain_id": "nap-pc"

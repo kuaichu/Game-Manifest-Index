@@ -1,0 +1,324 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "hkrpg",
+  "domain_id": "hkrpg-pc",
+  "platform": "windows",
+  "channel": "official",
+  "version": "1.6.0",
+  "version_code": null,
+  "file_time": null,
+  "artifacts": [
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "archive",
+      "name": "StarRail_1.6.0.zip",
+      "size": 22116794598,
+      "urls": [
+        {
+          "url": "https://autopatchcn.bhsr.com/client/cn/20231215090743_ffCg5V2j0gON2tvr/PC/StarRail_1.6.0.zip",
+          "provider": "autopatchcn.bhsr.com",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "third_party_history",
+        "source_name": "HoyoFiles/Amarea",
+        "source_url": "https://hoyo-files.amarea.cn"
+      },
+      "checksum": {
+        "md5": "b06aae06e1541e8e1c35ae840371daaa"
+      },
+      "artifact_id": "a1_e7b30f58e02cd84fe2d2226dd920a7f8"
+    },
+    {
+      "kind": "package",
+      "component": "voice",
+      "package_type": "optional",
+      "delivery_mode": "archive",
+      "name": "English.zip",
+      "size": 3841377915,
+      "urls": [
+        {
+          "url": "https://autopatchcn.bhsr.com/client/cn/20231215090743_ffCg5V2j0gON2tvr/PC/English.zip",
+          "provider": "autopatchcn.bhsr.com",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "third_party_history",
+        "source_name": "HoyoFiles/Amarea",
+        "source_url": "https://hoyo-files.amarea.cn"
+      },
+      "checksum": {
+        "md5": "593d5cc23bd0d03c7f70a08e572b890e"
+      },
+      "language": "en-us",
+      "artifact_id": "a1_6053d879f8a6862b83bdd214b5792fff"
+    },
+    {
+      "kind": "package",
+      "component": "voice",
+      "package_type": "optional",
+      "delivery_mode": "archive",
+      "name": "Japanese.zip",
+      "size": 4167166856,
+      "urls": [
+        {
+          "url": "https://autopatchcn.bhsr.com/client/cn/20231215090743_ffCg5V2j0gON2tvr/PC/Japanese.zip",
+          "provider": "autopatchcn.bhsr.com",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "third_party_history",
+        "source_name": "HoyoFiles/Amarea",
+        "source_url": "https://hoyo-files.amarea.cn"
+      },
+      "checksum": {
+        "md5": "ea158062f4638c257c64c459b1f5963d"
+      },
+      "language": "ja-jp",
+      "artifact_id": "a1_84ea94816ae420534966af004d6958f7"
+    },
+    {
+      "kind": "package",
+      "component": "voice",
+      "package_type": "optional",
+      "delivery_mode": "archive",
+      "name": "Korean.zip",
+      "size": 3283451390,
+      "urls": [
+        {
+          "url": "https://autopatchcn.bhsr.com/client/cn/20231215090743_ffCg5V2j0gON2tvr/PC/Korean.zip",
+          "provider": "autopatchcn.bhsr.com",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "third_party_history",
+        "source_name": "HoyoFiles/Amarea",
+        "source_url": "https://hoyo-files.amarea.cn"
+      },
+      "checksum": {
+        "md5": "d54988b95af7d35f689ccb82d5b6cd1b"
+      },
+      "language": "ko-kr",
+      "artifact_id": "a1_8ce0b4a768ef45ec0b108d925d6027ed"
+    },
+    {
+      "kind": "package",
+      "component": "voice",
+      "package_type": "optional",
+      "delivery_mode": "archive",
+      "name": "Chinese.zip",
+      "size": 3239856873,
+      "urls": [
+        {
+          "url": "https://autopatchcn.bhsr.com/client/cn/20231215090743_ffCg5V2j0gON2tvr/PC/Chinese.zip",
+          "provider": "autopatchcn.bhsr.com",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "third_party_history",
+        "source_name": "HoyoFiles/Amarea",
+        "source_url": "https://hoyo-files.amarea.cn"
+      },
+      "checksum": {
+        "md5": "10d364567cc5a5f0ccc80c4250c19eed"
+      },
+      "language": "zh-cn",
+      "artifact_id": "a1_9e827b2c3ab686e6667c3c2f5e987d77"
+    },
+    {
+      "kind": "package",
+      "component": "voice",
+      "package_type": "optional",
+      "delivery_mode": "archive",
+      "name": "Chinese.zip",
+      "size": 3239856873,
+      "urls": [
+        {
+          "url": "https://autopatchcn.bhsr.com/client/cn/20231215090743_ffCg5V2j0gON2tvr/PC/Chinese.zip",
+          "provider": "autopatchcn.bhsr.com",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "third_party_history",
+        "source_name": "HoyoFiles/Amarea",
+        "source_url": "https://hoyo-files.amarea.cn"
+      },
+      "checksum": {
+        "md5": "10d364567cc5a5f0ccc80c4250c19eed"
+      },
+      "language": "zh-tw",
+      "artifact_id": "a1_77de932f348115458d94126fff56fa64"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "game_1.5.0_1.6.0_hdiff_J95qxDtHQf2vBRal.zip",
+      "size": 11969574642,
+      "urls": [
+        {
+          "url": "https://autopatchcn.bhsr.com/client/hkrpg_cn/33/game_1.5.0_1.6.0_hdiff_J95qxDtHQf2vBRal.zip",
+          "provider": "autopatchcn.bhsr.com",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "third_party_history",
+        "source_name": "HoyoFiles/Amarea",
+        "source_url": "https://hoyo-files.amarea.cn"
+      },
+      "route_from": "1.5.0",
+      "route_to": "1.6.0",
+      "artifact_id": "a1_b81ffc9082ae54b292e5f44369ecb843"
+    },
+    {
+      "kind": "patch",
+      "component": "voice",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "en-us_1.5.0_1.6.0_hdiff_Cm5WeNnawEg9HtGZ.zip",
+      "size": 263005047,
+      "urls": [
+        {
+          "url": "https://autopatchcn.bhsr.com/client/hkrpg_cn/33/en-us_1.5.0_1.6.0_hdiff_Cm5WeNnawEg9HtGZ.zip",
+          "provider": "autopatchcn.bhsr.com",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "third_party_history",
+        "source_name": "HoyoFiles/Amarea",
+        "source_url": "https://hoyo-files.amarea.cn"
+      },
+      "route_from": "1.5.0",
+      "route_to": "1.6.0",
+      "language": "en-us",
+      "artifact_id": "a1_6abdbc837b7d4053f68d4b0ff6d195da"
+    },
+    {
+      "kind": "patch",
+      "component": "voice",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "ja-jp_1.5.0_1.6.0_hdiff_u3MlzpydKDRY2PGk.zip",
+      "size": 272347727,
+      "urls": [
+        {
+          "url": "https://autopatchcn.bhsr.com/client/hkrpg_cn/33/ja-jp_1.5.0_1.6.0_hdiff_u3MlzpydKDRY2PGk.zip",
+          "provider": "autopatchcn.bhsr.com",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "third_party_history",
+        "source_name": "HoyoFiles/Amarea",
+        "source_url": "https://hoyo-files.amarea.cn"
+      },
+      "route_from": "1.5.0",
+      "route_to": "1.6.0",
+      "language": "ja-jp",
+      "artifact_id": "a1_c5ad924e7e629686f905f44beccf32c8"
+    },
+    {
+      "kind": "patch",
+      "component": "voice",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "ko-kr_1.5.0_1.6.0_hdiff_GZp4t5D1TSj7c8MB.zip",
+      "size": 225722882,
+      "urls": [
+        {
+          "url": "https://autopatchcn.bhsr.com/client/hkrpg_cn/33/ko-kr_1.5.0_1.6.0_hdiff_GZp4t5D1TSj7c8MB.zip",
+          "provider": "autopatchcn.bhsr.com",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "third_party_history",
+        "source_name": "HoyoFiles/Amarea",
+        "source_url": "https://hoyo-files.amarea.cn"
+      },
+      "route_from": "1.5.0",
+      "route_to": "1.6.0",
+      "language": "ko-kr",
+      "artifact_id": "a1_414abe5eb19f37f5d685c5e35f996a7b"
+    },
+    {
+      "kind": "patch",
+      "component": "voice",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "zh-cn_1.5.0_1.6.0_hdiff_s6iunpdeBXTcqYGw.zip",
+      "size": 211959382,
+      "urls": [
+        {
+          "url": "https://autopatchcn.bhsr.com/client/hkrpg_cn/33/zh-cn_1.5.0_1.6.0_hdiff_s6iunpdeBXTcqYGw.zip",
+          "provider": "autopatchcn.bhsr.com",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "third_party_history",
+        "source_name": "HoyoFiles/Amarea",
+        "source_url": "https://hoyo-files.amarea.cn"
+      },
+      "route_from": "1.5.0",
+      "route_to": "1.6.0",
+      "language": "zh-cn",
+      "artifact_id": "a1_4592122a714589c5896dd61110a45b3b"
+    },
+    {
+      "kind": "patch",
+      "component": "voice",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "zh-tw_1.5.0_1.6.0_hdiff_i3VdYwWoZyIra5ju.zip",
+      "size": 211959382,
+      "urls": [
+        {
+          "url": "https://autopatchcn.bhsr.com/client/hkrpg_cn/33/zh-tw_1.5.0_1.6.0_hdiff_i3VdYwWoZyIra5ju.zip",
+          "provider": "autopatchcn.bhsr.com",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "third_party_history",
+        "source_name": "HoyoFiles/Amarea",
+        "source_url": "https://hoyo-files.amarea.cn"
+      },
+      "route_from": "1.5.0",
+      "route_to": "1.6.0",
+      "language": "zh-tw",
+      "artifact_id": "a1_bf678ffa3b7f54882388ceffc88119f0"
+    }
+  ],
+  "references": [],
+  "provenance": {
+    "source_kind": "third_party_history",
+    "source_name": "HoyoFiles/Amarea",
+    "source_url": "https://hoyo-files.amarea.cn"
+  },
+  "is_visible": true
+}

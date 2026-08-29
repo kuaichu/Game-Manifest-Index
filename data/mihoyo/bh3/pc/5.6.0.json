@@ -1,0 +1,42 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "bh3",
+  "domain_id": "bh3-pc",
+  "platform": "windows",
+  "channel": "official",
+  "version": "5.6.0",
+  "version_code": null,
+  "file_time": null,
+  "artifacts": [
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "archive",
+      "name": "BH3_v5.6.0_e9b301f2edac.7z",
+      "size": 0,
+      "urls": [
+        {
+          "url": "https://bundle.bh3.com/ptpublic/rel/20220308195925_CQP628TAPz6hlV25/PC/BH3_v5.6.0_e9b301f2edac.7z",
+          "provider": "bundle.bh3.com",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "third_party_history",
+        "source_name": "HoyoFiles/Amarea",
+        "source_url": "https://hoyo-files.amarea.cn"
+      },
+      "artifact_id": "a1_348a430c87710e2e956943a0e0612b6d"
+    }
+  ],
+  "references": [],
+  "provenance": {
+    "source_kind": "third_party_history",
+    "source_name": "HoyoFiles/Amarea",
+    "source_url": "https://hoyo-files.amarea.cn"
+  },
+  "is_visible": true
+}

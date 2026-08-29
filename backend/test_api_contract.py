@@ -608,11 +608,11 @@ class CheckedInContractTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.client = TestClient(app)
 
-    def test_checked_in_inventory_is_12_games_and_20_domains(self):
+    def test_checked_in_inventory_is_12_games_and_23_domains(self):
         games = self.client.get("/api/v1/games").json()
         self.assertEqual(len(games), 12)
         domains = [domain for game in games for domain in self.client.get(f"/api/v1/games/{game['id']}/domains").json()]
-        self.assertEqual(len(domains), 20)
+        self.assertEqual(len(domains), 23)
 
     def test_checked_in_android_mihoyo_kuro_and_perfectworld_records(self):
         for path in (

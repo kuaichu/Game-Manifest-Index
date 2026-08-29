@@ -1,0 +1,2515 @@
+{
+  "schema_version": 2,
+  "vendor": "hypergryph",
+  "game_id": "endfield",
+  "domain_id": "endfield-pc",
+  "platform": "windows",
+  "channel": "official",
+  "version": "1.2.5",
+  "version_code": null,
+  "file_time": null,
+  "artifacts": [
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.001",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.001",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.001",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "4fb5ccfd35ab7567cec71bc86a392bd7"
+      },
+      "part": 1,
+      "artifact_id": "a1_aa962e7d0884f7112183b8579594b00a"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.002",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.002",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.002",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "3ff4d614c3a936f1c9129fcde78da2cf"
+      },
+      "part": 2,
+      "artifact_id": "a1_18c7c629e497b29cc124c38702f7c57f"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.003",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.003",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.003",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "de5964bf01418446ad4854ae70a93133"
+      },
+      "part": 3,
+      "artifact_id": "a1_bc083825e969bee2295c623e39c26d3d"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.004",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.004",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.004",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "ff218f74d998f3e4acf66e1cde7a6566"
+      },
+      "part": 4,
+      "artifact_id": "a1_c29cc1dcb5995562b6f04c82088a84bb"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.005",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.005",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.005",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "e976d806d93d312d6ea2c7cbcc6b376a"
+      },
+      "part": 5,
+      "artifact_id": "a1_3e1cb0cc26bc2bbe27732e1af763cc38"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.006",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.006",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.006",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "a93fc75be42c289114868dbc5d8e2c4d"
+      },
+      "part": 6,
+      "artifact_id": "a1_b1e4cfe44b82de4cf0506c786dcd8266"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.007",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.007",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.007",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "986354690eab1262e747d28a2e2d36b3"
+      },
+      "part": 7,
+      "artifact_id": "a1_2259b230a9ccb8094e898a18ec8920cd"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.008",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.008",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.008",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "f11616387ab82b18eaa90e0a7b70f494"
+      },
+      "part": 8,
+      "artifact_id": "a1_89a1402824816cf0be12003692f0fd00"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.009",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.009",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.009",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "dd788c47d401d444ac00ec18ddecfd80"
+      },
+      "part": 9,
+      "artifact_id": "a1_3da9c6518a3a7aae4eb8c5b29f30fb4b"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.010",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.010",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.010",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "1bd3abb7a4f3eb273ff6787efad9fff1"
+      },
+      "part": 10,
+      "artifact_id": "a1_73a42bd226d8e2e7d33345f75f1fd610"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.011",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.011",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.011",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "b0f9d724e13f4b4a7c726c319b20fd0e"
+      },
+      "part": 11,
+      "artifact_id": "a1_25b19ef6e09e99c9d5870fe92cf2e293"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.012",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.012",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.012",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "d19b293273bcf45f94251a41508de44f"
+      },
+      "part": 12,
+      "artifact_id": "a1_b8ad29f9ac163a2f6455ea109961a43c"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.013",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.013",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.013",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "c5a0630a9f705414132e03df38a0790c"
+      },
+      "part": 13,
+      "artifact_id": "a1_9710eaef76cfbc719ce319d08abc5f4d"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.014",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.014",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.014",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "8838e2f245152f248e7cb975d75472bc"
+      },
+      "part": 14,
+      "artifact_id": "a1_dbb9e62176d1c8cf48c4e4ff85bb1ce5"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.015",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.015",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.015",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "e8bd907029888d0afa7f02a96a4a4123"
+      },
+      "part": 15,
+      "artifact_id": "a1_b34ac92d2071fd03f8f562e5f1339967"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.016",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.016",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.016",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "49e02ab4c325d72f6d055381c20025ac"
+      },
+      "part": 16,
+      "artifact_id": "a1_7312c6081b37120ca467a8cddaafe730"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.017",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.017",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.017",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "7ba4fcc339feae5790188ab88dd72df8"
+      },
+      "part": 17,
+      "artifact_id": "a1_64de3bab4abca02204464b99528dde96"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.018",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.018",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.018",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "fea529d9ddb10412c6c653b279dd245f"
+      },
+      "part": 18,
+      "artifact_id": "a1_862699321b82bafa3c1fc5de3ffc58f1"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.019",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.019",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.019",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "20c261ad960a347fc995cb7929be5241"
+      },
+      "part": 19,
+      "artifact_id": "a1_cd25629414c41694e4551cad33b1442c"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.020",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.020",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.020",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "103e08b5b1822f99122e3a45d5f88170"
+      },
+      "part": 20,
+      "artifact_id": "a1_ea7de0387d1835e9225bcbbad4c13e4a"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.021",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.021",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.021",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "78c384ae7fa9bdcea217a4c1f214ce56"
+      },
+      "part": 21,
+      "artifact_id": "a1_292d7c747a6bf44f57e67c212d2171ec"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.022",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.022",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.022",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "8327257f7414053ee6c9d5850562fe7c"
+      },
+      "part": 22,
+      "artifact_id": "a1_53f5b6042419914156f66424e5d6beb1"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.023",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.023",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.023",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "db16a2491e3ca020820fd0489edabc9b"
+      },
+      "part": 23,
+      "artifact_id": "a1_1ced7146ce09cd83c1661a1cf64a5258"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.024",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.024",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.024",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "b24841fee3bc32fc509d134e96c544c5"
+      },
+      "part": 24,
+      "artifact_id": "a1_2b4b256ecc4efdca24a9e0ae644a05fa"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.025",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.025",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.025",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "8ea7d829bc792f33f60bf5794e748bf2"
+      },
+      "part": 25,
+      "artifact_id": "a1_0bbca047d10e6bd4e03690946ba25fef"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.026",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.026",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.026",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "eaf38861eb2893a88ba11916dc11529c"
+      },
+      "part": 26,
+      "artifact_id": "a1_b4d520e5927780488c509c0919c7be6d"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.027",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.027",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.027",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "e3848319e7bd1b577122ae09aeacde50"
+      },
+      "part": 27,
+      "artifact_id": "a1_0636677455413eabf24cefc321f783ba"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.028",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.028",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.028",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "dc1623901d3a47bf19c9cee2ba076446"
+      },
+      "part": 28,
+      "artifact_id": "a1_55c85055221260bda7bb43dac7110c8f"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.029",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.029",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.029",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "0cb9eec40cdc90515d85f9f1e3dbf3a5"
+      },
+      "part": 29,
+      "artifact_id": "a1_940fab0fadfd0b223ab1e2ac6569e528"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.030",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.030",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.030",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "057e4e4fe37724ecda028cdaa8028eb6"
+      },
+      "part": 30,
+      "artifact_id": "a1_79a02a787910bb159481e7c694e21028"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.031",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.031",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.031",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "b35caeb790206611b7cbda81535d3c96"
+      },
+      "part": 31,
+      "artifact_id": "a1_6db97f4e6c51ceaddd4610a574d0e257"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.032",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.032",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.032",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "58eb3436f52b79b55f00f9477a9378ea"
+      },
+      "part": 32,
+      "artifact_id": "a1_d709a7423bf1b1e4870cdecae27f0f7e"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.033",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.033",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.033",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "fc323842d9fb8f00a4939b6b9d60c796"
+      },
+      "part": 33,
+      "artifact_id": "a1_cef030da3f1680592b0955b9c62b8135"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.034",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.034",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.034",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "d1bad6b12b5fb51cef435027aa9bc41a"
+      },
+      "part": 34,
+      "artifact_id": "a1_f13aa8b88ae13ee4427c4da4d3d141e7"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.035",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.035",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.035",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "22654c752578ad5352714ce302a1258c"
+      },
+      "part": 35,
+      "artifact_id": "a1_098167c8cbe63554e53df680287ead0a"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.036",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.036",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.036",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "9d6f097644a929b7ff0c61fb007e6cd4"
+      },
+      "part": 36,
+      "artifact_id": "a1_b9be34e950fb31987f373ef124e57f13"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.037",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.037",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.037",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "6aceca6b940cce172fc6166a89cba5c2"
+      },
+      "part": 37,
+      "artifact_id": "a1_b7b19b9cba74dec10cdfed560e1e1c69"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.038",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.038",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.038",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "86151dd3d476192865038d5a24e210d8"
+      },
+      "part": 38,
+      "artifact_id": "a1_c6e4061468a558373850aa26d47d32d7"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.039",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.039",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.039",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "b59a8a3262ae8950ec9ef20c4a35fefa"
+      },
+      "part": 39,
+      "artifact_id": "a1_26f73d8b601b7d546ff332822c53275c"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.040",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.040",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.040",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "93c50e603d7f19e46ac5069dee73d1ee"
+      },
+      "part": 40,
+      "artifact_id": "a1_8cf008580f54564caf72b751cae3f21d"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.041",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.041",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.041",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "97d6f5af7f9b93e8ae7d5508928ccc05"
+      },
+      "part": 41,
+      "artifact_id": "a1_2aebb1bb3626fad6ed0c8f147b8d020c"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.042",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.042",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.042",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "836e170c67d8ee6328ac9606a53c4f10"
+      },
+      "part": 42,
+      "artifact_id": "a1_0a594075fd0fdfbb164ef4b55b301348"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.043",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.043",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.043",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "a183c6b17c862c170fe4a122d3574d38"
+      },
+      "part": 43,
+      "artifact_id": "a1_ad6c22e054c25f761cc00ef68f7673a8"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.044",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.044",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.044",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "c711141c1984500dbaae7c1fc48ca28b"
+      },
+      "part": 44,
+      "artifact_id": "a1_5850bf181ae189d1d4ce81a527fae301"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.045",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.045",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.045",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "f8c63c1bb2fd601cb0a75833f08d0659"
+      },
+      "part": 45,
+      "artifact_id": "a1_8edfb66912295fb422aa205ed6810371"
+    },
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "segment",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.046",
+      "size": 255796268,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/packs/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.046",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/Beyond_Release_v1d2-Rel-cn-6434019-8_prod_obt_official.zip.046",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "db471eb20b0560102c9bf3751e2265af"
+      },
+      "part": 46,
+      "artifact_id": "a1_5033fd7beb2b0d175d718811583158b8"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d1-Rel-cn-5769412-7_prod_obt_official_1_1_9_cw5Ax_v2.zip.001",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/patches/oraDAJszM7/1.1.9/v2/Beyond_Release_v1d1-Rel-cn-5769412-7_prod_obt_official_1_1_9_cw5Ax_v2.zip.001",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/1.2.5_mStKKtMSeUpoODur_patches_oraDAJszM7_1.1.9_v2_Beyond_Release_v1d1-Rel-cn-5769412-7_prod_obt_official_1_1_9_cw5Ax_v2.zip.001",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "6bf796ddd8975e8930d36e4cd007f952"
+      },
+      "route_from": "1.1.9",
+      "route_to": "1.2.5",
+      "artifact_id": "a1_39a482f23fb8f471a3813070ffa74bf6"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d1-Rel-cn-5769412-7_prod_obt_official_1_1_9_cw5Ax_v2.zip.002",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/patches/oraDAJszM7/1.1.9/v2/Beyond_Release_v1d1-Rel-cn-5769412-7_prod_obt_official_1_1_9_cw5Ax_v2.zip.002",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/1.2.5_mStKKtMSeUpoODur_patches_oraDAJszM7_1.1.9_v2_Beyond_Release_v1d1-Rel-cn-5769412-7_prod_obt_official_1_1_9_cw5Ax_v2.zip.002",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "aeb642fd5949df848dadf7ba708bff8f"
+      },
+      "route_from": "1.1.9",
+      "route_to": "1.2.5",
+      "artifact_id": "a1_7fa3fc101fc5a1b63edadc48bb512b6d"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d1-Rel-cn-5769412-7_prod_obt_official_1_1_9_cw5Ax_v2.zip.003",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/patches/oraDAJszM7/1.1.9/v2/Beyond_Release_v1d1-Rel-cn-5769412-7_prod_obt_official_1_1_9_cw5Ax_v2.zip.003",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/1.2.5_mStKKtMSeUpoODur_patches_oraDAJszM7_1.1.9_v2_Beyond_Release_v1d1-Rel-cn-5769412-7_prod_obt_official_1_1_9_cw5Ax_v2.zip.003",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "28e991538f1b94eb8c674bca7ed4588f"
+      },
+      "route_from": "1.1.9",
+      "route_to": "1.2.5",
+      "artifact_id": "a1_bf9220f335c01df22ac57a019320c31c"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d1-Rel-cn-5769412-7_prod_obt_official_1_1_9_cw5Ax_v2.zip.004",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/patches/oraDAJszM7/1.1.9/v2/Beyond_Release_v1d1-Rel-cn-5769412-7_prod_obt_official_1_1_9_cw5Ax_v2.zip.004",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/1.2.5_mStKKtMSeUpoODur_patches_oraDAJszM7_1.1.9_v2_Beyond_Release_v1d1-Rel-cn-5769412-7_prod_obt_official_1_1_9_cw5Ax_v2.zip.004",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "d42607cb6121ee47e8a93318c2d700b1"
+      },
+      "route_from": "1.1.9",
+      "route_to": "1.2.5",
+      "artifact_id": "a1_22c08a9cc3039ccf03766ca2fd5bfe88"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d1-Rel-cn-5769412-7_prod_obt_official_1_1_9_cw5Ax_v2.zip.005",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/patches/oraDAJszM7/1.1.9/v2/Beyond_Release_v1d1-Rel-cn-5769412-7_prod_obt_official_1_1_9_cw5Ax_v2.zip.005",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/1.2.5_mStKKtMSeUpoODur_patches_oraDAJszM7_1.1.9_v2_Beyond_Release_v1d1-Rel-cn-5769412-7_prod_obt_official_1_1_9_cw5Ax_v2.zip.005",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "b0c893a9bdcef44c81f3005b01d0e6ce"
+      },
+      "route_from": "1.1.9",
+      "route_to": "1.2.5",
+      "artifact_id": "a1_904c476e540a6d440da6dff4c86c3ed9"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d1-Rel-cn-5769412-7_prod_obt_official_1_1_9_cw5Ax_v2.zip.006",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/patches/oraDAJszM7/1.1.9/v2/Beyond_Release_v1d1-Rel-cn-5769412-7_prod_obt_official_1_1_9_cw5Ax_v2.zip.006",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/1.2.5_mStKKtMSeUpoODur_patches_oraDAJszM7_1.1.9_v2_Beyond_Release_v1d1-Rel-cn-5769412-7_prod_obt_official_1_1_9_cw5Ax_v2.zip.006",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "4239370b4dd9f56cda0108417d9b1b0e"
+      },
+      "route_from": "1.1.9",
+      "route_to": "1.2.5",
+      "artifact_id": "a1_79c4f4a5f171bbb7d4f67607799fc60b"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d1-Rel-cn-5769412-7_prod_obt_official_1_1_9_cw5Ax_v2.zip.007",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/patches/oraDAJszM7/1.1.9/v2/Beyond_Release_v1d1-Rel-cn-5769412-7_prod_obt_official_1_1_9_cw5Ax_v2.zip.007",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/1.2.5_mStKKtMSeUpoODur_patches_oraDAJszM7_1.1.9_v2_Beyond_Release_v1d1-Rel-cn-5769412-7_prod_obt_official_1_1_9_cw5Ax_v2.zip.007",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "4f95229caccf64b55fad26082183fa57"
+      },
+      "route_from": "1.1.9",
+      "route_to": "1.2.5",
+      "artifact_id": "a1_422c99e85c36cff91d9becf657df0558"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d1-Rel-cn-5769412-7_prod_obt_official_1_1_9_cw5Ax_v2.zip.008",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/patches/oraDAJszM7/1.1.9/v2/Beyond_Release_v1d1-Rel-cn-5769412-7_prod_obt_official_1_1_9_cw5Ax_v2.zip.008",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/1.2.5_mStKKtMSeUpoODur_patches_oraDAJszM7_1.1.9_v2_Beyond_Release_v1d1-Rel-cn-5769412-7_prod_obt_official_1_1_9_cw5Ax_v2.zip.008",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "79a8c476b2877da7f54e76966a066164"
+      },
+      "route_from": "1.1.9",
+      "route_to": "1.2.5",
+      "artifact_id": "a1_f91782a71ed6007e141b2dcaf0093b04"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d1-Rel-cn-5769412-7_prod_obt_official_1_1_9_cw5Ax_v2.zip.009",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/patches/oraDAJszM7/1.1.9/v2/Beyond_Release_v1d1-Rel-cn-5769412-7_prod_obt_official_1_1_9_cw5Ax_v2.zip.009",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/1.2.5_mStKKtMSeUpoODur_patches_oraDAJszM7_1.1.9_v2_Beyond_Release_v1d1-Rel-cn-5769412-7_prod_obt_official_1_1_9_cw5Ax_v2.zip.009",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "0e809853c429479305feb86246b671ee"
+      },
+      "route_from": "1.1.9",
+      "route_to": "1.2.5",
+      "artifact_id": "a1_ca313eec926439ce96fac598414055c5"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d1-Rel-cn-5769412-7_prod_obt_official_1_1_9_cw5Ax_v2.zip.010",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/patches/oraDAJszM7/1.1.9/v2/Beyond_Release_v1d1-Rel-cn-5769412-7_prod_obt_official_1_1_9_cw5Ax_v2.zip.010",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/1.2.5_mStKKtMSeUpoODur_patches_oraDAJszM7_1.1.9_v2_Beyond_Release_v1d1-Rel-cn-5769412-7_prod_obt_official_1_1_9_cw5Ax_v2.zip.010",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "8eaf2afcdea3722efd95adc246ff282f"
+      },
+      "route_from": "1.1.9",
+      "route_to": "1.2.5",
+      "artifact_id": "a1_833f4f6d210ffa053dc50da5ed72f461"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d1-Rel-cn-5769412-7_prod_obt_official_1_1_9_cw5Ax_v2.zip.011",
+      "size": 221834582,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/patches/oraDAJszM7/1.1.9/v2/Beyond_Release_v1d1-Rel-cn-5769412-7_prod_obt_official_1_1_9_cw5Ax_v2.zip.011",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/1.2.5_mStKKtMSeUpoODur_patches_oraDAJszM7_1.1.9_v2_Beyond_Release_v1d1-Rel-cn-5769412-7_prod_obt_official_1_1_9_cw5Ax_v2.zip.011",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "e4ee8d7ccc78239812398d0ba08b71ab"
+      },
+      "route_from": "1.1.9",
+      "route_to": "1.2.5",
+      "artifact_id": "a1_a9ebe5b2fcd071df07795ae12959d1f9"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.001",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/patches/oraDAJszM7/1.0.14/v2/Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.001",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/1.2.5_mStKKtMSeUpoODur_patches_oraDAJszM7_1.0.14_v2_Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.001",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "44111654dfbfce5d069947bfb1d868c7"
+      },
+      "route_from": "1.0.14",
+      "route_to": "1.2.5",
+      "artifact_id": "a1_c1c18ebb6547cb15ae1ad20b1b65eb14"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.002",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/patches/oraDAJszM7/1.0.14/v2/Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.002",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/1.2.5_mStKKtMSeUpoODur_patches_oraDAJszM7_1.0.14_v2_Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.002",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "93c926ac6f7c1a8618bbc25559a897e1"
+      },
+      "route_from": "1.0.14",
+      "route_to": "1.2.5",
+      "artifact_id": "a1_5d69e84495bcd6951e300e2c7ba6cd03"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.003",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/patches/oraDAJszM7/1.0.14/v2/Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.003",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/1.2.5_mStKKtMSeUpoODur_patches_oraDAJszM7_1.0.14_v2_Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.003",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "683cdc86561e2dabe91383a712a49e51"
+      },
+      "route_from": "1.0.14",
+      "route_to": "1.2.5",
+      "artifact_id": "a1_1dfbccfa86f5444831952de2aeac2054"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.004",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/patches/oraDAJszM7/1.0.14/v2/Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.004",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/1.2.5_mStKKtMSeUpoODur_patches_oraDAJszM7_1.0.14_v2_Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.004",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "9e2a08ad6ac094edfe7066685021d426"
+      },
+      "route_from": "1.0.14",
+      "route_to": "1.2.5",
+      "artifact_id": "a1_bacda74ecc81654ea23494fa32bee284"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.005",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/patches/oraDAJszM7/1.0.14/v2/Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.005",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/1.2.5_mStKKtMSeUpoODur_patches_oraDAJszM7_1.0.14_v2_Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.005",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "d49263153683abc015c03a5c9c450c7e"
+      },
+      "route_from": "1.0.14",
+      "route_to": "1.2.5",
+      "artifact_id": "a1_6102ce8a396b8164fbb6bbdc3be7a6b3"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.006",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/patches/oraDAJszM7/1.0.14/v2/Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.006",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/1.2.5_mStKKtMSeUpoODur_patches_oraDAJszM7_1.0.14_v2_Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.006",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "08e0f2009e41ddeaf3f7fc23842a4dff"
+      },
+      "route_from": "1.0.14",
+      "route_to": "1.2.5",
+      "artifact_id": "a1_f208454e2be1636f68eb2ce1f3cea923"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.007",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/patches/oraDAJszM7/1.0.14/v2/Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.007",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/1.2.5_mStKKtMSeUpoODur_patches_oraDAJszM7_1.0.14_v2_Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.007",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "a515e20306dc3dc4f3893198b6618f3f"
+      },
+      "route_from": "1.0.14",
+      "route_to": "1.2.5",
+      "artifact_id": "a1_e62125f286a89366ab844385b0219e03"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.008",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/patches/oraDAJszM7/1.0.14/v2/Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.008",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/1.2.5_mStKKtMSeUpoODur_patches_oraDAJszM7_1.0.14_v2_Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.008",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "af7e6060b8fae0aca75e6aaafbb44b05"
+      },
+      "route_from": "1.0.14",
+      "route_to": "1.2.5",
+      "artifact_id": "a1_9d8e76b4ad3c9bedcc7c4963444a026e"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.009",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/patches/oraDAJszM7/1.0.14/v2/Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.009",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/1.2.5_mStKKtMSeUpoODur_patches_oraDAJszM7_1.0.14_v2_Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.009",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "8fcab588286f6372feb6811150e6e0a0"
+      },
+      "route_from": "1.0.14",
+      "route_to": "1.2.5",
+      "artifact_id": "a1_e443101412a9e19899d5dca626a75875"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.010",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/patches/oraDAJszM7/1.0.14/v2/Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.010",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/1.2.5_mStKKtMSeUpoODur_patches_oraDAJszM7_1.0.14_v2_Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.010",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "9b18d8093a1f1d3f60999d9d5fd638ac"
+      },
+      "route_from": "1.0.14",
+      "route_to": "1.2.5",
+      "artifact_id": "a1_0cb860f9d2eeaf2ca92fdba8ea68a269"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.011",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/patches/oraDAJszM7/1.0.14/v2/Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.011",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/1.2.5_mStKKtMSeUpoODur_patches_oraDAJszM7_1.0.14_v2_Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.011",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "fdfbfa2e353b956d666a3eedca71be25"
+      },
+      "route_from": "1.0.14",
+      "route_to": "1.2.5",
+      "artifact_id": "a1_d003ce8f93db87dc4b824965fdc14c60"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.012",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/patches/oraDAJszM7/1.0.14/v2/Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.012",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/1.2.5_mStKKtMSeUpoODur_patches_oraDAJszM7_1.0.14_v2_Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.012",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "3238e185f55ee103b0f7d2bbae3796a1"
+      },
+      "route_from": "1.0.14",
+      "route_to": "1.2.5",
+      "artifact_id": "a1_8b3c1273b113269f3975399bffd85718"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.013",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/patches/oraDAJszM7/1.0.14/v2/Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.013",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/1.2.5_mStKKtMSeUpoODur_patches_oraDAJszM7_1.0.14_v2_Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.013",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "d454b34cca314ed079d88712445205dd"
+      },
+      "route_from": "1.0.14",
+      "route_to": "1.2.5",
+      "artifact_id": "a1_652f0a13c217b57427ea6a0232e283cb"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.014",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/patches/oraDAJszM7/1.0.14/v2/Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.014",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/1.2.5_mStKKtMSeUpoODur_patches_oraDAJszM7_1.0.14_v2_Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.014",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "bc143d2310487ee8c8898d940a50ed31"
+      },
+      "route_from": "1.0.14",
+      "route_to": "1.2.5",
+      "artifact_id": "a1_9b73abb70e12856fed28e25dcdaca384"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.015",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/patches/oraDAJszM7/1.0.14/v2/Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.015",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/1.2.5_mStKKtMSeUpoODur_patches_oraDAJszM7_1.0.14_v2_Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.015",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "daca5fc4661b807ba50d92a546d17b1a"
+      },
+      "route_from": "1.0.14",
+      "route_to": "1.2.5",
+      "artifact_id": "a1_1d2d2f8df3a066ca6b35e3e9ebd65412"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.016",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/patches/oraDAJszM7/1.0.14/v2/Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.016",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/1.2.5_mStKKtMSeUpoODur_patches_oraDAJszM7_1.0.14_v2_Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.016",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "e8f3ef9dad269aca8094d4c08fe0c1d4"
+      },
+      "route_from": "1.0.14",
+      "route_to": "1.2.5",
+      "artifact_id": "a1_3902f259037710bccfa459f8c441a19f"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.017",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/patches/oraDAJszM7/1.0.14/v2/Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.017",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/1.2.5_mStKKtMSeUpoODur_patches_oraDAJszM7_1.0.14_v2_Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.017",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "8dc88916caebcad2c77e7dff1416080b"
+      },
+      "route_from": "1.0.14",
+      "route_to": "1.2.5",
+      "artifact_id": "a1_b61cfffbb561adfcf44fc5791d387bc0"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.018",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/patches/oraDAJszM7/1.0.14/v2/Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.018",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/1.2.5_mStKKtMSeUpoODur_patches_oraDAJszM7_1.0.14_v2_Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.018",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "1a80e17c674470b592eebd540a55e2b3"
+      },
+      "route_from": "1.0.14",
+      "route_to": "1.2.5",
+      "artifact_id": "a1_46a51b27484946ca7fdbccfaab4aaf76"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.019",
+      "size": 1073741824,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/patches/oraDAJszM7/1.0.14/v2/Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.019",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/1.2.5_mStKKtMSeUpoODur_patches_oraDAJszM7_1.0.14_v2_Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.019",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "5f7e77fe45fb8a666adbd4faec1076e6"
+      },
+      "route_from": "1.0.14",
+      "route_to": "1.2.5",
+      "artifact_id": "a1_dea7fa35fd1c558fcd4c0ded8410a1e6"
+    },
+    {
+      "kind": "patch",
+      "component": "game",
+      "package_type": "differential",
+      "delivery_mode": "archive",
+      "name": "Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.020",
+      "size": 183224554,
+      "urls": [
+        {
+          "url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.2/update/1/1/Windows/1.2.5_mStKKtMSeUpoODur/patches/oraDAJszM7/1.0.14/v2/Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.020",
+          "provider": "beyond.hycdn.cn",
+          "source_kind": "official",
+          "priority": 0
+        },
+        {
+          "url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/1.2.5_mStKKtMSeUpoODur_patches_oraDAJszM7_1.0.14_v2_Beyond_Release_v1d0-Rel-cn-5157154-11_prod_obt_official_1_0_14_LS03P_v2.zip.020",
+          "provider": "github.com",
+          "source_kind": "mirror",
+          "priority": 1
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy Endfield archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "checksum": {
+        "md5": "01e664c94c362d3245ddd3b0f5a42ae1"
+      },
+      "route_from": "1.0.14",
+      "route_to": "1.2.5",
+      "artifact_id": "a1_b00ecc2fafd0630406843993718fb952"
+    }
+  ],
+  "references": [],
+  "provenance": {
+    "source_kind": "legacy_migration",
+    "source_name": "Game-Manifest-Index legacy Endfield archive",
+    "source_repo": "Game-Manifest-Index"
+  },
+  "is_visible": true
+}

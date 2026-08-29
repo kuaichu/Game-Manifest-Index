@@ -1,0 +1,53 @@
+{
+  "schema_version": 2,
+  "vendor": "perfectworld",
+  "game_id": "nte",
+  "domain_id": "nte-pc",
+  "platform": "windows",
+  "channel": "official",
+  "version": "1.3.5",
+  "version_code": null,
+  "file_time": null,
+  "artifacts": [
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "file_manifest",
+      "name": "ResList.bin.zip",
+      "size": 85382132971,
+      "manifest": {
+        "path": "manifests/1.3.5/files.json",
+        "base_urls": [
+          {
+            "url": "https://yhcdn1.wmupd.com/clientRes/publish_PC/Res/",
+            "provider": "perfectworld",
+            "source_kind": "official",
+            "priority": 0
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://yhcdn1.wmupd.com/clientRes/publish_PC/Version/Windows/version/1.3.5/ResList.bin.zip",
+          "provider": "yhcdn1.wmupd.com",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "source": {
+        "source_kind": "legacy_migration",
+        "source_name": "Game-Manifest-Index legacy NTE archive",
+        "source_repo": "Game-Manifest-Index"
+      },
+      "artifact_id": "a1_0522330c6239dd7ad7eabb7b78ca6dcf"
+    }
+  ],
+  "references": [],
+  "provenance": {
+    "source_kind": "legacy_migration",
+    "source_name": "Game-Manifest-Index legacy NTE archive",
+    "source_repo": "Game-Manifest-Index"
+  },
+  "is_visible": true
+}

@@ -1,0 +1,20 @@
+{
+  "vendor": "hypergryph",
+  "game_id": "arknights",
+  "platform": "windows",
+  "versions": [
+    {
+      "version": "76.0.0",
+      "updated_at": null,
+      "available": null,
+      "size": 20707212434
+    },
+    {
+      "version": "75.0.0",
+      "updated_at": null,
+      "available": null,
+      "size": 19568907664
+    }
+  ],
+  "domain_id": "arknights-pc"
+}
