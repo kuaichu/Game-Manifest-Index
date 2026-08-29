@@ -271,6 +271,8 @@ function atomicBadges(row: {
 }
 
 function groupMetaText(group: { name: string; rows: Array<{ base: string; item: VersionSummary; states: Record<string, number> }> }): string {
+  if (!props.showAvailability) return `${group.rows.length} 个版本`;
+
   let availableCount = 0;
   let unavailableCount = 0;
 

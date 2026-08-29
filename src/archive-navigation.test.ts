@@ -96,6 +96,13 @@ describe("archive cross-game navigation", () => {
     expect(root.textContent).not.toContain("aria2");
     expect(root.textContent).not.toContain("helper");
     expect(root.textContent).not.toContain("打开已验证 URL");
+    (root.querySelector(".select-button") as HTMLButtonElement).click();
+    await nextTick();
+    const versionMenu = root.querySelector(".version-menu");
+    expect(versionMenu?.querySelector(".group-meta")?.textContent).toBe("1 个版本");
+    for (const judgment of ["可用", "不可用", "未判定", "含失效", "链接失效", "无数据"]) {
+      expect(versionMenu?.textContent || "").not.toContain(judgment);
+    }
     app.unmount();
   });
 
