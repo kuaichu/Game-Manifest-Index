@@ -31,7 +31,7 @@ def create_app(
     configured = data_root if data_root is not None else Path(os.environ.get("GMI_DATA_ROOT", ROOT / "data"))
     state = state_root if state_root is not None else Path(os.environ.get("GMI_STATE_ROOT", ROOT / ".cache"))
     token = os.environ.get("GMI_ADMIN_TOKEN") if admin_token is _UNSET else admin_token
-    app = create_api_app(Path(configured), upstream)
+    app = create_api_app(Path(configured), upstream, state_root=Path(state))
     router, operations, store = create_admin_router(
         data_root=Path(configured), state_root=Path(state), token=token,
         contract=app.state.contract, discovery=discovery,

@@ -39,6 +39,15 @@ from backend.manifest_readers import (
     local_file_detail,
     strict_relative_posix,
 )
+from backend.mihoyo_package_files import (
+    PackageFilesBadRequest,
+    PackageFilesCacheError,
+    PackageFilesNotFound,
+    PackageFilesTimeout,
+    PackageFilesUpstream,
+    list_files as list_mihoyo_package_files,
+    file_detail as mihoyo_package_file_detail,
+)
 from backend.schema_v2 import SchemaValidationError, artifact_identity_key, validate_v2_record
 
 
@@ -189,9 +198,14 @@ class DomainData:
 
 
 class ApiContract:
-    def __init__(self, data_root: Path, upstream: Any | None = None) -> None:
+    def __init__(self, data_root: Path, upstream: Any | None = None, state_root: Path | None = None) -> None:
         self.data_root = Path(data_root)
         self.upstream = upstream or HttpUpstream()
+        self.state_root = (
+            Path(state_root)
+            if state_root is not None
+            else Path(os.environ.get("GMI_STATE_ROOT") or Path(__file__).resolve().parents[1] / ".cache")
+        )
 
     def _read_json(self, path: Path, limit: int, code: str) -> dict[str, Any]:
         if not _ordinary(path, directory=False):
@@ -726,15 +740,15 @@ def _identity(artifact: dict[str, Any]) -> tuple[str, dict[str, Any]]:
 
 
 def _manifest_error(error: Exception) -> ApiFault:
-    if isinstance(error, ManifestBadRequest):
+    if isinstance(error, (ManifestBadRequest, PackageFilesBadRequest)):
         return ApiFault(400, "bad_request", str(error))
-    if isinstance(error, ManifestNotFound):
+    if isinstance(error, (ManifestNotFound, PackageFilesNotFound)):
         return ApiFault(404, "file_not_found", str(error))
-    if isinstance(error, ManifestCorrupt):
+    if isinstance(error, (ManifestCorrupt, PackageFilesCacheError)):
         return ApiFault(500, "corrupt_manifest", str(error))
-    if isinstance(error, ManifestTimeout):
+    if isinstance(error, (ManifestTimeout, PackageFilesTimeout)):
         return ApiFault(504, "upstream_timeout", str(error))
-    if isinstance(error, ManifestUpstream):
+    if isinstance(error, (ManifestUpstream, PackageFilesUpstream)):
         return ApiFault(502, "upstream_error", str(error))
     return ApiFault(500, "internal_error", "服务器内部错误")
 
@@ -803,9 +817,9 @@ def _chunk_summary(domain_id: str, document: dict[str, Any], record: dict[str, A
     }
 
 
-def create_api_app(data_root: Path, upstream: Any | None = None) -> FastAPI:
+def create_api_app(data_root: Path, upstream: Any | None = None, *, state_root: Path | None = None) -> FastAPI:
     app = FastAPI(title="Game Manifest Index API", version="0.1.0")
-    app.state.contract = ApiContract(data_root, upstream)
+    app.state.contract = ApiContract(data_root, upstream, state_root)
 
     @app.exception_handler(ApiFault)
     async def api_fault_handler(_: Request, error: ApiFault) -> JSONResponse:
@@ -973,6 +987,15 @@ def create_api_app(data_root: Path, upstream: Any | None = None) -> FastAPI:
             ]
             if len(matching) == 1:
                 return "chunk", domain, record, document
+        if domain.vendor == "mihoyo" and domain.platform == "windows" and any(
+            isinstance(item, dict)
+            and item.get("kind") == "package"
+            and item.get("component") == "game"
+            and item.get("package_type") in {"full", "segment"}
+            and item.get("delivery_mode") == "archive"
+            for item in record.get("artifacts", [])
+        ):
+            return "mihoyo_package", domain, record, None
         artifact, document, base_urls = service().package_document(domain, record, identity)
         return "package", domain, record, (artifact, document, base_urls)
 
@@ -986,10 +1009,15 @@ def create_api_app(data_root: Path, upstream: Any | None = None) -> FastAPI:
         except ManifestBadRequest as error:
             raise ApiFault(400, "bad_path", "path 无效") from error
         _cursor(cursor)
-        selected, _, _, payload = selected_source(domain_id, version, source, identity)
+        selected, domain, record, payload = selected_source(domain_id, version, source, identity)
         try:
             if selected == "chunk":
                 return {"source": "chunk", **list_chunk_files(payload, identity, service().upstream, path, q, limit, cursor)}
+            if selected == "mihoyo_package":
+                return list_mihoyo_package_files(
+                    service().state_root, record, record["game_id"], record["version"], identity,
+                    path, q, limit, cursor, service().upstream,
+                )
             artifact, document, base_urls = payload
             return {"source": "package", "fetch_mode": "checked_in_manifest", "identity": str(_stable_id(artifact["artifact_id"])), **list_local_files(document, base_urls, path, q, limit, cursor)}
         except ManifestError as error:
@@ -1001,10 +1029,15 @@ def create_api_app(data_root: Path, upstream: Any | None = None) -> FastAPI:
             strict_relative_posix(path)
         except ManifestBadRequest as error:
             raise ApiFault(400, "bad_path", "path 无效") from error
-        selected, _, _, payload = selected_source(domain_id, version, source, identity)
+        selected, domain, record, payload = selected_source(domain_id, version, source, identity)
         try:
             if selected == "chunk":
                 return {"source": "chunk", **chunk_file_detail(payload, identity, service().upstream, path)}
+            if selected == "mihoyo_package":
+                return mihoyo_package_file_detail(
+                    service().state_root, record, record["game_id"], record["version"], identity, path,
+                    service().upstream,
+                )
             artifact, document, base_urls = payload
             return {"source": "package", "fetch_mode": "checked_in_manifest", "identity": str(_stable_id(artifact["artifact_id"])), **local_file_detail(document, base_urls, path)}
         except ManifestError as error:

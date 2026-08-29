@@ -141,7 +141,9 @@ class FakeUpstream:
 
     def get_bytes(self, url: str, *, allowed_hosts, max_bytes: int, expected_size: int | None = None):
         self.calls.append(url)
-        body = self.manifest if "/manifests/" in url else self.chunk
+        body = getattr(self, "package", None) if "/pkg_version" in url else self.manifest if "/manifests/" in url else self.chunk
+        if body is None:
+            body = self.chunk
         if expected_size is not None and len(body) != expected_size:
             raise ManifestUpstream("官方资源长度不匹配")
         if len(body) > max_bytes:
@@ -152,6 +154,7 @@ class FakeUpstream:
 class TemporaryContractTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
+        self.state = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
 
         old = record("mihoyo", "hk4e", "android", "1.0.0", [
@@ -194,10 +197,11 @@ class TemporaryContractTests(unittest.TestCase):
 
         rebuild_indexes(self.root)
         self.upstream = FakeUpstream(manifest_body, chunk_body)
-        self.client = TestClient(create_api_app(self.root, self.upstream))
+        self.client = TestClient(create_api_app(self.root, self.upstream, state_root=Path(self.state.name)))
 
     def tearDown(self) -> None:
         self.temp.cleanup()
+        self.state.cleanup()
 
     def get(self, path: str, status: int = 200):
         response = self.client.get(path)
@@ -331,6 +335,33 @@ class TemporaryContractTests(unittest.TestCase):
         self.assertEqual((chunk["source"], package["source"]), ("chunk", "package"))
         self.get("/api/v1/domains/wuwa-pc/versions/1.0.0/files?source=chunk", 404)
         self.get("/api/v1/domains/wuwa-pc/versions/1.0.0/files?source=bad", 400)
+
+    def test_mihoyo_v2_archive_package_is_publicly_browsable(self):
+        package = artifact("StarRail_4.4.0.7z.001", delivery="archive", size=10)
+        package["package_type"] = "segment"
+        package["part"] = 1
+        package["urls"][0].update({
+            "url": "https://autopatchcn.bhsr.com/client/cn/release/PC/download/StarRail_4.4.0.7z.001",
+            "provider": "mihoyo",
+            "source_kind": "official",
+        })
+        value = record(
+            "mihoyo", "hkrpg", "windows", "4.4.0", [package],
+            references=[{
+                "kind": "chunk_manifest", "path": "chunk-manifests/4.4.0.json", "build_id": "build-4.4",
+                "source": {"source_kind": "third_party_history"},
+            }],
+        )
+        write_record(self.root, value)
+        rebuild_indexes(self.root)
+        self.upstream.package = b'{"remoteName":"Game/Bin/StarRail.exe","fileSize":7,"md5":"' + ("a" * 32).encode() + b'"}\n'
+        response = self.client.get("/api/v1/domains/hkrpg-pc/versions/4.4.0/files?source=package&identity=game&path=Game/Bin&limit=1")
+        self.assertEqual(response.status_code, 200, response.text)
+        body = response.json()
+        self.assertEqual(body["source"], "package_pkg_version")
+        detail = self.client.get("/api/v1/domains/hkrpg-pc/versions/4.4.0/file?source=package&identity=game&path=Game/Bin/StarRail.exe")
+        self.assertEqual(detail.status_code, 200, detail.text)
+        self.assertEqual(detail.json()["download_url"], "https://autopatchcn.bhsr.com/client/cn/release/PC/unzip/Game/Bin/StarRail.exe")
 
     def test_auto_falls_back_to_package_when_chunk_identity_is_absent(self):
         record_path = self.root / "kuro" / "wuwa" / "pc" / "1.0.0.json"
@@ -479,6 +510,51 @@ class CheckedInContractTests(unittest.TestCase):
 
 
 class HttpUpstreamTests(unittest.TestCase):
+    def test_range_success_validates_headers_and_body(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            self.assertEqual(request.headers["range"], "bytes=2-4")
+            return httpx.Response(
+                206,
+                content=b"def",
+                headers={"content-range": "bytes 2-4/10", "content-length": "3"},
+            )
+
+        body, headers = HttpUpstream(transport=httpx.MockTransport(handler)).get_range(
+            "https://autopatchcn.yuanshen.com/files/a.bin",
+            start=2,
+            end=4,
+            allowed_hosts=frozenset({"autopatchcn.yuanshen.com"}),
+            max_bytes=10,
+        )
+        self.assertEqual(body, b"def")
+        self.assertEqual(headers["content-range"], "bytes 2-4/10")
+
+    def test_range_rejects_invalid_content_range_or_length(self):
+        for headers in (
+            {"content-range": "bytes 1-4/10", "content-length": "3"},
+            {"content-range": "bytes 2-4/10", "content-length": "4"},
+        ):
+            transport = httpx.MockTransport(lambda _: httpx.Response(206, content=b"def", headers=headers))
+            with self.assertRaises(ManifestUpstream):
+                HttpUpstream(transport=transport).get_range(
+                    "https://autopatchcn.yuanshen.com/files/a.bin",
+                    start=2,
+                    end=4,
+                    allowed_hosts=frozenset({"autopatchcn.yuanshen.com"}),
+                    max_bytes=10,
+                )
+
+    def test_range_timeout_is_mapped(self):
+        timeout = httpx.MockTransport(lambda request: (_ for _ in ()).throw(httpx.ReadTimeout("slow", request=request)))
+        with self.assertRaises(ManifestTimeout):
+            HttpUpstream(transport=timeout).get_range(
+                "https://autopatchcn.yuanshen.com/files/a.bin",
+                start=0,
+                end=1,
+                allowed_hosts=frozenset({"autopatchcn.yuanshen.com"}),
+                max_bytes=10,
+            )
+
     def test_redirect_is_revalidated_and_bounded(self):
         calls = []
         def handler(request: httpx.Request) -> httpx.Response:
