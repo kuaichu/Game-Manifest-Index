@@ -72,6 +72,16 @@ describe("domain presentation", () => {
     expect(availableArchiveModes([android, hoyo]).map((item) => item.capability)).toEqual(["packages", "patches", "chunks", "apk"]);
   });
 
+  it("deduplicates compare mode across multiple domains of the same game", () => {
+    const hoyo = domain("hoyo", ["packages", "patches", "chunks", "archive", "compare"], "hk4e", "windows", "hk4e-pc");
+    const android = domain("android", ["apk", "compare"], "hk4e", "android", "hk4e-android");
+    const modes = availableArchiveModes([android, hoyo]);
+    const compareModes = modes.filter((item) => item.capability === "compare");
+    expect(compareModes).toHaveLength(1);
+    expect(compareModes[0].domain.id).toBe("hk4e-pc");
+    expect(modes.map((item) => item.capability)).toEqual(["packages", "patches", "chunks", "compare", "apk"]);
+  });
+
   it("uses the server capability contract for Endfield modes and field visibility", () => {
     const current = domain("endfield", ["packages", "patches", "archive", "compare"], "endfield");
     current.capability_contract = {

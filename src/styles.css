@@ -2235,6 +2235,53 @@ a {
   padding: 16px 18px;
 }
 
+.compare-platform-field {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.compare-platform-field > span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.compare-platform-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.compare-platform-tab {
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text-secondary);
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.compare-platform-tab:hover {
+  border-color: var(--blue-soft);
+  color: var(--text);
+  background: rgba(56, 189, 248, 0.08);
+}
+
+.compare-platform-tab.active {
+  border-color: var(--blue);
+  background: rgba(56, 189, 248, 0.18);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.2);
+}
+
 .compare-toolbar span, .compare-toolbar p {
   color: var(--muted);
   font-size: 12px;

@@ -143,6 +143,29 @@ const gamePackageCount = computed(
 const compareBaseOptions = computed(() =>
   versions.value.filter((item) => item.version !== selectedVersion.value),
 );
+const compareDomains = computed(() =>
+  domains.value.filter((item) => item.capabilities.includes("compare")),
+);
+function comparePlatformLabel(item: ArchiveDomain): string {
+  if (item.adapter === "android" || item.platform?.toLowerCase() === "android" || item.kind === "apk") {
+    return "Android 官方客户端";
+  }
+  if (item.adapter === "hoyo") {
+    return "HOYO PC 客户端";
+  }
+  if (item.platform?.toLowerCase() === "windows" || item.platform?.toLowerCase() === "pc") {
+    return "PC 客户端";
+  }
+  return item.platform || item.id;
+}
+async function switchCompareDomain(targetDomain: ArchiveDomain): Promise<void> {
+  if (targetDomain.id === domainId.value) return;
+  await navigate({
+    domainId: targetDomain.id,
+    version: selectedVersion.value || targetDomain.latest_version || "",
+    mode: "compare",
+  });
+}
 const compareBaseVersion = computed(() => {
   const requested = String(route.query.from || "");
   if (requested && requested !== selectedVersion.value && versions.value.some((item) => item.version === requested)) {
@@ -711,8 +734,10 @@ async function loadRegistry(): Promise<void> {
       requestedMode = "files";
       requestedVersion = String(route.query.version || "");
     }
-    const hasRequestedVersion = loadedVersions.some((item) => item.version === requestedVersion);
-    const targetVersion = hasRequestedVersion ? requestedVersion : loadedVersions[0]?.version;
+    const matchedVersion = loadedVersions.find(
+      (item) => item.version === requestedVersion || displayVersionLabel(item.version, item.attributes) === requestedVersion,
+    )?.version;
+    const targetVersion = matchedVersion || loadedVersions[0]?.version;
     if (!targetVersion) return;
     const targetDomainRow = loadedDomains.find((item) => item.id === targetDomain);
     const hasRequestedMode = Boolean(requestedMode && targetDomainRow?.capabilities.includes(requestedMode));
@@ -795,9 +820,12 @@ async function navigate(params: Record<string, string>): Promise<void> {
 }
 
 async function navigateMode(targetDomain: ArchiveDomain, targetMode: string): Promise<void> {
+  const destDomain = (targetMode === "compare" && domain.value?.capabilities.includes("compare"))
+    ? domain.value
+    : targetDomain;
   await navigate({
-    domainId: targetDomain.id,
-    version: selectedVersion.value || targetDomain.latest_version || "",
+    domainId: destDomain.id,
+    version: selectedVersion.value || destDomain.latest_version || "",
     mode: targetMode,
   });
 }
@@ -1586,7 +1614,11 @@ function chunkMatchingField(artifact: Artifact): string {
               v-for="item in visibleModes"
               :key="`${item.domain.id}:${item.capability}`"
               class="mode-tab"
-              :class="{ active: item.domain.id === domainId && item.capability === mode }"
+              :class="{
+                active: item.capability === 'compare'
+                  ? mode === 'compare'
+                  : (item.domain.id === domainId && item.capability === mode)
+              }"
               @click="navigateMode(item.domain, item.capability)"
             >
               {{ modeLabel(item.domain, item.capability) }}
@@ -1854,13 +1886,28 @@ function chunkMatchingField(artifact: Artifact): string {
           </article>
         </div>
         <div v-else-if="mode === 'legacy'" class="empty">没有候选线索记录。</div>
-        <div v-else-if="mode === 'compare' && compareBaseVersion" class="compare-shell">
+        <div v-else-if="mode === 'compare'" class="compare-shell">
           <div class="compare-toolbar">
-            <div>
+            <div v-if="compareDomains.length > 1" class="compare-platform-field">
+              <span>对比平台</span>
+              <div class="compare-platform-tabs" role="tablist" aria-label="对比平台选择">
+                <button
+                  v-for="item in compareDomains"
+                  :key="item.id"
+                  type="button"
+                  class="compare-platform-tab"
+                  :class="{ active: item.id === domainId }"
+                  @click="switchCompareDomain(item)"
+                >
+                  {{ comparePlatformLabel(item) }}
+                </button>
+              </div>
+            </div>
+            <div v-if="compareBaseVersion" class="compare-range-field">
               <span>对比范围</span>
               <strong>{{ compareBaseVersion }} → {{ selectedVersion }}</strong>
             </div>
-            <div class="compare-base-field">
+            <div v-if="compareBaseVersion" class="compare-base-field">
               <span>基准版本</span>
               <CustomSelect
                 :model-value="compareBaseVersion"
@@ -1872,12 +1919,13 @@ function chunkMatchingField(artifact: Artifact): string {
             <p>差异由服务端按稳定 artifact identity 计算并分页返回；对比响应不包含 URL 或 availability。</p>
           </div>
           <ComparePanel
+            v-if="compareBaseVersion"
             :domain-id="domainId"
             :from-version="compareBaseVersion"
             :to-version="selectedVersion"
           />
+          <div v-else class="empty">当前版本没有可用的对比基准。</div>
         </div>
-        <div v-else-if="mode === 'compare'" class="empty">当前版本没有可用的对比基准。</div>
         <div v-else-if="mode === 'manifest' && artifacts.length" class="manifest-table">
           <div class="manifest-head">
             <span>路径</span>

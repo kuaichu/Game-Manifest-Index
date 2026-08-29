@@ -188,16 +188,30 @@ const modePriority: Record<string, number> = { resources: -1, files: 0, packages
 const artifactKinds: Record<string, string> = { apk: "apk", chunks: "chunk", files: "file", manifest: "manifest", packages: "package", patches: "patch", resources: "resource" };
 
 export function availableArchiveModes(domains: ArchiveDomain[]): ArchiveModePresentation[] {
-  return domains.flatMap((domain) => {
+  const rawItems = domains.flatMap((domain) => {
     let capabilities = [...domain.capabilities].filter((capability) => capability !== "archive");
     if (domain.adapter === "wuwa") {
       capabilities = capabilities.filter((capability) => capability !== "packages");
     }
     return [...new Set(capabilities)].map((capability) => ({ domain, capability }));
-  }).sort((left, right) => {
+  });
+
+  const sorted = rawItems.sort((left, right) => {
     const leftPriority = left.domain.game_id === "endfield" && left.capability === "resources" ? -1 : modePriority[left.capability] ?? 5;
     const rightPriority = right.domain.game_id === "endfield" && right.capability === "resources" ? -1 : modePriority[right.capability] ?? 5;
-    return leftPriority - rightPriority || Number(left.domain.sort_order || 0) - Number(right.domain.sort_order || 0) || left.domain.id.localeCompare(right.domain.id);
+    return leftPriority - rightPriority
+      || (isPcArchiveDomain(right.domain) ? 1 : 0) - (isPcArchiveDomain(left.domain) ? 1 : 0)
+      || Number(left.domain.sort_order || 0) - Number(right.domain.sort_order || 0)
+      || left.domain.id.localeCompare(right.domain.id);
+  });
+
+  const seenCompareGames = new Set<string>();
+  return sorted.filter((item) => {
+    if (item.capability === "compare") {
+      if (seenCompareGames.has(item.domain.game_id)) return false;
+      seenCompareGames.add(item.domain.game_id);
+    }
+    return true;
   });
 }
 

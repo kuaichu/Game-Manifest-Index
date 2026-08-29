@@ -463,5 +463,93 @@ describe("archive cross-game navigation", () => {
     app.unmount();
   });
 
+  it("unifies PC and Android compare tabs into one top tab and provides in-panel platform switching", async () => {
+    const game = { id: "hk4e", name: "原神", sub_name: "Genshin Impact", icon_source: "", sort_order: 0 };
+    const pcDomain = {
+      id: "hk4e-pc", game_id: "hk4e", kind: "mixed", platform: "windows",
+      capabilities: ["packages", "patches", "chunks", "compare"], adapter: "hoyo",
+      version_count: 2, latest_version: "5.5.0", sort_order: 0,
+      capability_contract: { features: { compare: "supported" } },
+    };
+    const androidDomain = {
+      id: "hk4e-android", game_id: "hk4e", kind: "apk", platform: "android",
+      capabilities: ["apk", "compare"], adapter: "android",
+      version_count: 2, latest_version: "5.5.0", sort_order: 1,
+      capability_contract: { features: { compare: "supported" } },
+    };
+    const pcVersions = [
+      { version: "5.5.0", current_revision_id: 2, revision_count: 1, observed_at: "2026-07-11T00:00:00Z", packed_size: 100, unpacked_size: 200, artifact_count: 2, artifact_kinds: { package: { count: 2, size: 100 } }, availability_states: {}, attributes: {} },
+      { version: "5.4.0", current_revision_id: 1, revision_count: 1, observed_at: "2026-06-11T00:00:00Z", packed_size: 100, unpacked_size: 200, artifact_count: 2, artifact_kinds: { package: { count: 2, size: 100 } }, availability_states: {}, attributes: {} },
+    ];
+    const androidVersions = [
+      { version: "5.5.0", current_revision_id: 2, revision_count: 1, observed_at: "2026-07-11T00:00:00Z", packed_size: 50, unpacked_size: 50, artifact_count: 1, artifact_kinds: { apk: { count: 1, size: 50 } }, availability_states: {}, attributes: { channel: "official" } },
+      { version: "5.4.0", current_revision_id: 1, revision_count: 1, observed_at: "2026-06-11T00:00:00Z", packed_size: 50, unpacked_size: 50, artifact_count: 1, artifact_kinds: { apk: { count: 1, size: 50 } }, availability_states: {}, attributes: { channel: "official" } },
+    ];
+
+    vi.spyOn(api, "games").mockResolvedValue([game] as never);
+    vi.spyOn(api, "domains").mockResolvedValue([pcDomain, androidDomain] as never);
+    vi.spyOn(api, "versions").mockImplementation(async (domainId) => (
+      domainId === "hk4e-android" ? androidVersions : pcVersions
+    ) as never);
+    const compare = vi.spyOn(api, "compare").mockImplementation(async (domainId) => ({
+      from_version: "5.4.0", to_version: "5.5.0",
+      summary: { added: 1, removed: 0, changed: 0, size_delta: 50 },
+      items: [{
+        change: "added", identity: { kind: domainId === "hk4e-android" ? "apk" : "package", name: domainId === "hk4e-android" ? "yuanshen.apk" : "pkg.zip" },
+        after: { name: domainId === "hk4e-android" ? "yuanshen.apk" : "pkg.zip", kind: domainId === "hk4e-android" ? "apk" : "package", part: 1, size: 50, checksum_type: "md5", checksum_value: "1".repeat(32), attributes: {} },
+      }],
+      next_cursor: null,
+    } as never));
+
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: "/games/:gameId/:domainId?/:version?/:mode?", name: "archive", component: ArchiveView }],
+    });
+    await router.push("/games/hk4e/hk4e-pc/5.5.0/compare");
+    await router.isReady();
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const app = createApp(ArchiveView);
+    app.use(router);
+    app.mount(root);
+    await flushUpdates();
+    await flushUpdates();
+
+    // 1. Verify only ONE "版本对比" tab exists in top nav
+    const modeTabs = Array.from(root.querySelectorAll(".mode-tab")).map((el) => el.textContent?.trim());
+    const compareTabs = modeTabs.filter((text) => text === "版本对比");
+    expect(compareTabs).toHaveLength(1);
+    expect(modeTabs).toEqual(["完整包", "更新补丁", "Chunk 信息", "版本对比", "Android APK"]);
+
+    // 2. Verify platform switcher buttons exist in compare panel
+    const platformTabs = root.querySelectorAll(".compare-platform-tab");
+    expect(platformTabs).toHaveLength(2);
+    expect(platformTabs[0].textContent?.trim()).toBe("HOYO PC 客户端");
+    expect(platformTabs[1].textContent?.trim()).toBe("Android 官方客户端");
+    expect(platformTabs[0].classList.contains("active")).toBe(true);
+
+    // Initial load was for PC
+    expect(compare).toHaveBeenCalledWith("hk4e-pc", expect.objectContaining({
+      fromVersion: "5.4.0", toVersion: "5.5.0",
+    }), expect.any(AbortSignal));
+
+    // 3. Click "Android 官方客户端" platform button
+    (platformTabs[1] as HTMLButtonElement).click();
+    await flushUpdates();
+    await flushUpdates();
+
+    expect(compare).toHaveBeenCalledWith("hk4e-android", expect.objectContaining({
+      fromVersion: "5.4.0", toVersion: "5.5.0",
+    }), expect.any(AbortSignal));
+    expect(router.currentRoute.value.params).toMatchObject({
+      gameId: "hk4e", domainId: "hk4e-android", version: "5.5.0", mode: "compare",
+    });
+
+    // Top "版本对比" tab remains active
+    const activeModeTab = root.querySelector(".mode-tab.active");
+    expect(activeModeTab?.textContent?.trim()).toBe("版本对比");
+
+    app.unmount();
+  });
 
 });
