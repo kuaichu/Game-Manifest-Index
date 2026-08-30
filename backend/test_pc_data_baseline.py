@@ -33,13 +33,13 @@ EXPECTED_RECORDS = {
     ("mihoyo", "hk4e"): 56, ("mihoyo", "hkrpg"): 30,
     ("mihoyo", "nap"): 20, ("mihoyo", "bh3"): 56,
     ("kuro", "wuwa"): 45, ("perfectworld", "tof"): 46,
-    ("perfectworld", "p5x"): 1, ("perfectworld", "nte"): 56,
+    ("perfectworld", "p5x"): 1, ("perfectworld", "nte"): 60,
 }
 EXPECTED_ARTIFACTS = {
     ("mihoyo", "hk4e"): 697, ("mihoyo", "hkrpg"): 417,
     ("mihoyo", "nap"): 438, ("mihoyo", "bh3"): 51,
     ("kuro", "wuwa"): 91, ("perfectworld", "tof"): 46,
-    ("perfectworld", "p5x"): 1, ("perfectworld", "nte"): 56,
+    ("perfectworld", "p5x"): 1, ("perfectworld", "nte"): 60,
 }
 EXPECTED_REFERENCES = {
     ("mihoyo", "hk4e"): 25, ("mihoyo", "hkrpg"): 12,
@@ -102,6 +102,13 @@ OFFICIAL_SOURCES = {
     ("perfectworld", "nte", "1.3.13"): (
         "Perfect World PatcherSDK", "https://yhcdn1.wmupd.com/clientRes/publish_PC/Version/Windows/config.xml",
     ),
+}
+MANUAL_OFFICIAL_BACKFILLS = {
+    ("perfectworld", "nte", version): (
+        "Perfect World PatcherSDK historical ResList backfill",
+        f"https://yhcdn1.wmupd.com/clientRes/publish_PC/Version/Windows/version/{version}/ResList.bin.zip",
+    )
+    for version in ("1.3.8", "1.3.9", "1.3.10", "1.3.11")
 }
 
 
@@ -198,9 +205,9 @@ class PcDataBaselineTests(unittest.TestCase):
             counts[game] += 1
             validate_v2_record(record)
             self.assertEqual(record["platform"], "windows")
-            self.assertIn(record["provenance"]["source_kind"], {"official_sync", *ALLOWED_PROVENANCE})
+            source_key = (*game, record["version"])
+            self.assertIn(record["provenance"]["source_kind"], {"official_sync", "manual", *ALLOWED_PROVENANCE})
             if record["provenance"]["source_kind"] == "official_sync":
-                source_key = (*game, record["version"])
                 seen_current.add(source_key)
                 self.assertIn(source_key, OFFICIAL_SOURCES)
                 self.assertEqual(
@@ -209,6 +216,12 @@ class PcDataBaselineTests(unittest.TestCase):
                 )
                 for reference in record["references"]:
                     self.assertIn(reference.get("source", {}).get("source_kind"), {"official_sync", *ALLOWED_PROVENANCE})
+            elif record["provenance"]["source_kind"] == "manual":
+                self.assertIn(source_key, MANUAL_OFFICIAL_BACKFILLS)
+                self.assertEqual(
+                    (record["provenance"].get("source_name"), record["provenance"].get("source_url")),
+                    MANUAL_OFFICIAL_BACKFILLS[source_key],
+                )
             else:
                 self.assertNotIn(record["provenance"]["source_kind"], {"official", "official_api", "official_launcher"})
             identity = {key: record[key] for key in ("vendor", "game_id", "domain_id", "platform", "channel", "version")}
@@ -237,7 +250,7 @@ class PcDataBaselineTests(unittest.TestCase):
         self.assertEqual(artifacts, EXPECTED_ARTIFACTS)
         self.assertEqual(references, EXPECTED_REFERENCES)
         self.assertEqual(seen_current, CURRENT_RECORDS)
-        self.assertEqual(len(ids), 1797)
+        self.assertEqual(len(ids), 1801)
 
     def test_manifest_and_reference_paths_are_safe_and_parseable(self):
         referenced = set()
