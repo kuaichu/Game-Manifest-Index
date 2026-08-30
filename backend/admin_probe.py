@@ -14,6 +14,7 @@ from threading import RLock
 from typing import Any, Callable, Iterable
 from urllib.parse import urlsplit, urlunsplit
 
+from backend.domain_registry import is_nondefault_pc_domain, nondefault_pc_domains
 from backend.indexes import rebuild_index
 from backend.schema_v2 import validate_v2_record
 from backend.storage_locks import DATA_LOCK
@@ -69,7 +70,15 @@ def _safe_record_path(root: Path, path: Path) -> bool:
         relative = path.absolute().relative_to(root.absolute())
     except ValueError:
         return False
-    if len(relative.parts) != 4:
+    default_path = len(relative.parts) == 4
+    secondary_path = (
+        len(relative.parts) == 6
+        and relative.parts[2:4] == ("pc", "domains")
+        and is_nondefault_pc_domain(
+            relative.parts[0], relative.parts[1], relative.parts[4],
+        )
+    )
+    if not default_path and not secondary_path:
         return False
     current = root.absolute()
     for part in relative.parts[:-1]:
@@ -86,7 +95,16 @@ def _safe_record_path(root: Path, path: Path) -> bool:
 def iter_records(root: Path, *, scopes: Iterable[str] = ("android", "pc")):
     root = Path(root).absolute()
     for disk in scopes:
-        for path in root.glob(f"*/*/{disk}/*.json"):
+        paths = list(root.glob(f"*/*/{disk}/*.json"))
+        if disk == "pc":
+            for game_dir in root.glob("*/*"):
+                vendor = game_dir.parent.name
+                game_id = game_dir.name
+                for domain_id in nondefault_pc_domains(vendor, game_id):
+                    paths.extend(
+                        (game_dir / "pc" / "domains" / domain_id).glob("*.json")
+                    )
+        for path in paths:
             if path.name == "index.json":
                 continue
             if not _safe_record_path(root, path):
@@ -96,12 +114,17 @@ def iter_records(root: Path, *, scopes: Iterable[str] = ("android", "pc")):
                 validate_v2_record(value)
             except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as error:
                 raise AdminProbeDataError("canonical record is invalid") from error
+            relative = path.relative_to(root)
             expected_platform = "android" if disk == "android" else "windows"
             expected = {
-                "vendor": path.parent.parent.parent.name,
-                "game_id": path.parent.parent.name,
+                "vendor": relative.parts[0],
+                "game_id": relative.parts[1],
                 "platform": expected_platform,
-                "domain_id": f"{path.parent.parent.name}-{'android' if disk == 'android' else 'pc'}",
+                "domain_id": (
+                    relative.parts[4]
+                    if len(relative.parts) == 6
+                    else f"{relative.parts[1]}-{'android' if disk == 'android' else 'pc'}"
+                ),
                 "version": path.stem,
             }
             if any(value.get(key) != wanted for key, wanted in expected.items()):
@@ -114,7 +137,11 @@ def candidates(record: dict[str, Any]):
         if not isinstance(artifact, dict) or not isinstance(artifact.get("artifact_id"), str):
             continue
         for url_index, candidate in enumerate(artifact.get("urls", [])):
-            if isinstance(candidate, dict) and isinstance(candidate.get("url"), str):
+            if (
+                isinstance(candidate, dict)
+                and candidate.get("source_kind") != "mirror"
+                and isinstance(candidate.get("url"), str)
+            ):
                 yield artifact_index, url_index, artifact, candidate
 
 
@@ -189,8 +216,10 @@ def _run_probe(record: dict[str, Any], artifact_index: int, url_index: int, arti
     return {**result, "target_url": url, "artifact_index": artifact_index, "url_index": url_index}
 
 
-def _domain(record: dict[str, Any]) -> tuple[str, str, str]:
-    return record["vendor"], record["game_id"], record["platform"]
+def _domain(record: dict[str, Any]) -> tuple[str, str, str, str]:
+    return (
+        record["vendor"], record["game_id"], record["platform"], record["domain_id"],
+    )
 
 
 def _apply_and_persist(root: Path, path: Path, result: dict[str, Any], apply_fn: ApplyCallable) -> dict[str, Any]:
@@ -285,7 +314,7 @@ def probe_records(root: Path, records: list[tuple[Path, dict[str, Any]]], timeou
     is_cancelled = cancelled or (lambda: False)
     total = sum(sum(1 for _ in candidates(record)) for _, record in records)
     items: list[dict[str, Any]] = []
-    affected: set[tuple[str, str, str]] = set()
+    affected: set[tuple[str, str, str, str]] = set()
     with ThreadPoolExecutor(max_workers=max(1, min(workers, len(records) or 1))) as pool:
         futures = {
             pool.submit(_probe_record, root, path, record, timeout, probe_fn, apply_fn, is_cancelled): record
@@ -312,9 +341,9 @@ def probe_records(root: Path, records: list[tuple[Path, dict[str, Any]]], timeou
                     affected.add(_domain(record))
                 if progress:
                     progress(item, len(items), total)
-    for vendor, game_id, platform in affected:
+    for vendor, game_id, platform, domain_id in affected:
         with ADMIN_PROBE_LOCK:
-            rebuild_index(root, vendor, game_id, platform)
+            rebuild_index(root, vendor, game_id, platform, domain_id)
     return {
         "checked": len(items), "selected": total,
         "available": sum(item.get("available") is True for item in items),

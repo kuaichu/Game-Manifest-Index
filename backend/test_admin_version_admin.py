@@ -128,6 +128,37 @@ def manual_payload(version: str = "2.0.0") -> dict:
     }
 
 
+def make_endfield_resources_record() -> dict:
+    value = make_record(platform="windows", reference=False)
+    value.update({
+        "vendor": "hypergryph",
+        "game_id": "endfield",
+        "domain_id": "endfield-resources",
+    })
+    item = value["artifacts"][0]
+    item.update({
+        "kind": "resource",
+        "component": "resource",
+        "name": "VFS/ABCD/file.chk",
+        "checksum": {"md5": hashlib.md5(b"resource").hexdigest()},
+        "urls": [{
+            "url": "https://beyond.hycdn.cn/release/files/VFS/ABCD/file.chk",
+            "provider": "beyond.hycdn.cn",
+            "source_kind": "official",
+            "priority": 0,
+        }],
+    })
+    for key in ("package_type", "delivery_mode", "part", "decompressed_size", "manifest"):
+        item.pop(key, None)
+    identity = {
+        key: value[key]
+        for key in ("vendor", "game_id", "domain_id", "platform", "channel", "version")
+    }
+    item["artifact_id"] = artifact_id(item, record_identity=identity)
+    validate_v2_record(value)
+    return value
+
+
 class VersionAdminTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -183,6 +214,28 @@ class VersionAdminTests(unittest.TestCase):
         self.assertIn("packages", domains["hk4e-pc"]["capabilities"])
         game = next(item for item in body["games"] if item["id"] == "hk4e")
         self.assertEqual((game["platform"], game["version_count"]), ("multi", 2))
+
+    def test_catalog_and_version_list_include_registered_secondary_pc_domain(self):
+        value = make_endfield_resources_record()
+        write_v2_record(value, self.data)
+        rebuild_index(
+            self.data, "hypergryph", "endfield", "windows", "endfield-resources",
+        )
+
+        catalog = self.client.get("/api/v1/admin/catalog", headers=self.auth())
+        self.assertEqual(catalog.status_code, 200)
+        domain = next(
+            item for item in catalog.json()["domains"]
+            if item["id"] == "endfield-resources"
+        )
+        self.assertEqual((domain["game_id"], domain["platform"], domain["version_count"]),
+                         ("endfield", "windows", 1))
+
+        versions = self.client.get(
+            "/api/v1/admin/domains/endfield-resources/versions", headers=self.auth(),
+        )
+        self.assertEqual(versions.status_code, 200)
+        self.assertEqual([item["version"] for item in versions.json()["items"]], ["1.0.0"])
 
     def test_hidden_version_remains_admin_visible_but_not_public(self):
         hidden = self.client.patch(

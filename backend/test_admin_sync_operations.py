@@ -182,6 +182,58 @@ class ScheduleTests(AdminFixture):
 
 
 class ProbeTests(AdminFixture):
+    def test_secondary_pc_domain_is_probed_but_mirror_candidate_is_skipped(self):
+        official = "https://beyond.hycdn.cn/release/files/VFS/ABCD/file.chk"
+        mirror = "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/file.chk"
+        item = artifact("data/file.chk", [official, mirror], kind="package")
+        item["urls"][1]["source_kind"] = "mirror"
+        value = record("windows", game="endfield", artifacts=[item])
+        value.update({"vendor": "hypergryph", "domain_id": "endfield-resources"})
+        identity = {
+            key: value[key]
+            for key in ("vendor", "game_id", "domain_id", "platform", "channel", "version")
+        }
+        item["artifact_id"] = artifact_id(item, record_identity=identity)
+        validate_v2_record(value)
+        write_v2_record(value, self.data)
+        rebuild_index(
+            self.data, "hypergryph", "endfield", "windows", "endfield-resources",
+        )
+
+        calls = []
+
+        def tracking(url, **kwargs):
+            calls.append(url)
+            return fake_probe(url, **kwargs)
+
+        selected = selected_records(self.data, ["endfield"], "pc")
+        self.assertEqual([record["domain_id"] for _, record in selected], ["endfield-resources"])
+        summary = probe_records(
+            self.data, selected, 5, 1, probe_fn=tracking, apply_fn=apply_result,
+        )
+        self.assertEqual((summary["selected"], summary["checked"]), (1, 1))
+        self.assertEqual(calls, [official])
+
+        saved = json.loads(
+            (
+                self.data
+                / "hypergryph/endfield/pc/domains/endfield-resources/1.0.0.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertEqual(saved["artifacts"][0]["urls"][0]["current"]["state"], "available")
+        self.assertNotIn("current", saved["artifacts"][0]["urls"][1])
+        index = json.loads(
+            (
+                self.data
+                / "hypergryph/endfield/pc/domains/endfield-resources/index.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertTrue(index["versions"][0]["available"])
+
+        legacy_android = deepcopy(self.android)
+        legacy_android["artifacts"][0]["urls"][0]["source_kind"] = "legacy"
+        self.assertEqual(len(list(candidates(legacy_android))), 1)
+
     def test_no_id_is_read_only(self):
         before = deepcopy(self.android)
         response = self.client().post("/api/v1/admin/probe/url", headers=self.auth(), json={"url": self.android["artifacts"][0]["urls"][0]["url"], "timeout": 5})

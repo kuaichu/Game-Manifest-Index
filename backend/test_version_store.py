@@ -77,16 +77,23 @@ class VersionStoreTests(unittest.TestCase):
         with self.assertRaises(VersionStoreError):
             v2_record_path(value, Path("data"))
 
+    def test_unregistered_domain_is_rejected_instead_of_using_default_path(self) -> None:
+        value = record("windows")
+        value["domain_id"] = "hk4e-resources"
+        refresh_artifact_id(value)
+        with self.assertRaises(VersionStoreError):
+            v2_record_path(value, Path("data"))
+
     def test_record_identity_normalizes_nfc_and_persist_refreshes_equivalent_v2(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             old = record()
-            old["domain_id"] = "hk4e-\u00e1ndroid"
+            old["channel"] = "offici\u00e1l"
             refresh_artifact_id(old)
             persist_v2_record(old, root)
 
             refreshed = record()
-            refreshed["domain_id"] = "hk4e-a\u0301ndroid"
+            refreshed["channel"] = "officia\u0301l"
             refreshed["file_time"] = "2026-08-27T00:00:00Z"
             refresh_artifact_id(refreshed)
             self.assertEqual(record_identity(old), record_identity(refreshed))

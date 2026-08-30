@@ -65,9 +65,7 @@ def v2_record_path(record: Mapping[str, Any], root: Path) -> Path:
         return base / f"{version}.json"
     if disk_platform == "pc" and is_nondefault_pc_domain(vendor, game_id, domain_id):
         return base / "domains" / domain_id / f"{version}.json"
-    # Preserve the legacy/default location for every other identity.  Only an
-    # explicitly registered secondary domain changes the on-disk layout.
-    return base / f"{version}.json"
+    raise VersionStoreError("domain_id 不是已注册的 v2 数据域")
 
 
 _LEGACY_IDENTITY_FIELDS = ("vendor", "game_id", "platform", "version")

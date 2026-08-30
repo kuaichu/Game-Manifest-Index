@@ -21,6 +21,7 @@ from backend.api_contract import (
     _version_key,
     fail,
 )
+from backend.domain_registry import is_nondefault_pc_domain, nondefault_pc_domains
 from backend.indexes import rebuild_index
 from backend.schema_v2 import artifact_id, validate_v2_record
 from backend.storage_locks import DATA_LOCK, data_file_lock
@@ -79,30 +80,38 @@ def _disk_platform(platform: str) -> str:
 
 
 def domain_info(root: Path, domain_id: str) -> tuple[str, str, str, Path]:
-    if not _safe_component(domain_id) or "-" not in domain_id:
-        fail(404, "domain_not_found", "归档域不存在")
-    game_id, suffix = domain_id.rsplit("-", 1)
-    if game_id not in GAME_IDS or suffix not in {"android", "pc"}:
+    if not _safe_component(domain_id):
         fail(404, "domain_not_found", "归档域不存在")
 
     root = Path(root)
     if not _ordinary(root, directory=True):
         fail(500, "unsafe_data_path", "数据目录不安全")
-    platform = "android" if suffix == "android" else "windows"
-    disk = _disk_platform(platform)
-    matches: list[tuple[str, Path]] = []
-    for vendor in VENDORS:
-        candidate = root / vendor / game_id / disk
-        if _exists_or_link(candidate):
-            matches.append((vendor, candidate))
+    matches: list[tuple[str, str, str, Path]] = []
+    if "-" in domain_id:
+        game_id, suffix = domain_id.rsplit("-", 1)
+        if game_id in GAME_IDS and suffix in {"android", "pc"}:
+            platform = "android" if suffix == "android" else "windows"
+            disk = _disk_platform(platform)
+            for vendor in VENDORS:
+                candidate = root / vendor / game_id / disk
+                if _exists_or_link(candidate):
+                    matches.append((vendor, game_id, platform, candidate))
+    if not matches:
+        for vendor in VENDORS:
+            for game_id in GAME_IDS:
+                if not is_nondefault_pc_domain(vendor, game_id, domain_id):
+                    continue
+                candidate = root / vendor / game_id / "pc" / "domains" / domain_id
+                if _exists_or_link(candidate):
+                    matches.append((vendor, game_id, "windows", candidate))
     if not matches:
         fail(404, "domain_not_found", "归档域不存在")
     if len(matches) != 1:
         fail(500, "unsafe_data_path", "归档域路径不唯一")
 
-    vendor, directory = matches[0]
+    vendor, game_id, platform, directory = matches[0]
     current = root
-    for part in (vendor, game_id, disk):
+    for part in directory.relative_to(root).parts:
         current = current / part
         if not _ordinary(current, directory=True):
             fail(500, "unsafe_data_path", "数据目录不安全")
@@ -501,19 +510,26 @@ def catalog_projection(root: Path) -> dict[str, Any]:
     game_platforms: dict[str, set[str]] = {game["id"]: set() for game in games}
     domains: list[dict[str, Any]] = []
     for game_order, (game_id, _, _) in enumerate(GAME_CATALOG):
-        for platform_order, (disk, platform) in enumerate((("android", "android"), ("pc", "windows"))):
-            matches = [
-                (vendor, Path(root) / vendor / game_id / disk)
+        domain_ids = [
+            f"{game_id}-{'android' if platform == 'android' else 'pc'}"
+            for disk, platform in (("android", "android"), ("pc", "windows"))
+            if any(
+                _exists_or_link(Path(root) / vendor / game_id / disk)
                 for vendor in VENDORS
-                if _exists_or_link(Path(root) / vendor / game_id / disk)
-            ]
-            if not matches:
-                continue
-            domain_id = f"{game_id}-{'android' if platform == 'android' else 'pc'}"
+            )
+        ]
+        for vendor in VENDORS:
+            for domain_id in nondefault_pc_domains(vendor, game_id):
+                directory = Path(root) / vendor / game_id / "pc" / "domains" / domain_id
+                if _exists_or_link(directory):
+                    domain_ids.append(domain_id)
+        for domain_order, domain_id in enumerate(domain_ids):
             vendor, _, _, directory, records = scan_domain(root, domain_id)
+            platform = records[0]["platform"] if records else domain_info(root, domain_id)[2]
+            disk = _disk_platform(platform)
             domain = DomainData(vendor, game_id, disk, platform, domain_id, directory, tuple(records))
             if records:
-                projection = _domain_projection(domain, game_order * 10 + platform_order)
+                projection = _domain_projection(domain, game_order * 10 + domain_order)
             else:
                 projection = {
                     "id": domain_id,
@@ -528,7 +544,7 @@ def catalog_projection(root: Path) -> dict[str, Any]:
                     "source_current_version": None,
                     "catalog_version_count": 0,
                     "is_enabled": True,
-                    "sort_order": game_order * 10 + platform_order,
+                    "sort_order": game_order * 10 + domain_order,
                 }
             projection["is_enabled"] = True
             domains.append(projection)
@@ -550,7 +566,9 @@ def create_version(root: Path, domain_id: str, payload: Mapping[str, Any]) -> di
     with ADMIN_PROBE_LOCK:
         record = build_manual_record(root, domain_id, payload)
         write_v2_record(record, root)
-        rebuild_index(root, record["vendor"], record["game_id"], record["platform"])
+        rebuild_index(
+            root, record["vendor"], record["game_id"], record["platform"], record["domain_id"],
+        )
         return record
 
 
@@ -594,7 +612,9 @@ def update_version(
         changed = updated != old
         if changed:
             write_v2_record(updated, root, overwrite=True)
-            rebuild_index(root, updated["vendor"], updated["game_id"], updated["platform"])
+            rebuild_index(
+                root, updated["vendor"], updated["game_id"], updated["platform"], updated["domain_id"],
+            )
         return updated, changed
 
 
@@ -605,7 +625,9 @@ def set_visibility(root: Path, domain_id: str, version: str, visible: bool) -> b
         updated["is_visible"] = visible
         if updated != record:
             write_v2_record(updated, root, overwrite=True)
-            rebuild_index(root, updated["vendor"], updated["game_id"], updated["platform"])
+            rebuild_index(
+                root, updated["vendor"], updated["game_id"], updated["platform"], updated["domain_id"],
+            )
         return visible
 
 
@@ -614,7 +636,7 @@ def delete_version(root: Path, domain_id: str, version: str) -> None:
         with DATA_LOCK, data_file_lock(root):
             _, path, identity = read_record(root, domain_id, version)
             path.unlink()
-        rebuild_index(root, identity[0], identity[1], identity[2])
+        rebuild_index(root, identity[0], identity[1], identity[2], domain_id)
 
 
 __all__ = [
