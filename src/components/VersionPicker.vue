@@ -130,6 +130,10 @@ function groupSuffix(): string {
   return "版本";
 }
 
+function showPickerAvailability(): boolean {
+  return props.showAvailability && props.mode !== "chunks";
+}
+
 function caps(row: {
   base: string;
   item: VersionSummary;
@@ -145,9 +149,9 @@ function caps(row: {
       artifact_count: total || modeCount || row.item.artifact_count,
       availability_states: row.states,
     } as VersionSummary;
-    return buildVersionBadges(props.domain, merged, formatFileDate, props.showAvailability, props.mode);
+    return buildVersionBadges(props.domain, merged, formatFileDate, showPickerAvailability(), props.mode);
   }
-  return buildVersionBadges(props.domain, row.item, formatFileDate, props.showAvailability);
+  return buildVersionBadges(props.domain, row.item, formatFileDate, showPickerAvailability());
 }
 
 function timeBadge(row: {
@@ -244,7 +248,7 @@ function atomicBadges(row: {
   }
 
   // 若需要展示可用性，确保每一行均有明确且准确的可用性徽章
-  if (props.showAvailability) {
+  if (showPickerAvailability()) {
     const hasStatus = result.some((b) => ["可用", "不可用", "链接失效", "无数据", "未判定", "已归档"].includes(b.label)
       || b.label.startsWith("含失效 ") || b.label.startsWith("含未判定 "));
     const manifestFiles = (props.domain?.adapter === "wuwa" || props.domain?.adapter === "perfectworld_patcher") && props.mode === "files";
@@ -274,7 +278,7 @@ function atomicBadges(row: {
 }
 
 function groupMetaText(group: { name: string; rows: Array<{ base: string; item: VersionSummary; states: Record<string, number> }> }): string {
-  if (!props.showAvailability) return `${group.rows.length} 个版本`;
+  if (!showPickerAvailability()) return `${group.rows.length} 个版本`;
 
   let availableCount = 0;
   let unavailableCount = 0;

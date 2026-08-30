@@ -173,6 +173,8 @@ describe("mode-specific HoYo version picker", () => {
     expect(rows.map((row) => row.querySelector(".version-number")?.textContent)).toEqual(["4.5.0"]);
     expect(rows[0]?.textContent).toContain("Chunk");
     expect(rows[0]?.textContent).not.toContain("无数据");
+    expect(rows[0]?.textContent).not.toContain("未判定");
+    expect(root.querySelector(".version-group .group-meta")?.textContent?.trim()).toBe("1 个版本");
     app.unmount();
   });
 });
