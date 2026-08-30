@@ -391,6 +391,26 @@ class TemporaryContractTests(unittest.TestCase):
         self.assertEqual((unavailable["current"]["state"], unavailable["current"]["evidence_status"]), ("unavailable", "stale"))
         self.assertEqual((unknown["current"]["state"], unknown["current"]["evidence_status"]), ("unknown", "stale"))
 
+    def test_stale_available_evidence_does_not_count_as_currently_available(self):
+        write_record(self.root, record("mihoyo", "hk4e", "android", "6.1.1", [
+            artifact("common.apk", kind="apk", current={"state": "available", "http_code": 206, "checked_at": "2026-08-20T00:00:00Z"}),
+        ]))
+        rebuild_indexes(self.root)
+        with patch("backend.api_contract._utc_now", lambda: FROZEN_NOW):
+            summary = next(
+                item for item in self.get("/api/v1/domains/hk4e-android/versions").json()["items"]
+                if item["version"] == "6.1.1"
+            )
+            detail = self.get("/api/v1/domains/hk4e-android/versions/6.1.1/artifacts?q=common").json()["items"][0]
+            available_page = self.get("/api/v1/domains/hk4e-android/versions/6.1.1/artifacts?availability_state=available").json()
+            unknown_page = self.get("/api/v1/domains/hk4e-android/versions/6.1.1/artifacts?availability_state=unknown").json()
+
+        self.assertEqual((detail["urls"][0]["current"]["state"], detail["urls"][0]["current"]["evidence_status"]), ("available", "stale"))
+        self.assertEqual(summary["availability_states"], {"available": 0, "unavailable": 0, "unknown": 1})
+        self.assertEqual(summary["artifact_kinds"]["apk"]["availability_states"], {"available": 0, "unavailable": 0, "unknown": 1})
+        self.assertEqual(available_page["items"], [])
+        self.assertEqual([item["name"] for item in unknown_page["items"]], ["common.apk"])
+
     def test_future_checked_at_is_not_verified(self):
         write_record(self.root, record("mihoyo", "hk4e", "android", "6.2.0", [
             artifact("common.apk", kind="apk", current={"state": "available", "http_code": 206, "checked_at": "2026-08-29T13:00:00Z"}),
@@ -446,7 +466,8 @@ class TemporaryContractTests(unittest.TestCase):
         self.assertEqual(url["evidence_status"], "unverified")
 
     def test_artifact_filters_sort_and_cursor(self):
-        page = self.get("/api/v1/domains/hk4e-android/versions/2.0.0/artifacts?kind=apk&availability_state=unknown&limit=1").json()
+        with patch("backend.api_contract._utc_now", lambda: FROZEN_NOW):
+            page = self.get("/api/v1/domains/hk4e-android/versions/2.0.0/artifacts?kind=apk&availability_state=unknown&limit=1").json()
         self.assertEqual(len(page["items"]), 1)
         self.assertIsNone(page["next_cursor"])
         self.get("/api/v1/domains/hk4e-android/versions/2.0.0/artifacts?cursor=-1", 400)

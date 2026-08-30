@@ -699,7 +699,22 @@ def _public_artifact(record: dict[str, Any], artifact: dict[str, Any]) -> dict[s
 
 
 def _artifact_state(artifact: dict[str, Any]) -> str:
-    states = [url["current"]["state"] for url in artifact["urls"] if url.get("current")]
+    states = []
+    for url in artifact["urls"]:
+        if not isinstance(url, dict) or not isinstance(url.get("current"), dict):
+            continue
+        current = url["current"]
+        evidence_status = url.get("evidence_status") or current.get("evidence_status")
+        if evidence_status not in {"verified", "stale", "unverified"}:
+            current = _public_current(current)
+            if current is None:
+                continue
+            evidence_status = current["evidence_status"]
+        if evidence_status != "verified":
+            continue
+        state = current.get("state")
+        if state in AVAILABILITY_STATES:
+            states.append(state)
     if "available" in states:
         return "available"
     if states and all(state == "unavailable" for state in states):
