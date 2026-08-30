@@ -100,6 +100,10 @@ class AuthAndRouteTests(AdminFixture):
     def test_short_token_disables_admin(self):
         self.assertEqual(self.client(token="short").get("/api/v1/admin/sync/schedule").status_code, 503)
 
+    def test_thirteen_character_token_enables_admin(self):
+        token = "a" * 13
+        self.assertEqual(self.client(token=token).get("/api/v1/admin/sync/schedule", headers=self.auth(token)).status_code, 200)
+
     def test_missing_and_wrong_bearer_are_401(self):
         client = self.client()
         self.assertEqual(client.get("/api/v1/admin/sync/schedule").status_code, 401)

@@ -22,7 +22,7 @@ from probe_adapters.service import probe as default_probe
 from url_adapters.service import DISCOVERERS, PC_DISCOVERERS
 
 
-TOKEN_MIN_LENGTH = 16
+TOKEN_MIN_LENGTH = 13
 TIME_RE = re.compile(r"^(?:[01]\d|2[0-3]):[0-5]\d$")
 
 
