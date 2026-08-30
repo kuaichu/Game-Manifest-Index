@@ -559,6 +559,29 @@ class OperationTests(AdminFixture):
         persisted = json.loads((self.state / "admin/latest_operation.json").read_text(encoding="utf-8"))
         self.assertNotIn("_phase_failed", persisted)
 
+    def test_transient_progress_snapshot_failure_does_not_fail_operation(self):
+        original_write = AdminStateStore.write
+        writes = 0
+
+        def flaky_write(store, name, value):
+            nonlocal writes
+            if name == "latest_operation":
+                writes += 1
+                if writes == 3:
+                    raise AdminStateError("injected snapshot failure")
+            return original_write(store, name, value)
+
+        client = self.client()
+        with patch.object(AdminStateStore, "write", flaky_write):
+            started = client.post(
+                "/api/v1/admin/operations/start", headers=self.auth(),
+                json={"actions": ["probe"], "scope": "android", "all_games": False, "game_ids": ["hk4e"]},
+            ).json()
+            finished = self.wait(client, started["job_id"])
+
+        self.assertEqual(finished["status"], "finished")
+        self.assertIn("状态快照保存失败，任务继续运行", finished["logs"])
+
     def test_incremental_logs(self):
         client = self.client()
         started = client.post("/api/v1/admin/operations/start", headers=self.auth(), json={"actions": ["probe"], "scope": "android", "all_games": False, "game_ids": ["hk4e"]}).json()

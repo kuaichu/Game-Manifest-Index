@@ -218,7 +218,12 @@ class OperationManager:
             else:
                 outcome = "成功" if item.get("ok") else f"失败:{item.get('error') or 'unknown'}"
                 self._log(f"[{phase}/{platform}] {target} {outcome}")
-            self._save()
+            try:
+                self._save()
+            except AdminStateError:
+                warning = "状态快照保存失败，任务继续运行"
+                if warning not in self._job.setdefault("logs", []):
+                    self._log(warning)
 
     def _discover_scope(self, scope: str, game_ids: list[str], timeout: int, workers: int, progress: Callable[[dict[str, Any], int, int], None]) -> dict[str, Any]:
         selected = [game for game in game_ids if game in (DISCOVERERS if scope == "android" else PC_DISCOVERERS)]
