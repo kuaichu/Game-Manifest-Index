@@ -42,6 +42,9 @@ export function domainModeLabel(domain: ArchiveDomain | null | undefined, capabi
     if (capability === "packages") return "资源清单";
     if (capability === "files") return "文件列表";
   }
+  if (domain?.adapter === "perfectworld_patcher") {
+    if (capability === "files") return "文件列表";
+  }
   if (capability === "files" && domain?.adapter === "hoyo") {
     return "文件列表";
   }
@@ -190,7 +193,7 @@ const artifactKinds: Record<string, string> = { apk: "apk", chunks: "chunk", fil
 export function availableArchiveModes(domains: ArchiveDomain[]): ArchiveModePresentation[] {
   const rawItems = domains.flatMap((domain) => {
     let capabilities = [...domain.capabilities].filter((capability) => capability !== "archive");
-    if (domain.adapter === "wuwa") {
+    if (domain.adapter === "wuwa" || domain.adapter === "perfectworld_patcher" || domain.adapter === "nte") {
       capabilities = capabilities.filter((capability) => capability !== "packages");
     }
     return [...new Set(capabilities)].map((capability) => ({ domain, capability }));
@@ -563,7 +566,7 @@ export function buildVersionBadges(
     result.push({ label: "完整文件", tone: "blue" });
     if (count("patch")) result.push({ label: "含更新补丁", tone: "amber" });
   } else if (domain.adapter === "perfectworld_patcher") {
-    result.push({ label: mode === "files" ? "文件清单" : "完整文件", tone: "blue" });
+    result.push({ label: "文件清单", tone: "blue" });
   } else if (domain.capabilities.includes("resources")) {
     result.push({ label: "运行时资源", tone: "green" });
   } else if (

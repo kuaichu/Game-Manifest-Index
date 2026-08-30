@@ -226,6 +226,12 @@ describe("domain presentation", () => {
     expect(domainFeatureSupport(tof, "compare")).toBe(true);
   });
 
+  it("hides package tabs for Perfect World file-manifest packages", () => {
+    const nte = domain("perfectworld_patcher", ["packages", "files", "archive", "compare"], "nte", "windows", "nte-pc");
+    expect(availableArchiveModes([nte]).map((item) => item.capability)).toEqual(["files", "compare"]);
+    expect(domainModeLabel(nte, "files")).toBe("文件列表");
+  });
+
   it("renders NTE from its independent capability without inventing helper or history controls", () => {
     const nte = domain("nte", ["files", "patches", "manifest"], "nte", "windows", "nte-pc");
     nte.capability_contract = {

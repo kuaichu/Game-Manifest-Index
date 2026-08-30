@@ -178,6 +178,21 @@ const compareBaseVersion = computed(() => {
   const currentIndex = versions.value.findIndex((item) => item.version === selectedVersion.value);
   return versions.value[currentIndex + 1]?.version || compareBaseOptions.value[0]?.version || "";
 });
+function hasHoyoPackageFiles(summary: VersionSummary | null | undefined): boolean {
+  return Number(summary?.artifact_kinds?.package?.count || 0) > 0;
+}
+const compareBaseSummary = computed(
+  () => versions.value.find((item) => item.version === compareBaseVersion.value) || null,
+);
+const compareScope = computed<"artifacts" | "files">(() => {
+  if (domain.value?.adapter === "perfectworld_patcher" || domain.value?.adapter === "nte" || domain.value?.adapter === "wuwa") {
+    return "files";
+  }
+  if (domain.value?.adapter === "hoyo" && hasHoyoPackageFiles(selectedSummary.value) && hasHoyoPackageFiles(compareBaseSummary.value)) {
+    return "files";
+  }
+  return "artifacts";
+});
 const SEARCHABLE_MODES = new Set(["apk", "chunks", "files", "packages", "patches"]);
 const searchableMode = computed(() => SEARCHABLE_MODES.has(mode.value));
 const isFileTreeMode = computed(
@@ -1984,13 +1999,14 @@ function chunkMatchingField(artifact: Artifact): string {
                 @change="updateCompareBase(String($event))"
               />
             </div>
-            <p>差异由服务端按稳定 artifact identity 计算并分页返回；对比响应不包含 URL 或 availability。</p>
+            <p>{{ compareScope === 'files' ? '差异由服务端按文件路径、大小和 MD5 计算并分页返回。' : '差异由服务端按稳定 artifact identity 计算并分页返回；对比响应不包含 URL 或 availability。' }}</p>
           </div>
           <ComparePanel
             v-if="compareBaseVersion"
             :domain-id="domainId"
             :from-version="compareBaseVersion"
             :to-version="selectedVersion"
+            :compare-scope="compareScope"
           />
           <div v-else class="empty">当前版本没有可用的对比基准。</div>
         </div>

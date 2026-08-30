@@ -691,6 +691,11 @@ def list_files(state_root: Path, record: Mapping[str, Any], game_id: str, versio
     return result
 
 
+def package_files(state_root: Path, record: Mapping[str, Any], game_id: str, version: str, identity: str = "game", upstream: Any | None = None) -> list[dict[str, Any]]:
+    files, _network_bytes, _meta = _load_files(Path(state_root), record, game_id, version, identity, upstream)
+    return files
+
+
 def file_detail(state_root: Path, record: Mapping[str, Any], game_id: str, version: str, identity: str, path: str, upstream: Any | None = None) -> dict[str, Any]:
     try:
         wanted = strict_relative_posix(path)
@@ -706,5 +711,5 @@ def file_detail(state_root: Path, record: Mapping[str, Any], game_id: str, versi
 
 
 __all__ = [
-    "PackageFilesBadRequest", "PackageFilesCacheError", "PackageFilesError", "PackageFilesNotFound", "PackageFilesTimeout", "PackageFilesUnsupported", "PackageFilesUpstream", "file_detail", "list_files",
+    "PackageFilesBadRequest", "PackageFilesCacheError", "PackageFilesError", "PackageFilesNotFound", "PackageFilesTimeout", "PackageFilesUnsupported", "PackageFilesUpstream", "file_detail", "list_files", "package_files",
 ]

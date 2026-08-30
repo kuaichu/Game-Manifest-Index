@@ -157,6 +157,7 @@ export interface CompareItem {
 export interface ComparePage {
   from_version: string;
   to_version: string;
+  compare_scope?: "artifacts" | "files";
   summary: { added: number; removed: number; changed: number; size_delta: number };
   items: CompareItem[];
   next_cursor: string | null;

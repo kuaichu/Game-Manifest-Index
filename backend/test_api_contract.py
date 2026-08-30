@@ -142,10 +142,13 @@ class FakeUpstream:
         self.manifest = manifest
         self.chunk = chunk
         self.calls: list[str] = []
+        self.packages: dict[str, bytes] = {}
 
     def get_bytes(self, url: str, *, allowed_hosts, max_bytes: int, expected_size: int | None = None):
         self.calls.append(url)
-        body = getattr(self, "package", None) if "/pkg_version" in url else self.manifest if "/manifests/" in url else self.chunk
+        body = self.packages.get(url) if "/pkg_version" in url else self.manifest if "/manifests/" in url else self.chunk
+        if body is None and "/pkg_version" in url:
+            body = getattr(self, "package", None)
         if body is None:
             body = self.chunk
         if expected_size is not None and len(body) != expected_size:
@@ -188,7 +191,10 @@ class TemporaryContractTests(unittest.TestCase):
                 "perfectworld",
                 "nte",
                 "https://yhcdn1.wmupd.com/clientRes/publish_PC/Res/",
-                {"files": [{"dest": "Client/Bin/b.dll", "size": 9, "md5": "c" * 32, "object": f"c/{'c' * 32}.9"}]},
+                {"files": [
+                    {"dest": "Client/Bin/b.dll", "size": 9, "md5": "c" * 32, "object": f"c/{'c' * 32}.9"},
+                    {"dest": "Client/Bin/removed.dll", "size": 5, "md5": "e" * 32, "object": f"e/{'e' * 32}.5"},
+                ]},
             ),
         ):
             manifest = {"path": "manifests/1.0.0/files.json", "base_urls": [{"url": base, "provider": vendor, "source_kind": "official", "priority": 0}]}
@@ -198,6 +204,28 @@ class TemporaryContractTests(unittest.TestCase):
             target = self.root / vendor / game / "pc" / "manifests" / "1.0.0"
             target.mkdir(parents=True)
             (target / "files.json").write_text(json.dumps(document), encoding="utf-8")
+
+        manifest = {
+            "path": "manifests/1.1.0/files.json",
+            "base_urls": [{"url": "https://yhcdn1.wmupd.com/clientRes/publish_PC/Res/", "provider": "perfectworld", "source_kind": "official", "priority": 0}],
+        }
+        value = record("perfectworld", "nte", "windows", "1.1.0", [artifact("files.json", delivery="file_manifest", manifest=manifest)])
+        write_record(self.root, value)
+        document = {
+            "schema_version": 1,
+            "vendor": "perfectworld",
+            "game_id": "nte",
+            "domain_id": "nte-pc",
+            "platform": "windows",
+            "version": "1.1.0",
+            "files": [
+                {"dest": "Client/Bin/b.dll", "size": 10, "md5": "d" * 32, "object": f"d/{'d' * 32}.10"},
+                {"dest": "Client/Bin/added.dll", "size": 7, "md5": "f" * 32, "object": f"f/{'f' * 32}.7"},
+            ],
+        }
+        target = self.root / "perfectworld" / "nte" / "pc" / "manifests" / "1.1.0"
+        target.mkdir(parents=True)
+        (target / "files.json").write_text(json.dumps(document), encoding="utf-8")
 
         rebuild_indexes(self.root)
         self.upstream = FakeUpstream(manifest_body, chunk_body)
@@ -436,8 +464,88 @@ class TemporaryContractTests(unittest.TestCase):
 
     def test_compare_kind_change_and_cursor_validation(self):
         base = "/api/v1/domains/hk4e-android/compare?from_version=1.0.0&to_version=2.0.0"
-        for query in ("change=nope", "kind=nope", "cursor=bad"):
+        for query in ("change=nope", "kind=nope", "cursor=bad", "compare_scope=nope"):
             self.get(f"{base}&{query}", 400)
+        self.get("/api/v1/domains/nte-pc/compare?from_version=1.0.0&to_version=1.1.0&compare_scope=files&kind=package", 400)
+
+    def test_file_manifest_domains_do_not_publish_packages_capability(self):
+        domain = self.get("/api/v1/games/nte/domains").json()[0]
+        self.assertIn("files", domain["capabilities"])
+        self.assertIn("compare", domain["capabilities"])
+        self.assertNotIn("packages", domain["capabilities"])
+
+    def test_compare_file_manifest_versions_by_files(self):
+        body = self.get("/api/v1/domains/nte-pc/compare?from_version=1.0.0&to_version=1.1.0&compare_scope=files&kind=file").json()
+        self.assertEqual(body["compare_scope"], "files")
+        self.assertEqual(body["summary"], {"added": 1, "removed": 1, "changed": 1, "size_delta": 3})
+        rows = {item["identity"]["path"]: item for item in body["items"]}
+        self.assertEqual(rows["Client/Bin/added.dll"]["change"], "added")
+        self.assertEqual(rows["Client/Bin/removed.dll"]["change"], "removed")
+        changed = rows["Client/Bin/b.dll"]
+        self.assertEqual(changed["change"], "changed")
+        self.assertEqual((changed["before"]["size"], changed["after"]["size"]), (9, 10))
+        self.assertEqual((changed["before"]["checksum_value"], changed["after"]["checksum_value"]), ("c" * 32, "d" * 32))
+
+    def test_compare_mihoyo_archive_package_versions_by_package_files(self):
+        def package_version(version: str, entries: list[tuple[str, int, str]]) -> dict:
+            package = artifact(f"YuanShen_{version}.zip.001", delivery="archive", size=10)
+            package["package_type"] = "segment"
+            package["part"] = 1
+            package["urls"][0].update({
+                "url": f"https://autopatchcn.yuanshen.com/client_app/download/pc_zip/{version}/YuanShen_{version}.zip.001",
+                "provider": "mihoyo",
+                "source_kind": "official",
+            })
+            value = record("mihoyo", "hk4e", "windows", version, [package])
+            write_record(self.root, value)
+            base = f"https://autopatchcn.yuanshen.com/client_app/download/pc_zip/{version}/ScatteredFiles/pkg_version"
+            self.upstream.packages[base] = b"".join(
+                json.dumps({"remoteName": path, "fileSize": size, "md5": md5}).encode() + b"\n"
+                for path, size, md5 in entries
+            )
+            return value
+
+        package_version("5.4.0", [
+            ("Game/Bin/common.dat", 9, "a" * 32),
+            ("Game/Bin/removed.dat", 5, "b" * 32),
+        ])
+        package_version("5.5.0", [
+            ("Game/Bin/common.dat", 10, "c" * 32),
+            ("Game/Bin/added.dat", 7, "d" * 32),
+        ])
+        rebuild_indexes(self.root)
+
+        body = self.get("/api/v1/domains/hk4e-pc/compare?from_version=5.4.0&to_version=5.5.0&compare_scope=files&kind=file").json()
+        self.assertEqual(body["compare_scope"], "files")
+        self.assertEqual(body["summary"], {"added": 1, "removed": 1, "changed": 1, "size_delta": 3})
+        rows = {item["identity"]["path"]: item for item in body["items"]}
+        self.assertEqual(rows["Game/Bin/added.dat"]["change"], "added")
+        self.assertEqual(rows["Game/Bin/removed.dat"]["change"], "removed")
+        changed = rows["Game/Bin/common.dat"]
+        self.assertEqual((changed["before"]["size"], changed["after"]["size"]), (9, 10))
+        self.assertEqual((changed["before"]["checksum_value"], changed["after"]["checksum_value"]), ("a" * 32, "c" * 32))
+
+    def test_compare_mihoyo_files_does_not_fall_back_to_chunk_manifest(self):
+        package = artifact("YuanShen_5.5.0.zip.001", delivery="archive", size=10)
+        package["package_type"] = "segment"
+        package["part"] = 1
+        package["urls"][0].update({
+            "url": "https://autopatchcn.yuanshen.com/client_app/download/pc_zip/5.5.0/YuanShen_5.5.0.zip.001",
+            "provider": "mihoyo",
+            "source_kind": "official",
+        })
+        write_record(self.root, record("mihoyo", "hk4e", "windows", "5.5.0", [package]))
+        rebuild_indexes(self.root)
+        self.upstream.packages[
+            "https://autopatchcn.yuanshen.com/client_app/download/pc_zip/5.5.0/ScatteredFiles/pkg_version"
+        ] = b'{"remoteName":"Game/Bin/common.dat","fileSize":9,"md5":"' + ("a" * 32).encode() + b'"}\n'
+
+        body = self.get(
+            "/api/v1/domains/hk4e-pc/compare?from_version=5.5.0&to_version=2.0.0&compare_scope=files&kind=file",
+            404,
+        ).json()
+        self.assertEqual(body["error"]["code"], "file_not_found")
+        self.assertFalse(any("/manifests/" in url for url in self.upstream.calls))
 
     def test_leads_existing_and_missing(self):
         self.assertEqual(self.get("/api/v1/domains/hk4e-pc/leads").json(), {"items": []})

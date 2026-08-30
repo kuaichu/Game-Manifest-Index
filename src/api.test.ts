@@ -119,6 +119,19 @@ describe("API client", () => {
     expect(url).toContain("cursor=next");
   });
 
+  it("requests file-level server comparisons when a compare scope is provided", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      from_version: "1.0", to_version: "2.0", compare_scope: "files",
+      summary: { added: 0, removed: 0, changed: 1, size_delta: 1 },
+      items: [], next_cursor: null,
+    }), { status: 200, headers: { "Content-Type": "application/json" } }));
+    vi.stubGlobal("fetch", fetchMock);
+    await api.compare("nte-pc", {
+      fromVersion: "1.0", toVersion: "2.0", compareScope: "files",
+    });
+    expect(String(fetchMock.mock.calls[0][0])).toContain("compare_scope=files");
+  });
+
   it("sends PATCH to updateEditableVersion with payload and token", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ domain_id: "hkrpg-pc", version: "2.0.0" }), {
       status: 200,

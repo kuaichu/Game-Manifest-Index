@@ -219,6 +219,7 @@ export const api = {
       toVersion: string;
       kind?: string;
       change?: "all" | "added" | "removed" | "changed";
+      compareScope?: "artifacts" | "files";
       limit?: number;
       cursor?: string | null;
     },
@@ -231,6 +232,7 @@ export const api = {
       limit: String(options.limit || 100),
     });
     if (options.kind) parameters.set("kind", options.kind);
+    if (options.compareScope) parameters.set("compare_scope", options.compareScope);
     if (options.cursor) parameters.set("cursor", options.cursor);
     return requestJson<ComparePage>(`/domains/${encodeURIComponent(domainId)}/compare?${parameters}`, signal);
   },

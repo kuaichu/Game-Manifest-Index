@@ -456,7 +456,7 @@ describe("archive cross-game navigation", () => {
     await flushUpdates();
     await flushUpdates();
     expect(compare).toHaveBeenCalledWith("wuwa-pc", expect.objectContaining({
-      fromVersion: "3.4.2", toVersion: "3.5.0",
+      fromVersion: "3.4.2", toVersion: "3.5.0", compareScope: "files", kind: "file",
     }), expect.any(AbortSignal));
     expect(root.textContent).toContain("3.4.2 → 3.5.0");
     expect(root.textContent).toContain("修改1 个");
@@ -581,7 +581,7 @@ describe("archive cross-game navigation", () => {
 
     // Initial load was for PC
     expect(compare).toHaveBeenCalledWith("hk4e-pc", expect.objectContaining({
-      fromVersion: "5.4.0", toVersion: "5.5.0",
+      fromVersion: "5.4.0", toVersion: "5.5.0", compareScope: "files", kind: "file",
     }), expect.any(AbortSignal));
 
     // 3. Click "Android 官方客户端" platform button
@@ -590,7 +590,7 @@ describe("archive cross-game navigation", () => {
     await flushUpdates();
 
     expect(compare).toHaveBeenCalledWith("hk4e-android", expect.objectContaining({
-      fromVersion: "5.4.0", toVersion: "5.5.0",
+      fromVersion: "5.4.0", toVersion: "5.5.0", compareScope: "artifacts",
     }), expect.any(AbortSignal));
     expect(router.currentRoute.value.params).toMatchObject({
       gameId: "hk4e", domainId: "hk4e-android", version: "5.5.0", mode: "compare",
@@ -599,6 +599,49 @@ describe("archive cross-game navigation", () => {
     // Top "版本对比" tab remains active
     const activeModeTab = root.querySelector(".mode-tab.active");
     expect(activeModeTab?.textContent?.trim()).toBe("版本对比");
+
+    app.unmount();
+  });
+
+  it("keeps HoYo chunk-only versions on artifact-level comparison", async () => {
+    const game = { id: "hk4e", name: "原神", sub_name: "Genshin Impact", icon_source: "", sort_order: 0 };
+    const domain = {
+      id: "hk4e-pc", game_id: "hk4e", kind: "mixed", platform: "windows",
+      capabilities: ["packages", "chunks", "compare"], adapter: "hoyo",
+      version_count: 2, latest_version: "5.6.0", sort_order: 0,
+      capability_contract: { features: { compare: "supported" } },
+    };
+    const versions = [
+      { version: "5.6.0", current_revision_id: 2, revision_count: 1, observed_at: "2026-08-11T00:00:00Z", packed_size: 100, unpacked_size: 200, artifact_count: 1, artifact_kinds: { chunk: { count: 1, size: 100 } }, availability_states: {}, attributes: {} },
+      { version: "5.5.0", current_revision_id: 1, revision_count: 1, observed_at: "2026-07-11T00:00:00Z", packed_size: 100, unpacked_size: 200, artifact_count: 2, artifact_kinds: { package: { count: 2, size: 100 } }, availability_states: {}, attributes: {} },
+    ];
+    vi.spyOn(api, "games").mockResolvedValue([game] as never);
+    vi.spyOn(api, "domains").mockResolvedValue([domain] as never);
+    vi.spyOn(api, "versions").mockResolvedValue(versions as never);
+    const compare = vi.spyOn(api, "compare").mockResolvedValue({
+      from_version: "5.5.0", to_version: "5.6.0",
+      summary: { added: 1, removed: 0, changed: 0, size_delta: 1 },
+      items: [], next_cursor: null,
+    } as never);
+
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: "/games/:gameId/:domainId?/:version?/:mode?", name: "archive", component: ArchiveView }],
+    });
+    await router.push("/games/hk4e/hk4e-pc/5.6.0/compare");
+    await router.isReady();
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const app = createApp(ArchiveView);
+    app.use(router);
+    app.mount(root);
+    await flushUpdates();
+    await flushUpdates();
+
+    expect(compare).toHaveBeenCalledWith("hk4e-pc", expect.objectContaining({
+      fromVersion: "5.5.0", toVersion: "5.6.0", compareScope: "artifacts",
+    }), expect.any(AbortSignal));
+    expect(compare.mock.calls[0]?.[1]).not.toMatchObject({ kind: "file" });
 
     app.unmount();
   });

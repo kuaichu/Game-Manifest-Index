@@ -78,6 +78,29 @@ describe("read-only product components", () => {
     app.unmount();
   });
 
+  it("renders file-level comparison paths and requests file scope", async () => {
+    vi.spyOn(api, "compare").mockResolvedValue({
+      from_version: "1", to_version: "2", compare_scope: "files",
+      summary: { added: 0, removed: 0, changed: 1, size_delta: 1 },
+      items: [{
+        change: "changed",
+        identity: { path: "Client/Bin/game.dll" },
+        before: { name: "game.dll", part: 1, kind: "file", size: 9, checksum_type: "md5", checksum_value: "c".repeat(32), attributes: { path: "Client/Bin/game.dll" } },
+        after: { name: "game.dll", part: 1, kind: "file", size: 10, checksum_type: "md5", checksum_value: "d".repeat(32), attributes: { path: "Client/Bin/game.dll" } },
+      }],
+      next_cursor: null,
+    } as never);
+    const root = document.createElement("div"); document.body.appendChild(root);
+    const app = createApp(ComparePanel, { domainId: "nte-pc", fromVersion: "1", toVersion: "2", compareScope: "files" });
+    app.mount(root);
+    await flushUpdates();
+    expect(api.compare).toHaveBeenCalledWith("nte-pc", expect.objectContaining({ compareScope: "files", kind: "file" }), expect.any(AbortSignal));
+    expect(root.textContent).toContain("Client/Bin/game.dll");
+    expect(root.textContent).toContain("9 B");
+    expect(root.textContent).toContain("10 B");
+    app.unmount();
+  });
+
   it("shows comparison errors and retries without client-side artifact loading", async () => {
     vi.spyOn(api, "compare")
       .mockRejectedValueOnce(new Error("compare unavailable"))

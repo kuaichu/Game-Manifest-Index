@@ -333,6 +333,10 @@ def list_local_files(
     return _directory_page(_local_files(document, base_urls), path, q, limit, cursor)
 
 
+def local_files(document: Mapping[str, Any], base_urls: list[str] | None = None) -> list[dict[str, Any]]:
+    return _local_files(document, base_urls or [])
+
+
 def local_file_detail(document: Mapping[str, Any], base_urls: list[str], path: str) -> dict[str, Any]:
     wanted = strict_relative_posix(path)
     for item in _local_files(document, base_urls):
@@ -531,5 +535,5 @@ def chunk_content(document: Mapping[str, Any], identity: str, name: str, upstrea
 __all__ = [
     "HttpUpstream", "ManifestBadRequest", "ManifestCorrupt", "ManifestError", "ManifestNotFound",
     "ManifestTimeout", "ManifestUpstream", "chunk_content", "chunk_file_detail", "list_chunk_files",
-    "list_local_files", "local_file_detail", "strict_relative_posix",
+    "list_local_files", "local_file_detail", "local_files", "strict_relative_posix",
 ]

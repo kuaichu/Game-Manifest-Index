@@ -36,9 +36,10 @@ from backend.manifest_readers import (
     OFFICIAL_SOPHON_HOSTS,
     chunk_content,
     chunk_file_detail,
+    local_file_detail,
+    local_files,
     list_chunk_files,
     list_local_files,
-    local_file_detail,
     strict_relative_posix,
 )
 from backend.mihoyo_package_files import (
@@ -50,6 +51,7 @@ from backend.mihoyo_package_files import (
     PackageFilesUpstream,
     list_files as list_mihoyo_package_files,
     file_detail as mihoyo_package_file_detail,
+    package_files as mihoyo_package_files,
 )
 from backend.schema_v2 import SchemaValidationError, artifact_identity_key, validate_v2_record
 
@@ -63,6 +65,7 @@ PLATFORMS = (("android", "android"), ("pc", "windows"))
 ARTIFACT_KINDS = frozenset({"apk", "package", "patch", "resource"})
 TREE_KINDS = ARTIFACT_KINDS | {"all", "file"}
 AVAILABILITY_STATES = frozenset({"available", "unavailable", "unknown"})
+COMPARE_SCOPES = frozenset({"artifacts", "files"})
 LOCAL_OFFICIAL_HOSTS = {
     "kuro": frozenset(
         {
@@ -817,7 +820,7 @@ def _domain_projection(domain: DomainData, sort_order: int) -> dict[str, Any]:
     capabilities: list[str] = []
     if "apk" in kinds:
         capabilities.append("apk")
-    if "package" in kinds:
+    if any(item.get("kind") == "package" and item.get("delivery_mode") != "file_manifest" for item in artifacts):
         capabilities.append("packages")
     if "patch" in kinds:
         capabilities.append("patches")
@@ -876,6 +879,18 @@ def _domain_projection(domain: DomainData, sort_order: int) -> dict[str, Any]:
 def _compare_artifact(artifact: dict[str, Any]) -> dict[str, Any]:
     public = _public_artifact({}, artifact)
     return {key: public[key] for key in ("name", "part", "kind", "size", "checksum_type", "checksum_value", "attributes")}
+
+
+def _compare_file(item: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "name": item["path"].rsplit("/", 1)[-1],
+        "part": 1,
+        "kind": "file",
+        "size": item["size"],
+        "checksum_type": "md5",
+        "checksum_value": item["md5"],
+        "attributes": {"path": item["path"]},
+    }
 
 
 def _identity(artifact: dict[str, Any]) -> tuple[str, dict[str, Any]]:
@@ -1058,19 +1073,74 @@ def create_api_app(data_root: Path, upstream: Any | None = None, *, state_root: 
         page, next_cursor = _paginate(items, limit, cursor)
         return {"items": page, "next_cursor": next_cursor}
 
+    def file_compare_rows(
+        domain: DomainData, before_record: dict[str, Any], after_record: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        try:
+            try:
+                _, before_document, before_base_urls = service().package_document(domain, before_record, "game")
+                _, after_document, after_base_urls = service().package_document(domain, after_record, "game")
+                before = {item["path"]: _compare_file(item) for item in local_files(before_document, before_base_urls)}
+                after = {item["path"]: _compare_file(item) for item in local_files(after_document, after_base_urls)}
+            except ApiFault as error:
+                if error.status != 404 or domain.vendor != "mihoyo" or domain.platform != "windows":
+                    raise
+                before = {
+                    item["path"]: _compare_file(item)
+                    for item in mihoyo_package_files(
+                        service().state_root, before_record, before_record["game_id"], before_record["version"],
+                        "game", service().upstream,
+                    )
+                }
+                after = {
+                    item["path"]: _compare_file(item)
+                    for item in mihoyo_package_files(
+                        service().state_root, after_record, after_record["game_id"], after_record["version"],
+                        "game", service().upstream,
+                    )
+                }
+        except ManifestError as error:
+            raise _manifest_error(error) from error
+        rows = []
+        for path in sorted(set(before) | set(after), key=lambda value: (value.casefold(), value)):
+            old = before.get(path)
+            new = after.get(path)
+            row_change = "added" if old is None else "removed" if new is None else "changed" if old != new else None
+            if row_change:
+                rows.append({"change": row_change, "identity": {"path": path}, "before": old, "after": new})
+        return rows
+
     @app.get("/api/v1/domains/{domain_id}/compare")
     def compare(
         domain_id: str, from_version: str, to_version: str, change: str = "all", kind: str | None = None,
-        limit: int = Query(100, ge=1, le=500), cursor: str | None = None,
+        compare_scope: str = "artifacts", limit: int = Query(100, ge=1, le=500), cursor: str | None = None,
     ) -> dict[str, Any]:
         _cursor(cursor)
         if change not in {"all", "added", "removed", "changed"}:
             fail(400, "bad_change", "change 无效")
-        if kind is not None and kind not in ARTIFACT_KINDS:
+        if compare_scope not in COMPARE_SCOPES:
+            fail(400, "bad_compare_scope", "compare_scope 无效")
+        if kind is not None and kind not in ARTIFACT_KINDS and not (compare_scope == "files" and kind == "file"):
             fail(400, "bad_kind", "kind 无效")
         domain = service().domain(domain_id)
         before_record = service().record(domain, from_version)
         after_record = service().record(domain, to_version)
+        if compare_scope == "files":
+            if kind is not None and kind != "file":
+                fail(400, "bad_kind", "文件级对比只支持 kind=file")
+            rows = file_compare_rows(domain, before_record, after_record)
+            summary = {name: sum(row["change"] == name for row in rows) for name in ("added", "removed", "changed")}
+            summary["size_delta"] = sum((row["after"] or {}).get("size", 0) - (row["before"] or {}).get("size", 0) for row in rows)
+            filtered = rows if change == "all" else [row for row in rows if row["change"] == change]
+            page, next_cursor = _paginate(filtered, limit, cursor)
+            return {
+                "from_version": from_version,
+                "to_version": to_version,
+                "compare_scope": compare_scope,
+                "summary": summary,
+                "items": page,
+                "next_cursor": next_cursor,
+            }
         before = {}
         after = {}
         identities: dict[str, dict[str, Any]] = {}
@@ -1094,7 +1164,7 @@ def create_api_app(data_root: Path, upstream: Any | None = None, *, state_root: 
         summary["size_delta"] = sum((row["after"] or {}).get("size", 0) - (row["before"] or {}).get("size", 0) for row in rows)
         filtered = rows if change == "all" else [row for row in rows if row["change"] == change]
         page, next_cursor = _paginate(filtered, limit, cursor)
-        return {"from_version": from_version, "to_version": to_version, "summary": summary, "items": page, "next_cursor": next_cursor}
+        return {"from_version": from_version, "to_version": to_version, "compare_scope": compare_scope, "summary": summary, "items": page, "next_cursor": next_cursor}
 
     @app.get("/api/v1/domains/{domain_id}/leads")
     def leads(domain_id: str) -> dict[str, list[Any]]:

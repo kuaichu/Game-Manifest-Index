@@ -3,7 +3,10 @@ import { onBeforeUnmount, ref, watch } from "vue";
 import { api, isAbortError } from "../api";
 import type { CompareItem, ComparePage } from "../types";
 
-const props = defineProps<{ domainId: string; fromVersion: string; toVersion: string; kind?: string }>();
+const props = withDefaults(
+  defineProps<{ domainId: string; fromVersion: string; toVersion: string; kind?: string; compareScope?: "artifacts" | "files" }>(),
+  { compareScope: "artifacts" },
+);
 const filter = ref<"all" | "added" | "removed" | "changed">("all");
 const page = ref<ComparePage | null>(null);
 const items = ref<CompareItem[]>([]);
@@ -26,6 +29,12 @@ function formatBytes(value: number): string {
   return `${value < 0 ? "−" : ""}${size.toFixed(unit ? 2 : 0)} ${units[unit]}`;
 }
 
+function itemPath(item: CompareItem): string {
+  const value = item.after?.attributes?.path || item.before?.attributes?.path;
+  if (typeof value === "string") return value;
+  return `${item.after?.kind || item.before?.kind} · part ${item.after?.part || item.before?.part}`;
+}
+
 async function load(append = false): Promise<void> {
   controller?.abort();
   const request = new AbortController();
@@ -36,7 +45,8 @@ async function load(append = false): Promise<void> {
     const result = await api.compare(props.domainId, {
       fromVersion: props.fromVersion,
       toVersion: props.toVersion,
-      kind: props.kind,
+      kind: props.compareScope === "files" ? "file" : props.kind,
+      compareScope: props.compareScope,
       change: filter.value,
       limit: 100,
       cursor: append ? page.value?.next_cursor : null,
@@ -55,7 +65,7 @@ async function load(append = false): Promise<void> {
 }
 
 watch(
-  () => [props.domainId, props.fromVersion, props.toVersion, props.kind, filter.value],
+  () => [props.domainId, props.fromVersion, props.toVersion, props.kind, props.compareScope, filter.value],
   () => void load(false),
   { immediate: true },
 );
@@ -79,7 +89,7 @@ onBeforeUnmount(() => controller?.abort());
         <b class="diff-marker">{{ item.change === "added" ? "+" : item.change === "removed" ? "−" : "~" }}</b>
         <div class="diff-body">
           <div class="diff-title"><strong>{{ item.after?.name || item.before?.name }}</strong><span>{{ index + 1 }}</span></div>
-          <div class="diff-path">{{ item.after?.kind || item.before?.kind }} · part {{ item.after?.part || item.before?.part }}</div>
+          <div class="diff-path">{{ itemPath(item) }}</div>
           <div class="diff-change"><span>size:</span><code>{{ item.before ? formatBytes(item.before.size) : "—" }}</code><span>→</span><code>{{ item.after ? formatBytes(item.after.size) : "—" }}</code></div>
           <div class="diff-change"><span>checksum:</span><code>{{ item.before?.checksum_value || "—" }}</code><span>→</span><code>{{ item.after?.checksum_value || "—" }}</code></div>
         </div>
