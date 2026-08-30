@@ -286,6 +286,52 @@ describe("multi-channel availability badges", () => {
     expect(groupMetas).toContain("2 不可用");
     app.unmount();
   });
+
+  it("does not mark HoYo package versions as available when they only have unknown evidence", async () => {
+    const versions = [
+      {
+        version: "0.2.0", current_revision_id: 1, revision_count: 1, observed_at: null,
+        packed_size: 0, unpacked_size: 0, artifact_count: 1,
+        artifact_kinds: { package: { count: 1, size: 0, availability_states: { available: 0, unavailable: 0, unknown: 1 } } },
+        availability_states: { available: 0, unavailable: 0, unknown: 1 }, attributes: {}, provenance: {},
+      },
+      {
+        version: "0.1.0", current_revision_id: 1, revision_count: 1, observed_at: null,
+        packed_size: 1, unpacked_size: 1, artifact_count: 1,
+        artifact_kinds: { package: { count: 1, size: 1, availability_states: { available: 1, unavailable: 0, unknown: 0 } } },
+        availability_states: { available: 1, unavailable: 0, unknown: 0 }, attributes: {}, provenance: {},
+      },
+    ] as VersionSummary[];
+    const domain = {
+      id: "nap-pc", game_id: "nap", kind: "mixed", platform: "windows",
+      capabilities: ["packages", "chunks", "archive", "compare"], adapter: "hoyo",
+      version_count: 2, latest_version: "0.2.0", capability_contract: { features: {} },
+    } as ArchiveDomain;
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const app = createApp({
+      render: () => h(VersionPicker, {
+        versions,
+        modelValue: "0.2.0",
+        domain,
+        mode: "packages",
+        onSelect: () => {},
+      }),
+    });
+    app.mount(root);
+    (root.querySelector(".select-button") as HTMLButtonElement).click();
+    await nextTick();
+
+    const rows = Array.from(root.querySelectorAll(".version-row"));
+    expect(rows[0]?.textContent).toContain("0.2.0");
+    expect(rows[0]?.textContent).toContain("未判定");
+    expect(rows[0]?.textContent).not.toContain("可用");
+    expect(rows[1]?.textContent).toContain("0.1.0");
+    expect(rows[1]?.textContent).toContain("可用");
+    expect(root.querySelector(".version-group .group-meta")?.textContent?.trim()).toBe("1 可用 · 1 未判定");
+
+    app.unmount();
+  });
 });
 
 describe("WuWa PC files availability fallback", () => {

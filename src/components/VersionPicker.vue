@@ -248,21 +248,24 @@ function atomicBadges(row: {
     const hasStatus = result.some((b) => ["可用", "不可用", "链接失效", "无数据", "未判定", "已归档"].includes(b.label)
       || b.label.startsWith("含失效 ") || b.label.startsWith("含未判定 "));
     const manifestFiles = (props.domain?.adapter === "wuwa" || props.domain?.adapter === "perfectworld_patcher") && props.mode === "files";
+    const available = Number(row.states.available || 0);
     const unknown = Number(row.states.unknown || 0);
     if (!hasStatus && manifestFiles && unknown > 0) {
-      result.push({ label: row.states.available > 0 ? `含未判定 ${unknown}` : "未判定", tone: row.states.available > 0 ? "amber" : "slate" });
+      result.push({ label: available > 0 ? `含未判定 ${unknown}` : "未判定", tone: available > 0 ? "amber" : "slate" });
     } else if (!hasStatus) {
       const kind = props.mode ? artifactKindForMode(props.mode) : "";
       const count = manifestFiles ? artifactCountForMode(row.item, "files", props.domain?.adapter) : kind ? row.item.artifact_kinds?.[kind]?.count || 0 : 0;
       const modeHasKind = Boolean(kind || manifestFiles);
       if (modeHasKind && count === 0 && !versionSupportsMode(row.item, props.mode || "", props.domain?.adapter)) {
         result.push({ label: "无数据", tone: "slate" });
-      } else if (modeHasKind && count === 0 && unknown === 0) {
-        result.push({ label: "未判定", tone: "slate" });
       } else if (isRowUnavailable(row)) {
         result.push({ label: props.domain?.adapter === "android" ? "不可用" : "链接失效", tone: "red" });
-      } else {
+      } else if (available > 0 && unknown > 0) {
+        result.push({ label: `含未判定 ${unknown}`, tone: "amber" });
+      } else if (available > 0) {
         result.push({ label: "可用", tone: "green" });
+      } else {
+        result.push({ label: "未判定", tone: "slate" });
       }
     }
   }
@@ -275,20 +278,17 @@ function groupMetaText(group: { name: string; rows: Array<{ base: string; item: 
 
   let availableCount = 0;
   let unavailableCount = 0;
+  let unknownCount = 0;
 
   for (const row of group.rows) {
-    const unavailable = Number(row.states.unavailable || 0);
     const available = Number(row.states.available || 0);
-    const total = (available + unavailable + Number(row.states.unknown || 0)) || Number(row.item.artifact_count || 0);
 
-    if (unavailable > 0 && available === 0) {
+    if (isRowUnavailable(row)) {
       unavailableCount++;
     } else if (available > 0) {
       availableCount++;
-    } else if (unavailable > 0 && total > 0 && unavailable >= total) {
-      unavailableCount++;
     } else {
-      availableCount++;
+      unknownCount++;
     }
   }
 
@@ -298,6 +298,9 @@ function groupMetaText(group: { name: string; rows: Array<{ base: string; item: 
   }
   if (unavailableCount > 0) {
     parts.push(`${unavailableCount} 不可用`);
+  }
+  if (unknownCount > 0) {
+    parts.push(`${unknownCount} 未判定`);
   }
   return parts.join(" · ") || `${group.rows.length} 个版本`;
 }
