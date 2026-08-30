@@ -22,7 +22,6 @@ from probe_adapters.service import probe as default_probe
 from url_adapters.service import DISCOVERERS, PC_DISCOVERERS
 
 
-TOKEN_MIN_LENGTH = 13
 TIME_RE = re.compile(r"^(?:[01]\d|2[0-3]):[0-5]\d$")
 
 
@@ -129,7 +128,7 @@ class AdminVisibilityPayload(AdminStrictModel):
 
 
 def _valid_token(token: str | None) -> bool:
-    return isinstance(token, str) and len(token.strip()) >= TOKEN_MIN_LENGTH and not any(char.isspace() for char in token)
+    return isinstance(token, str) and token != "" and not any(char.isspace() for char in token)
 
 
 def create_admin_router(
@@ -464,4 +463,4 @@ def create_admin_router(
     return router, operations, store
 
 
-__all__ = ["TOKEN_MIN_LENGTH", "create_admin_router"]
+__all__ = ["create_admin_router"]

@@ -97,11 +97,12 @@ class AuthAndRouteTests(AdminFixture):
             malformed = self.client(token=None).post("/api/v1/admin/operations/start", json={"workers": "bad"})
             self.assertEqual(malformed.status_code, 503)
 
-    def test_short_token_disables_admin(self):
-        self.assertEqual(self.client(token="short").get("/api/v1/admin/sync/schedule").status_code, 503)
+    def test_empty_or_whitespace_token_disables_admin(self):
+        for token in ("", " ", "abc def"):
+            self.assertEqual(self.client(token=token).get("/api/v1/admin/sync/schedule").status_code, 503, token)
 
-    def test_thirteen_character_token_enables_admin(self):
-        token = "a" * 13
+    def test_short_nonempty_token_enables_admin(self):
+        token = "abc"
         self.assertEqual(self.client(token=token).get("/api/v1/admin/sync/schedule", headers=self.auth(token)).status_code, 200)
 
     def test_missing_and_wrong_bearer_are_401(self):
