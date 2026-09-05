@@ -62,6 +62,14 @@ class ProbeTransportTests(unittest.TestCase):
                     probe_url(self.URL, value)
                 run.assert_not_called()
 
+    def test_subprocess_timeout_is_converted_to_probe_error(self):
+        with patch(
+            "probe_adapters.common.subprocess.run",
+            side_effect=subprocess.TimeoutExpired("curl", 15),
+        ):
+            with self.assertRaisesRegex(ProbeError, "curl 超时"):
+                probe_url(self.URL, 10)
+
     def test_curl_command_keeps_snapshot_transport_limits(self):
         with patch("probe_adapters.common.subprocess.run", side_effect=self._curl(0, b"")) as run:
             probe_url(self.URL, 7)
