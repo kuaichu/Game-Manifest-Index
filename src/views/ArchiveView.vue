@@ -35,6 +35,7 @@ import {
 import { gameIcons } from "../game-icons";
 import { publisherGroups } from "../game-meta";
 import SourceProvenanceModal from "../components/SourceProvenanceModal.vue";
+import { useArchiveLoader } from "../composables/useArchiveLoader";
 import type {
   ArchiveDomain,
   ArchiveLead,
@@ -67,10 +68,6 @@ function openProvenanceModal(event?: MouseEvent): void {
   showProvenanceModal.value = true;
 }
 
-const games = ref<Game[]>([]);
-const domains = ref<ArchiveDomain[]>([]);
-const versions = ref<VersionSummary[]>([]);
-const versionsDomainId = ref("");
 const artifacts = ref<Artifact[]>([]);
 const remoteTreeProbeTime = ref<string | null>(null);
 const chunkCollection = ref<ChunkManifestSummaryItem[]>([]);
@@ -86,18 +83,39 @@ const availabilityFilter = ref<"all" | "available" | "unavailable" | "unknown">(
     ? (initialAvailability as "available" | "unavailable" | "unknown")
     : "all",
 );
-const loading = ref(true);
 const loadingMore = ref(false);
 const toast = ref("");
 const error = ref<Error | null>(null);
-const registryError = ref<Error | null>(null);
-const scopedNotFound = ref("");
-let registryController: AbortController | null = null;
-let registryRequestId = 0;
-let registryTargetGame = "";
-let registryTargetDomain = "";
 let artifactController: AbortController | null = null;
 let artifactRequestId = 0;
+const SEARCHABLE_MODES = new Set(["apk", "chunks", "files", "packages", "patches"]);
+
+function invalidateArtifactLoad(): void {
+  artifactController?.abort();
+  artifactController = null;
+  artifactRequestId += 1;
+  chunkLoading.value = false;
+}
+
+const {
+  games,
+  domains,
+  versions,
+  versionsDomainId,
+  loading,
+  registryError,
+  scopedNotFound,
+  registryTargetGame,
+  registryTargetDomain,
+  loadRegistry,
+  dispose: disposeArchiveLoader,
+} = useArchiveLoader({
+  route,
+  router,
+  searchableModes: SEARCHABLE_MODES,
+  loadArtifacts,
+  invalidateArtifactLoad,
+});
 
 const gameId = computed(() => String(route.params.gameId || ""));
 const domainId = computed(() => String(route.params.domainId || domains.value[0]?.id || ""));
@@ -195,7 +213,6 @@ const compareScope = computed<"artifacts" | "files">(() => {
   }
   return "artifacts";
 });
-const SEARCHABLE_MODES = new Set(["apk", "chunks", "files", "packages", "patches"]);
 const searchableMode = computed(() => SEARCHABLE_MODES.has(mode.value));
 const isFileTreeMode = computed(
   () => mode.value === "files" && ["patchersdk", "perfectworld_patcher", "wuwa", "hoyo"].includes(domain.value?.adapter || ""),
@@ -542,12 +559,6 @@ const displayGameSubtitle = computed(() => {
   if (!current) return "";
   return displayGameName.value === current.name ? current.sub_name : current.name;
 });
-const preferredDomain = (items: ArchiveDomain[]): ArchiveDomain | undefined =>
-  [...items].sort((left, right) => {
-    const score = (item: ArchiveDomain) =>
-      item.adapter === "android" || item.capabilities.every((capability) => capability === "apk") ? 10 : 0;
-    return score(left) - score(right);
-  })[0];
 const chunkSummary = computed(() => {
   const rows = artifacts.value.filter((item) => item.kind === "chunk");
   const numeric = (item: Artifact, key: string) => Number(item.attributes?.[key] || 0);
@@ -718,131 +729,6 @@ function legacyArchiveUrl(lead: ArchiveLead): string | undefined {
   const url = lead.urls[0];
   const timestamp = String(url?.archive_facts.timestamp || "");
   return timestamp && url?.url ? `https://web.archive.org/web/${timestamp}/${url.url}` : undefined;
-}
-
-async function loadRegistry(): Promise<void> {
-  registryController?.abort();
-  artifactController?.abort();
-  artifactController = null;
-  artifactRequestId += 1;
-  chunkLoading.value = false;
-  const request = new AbortController();
-  registryController = request;
-  const requestId = ++registryRequestId;
-  const isCurrent = () => registryRequestId === requestId && !request.signal.aborted;
-  loading.value = true;
-  registryError.value = null;
-  scopedNotFound.value = "";
-  try {
-    const loadedGames = await api.games(request.signal);
-    if (!isCurrent()) return;
-    games.value = loadedGames;
-    if (!loadedGames.length) {
-      domains.value = [];
-      versions.value = [];
-      return;
-    }
-    const requestedGame = String(route.params.gameId || "");
-    if (requestedGame && !loadedGames.some((item) => item.id === requestedGame)) {
-      domains.value = [];
-      versions.value = [];
-      scopedNotFound.value = `游戏 ${requestedGame} 不存在。`;
-      return;
-    }
-    const targetGame = requestedGame || loadedGames[0]?.id;
-    if (!targetGame) return;
-    registryTargetGame = targetGame;
-    const loadedDomains = [...(await api.domains(targetGame, request.signal))].sort((left, right) => {
-      const score = (item: ArchiveDomain) =>
-        item.adapter === "android" || item.capabilities.every((capability) => capability === "apk") ? 10 : 0;
-      return score(left) - score(right);
-    });
-    if (!isCurrent()) return;
-    domains.value = loadedDomains;
-    const rawRequestedDomain = String(route.params.domainId || "");
-    const aliasDomain = rawRequestedDomain === "pc"
-      ? loadedDomains.find((item) => item.id === `${targetGame}-pc` || item.platform?.toLowerCase() === "windows")?.id
-      : rawRequestedDomain === "android"
-        ? loadedDomains.find((item) => item.id === `${targetGame}-android` || item.platform?.toLowerCase() === "android")?.id
-        : undefined;
-    const requestedDomain = aliasDomain || rawRequestedDomain;
-    if (requestedDomain && !loadedDomains.some((item) => item.id === requestedDomain)) {
-      versions.value = [];
-      scopedNotFound.value = `归档域 ${requestedDomain} 不属于 ${targetGame}。`;
-      return;
-    }
-    const targetDomain = requestedDomain || preferredDomain(loadedDomains)?.id;
-    if (!targetDomain) return;
-    registryTargetDomain = targetDomain;
-    const loadedVersions = await api.versions(targetDomain, request.signal);
-    if (!isCurrent()) return;
-    versions.value = loadedVersions;
-    versionsDomainId.value = targetDomain;
-    let requestedVersion = String(route.params.version || "");
-    let requestedMode = String(route.params.mode || "");
-    if (requestedVersion === "files") {
-      requestedMode = "files";
-      requestedVersion = String(route.query.version || "");
-    }
-    const targetDomainRow = loadedDomains.find((item) => item.id === targetDomain);
-    const hasRequestedMode = Boolean(requestedMode && targetDomainRow?.capabilities.includes(requestedMode));
-    const targetMode = hasRequestedMode ? requestedMode : targetDomainRow?.capabilities[0];
-    if (!targetMode) return;
-    const scopesHoYoVersions = targetDomainRow?.adapter === "hoyo"
-      && ["packages", "patches", "chunks"].includes(targetMode);
-    const modeVersions = scopesHoYoVersions
-      ? loadedVersions.filter((item) => versionSupportsMode(item, targetMode, targetDomainRow?.adapter))
-      : loadedVersions;
-    const matchedVersion = modeVersions.find(
-      (item) => item.version === requestedVersion || displayVersionLabel(item.version, item.attributes) === requestedVersion,
-    )?.version;
-    const targetVersion = matchedVersion || modeVersions[0]?.version || loadedVersions[0]?.version;
-    if (!targetVersion) return;
-    const requestedCompareFrom = String(route.query.from || "");
-    const targetIndex = loadedVersions.findIndex((item) => item.version === targetVersion);
-    const fallbackCompareFrom =
-      loadedVersions[targetIndex + 1]?.version ||
-      loadedVersions.find((item) => item.version !== targetVersion)?.version ||
-      "";
-    const cleanQuery: Record<string, string> = {};
-    const cleanSearch = String(route.query.q || "").trim();
-    const cleanAvailability = String(route.query.availability || "");
-    if (SEARCHABLE_MODES.has(targetMode) && cleanSearch) cleanQuery.q = cleanSearch;
-    if (
-      !["files", "legacy", "archive", "compare", "manifest"].includes(targetMode) &&
-      targetDomainRow?.capability_contract?.artifact_fields?.availability === "supported" &&
-      ["available", "unavailable", "unknown"].includes(cleanAvailability)
-    ) {
-      cleanQuery.availability = cleanAvailability;
-    }
-    if (targetMode === "files") {
-      if (route.query.source) cleanQuery.source = String(route.query.source);
-      if (route.query.identity) cleanQuery.identity = String(route.query.identity);
-      if (route.query.path) cleanQuery.path = String(route.query.path);
-    }
-    const validCompareFrom =
-      requestedCompareFrom !== targetVersion && loadedVersions.some((item) => item.version === requestedCompareFrom)
-        ? requestedCompareFrom
-        : fallbackCompareFrom;
-    if (targetMode === "compare" && validCompareFrom) cleanQuery.from = validCompareFrom;
-    const queryChanged = JSON.stringify(route.query) !== JSON.stringify(cleanQuery);
-    if (!requestedGame || !requestedDomain || requestedVersion !== targetVersion || requestedMode !== targetMode || queryChanged) {
-      if (!isCurrent()) return;
-      await router.replace({
-        name: "archive",
-        params: { gameId: targetGame, domainId: targetDomain, version: targetVersion, mode: targetMode },
-        query: cleanQuery,
-      });
-    }
-    if (!isCurrent()) return;
-    await loadArtifacts(false);
-  } catch (reason) {
-    if (isAbortError(reason)) return;
-    if (!isCurrent()) return;
-    registryError.value = reason instanceof Error ? reason : new Error(String(reason));
-  } finally {
-    if (registryController === request) loading.value = false;
-  }
 }
 
 async function navigate(params: Record<string, string>): Promise<void> {
@@ -1206,8 +1092,8 @@ watch(
     // exact params it is already loading; any other change supersedes it.
     if (
       loading.value &&
-      registryTargetGame === String(route.params.gameId || "") &&
-      registryTargetDomain === String(route.params.domainId || "")
+      registryTargetGame.value === String(route.params.gameId || "") &&
+      registryTargetDomain.value === String(route.params.domainId || "")
     ) return;
     void loadRegistry();
   },
@@ -1300,9 +1186,8 @@ onMounted(() => {
   window.addEventListener("storage", onAvailabilityStorageInvalidated);
 });
 onBeforeUnmount(() => {
-  registryRequestId += 1;
+  disposeArchiveLoader();
   artifactRequestId += 1;
-  registryController?.abort();
   artifactController?.abort();
   if (searchTimer !== null) window.clearTimeout(searchTimer);
   window.removeEventListener("click", onWindowRawIndexClick);
