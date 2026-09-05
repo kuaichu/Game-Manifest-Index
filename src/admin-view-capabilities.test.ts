@@ -92,7 +92,28 @@ function mockAdminApi(platform: "android" | "windows", pcAvailability: "availabl
         }],
       };
     }
-    throw new Error("APK editor was not needed for this test");
+    return {
+      version: "1.0.0",
+      client_version: "1.0.0",
+      observed_at: null,
+      file_created_at_override: "2026-08-29T00:00:00Z",
+      file_path: "base.apk",
+      unpacked_size: 0,
+      files_checksum_type: null,
+      files_checksum_value: null,
+      attributes: { channel: "official", version_code: 1 },
+      is_visible: true,
+      artifacts: [{
+        kind: "file",
+        name: "base.apk",
+        part: 1,
+        size: 1024,
+        checksum_type: "md5",
+        checksum_value: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        attributes: {},
+        urls: [{ id: 1, url: "https://example.com/base.apk", priority: 0, source_kind: "official" }],
+      }],
+    };
   }) as never);
   vi.spyOn(adminApi, "updateEditableVersion").mockResolvedValue({
     domain_id: "demo-pc",
@@ -102,6 +123,15 @@ function mockAdminApi(platform: "android" | "windows", pcAvailability: "availabl
     capture_event_id: 1,
     changed: true,
   } as never);
+  vi.spyOn(adminApi, "addVersion").mockResolvedValue({
+    domain_id: "demo-android",
+    version: "2.0.0",
+    revisions_created: 1,
+    revisions_reused: 0,
+    capture_event_id: 1,
+    changed: true,
+  } as never);
+  vi.spyOn(adminApi, "probeVersion").mockResolvedValue({} as never);
   vi.spyOn(adminApi, "probeStatus").mockResolvedValue({ running: false, log: [] } as never);
   vi.spyOn(adminApi, "probeSchedule").mockResolvedValue({ enabled: false, interval_hours: 24, mode: "normal" });
   vi.spyOn(adminApi, "syncSchedule").mockResolvedValue({ enabled: false, times: ["04:45", "14:00"] });
@@ -337,6 +367,55 @@ describe("AdminView capability alignment", () => {
         delivery_mode: "direct",
       },
     });
+    app.unmount();
+  });
+
+  it("keeps edit and create URL filename inference behavior aligned", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const { app, root } = await mountAdmin("android");
+    const updateVersion = vi.mocked(adminApi.updateEditableVersion);
+    const addVersion = vi.mocked(adminApi.addVersion);
+    buttonByText(root, "版本").click();
+    await flushUpdates();
+
+    const editForm = root.querySelector<HTMLFormElement>(".version-edit-form");
+    if (!editForm) throw new Error("edit form not found");
+    const editName = editForm.querySelector<HTMLInputElement>(".apk-file-card input[placeholder^='例如']");
+    const editUrl = editForm.querySelector<HTMLInputElement>(".apk-file-card input.url-long-input");
+    if (!editName || !editUrl) throw new Error("edit artifact fields not found");
+    editName.value = "custom-name.apk";
+    editName.dispatchEvent(new Event("input"));
+    editUrl.value = "https://example.com/renamed.apk";
+    editUrl.dispatchEvent(new Event("input"));
+    await flushUpdates();
+    expect(editName.value).toBe("custom-name.apk");
+    buttonByText(root, "根据 URL 填写文件名").click();
+    await flushUpdates();
+    expect(editName.value).toBe("renamed.apk");
+    buttonByText(root, "保存并探活").click();
+    await flushUpdates();
+    expect(updateVersion).toHaveBeenCalledWith("demo-android", "1.0.0", expect.objectContaining({
+      artifacts: [expect.objectContaining({ kind: "apk", name: "renamed.apk" })],
+    }), "test-admin-token", expect.anything());
+
+    buttonByText(root, "新建版本").click();
+    await flushUpdates();
+    const createForm = root.querySelector<HTMLFormElement>(".version-create-form");
+    if (!createForm) throw new Error("create form not found");
+    const version = createForm.querySelector<HTMLInputElement>("input[placeholder^='例如: 7.1.0']");
+    const createUrl = createForm.querySelector<HTMLInputElement>("input.url-long-input");
+    if (!version || !createUrl) throw new Error("create artifact fields not found");
+    version.value = "2.0.0";
+    version.dispatchEvent(new Event("input"));
+    createUrl.value = "https://example.com/new.apk";
+    createUrl.dispatchEvent(new Event("input"));
+    await flushUpdates();
+    expect(createForm.querySelector<HTMLInputElement>(".apk-file-card input[placeholder^='例如']")?.value).toBe("new.apk");
+    buttonByText(root, "保存并录入新版本").click();
+    await flushUpdates();
+    expect(addVersion).toHaveBeenCalledWith("demo-android", expect.objectContaining({
+      artifacts: [expect.objectContaining({ kind: "apk", name: "new.apk", urls: [expect.objectContaining({ url: "https://example.com/new.apk" })] })],
+    }), "test-admin-token", expect.anything());
     app.unmount();
   });
 

@@ -797,35 +797,30 @@ function extractFilenameFromUrl(rawUrl: string): string {
   }
 }
 
-function handleArtifactUrlChange(art: EditableArtifactDraft, newUrl: string): void {
-  const extracted = extractFilenameFromUrl(newUrl);
-  if (extracted && extracted.includes(".")) {
-    const currentName = (art.name || "").trim();
-    const isDefaultOrEmpty =
-      !currentName ||
-      /^package(\.part\d+)?\.(zip|bin|apk|dat)$/i.test(currentName) ||
-      currentName === "未命名文件";
+function applyArtifactFilenameFromUrl(art: EditableArtifactDraft, rawUrl: string, force = false): boolean {
+  const extracted = extractFilenameFromUrl(rawUrl);
+  if (!extracted || !extracted.includes(".")) return false;
 
-    if (isDefaultOrEmpty) {
-      art.name = extracted;
-    }
-    if (extracted.toLowerCase().endsWith(".apk") && (art.kind === "file" || !art.kind)) {
-      art.kind = "apk";
-    }
+  const currentName = (art.name || "").trim();
+  const isDefaultOrEmpty =
+    !currentName ||
+    /^package(\.part\d+)?\.(zip|bin|apk|dat)$/i.test(currentName) ||
+    currentName === "未命名文件";
+  if (force || isDefaultOrEmpty) art.name = extracted;
+  if (extracted.toLowerCase().endsWith(".apk") && (art.kind === "file" || !art.kind)) {
+    art.kind = "apk";
   }
+  return true;
+}
+
+function handleArtifactUrlChange(art: EditableArtifactDraft, newUrl: string): void {
+  applyArtifactFilenameFromUrl(art, newUrl);
   syncArtifactsToJson();
 }
 
 function forceExtractArtifactName(art: EditableArtifactDraft): void {
   const firstUrl = art.urls.find((u) => u.url.trim())?.url || "";
-  const extracted = extractFilenameFromUrl(firstUrl);
-  if (extracted && extracted.includes(".")) {
-    art.name = extracted;
-    if (extracted.toLowerCase().endsWith(".apk") && (art.kind === "file" || !art.kind)) {
-      art.kind = "apk";
-    }
-    syncArtifactsToJson();
-  }
+  if (applyArtifactFilenameFromUrl(art, firstUrl, true)) syncArtifactsToJson();
 }
 
 function switchArtifactsMode(mode: "visual" | "json"): void {
@@ -3061,34 +3056,13 @@ function switchCreateArtifactsMode(mode: "visual" | "json"): void {
 }
 
 function handleCreateArtifactUrlChange(art: EditableArtifactDraft, newUrl: string): void {
-  const extracted = extractFilenameFromUrl(newUrl);
-  if (extracted && extracted.includes(".")) {
-    const currentName = (art.name || "").trim();
-    const isDefaultOrEmpty =
-      !currentName ||
-      /^package(\.part\d+)?\.(zip|bin|apk|dat)$/i.test(currentName) ||
-      currentName === "未命名文件";
-
-    if (isDefaultOrEmpty) {
-      art.name = extracted;
-    }
-    if (extracted.toLowerCase().endsWith(".apk") && (art.kind === "file" || !art.kind)) {
-      art.kind = "apk";
-    }
-  }
+  applyArtifactFilenameFromUrl(art, newUrl);
   syncCreateArtifactsToJson();
 }
 
 function forceExtractCreateArtifactName(art: EditableArtifactDraft): void {
   const firstUrl = art.urls.find((u) => u.url.trim())?.url || "";
-  const extracted = extractFilenameFromUrl(firstUrl);
-  if (extracted && extracted.includes(".")) {
-    art.name = extracted;
-    if (extracted.toLowerCase().endsWith(".apk") && (art.kind === "file" || !art.kind)) {
-      art.kind = "apk";
-    }
-    syncCreateArtifactsToJson();
-  }
+  if (applyArtifactFilenameFromUrl(art, firstUrl, true)) syncCreateArtifactsToJson();
 }
 
 function buildCreateArtifactsPayload(): ManualArtifactPayload[] {
