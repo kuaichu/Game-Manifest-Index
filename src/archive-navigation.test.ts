@@ -398,6 +398,8 @@ describe("archive cross-game navigation", () => {
     expect(root.querySelector(".browser-availability")).toBeNull();
     expect(root.querySelector(".browser-url-list")).toBeNull();
     expect(root.textContent).toContain("可用 / Client/a.bin");
+    expect(root.querySelector(".footer-sync-info")?.textContent).toContain("当前资源最近探活于");
+    expect(root.querySelector(".footer-sync-info")?.textContent).toContain("2026.07.06 08:00");
     expect(root.textContent).toContain("复制官方入口");
     expect(root.textContent).toContain("官方入口");
     expect(root.textContent).toContain("CDN2");
@@ -689,6 +691,9 @@ describe("archive cross-game navigation", () => {
 
     expect(root.querySelector(".panel-meta-inline")?.textContent).toContain("文件时间");
     expect(root.querySelector(".panel-meta-inline")?.textContent).toContain("2025.03.14 18:58");
+    expect(root.querySelector(".footer-sync-info")?.textContent).toContain("当前资源最近探活于");
+    expect(root.querySelector(".footer-sync-info")?.textContent).toContain("2026.08.29 09:00");
+    expect(root.querySelector(".footer-sync-info")?.textContent).not.toContain("2025.03.14 18:58");
     app.unmount();
   });
 
@@ -926,6 +931,8 @@ describe("archive cross-game navigation", () => {
 
     const cards = Array.from(root.querySelectorAll(".file-card"));
     expect(cards).toHaveLength(3);
+    expect(root.querySelector(".footer-sync-info")?.textContent).toContain("当前资源最近探活于");
+    expect(root.querySelector(".footer-sync-info")?.textContent).toContain("2026.08.29 09:00");
     const badges = cards.map((card) => card.querySelector(".availability")?.textContent?.trim());
     expect(badges).toEqual(["可用", "失效", "证据已陈旧"]);
     const downloadLinks = cards.map((card) => card.querySelector(".file-actions a.icon-button"));

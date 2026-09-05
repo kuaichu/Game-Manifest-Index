@@ -121,6 +121,7 @@ describe("read-only product components", () => {
   it("keeps the latest remote tree request authoritative during rapid switches", async () => {
     let resolveFirst!: (value: unknown) => void;
     let resolveSecond!: (value: unknown) => void;
+    const emittedProbeTimes: Array<string | null> = [];
     vi.spyOn(api, "artifactTree")
       .mockImplementationOnce(() => new Promise((resolve) => { resolveFirst = resolve; }) as never)
       .mockImplementationOnce(() => new Promise((resolve) => { resolveSecond = resolve; }) as never);
@@ -128,6 +129,7 @@ describe("read-only product components", () => {
     const root = document.createElement("div"); document.body.appendChild(root);
     const app = createApp({ render: () => h(RemoteArtifactTree, {
       domainId: "demo-pc", version: version.value, kind: "file",
+      onProbeTimeChange: (value: string | null) => emittedProbeTimes.push(value),
     }) });
     app.mount(root);
     await flushUpdates();
@@ -141,14 +143,25 @@ describe("read-only product components", () => {
     await flushUpdates();
     expect(root.textContent).toContain("正在读取目录索引");
     expect(root.textContent).not.toContain("old.bin");
+    expect(emittedProbeTimes).toEqual([null, null]);
 
     resolveSecond({ prefix: "", folders: [], items: [{
       id: 2, kind: "file", name: "new.bin", part: 1, size: 1,
-      checksum_type: null, checksum_value: null, attributes: {}, urls: [],
+      checksum_type: null, checksum_value: null, attributes: {},
+      urls: [{
+        id: 2, url: "https://cdn.example/new.bin", priority: 0, source_kind: "official",
+        evidence_status: "verified", current: {
+          state: "available", reason: "http_2xx", confidence: "high", retained: false,
+          checked_at: "2026-08-30T02:00:00Z", source_kind: "live_probe",
+          source_confidence: "high", observed_at: "2026-08-30T02:00:00Z",
+          expires_at: null, evidence_status: "verified",
+        },
+      }],
     }], next_cursor: null });
     await flushUpdates();
     expect(root.textContent).toContain("new.bin");
     expect(root.textContent).not.toContain("old.bin");
+    expect(emittedProbeTimes).toEqual([null, null, "2026-08-30T02:00:00Z"]);
     app.unmount();
   });
 

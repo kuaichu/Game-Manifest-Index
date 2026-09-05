@@ -26,6 +26,7 @@ import {
   hoyoArtifactCardPresentation,
   hoyoLanguageLabel,
   isAvailabilityActionable,
+  latestLiveProbeTime,
   preferredArtifactAction,
   preferredDomainArtifactAction,
   displayVersionLabel,
@@ -71,6 +72,7 @@ const domains = ref<ArchiveDomain[]>([]);
 const versions = ref<VersionSummary[]>([]);
 const versionsDomainId = ref("");
 const artifacts = ref<Artifact[]>([]);
+const remoteTreeProbeTime = ref<string | null>(null);
 const chunkCollection = ref<ChunkManifestSummaryItem[]>([]);
 const chunkDetail = ref<ChunkManifestDetail | null>(null);
 const chunkLoading = ref(false);
@@ -429,6 +431,25 @@ const displayedArtifacts = computed(() => {
   return artifacts.value.filter((artifact) => artifactCategory(artifact) === selectedCategory.value);
 });
 
+function chunkArtifactMatchesFilter(artifact: Artifact): boolean {
+  const filter = chunkCategoryFilter.value;
+  if (filter === "all") return true;
+  const component = String(artifact.attributes?.component || "game").toLowerCase();
+  if (filter === "game") return component === "game";
+  const language = String(artifact.attributes?.language || "voice").toLowerCase();
+  return component === "voice" && language === filter;
+}
+
+const footerProbeArtifacts = computed(() => {
+  if (mode.value === "chunks") return artifacts.value.filter(chunkArtifactMatchesFilter);
+  if (usesRemoteTree.value || (mode.value === "files" && domain.value?.adapter === "hoyo")) return [];
+  if (usesArtifactTree.value) return artifacts.value;
+  if (["packages", "patches"].includes(mode.value) && usesPreferredUrlPresentation.value && domain.value?.adapter !== "wuwa") {
+    return artifacts.value;
+  }
+  return displayedArtifacts.value;
+});
+
 function versionRecordState(record: VersionRecord): "available" | "unavailable" | "unknown" {
   return record.status.available === true
     ? "available"
@@ -650,14 +671,7 @@ const versionMetaSummary = computed(() => {
 });
 
 const syncTimeText = computed(() => {
-  const time = syncStatus.value?.syncedAt
-    || versions.value[0]?.observed_at
-    || versions.value[0]?.source_updated_at
-    || versions.value[0]?.source_released_at
-    || selectedSummary.value?.observed_at
-    || selectedSummary.value?.source_updated_at
-    || selectedSummary.value?.source_released_at
-    || null;
+  const time = latestLiveProbeTime(footerProbeArtifacts.value) || remoteTreeProbeTime.value;
   if (!time) return "";
   const formatted = formatObservedDate(time);
   const rel = formatRelativeTime(time);
@@ -981,6 +995,7 @@ async function loadArtifacts(append: boolean): Promise<void> {
   if (!append) {
     selectedCategory.value = "all";
     chunkCategoryFilter.value = "all";
+    remoteTreeProbeTime.value = null;
   }
   error.value = null;
   try {
@@ -1418,6 +1433,9 @@ async function onCopyChunkUrl(url: string, label = "链接"): Promise<void> {
   window.setTimeout(() => {
     toast.value = "";
   }, 1600);
+}
+function onRemoteTreeProbeTimeChange(value: string | null): void {
+  remoteTreeProbeTime.value = value;
 }
 function candidateUrl(artifact: Artifact, sourceKind: string) {
   return artifact.urls.find((item) => item.source_kind === sourceKind);
@@ -2081,6 +2099,7 @@ function chunkMatchingField(artifact: Artifact): string {
               :kind="mode === 'resources' ? 'resource' : 'file'"
               :availability-state="availabilityStateForRequest"
               :allow-actions="supportsDomainAction('open')"
+              @probe-time-change="onRemoteTreeProbeTimeChange"
             />
           </div>
           <div v-else-if="!displayedArtifacts.length" class="empty">
@@ -2748,7 +2767,7 @@ function chunkMatchingField(artifact: Artifact): string {
       </section>
       <footer class="archive-footer">
         <div v-if="syncTimeText" class="footer-sync-info">
-          <span>数据最后同步于 <b>{{ syncTimeText }}</b></span>
+          <span>当前资源最近探活于 <b>{{ syncTimeText }}</b></span>
         </div>
         <div class="footer-notice">
           <button type="button" class="footer-provenance-link" @click="openProvenanceModal($event)">

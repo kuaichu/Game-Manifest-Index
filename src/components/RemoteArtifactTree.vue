@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { api, isAbortError } from "../api";
-import { artifactUrlStateCounts, isAvailabilityActionable } from "../domain-presentation";
+import { artifactUrlStateCounts, isAvailabilityActionable, latestLiveProbeTime } from "../domain-presentation";
 import type { Artifact, ArtifactTreePage, AvailabilityState } from "../types";
 import AvailabilityBadge from "./AvailabilityBadge.vue";
 import FragmentFileRow from "./FragmentFileRow.vue";
@@ -16,6 +16,10 @@ const props = withDefaults(
   }>(),
   { allowActions: false }
 );
+
+const emit = defineEmits<{
+  (e: "probe-time-change", value: string | null): void;
+}>();
 
 const page = ref<ArtifactTreePage>({ prefix: "", folders: [], items: [], next_cursor: null });
 const loading = ref(true);
@@ -34,6 +38,7 @@ async function load(prefix: string, append = false): Promise<void> {
   controller = request;
   const generation = ++requestGeneration;
   append ? (loadingMore.value = true) : (loading.value = true);
+  if (!append) emit("probe-time-change", null);
   error.value = "";
   try {
     const result = await api.artifactTree(
@@ -50,10 +55,12 @@ async function load(prefix: string, append = false): Promise<void> {
     );
     if (controller !== request || generation !== requestGeneration) return;
     page.value = append ? { ...result, items: [...page.value.items, ...result.items] } : result;
+    emit("probe-time-change", latestLiveProbeTime(page.value.items));
     if (!append) expanded.value = null;
   } catch (reason) {
     if (isAbortError(reason) || controller !== request || generation !== requestGeneration) return;
     error.value = reason instanceof Error ? reason.message : "目录加载失败";
+    emit("probe-time-change", null);
   } finally {
     if (controller === request && generation === requestGeneration) {
       loading.value = false;

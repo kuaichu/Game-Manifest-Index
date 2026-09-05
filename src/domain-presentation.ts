@@ -346,6 +346,26 @@ export function formatBytes(value: number): string {
   return `${amount.toFixed(2)} ${unit}`;
 }
 
+export function latestLiveProbeTime(rows: Artifact[]): string | null {
+  let latest: string | null = null;
+  let latestMs = Number.NEGATIVE_INFINITY;
+  for (const artifact of rows) {
+    for (const url of artifact.urls || []) {
+      const current = url.current;
+      if (current?.source_kind !== "live_probe") continue;
+      const value = current.checked_at || current.observed_at;
+      if (!value) continue;
+      const timestamp = Date.parse(value);
+      if (!Number.isFinite(timestamp)) continue;
+      if (timestamp > latestMs) {
+        latestMs = timestamp;
+        latest = value;
+      }
+    }
+  }
+  return latest;
+}
+
 export function hoyoArtifactCardPresentation(
   artifact: Artifact,
   selectedVersion: string,
