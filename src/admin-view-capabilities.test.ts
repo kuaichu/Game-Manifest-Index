@@ -175,12 +175,12 @@ describe("AdminView capability alignment", () => {
     vi.restoreAllMocks();
   });
 
-  it("renders the catalog as read-only and disables unavailable retention", async () => {
+  it("exposes catalog mutation controls and disables unavailable retention", async () => {
     const { app, root } = await mountAdmin("android");
-    expect(root.textContent).toContain("游戏目录由当前 V5 静态注册关系和数据投影生成");
-    expect(root.textContent).not.toContain("新增游戏");
-    expect(root.textContent).not.toContain("保存游戏设置");
-    expect(root.textContent).not.toContain("删除空游戏");
+    expect(root.textContent).not.toContain("游戏目录由当前 V5 静态注册关系和数据投影生成");
+    expect(root.textContent).toContain("新增游戏");
+    expect(root.textContent).toContain("保存游戏设置");
+    expect(root.textContent).toContain("删除空游戏");
     expect(buttonByText(root, "未接入").disabled).toBe(true);
     app.unmount();
   });

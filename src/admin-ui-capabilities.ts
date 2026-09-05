@@ -1,5 +1,5 @@
 export const adminUiCapabilities = Object.freeze({
-  catalogMutations: false,
+  catalogMutations: true,
   retention: false,
 });
 

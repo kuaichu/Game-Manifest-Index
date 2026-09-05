@@ -8,8 +8,8 @@ import {
 } from "./admin-ui-capabilities";
 
 describe("admin UI capability gates", () => {
-  it("keeps unsupported catalog mutations and retention unavailable", () => {
-    expect(adminUiCapabilities.catalogMutations).toBe(false);
+  it("exposes catalog mutations while keeping retention unavailable", () => {
+    expect(adminUiCapabilities.catalogMutations).toBe(true);
     expect(adminUiCapabilities.retention).toBe(false);
   });
 

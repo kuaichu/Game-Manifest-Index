@@ -14,6 +14,7 @@ from threading import RLock
 from typing import Any, Callable, Iterable
 from urllib.parse import urlsplit, urlunsplit
 
+from backend.catalog_admin import configured_nondefault_pc_domains, is_configured_nondefault_pc_domain
 from backend.domain_registry import is_nondefault_pc_domain, nondefault_pc_domains
 from backend.indexes import rebuild_index
 from backend.schema_v2 import validate_v2_record
@@ -74,8 +75,13 @@ def _safe_record_path(root: Path, path: Path) -> bool:
     secondary_path = (
         len(relative.parts) == 6
         and relative.parts[2:4] == ("pc", "domains")
-        and is_nondefault_pc_domain(
-            relative.parts[0], relative.parts[1], relative.parts[4],
+        and (
+            is_nondefault_pc_domain(
+                relative.parts[0], relative.parts[1], relative.parts[4],
+            )
+            or is_configured_nondefault_pc_domain(
+                root, relative.parts[0], relative.parts[1], relative.parts[4],
+            )
         )
     )
     if not default_path and not secondary_path:
@@ -100,7 +106,10 @@ def iter_records(root: Path, *, scopes: Iterable[str] = ("android", "pc")):
             for game_dir in root.glob("*/*"):
                 vendor = game_dir.parent.name
                 game_id = game_dir.name
-                for domain_id in nondefault_pc_domains(vendor, game_id):
+                for domain_id in (
+                    *nondefault_pc_domains(vendor, game_id),
+                    *configured_nondefault_pc_domains(root, vendor, game_id),
+                ):
                     paths.extend(
                         (game_dir / "pc" / "domains" / domain_id).glob("*.json")
                     )

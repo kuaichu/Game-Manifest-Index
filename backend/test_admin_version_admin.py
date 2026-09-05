@@ -409,27 +409,245 @@ class VersionAdminTests(unittest.TestCase):
         domain = next(item for item in catalog["domains"] if item["id"] == "hk4e-android")
         self.assertEqual(domain["version_count"], 0)
 
-    def test_unsupported_mutations_are_explicit_409(self):
-        calls = (
-            ("post", "/api/v1/admin/games", {}),
-            ("patch", "/api/v1/admin/games/hk4e", {}),
-            ("delete", "/api/v1/admin/games/hk4e", None),
-            ("post", "/api/v1/admin/domains", {}),
-            ("patch", "/api/v1/admin/domains/hk4e-android", {}),
-            ("delete", "/api/v1/admin/domains/hk4e-android", None),
-            (
-                "post",
-                "/api/v1/admin/domains/hk4e-android/versions/1.0.0/artifacts/edit",
-                {},
-            ),
+    def test_catalog_mutations_are_file_backed_and_keep_static_entries_safe(self):
+        headers = self.auth()
+        updated_game = self.client.patch(
+            "/api/v1/admin/games/hk4e",
+            headers=headers,
+            json={
+                "id": "hk4e",
+                "name": "原神测试名",
+                "sub_name": "Genshin Impact",
+                "platform": "multi",
+                "icon_source": "builtin:hk4e",
+                "is_enabled": False,
+                "sort_order": 99,
+            },
         )
-        for method, path, payload in calls:
-            response = getattr(self.client, method)(
-                path,
-                headers=self.auth(),
-                **({"json": payload} if payload is not None else {}),
-            )
-            self.assertEqual((method, path, response.status_code), (method, path, 409))
+        self.assertEqual(updated_game.status_code, 200, updated_game.text)
+        self.assertEqual(updated_game.json()["name"], "原神测试名")
+        self.assertFalse(updated_game.json()["is_enabled"])
+        self.assertEqual(
+            self.client.get("/api/v1/games/hk4e/domains").status_code,
+            404,
+        )
+
+        restored = self.client.patch(
+            "/api/v1/admin/games/hk4e",
+            headers=headers,
+            json={
+                "id": "hk4e",
+                "name": "原神",
+                "sub_name": "Genshin Impact",
+                "platform": "multi",
+                "icon_source": "builtin:hk4e",
+                "is_enabled": True,
+                "sort_order": 0,
+            },
+        )
+        self.assertEqual(restored.status_code, 200, restored.text)
+
+        updated_domain = self.client.patch(
+            "/api/v1/admin/domains/hk4e-android",
+            headers=headers,
+            json={
+                "id": "hk4e-android",
+                "game_id": "hk4e",
+                "kind": "apk",
+                "platform": "android",
+                "capabilities": ["apk", "archive"],
+                "adapter": "android",
+                "is_enabled": False,
+                "sort_order": 5,
+            },
+        )
+        self.assertEqual(updated_domain.status_code, 200, updated_domain.text)
+        self.assertFalse(updated_domain.json()["is_enabled"])
+        self.assertEqual(
+            self.client.get("/api/v1/games/hk4e/domains").status_code,
+            404,
+        )
+        self.assertEqual(
+            self.client.delete("/api/v1/admin/domains/hk4e-android", headers=headers).status_code,
+            409,
+        )
+        self.assertEqual(
+            self.client.delete("/api/v1/admin/games/hk4e", headers=headers).status_code,
+            409,
+        )
+
+        cannot_change_game_platform = self.client.patch(
+            "/api/v1/admin/games/hk4e",
+            headers=headers,
+            json={
+                "id": "hk4e",
+                "name": "原神",
+                "sub_name": "Genshin Impact",
+                "platform": "android",
+                "icon_source": "builtin:hk4e",
+                "is_enabled": True,
+                "sort_order": 0,
+            },
+        )
+        self.assertEqual(cannot_change_game_platform.status_code, 409)
+
+    def test_android_nondefault_domain_is_rejected_before_persisting(self):
+        response = self.client.post(
+            "/api/v1/admin/domains",
+            headers=self.auth(),
+            json={
+                "id": "hk4e-resources",
+                "game_id": "hk4e",
+                "kind": "resources",
+                "platform": "android",
+                "capabilities": ["resources"],
+                "adapter": "generic",
+                "is_enabled": True,
+                "sort_order": 20,
+            },
+        )
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["error"]["code"], "domain_platform_unsupported")
+        self.assertFalse((self.data / "catalog.admin.json").exists())
+        self.assertFalse(
+            (self.data / "mihoyo" / "hk4e" / "android" / "domains" / "hk4e-resources").exists()
+        )
+
+    def test_configured_empty_game_and_domain_can_be_created_updated_and_deleted(self):
+        headers = self.auth()
+        game_payload = {
+            "id": "demo",
+            "name": "演示游戏",
+            "sub_name": "Demo Game",
+            "platform": "windows",
+            "icon_source": "builtin:demo",
+            "is_enabled": True,
+            "sort_order": 120,
+        }
+        created_game = self.client.post("/api/v1/admin/games", headers=headers, json=game_payload)
+        self.assertEqual(created_game.status_code, 200, created_game.text)
+        self.assertEqual(created_game.json()["version_count"], 0)
+
+        domain_payload = {
+            "id": "demo-resources",
+            "game_id": "demo",
+            "kind": "resources",
+            "platform": "windows",
+            "capabilities": ["resources"],
+            "adapter": "generic",
+            "is_enabled": True,
+            "sort_order": 130,
+        }
+        created_domain = self.client.post("/api/v1/admin/domains", headers=headers, json=domain_payload)
+        self.assertEqual(created_domain.status_code, 200, created_domain.text)
+        self.assertTrue((self.data / "mihoyo" / "demo" / "pc" / "domains" / "demo-resources").is_dir())
+
+        changed_domain = {**domain_payload, "adapter": "hoyo", "is_enabled": False}
+        updated_domain = self.client.patch(
+            "/api/v1/admin/domains/demo-resources", headers=headers, json=changed_domain,
+        )
+        self.assertEqual(updated_domain.status_code, 200, updated_domain.text)
+        self.assertEqual(updated_domain.json()["adapter"], "hoyo")
+        self.assertFalse(updated_domain.json()["is_enabled"])
+
+        self.assertEqual(
+            self.client.delete("/api/v1/admin/domains/demo-resources", headers=headers).status_code,
+            204,
+        )
+        self.assertFalse((self.data / "mihoyo" / "demo" / "pc" / "domains" / "demo-resources").exists())
+        self.assertEqual(
+            self.client.delete("/api/v1/admin/games/demo", headers=headers).status_code,
+            204,
+        )
+        catalog = self.client.get("/api/v1/admin/catalog", headers=headers).json()
+        self.assertNotIn("demo", {item["id"] for item in catalog["games"]})
+
+    def test_configured_nondefault_pc_domain_can_store_versions(self):
+        headers = self.auth()
+        self.client.post(
+            "/api/v1/admin/games",
+            headers=headers,
+            json={
+                "id": "demo",
+                "name": "演示游戏",
+                "sub_name": "Demo Game",
+                "platform": "windows",
+                "icon_source": "builtin:demo",
+                "is_enabled": True,
+                "sort_order": 120,
+            },
+        )
+        self.client.post(
+            "/api/v1/admin/domains",
+            headers=headers,
+            json={
+                "id": "demo-resources",
+                "game_id": "demo",
+                "kind": "resources",
+                "platform": "windows",
+                "capabilities": ["resources", "archive"],
+                "adapter": "generic",
+                "is_enabled": True,
+                "sort_order": 130,
+            },
+        )
+
+        record = make_record(platform="windows", reference=False)
+        record.update({"game_id": "demo", "domain_id": "demo-resources"})
+        identity = {
+            key: record[key]
+            for key in ("vendor", "game_id", "domain_id", "platform", "channel", "version")
+        }
+        record["artifacts"][0]["artifact_id"] = artifact_id(record["artifacts"][0], record_identity=identity)
+        validate_v2_record(record)
+        write_v2_record(record, self.data)
+        rebuild_index(self.data, "mihoyo", "demo", "windows", "demo-resources")
+
+        catalog = self.client.get("/api/v1/admin/catalog", headers=headers).json()
+        domain = next(item for item in catalog["domains"] if item["id"] == "demo-resources")
+        self.assertEqual(domain["version_count"], 1)
+        self.assertEqual(
+            self.client.delete("/api/v1/admin/domains/demo-resources", headers=headers).status_code,
+            409,
+        )
+        cannot_change_platform = self.client.patch(
+            "/api/v1/admin/domains/demo-resources",
+            headers=headers,
+            json={
+                "id": "demo-resources",
+                "game_id": "demo",
+                "kind": "resources",
+                "platform": "android",
+                "capabilities": ["resources"],
+                "adapter": "generic",
+                "is_enabled": True,
+                "sort_order": 130,
+            },
+        )
+        self.assertEqual(cannot_change_platform.status_code, 409)
+        cannot_change_game = self.client.patch(
+            "/api/v1/admin/domains/demo-resources",
+            headers=headers,
+            json={
+                "id": "demo-resources",
+                "game_id": "hk4e",
+                "kind": "resources",
+                "platform": "windows",
+                "capabilities": ["resources"],
+                "adapter": "generic",
+                "is_enabled": True,
+                "sort_order": 130,
+            },
+        )
+        self.assertEqual(cannot_change_game.status_code, 409)
+
+    def test_standalone_artifact_edit_is_still_explicit_409(self):
+        response = self.client.post(
+            "/api/v1/admin/domains/hk4e-android/versions/1.0.0/artifacts/edit",
+            headers=self.auth(),
+            json={},
+        )
+        self.assertEqual(response.status_code, 409)
 
     def test_corrupt_and_identity_mismatched_records_are_not_skipped(self):
         bad = self.record_path("bad")

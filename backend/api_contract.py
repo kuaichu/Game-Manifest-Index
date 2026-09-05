@@ -23,6 +23,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from backend import catalog_admin
+from backend.catalog_admin import CatalogConfigError
 from backend.indexes import IndexReadError, _entry as index_entry, read_index
 from backend.domain_registry import nondefault_pc_domains
 from backend.manifest_readers import (
@@ -213,6 +215,21 @@ class ApiContract:
             else Path(os.environ.get("GMI_STATE_ROOT") or Path(__file__).resolve().parents[1] / ".cache")
         )
 
+    def _catalog_games(self) -> list[dict[str, Any]]:
+        try:
+            return catalog_admin.game_catalog(self.data_root, GAME_CATALOG)
+        except CatalogConfigError as error:
+            raise ApiFault(500, "corrupt_catalog_config", "目录配置损坏") from error
+
+    def _game_ids(self) -> tuple[str, ...]:
+        return tuple(game["id"] for game in self._catalog_games())
+
+    def _catalog_domains(self) -> dict[str, dict[str, Any]]:
+        try:
+            return catalog_admin.configured_domains(self.data_root)
+        except CatalogConfigError as error:
+            raise ApiFault(500, "corrupt_catalog_config", "目录配置损坏") from error
+
     def _read_json(self, path: Path, limit: int, code: str) -> dict[str, Any]:
         if not _ordinary(path, directory=False):
             fail(500, code, "归档数据损坏")
@@ -343,7 +360,7 @@ class ApiContract:
                 continue
             if not _ordinary(vendor_root, directory=True):
                 fail(500, "unsafe_data_path", "数据目录不安全")
-            for game_id in GAME_IDS:
+            for game_id in self._game_ids():
                 game_root = vendor_root / game_id
                 if not _present(game_root):
                     continue
@@ -461,15 +478,24 @@ class ApiContract:
                     unindexed_versions = [version for version in visible_versions if version not in set(indexed_versions)]
                     records = [by_version[version] for version in indexed_versions + sorted(unindexed_versions, key=_version_key, reverse=True)]
                     records.sort(key=lambda item: _version_key(item["version"]), reverse=True)
+                    domain_config = self._catalog_domains().get(domain_id)
+                    if domain_config is not None and domain_config.get("is_enabled") is False:
+                        continue
                     if records:
                         result[domain_id] = DomainData(vendor, game_id, disk_platform, platform, domain_id, directory, tuple(records))
-        for (vendor, game_id) in ((vendor, game_id) for vendor in VENDORS for game_id in GAME_IDS):
+        for (vendor, game_id) in ((vendor, game_id) for vendor in VENDORS for game_id in self._game_ids()):
             domains_root = self.data_root / vendor / game_id / "pc" / "domains"
             if not _present(domains_root):
                 continue
             if not _ordinary(domains_root, directory=True):
                 fail(500, "unsafe_data_path", "数据目录不安全")
-            for domain_id in nondefault_pc_domains(vendor, game_id):
+            for domain_id in (
+                *nondefault_pc_domains(vendor, game_id),
+                *catalog_admin.configured_nondefault_pc_domains(self.data_root, vendor, game_id),
+            ):
+                domain_config = self._catalog_domains().get(domain_id)
+                if domain_config is not None and domain_config.get("is_enabled") is False:
+                    continue
                 domain = self._registered_domain(
                     vendor,
                     game_id,
@@ -1036,24 +1062,40 @@ def create_api_app(data_root: Path, upstream: Any | None = None, *, state_root: 
     def games() -> list[dict[str, Any]]:
         inventory = service().inventory()
         result = []
-        for order, (game_id, name, sub_name) in enumerate(GAME_CATALOG):
+        for game in service()._catalog_games():
+            if game.get("is_enabled") is False:
+                continue
+            game_id = game["id"]
             domains = [item for item in inventory.values() if item.game_id == game_id]
             versions = [record["version"] for domain in domains for record in domain.records]
             if domains:
-                result.append({"id": game_id, "name": name, "sub_name": sub_name, "platform": "multi" if len(domains) > 1 else domains[0].platform, "icon_source": f"builtin:{game_id}", "version_count": len(versions), "latest_version": max(versions, key=_version_key), "is_enabled": True, "sort_order": order})
+                result.append({"id": game_id, "name": game["name"], "sub_name": game["sub_name"], "platform": "multi" if len(domains) > 1 else domains[0].platform, "icon_source": game["icon_source"], "version_count": len(versions), "latest_version": max(versions, key=_version_key), "is_enabled": True, "sort_order": game["sort_order"]})
+        result.sort(key=lambda item: (item.get("sort_order", 0), item["id"]))
         return result
 
     @app.get("/api/v1/games/{game_id}/domains")
     def game_domains(game_id: str) -> list[dict[str, Any]]:
-        if game_id not in GAME_IDS:
+        game_by_id = {item["id"]: item for item in service()._catalog_games()}
+        if game_id not in game_by_id or game_by_id[game_id].get("is_enabled") is False:
             fail(404, "game_not_found", "游戏不存在")
         inventory = service().inventory()
         domains = [item for item in inventory.values() if item.game_id == game_id]
         if not domains:
             fail(404, "game_not_found", "游戏不存在")
-        order = next(index for index, item in enumerate(GAME_CATALOG) if item[0] == game_id)
         domains.sort(key=lambda item: 0 if item.platform == "android" else 1)
-        return [_domain_projection(item, order) for item in domains]
+        configured = service()._catalog_domains()
+        result = []
+        for index, domain in enumerate(domains):
+            projection = _domain_projection(domain, game_by_id[game_id].get("sort_order", 0) * 10 + index)
+            projection.update({
+                key: value
+                for key, value in configured.get(domain.domain_id, {}).items()
+                if key not in {"vendor"}
+            })
+            if projection.get("is_enabled") is not False:
+                result.append(projection)
+        result.sort(key=lambda item: (item.get("sort_order", 0), item["id"]))
+        return result
 
     @app.get("/api/v1/domains/{domain_id}/versions")
     def versions(domain_id: str) -> dict[str, Any]:

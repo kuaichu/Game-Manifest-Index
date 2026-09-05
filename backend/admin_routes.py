@@ -127,6 +127,27 @@ class AdminVisibilityPayload(AdminStrictModel):
     is_visible: bool
 
 
+class AdminGamePayload(AdminStrictModel):
+    id: str
+    name: str
+    sub_name: str = ""
+    platform: str = "multi"
+    icon_source: str = ""
+    is_enabled: bool = True
+    sort_order: int = 0
+
+
+class AdminDomainPayload(AdminStrictModel):
+    id: str
+    game_id: str
+    kind: str = "packages"
+    platform: str = "windows"
+    capabilities: list[str] = Field(default_factory=list)
+    adapter: str = "generic"
+    is_enabled: bool = True
+    sort_order: int = 0
+
+
 def _valid_token(token: str | None) -> bool:
     return isinstance(token, str) and token != "" and not any(char.isspace() for char in token)
 
@@ -427,32 +448,31 @@ def create_admin_router(
         version_admin.delete_version(data_root, domain_id, version)
         return Response(status_code=204)
 
-    def _unsupported() -> None:
-        fail(409, "catalog_mutation_unsupported", "V5 不支持修改静态 catalog")
-
     @router.post("/games", dependencies=protected)
-    def unsupported_create_game(payload: Any = Body(...)) -> None:
-        _unsupported()
+    def create_game(payload: AdminGamePayload) -> dict[str, Any]:
+        return version_admin.create_game(data_root, payload.model_dump())
 
     @router.patch("/games/{game_id}", dependencies=protected)
-    def unsupported_update_game(game_id: str, payload: Any = Body(...)) -> None:
-        _unsupported()
+    def update_game(game_id: str, payload: AdminGamePayload) -> dict[str, Any]:
+        return version_admin.update_game(data_root, game_id, payload.model_dump())
 
     @router.delete("/games/{game_id}", dependencies=protected)
-    def unsupported_delete_game(game_id: str) -> None:
-        _unsupported()
+    def delete_game(game_id: str) -> Response:
+        version_admin.delete_game(data_root, game_id)
+        return Response(status_code=204)
 
     @router.post("/domains", dependencies=protected)
-    def unsupported_create_domain(payload: Any = Body(...)) -> None:
-        _unsupported()
+    def create_domain(payload: AdminDomainPayload) -> dict[str, Any]:
+        return version_admin.create_domain(data_root, payload.model_dump())
 
     @router.patch("/domains/{domain_id}", dependencies=protected)
-    def unsupported_update_domain(domain_id: str, payload: Any = Body(...)) -> None:
-        _unsupported()
+    def update_domain(domain_id: str, payload: AdminDomainPayload) -> dict[str, Any]:
+        return version_admin.update_domain(data_root, domain_id, payload.model_dump())
 
     @router.delete("/domains/{domain_id}", dependencies=protected)
-    def unsupported_delete_domain(domain_id: str) -> None:
-        _unsupported()
+    def delete_domain(domain_id: str) -> Response:
+        version_admin.delete_domain(data_root, domain_id)
+        return Response(status_code=204)
 
     @router.post("/domains/{domain_id}/versions/{version}/artifacts/edit", dependencies=protected)
     def unsupported_artifact_edit(

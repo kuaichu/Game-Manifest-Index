@@ -11,6 +11,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
+from backend.catalog_admin import configured_nondefault_pc_domains, is_configured_nondefault_pc_domain
 from backend.storage_locks import DATA_LOCK, data_file_lock
 from backend.domain_registry import is_nondefault_pc_domain, nondefault_pc_domains
 
@@ -45,7 +46,10 @@ def index_path(root: Path, vendor: str, game_id: str, platform: str, domain_id: 
     if domain_id is None or domain_id == f"{game_id}-{'android' if disk == 'android' else 'pc'}":
         return base / "index.json"
     domain_id = _safe_component(domain_id, "domain_id")
-    if disk != "pc" or not is_nondefault_pc_domain(vendor, game_id, domain_id):
+    if disk != "pc" or not (
+        is_nondefault_pc_domain(vendor, game_id, domain_id)
+        or is_configured_nondefault_pc_domain(root, vendor, game_id, domain_id)
+    ):
         raise ValueError("domain_id must be a registered non-default PC domain")
     return base / "domains" / domain_id / "index.json"
 
@@ -244,7 +248,10 @@ def rebuild_indexes(root: Path) -> list[Path]:
                             if platform == "windows":
                                 domains_dir = directory / "domains"
                                 if _safe_directory(domains_dir):
-                                    for domain_id in nondefault_pc_domains(vendor_dir.name, game_dir.name):
+                                    for domain_id in (
+                                        *nondefault_pc_domains(vendor_dir.name, game_dir.name),
+                                        *configured_nondefault_pc_domains(root, vendor_dir.name, game_dir.name),
+                                    ):
                                         domain_dir = domains_dir / domain_id
                                         if _safe_directory(domain_dir):
                                             result.append(_rebuild_locked(root, vendor_dir.name, game_dir.name, platform, domain_id))

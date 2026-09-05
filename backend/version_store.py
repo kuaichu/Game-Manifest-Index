@@ -14,6 +14,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
+from backend.catalog_admin import is_configured_nondefault_pc_domain
 from backend.schema_v2 import RECORD_IDENTITY_FIELDS, record_identity, validate_v2_record
 from backend.domain_registry import is_nondefault_pc_domain
 from backend.storage_locks import DATA_LOCK, data_file_lock
@@ -63,7 +64,10 @@ def v2_record_path(record: Mapping[str, Any], root: Path) -> Path:
     base = Path(root) / vendor / game_id / disk_platform
     if domain_id == default_domain:
         return base / f"{version}.json"
-    if disk_platform == "pc" and is_nondefault_pc_domain(vendor, game_id, domain_id):
+    if disk_platform == "pc" and (
+        is_nondefault_pc_domain(vendor, game_id, domain_id)
+        or is_configured_nondefault_pc_domain(root, vendor, game_id, domain_id)
+    ):
         return base / "domains" / domain_id / f"{version}.json"
     raise VersionStoreError("domain_id 不是已注册的 v2 数据域")
 
