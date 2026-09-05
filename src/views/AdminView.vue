@@ -450,6 +450,28 @@ function compactArtifactAttributes(attributes: Record<string, unknown>): string 
   return JSON.stringify(extra, null, 2);
 }
 
+type ArtifactUrlInput = { id?: number; url?: unknown; priority?: unknown; source_kind?: unknown };
+
+function normalizeArtifactUrls(
+  urls: readonly ArtifactUrlInput[] | undefined,
+  filterEmpty = false,
+  preservePersistedUrl = false,
+  parsePriority: (value: unknown, index: number) => number = (value, index) => Number.isFinite(Number(value)) ? Number(value) : index,
+) {
+  return (urls || [])
+    .map((u, index) => {
+      const rawUrl = String(u.url || "");
+      return {
+        id: u.id,
+        ...(preservePersistedUrl ? { persisted_url: rawUrl } : {}),
+        url: rawUrl.trim(),
+        priority: parsePriority(u.priority, index),
+        source_kind: String(u.source_kind || "official").trim(),
+      };
+    })
+    .filter((u) => !filterEmpty || Boolean(u.url));
+}
+
 function artifactDraftFromPayload(item: any, idx: number): EditableArtifactDraft {
   const attrs: Record<string, unknown> =
     typeof item.attributes === "object" && item.attributes !== null && !Array.isArray(item.attributes)
@@ -472,18 +494,7 @@ function artifactDraftFromPayload(item: any, idx: number): EditableArtifactDraft
     checksum_type: item.checksum_type ? String(item.checksum_type).trim() : "",
     checksum_value: item.checksum_value ? String(item.checksum_value).trim() : "",
     attributesJson: compactArtifactAttributes(attrs),
-    urls: Array.isArray(item.urls)
-      ? item.urls.map((u: any, uIdx: number) => {
-          const parsedPriority = Number(u.priority);
-          return {
-            id: u.id,
-            persisted_url: u.url || "",
-            url: String(u.url || "").trim(),
-            priority: Number.isFinite(parsedPriority) ? parsedPriority : uIdx,
-            source_kind: String(u.source_kind || "official").trim(),
-          };
-        })
-      : [],
+    urls: Array.isArray(item.urls) ? normalizeArtifactUrls(item.urls, false, true) : [],
   };
 }
 
@@ -536,16 +547,7 @@ function normalizeArtifactPayloadFromJson(item: any, idx: number): ManualArtifac
     checksum_type: item.checksum_type ? String(item.checksum_type).trim() : null,
     checksum_value: item.checksum_value ? String(item.checksum_value).trim().toLowerCase() : null,
     attributes,
-    urls: Array.isArray(item.urls)
-      ? item.urls.map((u: any, uIdx: number) => {
-          const parsedPriority = Number(u.priority);
-          return {
-            url: String(u.url || "").trim(),
-            priority: Number.isFinite(parsedPriority) ? parsedPriority : uIdx,
-            source_kind: String(u.source_kind || "official").trim(),
-          };
-        }).filter((u: any) => Boolean(u.url))
-      : [],
+    urls: Array.isArray(item.urls) ? normalizeArtifactUrls(item.urls, true) : [],
   };
 }
 
@@ -571,14 +573,7 @@ function buildArtifactsPayload(): ManualArtifactPayload[] {
       checksum_type: art.checksum_type.trim() || null,
       checksum_value: art.checksum_value.trim().toLowerCase() || null,
       attributes: buildVisualArtifactAttributes(art),
-      urls: (art.urls || []).map((u, uIdx) => {
-        const parsedPriority = Number(u.priority);
-        return {
-          url: u.url.trim(),
-          priority: Number.isFinite(parsedPriority) ? parsedPriority : uIdx,
-          source_kind: u.source_kind.trim() || "official",
-        };
-      }).filter((u) => Boolean(u.url)),
+      urls: normalizeArtifactUrls(art.urls, true),
     };
   });
 }
@@ -3084,13 +3079,7 @@ function buildCreateArtifactsPayload(): ManualArtifactPayload[] {
       checksum_type: art.checksum_type.trim() || undefined,
       checksum_value: art.checksum_value.trim().toLowerCase() || undefined,
       attributes: buildVisualArtifactAttributes(art),
-      urls: art.urls
-        .filter((u) => u.url.trim())
-        .map((u) => ({
-          url: u.url.trim(),
-          priority: Number(u.priority) || 0,
-          source_kind: u.source_kind.trim() || "official",
-        })),
+      urls: normalizeArtifactUrls(art.urls, true, false, (value) => Number(value) || 0),
     };
   });
 }
