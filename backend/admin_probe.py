@@ -142,8 +142,22 @@ def iter_records(root: Path, *, scopes: Iterable[str] = ("android", "pc")):
 
 
 def candidates(record: dict[str, Any]):
+    endfield_pc = (
+        record.get("vendor") == "hypergryph"
+        and record.get("game_id") == "endfield"
+        and record.get("platform") == "windows"
+    )
     for artifact_index, artifact in enumerate(record.get("artifacts", [])):
         if not isinstance(artifact, dict) or not isinstance(artifact.get("artifact_id"), str):
+            continue
+        # Endfield runtime VFS files (.chk/.blc) are historical resources,
+        # not downloadable archives. Keep them visible in the archive but
+        # never enqueue them for URL probing.
+        if endfield_pc and (
+            record.get("domain_id") == "endfield-resources"
+            or artifact.get("kind") not in {"package", "patch"}
+            or artifact.get("component") == "resource"
+        ):
             continue
         for url_index, candidate in enumerate(artifact.get("urls", [])):
             if (
@@ -151,6 +165,13 @@ def candidates(record: dict[str, Any]):
                 and candidate.get("source_kind") != "mirror"
                 and isinstance(candidate.get("url"), str)
             ):
+                if endfield_pc:
+                    try:
+                        path = urlsplit(candidate["url"]).path.lower()
+                    except ValueError:
+                        continue
+                    if not re.search(r"\.(?:zip|7z)(?:\.\d+)?$", path) or "/resource/windows/" in path:
+                        continue
                 yield artifact_index, url_index, artifact, candidate
 
 

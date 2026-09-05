@@ -187,7 +187,7 @@ class ScheduleTests(AdminFixture):
 
 
 class ProbeTests(AdminFixture):
-    def test_secondary_pc_domain_is_probed_but_mirror_candidate_is_skipped(self):
+    def test_endfield_runtime_resource_domain_is_skipped(self):
         official = "https://beyond.hycdn.cn/release/files/VFS/ABCD/file.chk"
         mirror = "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/file.chk"
         item = artifact("data/file.chk", [official, mirror], kind="package")
@@ -204,6 +204,8 @@ class ProbeTests(AdminFixture):
         rebuild_index(
             self.data, "hypergryph", "endfield", "windows", "endfield-resources",
         )
+        resource_dir = self.data / "hypergryph/endfield/pc/domains/endfield-resources"
+        before = {path.name: path.read_bytes() for path in resource_dir.glob("*.json")}
 
         calls = []
 
@@ -216,8 +218,9 @@ class ProbeTests(AdminFixture):
         summary = probe_records(
             self.data, selected, 5, 1, probe_fn=tracking, apply_fn=apply_result,
         )
-        self.assertEqual((summary["selected"], summary["checked"]), (1, 1))
-        self.assertEqual(calls, [official])
+        self.assertEqual((summary["selected"], summary["checked"]), (0, 0))
+        self.assertEqual(calls, [])
+        self.assertEqual(before, {path.name: path.read_bytes() for path in resource_dir.glob("*.json")})
 
         saved = json.loads(
             (
@@ -225,7 +228,7 @@ class ProbeTests(AdminFixture):
                 / "hypergryph/endfield/pc/domains/endfield-resources/1.0.0.json"
             ).read_text(encoding="utf-8")
         )
-        self.assertEqual(saved["artifacts"][0]["urls"][0]["current"]["state"], "available")
+        self.assertNotIn("current", saved["artifacts"][0]["urls"][0])
         self.assertNotIn("current", saved["artifacts"][0]["urls"][1])
         index = json.loads(
             (
@@ -233,11 +236,28 @@ class ProbeTests(AdminFixture):
                 / "hypergryph/endfield/pc/domains/endfield-resources/index.json"
             ).read_text(encoding="utf-8")
         )
-        self.assertTrue(index["versions"][0]["available"])
+        self.assertIsNone(index["versions"][0]["available"])
 
         legacy_android = deepcopy(self.android)
         legacy_android["artifacts"][0]["urls"][0]["source_kind"] = "legacy"
         self.assertEqual(len(list(candidates(legacy_android))), 1)
+
+    def test_endfield_default_domain_enqueues_only_archive_urls(self):
+        archive = artifact("game.zip.001", [
+            "https://beyond.hycdn.cn/release/game.zip.001",
+            "https://beyond.hycdn.cn/release/files/VFS/file.chk",
+            "https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/game.zip.001",
+        ], kind="package")
+        archive["urls"][2]["source_kind"] = "mirror"
+        patch_archive = artifact("patch.zip.001", ["https://beyond.hycdn.cn/release/patch.zip.001"], kind="patch")
+        patch_archive.update(package_type="differential", route_from="0.9.0", route_to="1.0.0")
+        loose = artifact("file.blc", ["https://beyond.hycdn.cn/release/files/VFS/file.blc"], kind="package")
+        value = record("windows", game="endfield", artifacts=[archive, patch_archive, loose])
+        value["vendor"] = "hypergryph"
+        self.assertEqual([(ai, ui) for ai, ui, _, _ in candidates(value)], [(0, 0), (1, 0)])
+        # The Endfield rule must not remove another game's existing candidates.
+        value.update(vendor="mihoyo", game_id="hk4e", domain_id="hk4e-pc")
+        self.assertEqual([(ai, ui) for ai, ui, _, _ in candidates(value)], [(0, 0), (0, 1), (1, 0), (2, 0)])
 
     def test_no_id_is_read_only(self):
         before = deepcopy(self.android)
@@ -416,6 +436,53 @@ class ProbeTests(AdminFixture):
 
 
 class OperationTests(AdminFixture):
+    def test_endfield_probe_operations_count_archives_and_preserve_resources(self):
+        package = artifact("game.zip.001", ["https://beyond.hycdn.cn/release/game.zip.001"], kind="package")
+        patch_archive = artifact("patch.zip.001", ["https://beyond.hycdn.cn/release/patch.zip.001"], kind="patch")
+        patch_archive.update(package_type="differential", route_from="0.9.0", route_to="1.0.0")
+        runtime = {
+            "kind": "resource", "component": "resource", "name": "VFS/file.chk",
+            "size": 10, "checksum": {"md5": "a" * 32},
+            "urls": [{"url": "https://beyond.hycdn.cn/resource/Windows/files/VFS/file.chk",
+                      "provider": "fixture", "source_kind": "official", "priority": 0}],
+        }
+        for domain, arts in (("endfield-pc", [package, patch_archive]), ("endfield-resources", [runtime])):
+            value = record("windows", game="endfield", artifacts=arts)
+            value.update(vendor="hypergryph", domain_id=domain)
+            for item in arts:
+                item["artifact_id"] = artifact_id(item, value)
+            write_v2_record(value, self.data)
+            rebuild_index(self.data, "hypergryph", "endfield", "windows", domain)
+        resource_dir = self.data / "hypergryph/endfield/pc/domains/endfield-resources"
+        before = {p.name: p.read_bytes() for p in resource_dir.glob("*.json")}
+        calls = []
+
+        def tracking(url, **kwargs):
+            calls.append(url)
+            return fake_probe(url, **kwargs)
+
+        client = self.client(probe_fn=tracking)
+        started = client.post("/api/v1/admin/operations/start", headers=self.auth(), json={
+            "actions": ["probe"], "scope": "all", "all_games": False, "game_ids": ["endfield"],
+        })
+        self.assertEqual(started.status_code, 200)
+        finished = self.wait(client, started.json()["job_id"])
+        self.assertEqual(started.json()["total"], 2)
+        self.assertEqual(finished["status"], "finished")
+        self.assertEqual((finished["completed"], finished["failed"]), (2, 0))
+        self.assertEqual(calls, [package["urls"][0]["url"], patch_archive["urls"][0]["url"]])
+        calls.clear()
+        response = client.post("/api/v1/admin/domains/endfield-resources/versions/1.0.0/probe", headers=self.auth())
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["summary"]["checked"], 0)
+        response = client.post("/api/v1/admin/probe/url", headers=self.auth(), json={
+            "url": runtime["urls"][0]["url"],
+            "artifact_url_id": stable_url_id(runtime["artifact_id"], 0, runtime["urls"][0]["url"]),
+        })
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(calls, [])
+        self.assertEqual(before, {p.name: p.read_bytes() for p in resource_dir.glob("*.json")})
+
     def wait(self, client, job_id):
         for _ in range(200):
             value = client.get(f"/api/v1/admin/operations/{job_id}", headers=self.auth()).json()
