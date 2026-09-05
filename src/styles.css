@@ -6109,7 +6109,7 @@ a {
   gap: 8px;
 }
 
-.group-chevron {
+.admin-app .group-chevron {
   font-size: 9.5px;
   color: #64748b;
   transition: transform 0.16s ease;
@@ -6120,12 +6120,12 @@ a {
   box-shadow: none !important;
 }
 
-.group-chevron.open {
+.admin-app .group-chevron.open {
   transform: rotate(90deg);
   color: #38bdf8;
 }
 
-.group-chevron.small {
+.admin-app .group-chevron.small {
   font-size: 8px;
 }
 
