@@ -1221,12 +1221,15 @@ a {
   min-width: max-content;
 }
 
+/* 列 4: 独立勾选占位容器（恒定 20px 宽度，未选中时为空占位，杜绝标签晃动） */
 .version-row-check-slot {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 20px;
   min-width: 20px;
+  height: 20px;
+  flex-shrink: 0;
 }
 
 /* 原子微型胶囊（Micro-tags）精致规范 */
@@ -1252,17 +1255,6 @@ a {
 .cap.micro-cap.amber { background: rgba(251, 191, 36, 0.12); color: #fde047; border: 1px solid rgba(251, 191, 36, 0.24); }
 .cap.micro-cap.green { background: rgba(52, 211, 153, 0.12); color: #6ee7b7; border: 1px solid rgba(52, 211, 153, 0.24); }
 .cap.micro-cap.red { background: rgba(251, 113, 133, 0.12); color: #fda4af; border: 1px solid rgba(251, 113, 133, 0.24); }
-
-/* 列 4: 独立勾选占位容器（恒定 20px 宽度，未选中时为空占位，杜绝标签晃动） */
-.version-row-check-slot {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  min-width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-}
 
 .version-check-icon {
   color: #38bdf8;
