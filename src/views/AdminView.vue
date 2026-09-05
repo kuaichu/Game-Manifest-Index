@@ -13,6 +13,7 @@ import CustomSelect from "../components/CustomSelect.vue";
 import AdminGameCatalog from "../components/admin/AdminGameCatalog.vue";
 import AdminDomainCatalog from "../components/admin/AdminDomainCatalog.vue";
 import AdminPcArtifactFields from "../components/admin/AdminPcArtifactFields.vue";
+import AdminOperationProgress from "../components/admin/AdminOperationProgress.vue";
 import {
   discoverItemState,
   discoverSkippedCount,
@@ -2021,6 +2022,11 @@ const filteredProbeItems = computed(() => {
 const opProgressPercent = computed(() => {
   const total = opJob.value?.total || 0;
   return total > 0 ? Math.min(100, Math.round(((opJob.value?.completed || 0) / total) * 100)) : 0;
+});
+
+const opCurrentGameLabel = computed(() => {
+  const gameId = opJob.value?.current?.game_id;
+  return gameId ? gameDisplayName(gameId) : "";
 });
 
 function stopOperationPolling(): void {
@@ -4712,32 +4718,17 @@ onBeforeUnmount(() => {
                 </label>
               </div>
 
-              <!-- 执行操作按钮 -->
-              <button
-                class="admin-btn full-width"
-                :class="opRunning ? 'danger' : 'primary'"
-                type="button"
-                :disabled="loading || opJob?.status === 'cancelling'"
-                @click="opRunning ? cancelAdminOperation() : executeAdminOperation()"
-              >
-                <span>{{ opJob?.status === 'cancelling' ? '正在取消，等待当前请求结束…' : opRunning ? '■ 取消当前运维任务' : '▶ 启动运维任务' }}</span>
-              </button>
-
-              <div v-if="opJob" class="probe-progress-box">
-                <div class="op-games-toolbar">
-                  <strong>{{ opJob.phase === 'discover' ? '查找新版本' : opJob.phase === 'probe' ? '历史版本探活' : '准备中' }} · {{ operationScopeText }}</strong>
-                  <span class="text-mono">{{ opJob.completed }} / {{ opJob.total }} · {{ opProgressPercent }}%</span>
-                </div>
-                <progress :value="opJob.completed" :max="Math.max(1, opJob.total)" style="width: 100%;"></progress>
-                <div class="text-muted" style="font-size: 12px;">
-                  当前阶段 {{ opJob.phase_completed }} / {{ opJob.phase_total }}
-                  <template v-if="opJob.current?.game_id">
-                    · {{ gameDisplayName(opJob.current.game_id) }}
-                    <span v-if="opJob.current.version" class="text-mono"> v{{ opJob.current.version }}</span>
-                  </template>
-                  · 成功 {{ opJob.succeeded }} · 失败 {{ opJob.failed }}
-                </div>
-              </div>
+              <!-- 执行操作按钮与实时进度 -->
+              <AdminOperationProgress
+                :loading="loading"
+                :running="opRunning"
+                :job="opJob"
+                :scope-text="operationScopeText"
+                :progress-percent="opProgressPercent"
+                :current-game-label="opCurrentGameLabel"
+                @start="executeAdminOperation"
+                @cancel="cancelAdminOperation"
+              />
             </div>
 
             <!-- 卡片 2: 定时调度与策略配置 -->
