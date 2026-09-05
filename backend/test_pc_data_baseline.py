@@ -150,6 +150,18 @@ def _is_current_overlay(relative: Path) -> bool:
     return False
 
 
+def _looks_like_utf8_mojibake(value: str) -> bool:
+    if not any("\u0080" <= char <= "\u00ff" for char in value):
+        return False
+    try:
+        repaired = value.encode("latin-1").decode("utf-8")
+    except UnicodeError:
+        return False
+    if repaired == value:
+        return False
+    return any("\u4e00" <= char <= "\u9fff" or char in "\u25b6\uff08\uff09" for char in repaired)
+
+
 class PcDataBaselineTests(unittest.TestCase):
     def test_checked_in_migration_audit_is_complete(self):
         audit = json.loads(AUDIT_PATH.read_text(encoding="utf-8"))
@@ -286,6 +298,25 @@ class PcDataBaselineTests(unittest.TestCase):
             for path in directory.rglob("*.json")
         }
         self.assertEqual(stored, referenced)
+
+    def test_chunk_manifest_category_names_are_readable_text(self):
+        bad_names = []
+        for vendor, game_id in GAMES:
+            directory = DATA_ROOT / vendor / game_id / "pc" / "chunk-manifests"
+            if not directory.is_dir():
+                continue
+            for path in sorted(directory.glob("*.json")):
+                document = json.loads(path.read_text(encoding="utf-8"))
+                for index, item in enumerate(document.get("manifests", [])):
+                    category = item.get("category") if isinstance(item, dict) else None
+                    name = category.get("name") if isinstance(category, dict) else None
+                    if isinstance(name, str) and _looks_like_utf8_mojibake(name):
+                        bad_names.append(f"{path.relative_to(PROJECT_ROOT)} manifest {index}: {name!r}")
+        if bad_names:
+            self.fail(
+                f"{len(bad_names)} PC chunk manifest category names look like mojibake: "
+                f"{bad_names[:10]}"
+            )
 
     def test_pc_indexes_rebuild_without_difference(self):
         for vendor, game_id in GAMES:

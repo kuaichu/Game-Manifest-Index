@@ -15,7 +15,7 @@
     {
       "category": {
         "id": 10017,
-        "name": "æ¸¸æèµæº-å¤ç½"
+        "name": "游戏资源-外网"
       },
       "manifest": {
         "id": "manifest_3244145ce18f942e_d0aa779dbe904c04e25f7efdc19c2b54",
@@ -54,7 +54,7 @@
     {
       "category": {
         "id": 10018,
-        "name": "è¯­é³å-ä¸­æ-å¤ç½"
+        "name": "语音包-中文-外网"
       },
       "manifest": {
         "id": "manifest_e98f5297ac197ef9_6177e5c241fd87e290d8f0355fdab32d",
@@ -93,7 +93,7 @@
     {
       "category": {
         "id": 10019,
-        "name": "è¯­é³å-è±æ-å¤ç½"
+        "name": "语音包-英文-外网"
       },
       "manifest": {
         "id": "manifest_e3441ea8411e56c2_07da51b4e6110523bd13e9a6a0b5f430",
@@ -132,7 +132,7 @@
     {
       "category": {
         "id": 10021,
-        "name": "è¯­é³å-æ¥æ-å¤ç½"
+        "name": "语音包-日文-外网"
       },
       "manifest": {
         "id": "manifest_406241951c9238f5_8222eb8911b768ac53a0101c7e860084",
@@ -171,7 +171,7 @@
     {
       "category": {
         "id": 10020,
-        "name": "è¯­é³å-é©æ-å¤ç½"
+        "name": "语音包-韩文-外网"
       },
       "manifest": {
         "id": "manifest_6afeac6fd130c945_a6750370ed09402ce13bc20d68d4c901",
