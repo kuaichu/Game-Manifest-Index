@@ -2669,19 +2669,6 @@ a {
 /* --- Hoyo & Remote Browser --- */
 .remote-workspace,
 .chunk-manifest-wrapper {
-  padding: 18px;
-}
-
-.remote-workspace .remote-tree {
-  padding: 0;
-}
-
-.resource-summary {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-/* --- Remote Tree Container & Integrated Nav --- */
-.remote-workspace,
-.chunk-manifest-wrapper {
   padding: 18px 18px 48px;
 }
 
@@ -2693,6 +2680,7 @@ a {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+/* --- Remote Tree Container & Integrated Nav --- */
 .remote-tree-container {
   display: flex;
   flex-direction: column;
