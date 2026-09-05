@@ -185,6 +185,54 @@ describe("AdminView capability alignment", () => {
     app.unmount();
   });
 
+  it("passes edited game fields from the catalog component to the save API", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const update = vi.spyOn(adminApi, "updateGame").mockResolvedValue({} as never);
+    const { app, root } = await mountAdmin("android");
+    const form = root.querySelector<HTMLFormElement>(".game-form-pane");
+    if (!form) throw new Error("game catalog form not found");
+    const name = [...form.querySelectorAll<HTMLInputElement>("input")]
+      .find((input) => input.value === "演示游戏");
+    const order = form.querySelector<HTMLInputElement>("input[type='number']");
+    const enabled = form.querySelector<HTMLInputElement>("input[type='checkbox']");
+    if (!name || !order || !enabled) throw new Error("game catalog fields not found");
+    name.value = "修改后的游戏名称";
+    name.dispatchEvent(new Event("input"));
+    await flushUpdates();
+    order.value = "7";
+    order.dispatchEvent(new Event("input"));
+    await flushUpdates();
+    enabled.checked = false;
+    enabled.dispatchEvent(new Event("change"));
+    await flushUpdates();
+    buttonByText(root, "保存游戏设置").click();
+    await flushUpdates();
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(update.mock.calls[0][0]).toBe("demo");
+    expect(update.mock.calls[0][1]).toMatchObject({
+      id: "demo", name: "修改后的游戏名称", sort_order: 7, is_enabled: false,
+    });
+    app.unmount();
+  });
+
+  it("keeps the game catalog search query when switching tabs", async () => {
+    const { app, root } = await mountAdmin("android");
+    const search = root.querySelector<HTMLInputElement>(".game-list-pane input[type='search']");
+    if (!search) throw new Error("game catalog search input not found");
+    search.value = "no-match";
+    search.dispatchEvent(new Event("input"));
+    await flushUpdates();
+    expect(root.textContent).toContain("未找到匹配的游戏入口");
+
+    buttonByText(root, "模块").click();
+    await flushUpdates();
+    buttonByText(root, "游戏").click();
+    await flushUpdates();
+    const restoredSearch = root.querySelector<HTMLInputElement>(".game-list-pane input[type='search']");
+    expect(restoredSearch?.value).toBe("no-match");
+    app.unmount();
+  });
+
   it("uses version summary availability for the edit health banner", async () => {
     const { app, root } = await mountAdmin("android");
     buttonByText(root, "版本").click();
