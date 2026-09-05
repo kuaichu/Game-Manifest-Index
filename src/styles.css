@@ -9328,6 +9328,8 @@ a {
   .admin-rail {
     position: static;
     width: 100%;
+    min-width: 0;
+    max-width: 100%;
     height: auto;
     flex-direction: row;
     align-items: center;
@@ -9347,12 +9349,15 @@ a {
   .rail-nav-list {
     flex-direction: row;
     width: auto;
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow-x: auto;
     gap: 6px;
   }
 
   .rail-foot {
     margin-top: 0;
-    margin-left: auto;
+    margin-left: 0;
     padding-top: 0;
     border-top: 0;
     width: auto;
@@ -9360,6 +9365,7 @@ a {
 
   .admin-main {
     padding: 14px 10px 40px;
+    min-width: 0;
   }
 
   .admin-kpi-bar {
@@ -9369,6 +9375,51 @@ a {
 
   .admin-master-detail, .content-panels-layout, .probe-top-grid {
     grid-template-columns: 1fr;
+    min-width: 0;
+  }
+
+  .admin-form-pane,
+  .admin-master-detail > *,
+  .content-panels-layout > *,
+  .probe-top-grid > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .admin-main .domain-hero-banner {
+    flex-wrap: wrap;
+  }
+
+  .admin-main .hero-action-buttons {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .admin-main .hero-jump-btn {
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .admin-main .preview-avatar-meta {
+    min-width: 0;
+  }
+
+  .admin-main .preview-meta-desc {
+    overflow-wrap: anywhere;
+  }
+
+  .admin-main .publish-actions-row,
+  .admin-main .form-actions-bar {
+    flex-wrap: wrap;
+  }
+
+  .admin-main .publish-actions-row .actions-right,
+  .admin-main .form-actions-bar .actions-right {
+    width: 100%;
+    min-width: 0;
+    margin-left: 0;
+    flex-wrap: wrap;
+    justify-content: flex-end;
   }
 
   .content-scope-bar {
@@ -9378,6 +9429,37 @@ a {
 
   .admin-field-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-app .admin-topbar,
+  .admin-main .hero-identity,
+  .admin-main .preview-avatar-wrap {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .admin-main .admin-form-pane,
+  .admin-main .domain-hero-banner {
+    padding: 14px;
+  }
+
+  .admin-main .hero-kicker-row,
+  .admin-main .hero-title-row,
+  .admin-main .section-card-header,
+  .admin-main .field-label-row {
+    flex-wrap: wrap;
+  }
+
+  .admin-main .hero-text-block,
+  .admin-main .section-header-left,
+  .admin-main .version-stat-group {
+    min-width: 0;
+  }
+
+  .admin-main .hero-title-row h2 {
+    overflow-wrap: anywhere;
   }
 }
 
