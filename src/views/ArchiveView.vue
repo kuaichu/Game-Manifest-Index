@@ -36,6 +36,7 @@ import { gameIcons } from "../game-icons";
 import { publisherGroups } from "../game-meta";
 import SourceProvenanceModal from "../components/SourceProvenanceModal.vue";
 import { useArchiveLoader } from "../composables/useArchiveLoader";
+import { useArchiveArtifactsLoader, type ArchiveArtifactsLoaderState, type ArchiveArtifactLoadContext } from "../composables/useArchiveArtifactsLoader";
 import type {
   ArchiveDomain,
   ArchiveLead,
@@ -43,7 +44,6 @@ import type {
   ChunkManifestDetail,
   ChunkManifestSummaryItem,
   Game,
-  VersionRecord,
   VersionSummary,
 } from "../types";
 
@@ -68,14 +68,12 @@ function openProvenanceModal(event?: MouseEvent): void {
   showProvenanceModal.value = true;
 }
 
-const artifacts = ref<Artifact[]>([]);
 const remoteTreeProbeTime = ref<string | null>(null);
 const chunkCollection = ref<ChunkManifestSummaryItem[]>([]);
 const chunkDetail = ref<ChunkManifestDetail | null>(null);
 const chunkLoading = ref(false);
 const chunkError = ref<string | null>(null);
 const leads = ref<ArchiveLead[]>([]);
-const nextCursor = ref<string | null>(null);
 const query = ref(String(route.query.q || ""));
 const initialAvailability = String(route.query.availability || "all");
 const availabilityFilter = ref<"all" | "available" | "unavailable" | "unknown">(
@@ -83,17 +81,17 @@ const availabilityFilter = ref<"all" | "available" | "unavailable" | "unknown">(
     ? (initialAvailability as "available" | "unavailable" | "unknown")
     : "all",
 );
-const loadingMore = ref(false);
 const toast = ref("");
-const error = ref<Error | null>(null);
-let artifactController: AbortController | null = null;
-let artifactRequestId = 0;
+const selectedCategory = ref<string>("all");
+const chunkCategoryFilter = ref<string>("all");
 const SEARCHABLE_MODES = new Set(["apk", "chunks", "files", "packages", "patches"]);
 
+let archiveArtifactsLoader: ArchiveArtifactsLoaderState | null = null;
+function loadArtifacts(append: boolean): Promise<void> {
+  return archiveArtifactsLoader?.loadArtifacts(append) || Promise.resolve();
+}
 function invalidateArtifactLoad(): void {
-  artifactController?.abort();
-  artifactController = null;
-  artifactRequestId += 1;
+  archiveArtifactsLoader?.invalidate();
   chunkLoading.value = false;
 }
 
@@ -238,6 +236,70 @@ const canFilterAvailability = computed(() => {
 const availabilityStateForRequest = computed(() =>
   mode.value === "files" || availabilityFilter.value === "all" ? undefined : availabilityFilter.value,
 );
+
+async function loadChunkState(
+  context: ArchiveArtifactLoadContext,
+  signal: AbortSignal,
+  isCurrent: () => boolean,
+): Promise<void> {
+  chunkLoading.value = true;
+  chunkError.value = null;
+  try {
+    const [collRes, detailRes] = await Promise.allSettled([
+      api.chunkManifestCollection(context.domainId, signal),
+      api.chunkManifests(context.domainId, context.selectedVersion, signal),
+    ]);
+    if (!isCurrent()) return;
+    if (collRes.status === "fulfilled") {
+      chunkCollection.value = collRes.value?.items || [];
+    } else if (context.mode === "chunks") {
+      chunkCollection.value = [];
+    }
+    if (detailRes.status === "fulfilled") {
+      chunkDetail.value = detailRes.value;
+    } else {
+      chunkDetail.value = null;
+    }
+  } catch (reason) {
+    if (!isAbortError(reason)) {
+      if (context.mode === "files") chunkDetail.value = null;
+      chunkError.value = reason instanceof Error ? reason.message : "读取 Chunk Manifest 失败";
+    }
+  } finally {
+    if (isCurrent()) chunkLoading.value = false;
+  }
+}
+
+const loadedArchiveArtifacts = useArchiveArtifactsLoader({
+  getContext: (): ArchiveArtifactLoadContext => ({
+    domainId: domainId.value,
+    gameId: gameId.value,
+    selectedVersion: selectedVersion.value,
+    mode: mode.value,
+    domainGameId: domain.value?.game_id,
+    domainAdapter: domain.value?.adapter,
+    versionsDomainId: versionsDomainId.value,
+    hasSelectedVersion: versions.value.some((item) => item.version === selectedVersion.value),
+    query: query.value.trim(),
+    availabilityState: availabilityStateForRequest.value,
+    channelVersions: channelVersions.value,
+    searchableMode: searchableMode.value,
+    usesRemoteTree: usesRemoteTree.value,
+    usesArtifactTree: usesArtifactTree.value,
+  }),
+  resetPresentation: () => {
+    selectedCategory.value = "all";
+    chunkCategoryFilter.value = "all";
+    remoteTreeProbeTime.value = null;
+  },
+  loadChunkState,
+  setLeads: (loadedLeads) => {
+    leads.value = loadedLeads;
+  },
+});
+archiveArtifactsLoader = loadedArchiveArtifacts;
+const { artifacts, nextCursor, loadingMore, error } = loadedArchiveArtifacts;
+
 const usesPreferredUrlPresentation = computed(
   () =>
     supportsArtifactField("urls") &&
@@ -400,8 +462,6 @@ function artifactCategory(artifact: Artifact): string {
   return "全部文件";
 }
 
-const selectedCategory = ref<string>("all");
-
 const categoryFilters = computed(() => {
   if (!artifacts.value.length) return [];
   const counts: Record<string, number> = {};
@@ -417,8 +477,6 @@ const categoryFilters = computed(() => {
   }
   return list;
 });
-
-const chunkCategoryFilter = ref<string>("all");
 
 const chunkFilterOptions = computed(() => {
   if (!chunkDetail.value?.manifests?.length) return [];
@@ -467,65 +525,12 @@ const footerProbeArtifacts = computed(() => {
   return displayedArtifacts.value;
 });
 
-function versionRecordState(record: VersionRecord): "available" | "unavailable" | "unknown" {
-  return record.status.available === true
-    ? "available"
-    : record.status.available === false
-      ? "unavailable"
-      : "unknown";
-}
-
 function formatChecksum(artifact: Artifact): string {
   if (!artifact.checksum_value) return "—";
   const type = (artifact.checksum_type || (artifact.checksum_value.length === 32 ? "MD5" : "CRC64")).toUpperCase();
   return `${type}: ${artifact.checksum_value}`;
 }
 
-function versionRecordArtifact(record: VersionRecord, id: number): Artifact {
-  const state = versionRecordState(record);
-  const verified = record.status.http_code !== null && record.status.last_checked_at !== null;
-  const checksumType = record.checksum.md5 ? "md5" : record.checksum.crc64 ? "crc64" : null;
-  const checksumValue = record.checksum.md5 || record.checksum.crc64;
-  const current = {
-    state,
-    reason: record.status.http_code === null ? "无有效探测结果" : `HTTP ${record.status.http_code}`,
-    confidence: state === "unknown" ? "low" as const : "high" as const,
-    retained: false,
-    checked_at: record.status.last_checked_at,
-    source_kind: "live_probe",
-    source_confidence: verified ? "high" : "low",
-    observed_at: record.status.last_checked_at,
-    expires_at: null,
-    evidence_status: verified ? "verified" as const : "unverified" as const,
-  };
-  return {
-    id,
-    kind: "apk",
-    name: record.filename,
-    part: 1,
-    size: record.size,
-    checksum_type: checksumType,
-    checksum_value: checksumValue,
-    attributes: {
-      vendor: record.vendor,
-      game_id: record.game_id,
-      channel: record.channel,
-      version_code: record.version_code,
-      etag: record.checksum.etag,
-      crc64: record.checksum.crc64,
-      http_code: record.status.http_code,
-    },
-    urls: [{
-      id,
-      url: record.url,
-      priority: 0,
-      source_kind: "official",
-      provider: record.vendor,
-      evidence_status: current.evidence_status,
-      current,
-    }],
-  };
-}
 const availabilityEvidenceNote = computed(
   () => "“可用”只表示受限 Range 请求收到有效内容，不保证完整文件传输或所有下载器兼容。",
 );
@@ -863,210 +868,6 @@ async function exportArtifacts(format: "urls" | "json"): Promise<void> {
   }
 }
 
-async function loadArtifacts(append: boolean): Promise<void> {
-  if (!domainId.value || !selectedVersion.value) return;
-  const resolvedDomain = domains.value.find((item) => item.id === domainId.value);
-  if (
-    resolvedDomain?.game_id !== gameId.value ||
-    versionsDomainId.value !== domainId.value ||
-    !versions.value.some((item) => item.version === selectedVersion.value)
-  ) {
-    return;
-  }
-  const requestId = ++artifactRequestId;
-  artifactController?.abort();
-  const request = new AbortController();
-  artifactController = request;
-  const isCurrent = () => artifactRequestId === requestId && artifactController === request && !request.signal.aborted;
-  if (!append) {
-    selectedCategory.value = "all";
-    chunkCategoryFilter.value = "all";
-    remoteTreeProbeTime.value = null;
-  }
-  error.value = null;
-  try {
-    if (mode.value === "chunks") {
-      artifacts.value = [];
-      nextCursor.value = null;
-      chunkLoading.value = true;
-      chunkError.value = null;
-      try {
-        const [collRes, detailRes, artRes] = await Promise.allSettled([
-          api.chunkManifestCollection(domainId.value, request.signal),
-          api.chunkManifests(domainId.value, selectedVersion.value, request.signal),
-          api.artifacts(
-            domainId.value,
-            selectedVersion.value,
-            {
-              query: query.value.trim(),
-              kind: "chunk",
-              limit: 100,
-            },
-            request.signal,
-          ),
-        ]);
-        if (!isCurrent()) return;
-        if (collRes.status === "fulfilled") {
-          chunkCollection.value = collRes.value?.items || [];
-        } else {
-          chunkCollection.value = [];
-        }
-        if (detailRes.status === "fulfilled") {
-          chunkDetail.value = detailRes.value;
-        } else {
-          chunkDetail.value = null;
-        }
-        if (artRes.status === "fulfilled" && artRes.value?.items?.length) {
-          artifacts.value = artRes.value.items;
-        }
-      } catch (err) {
-        if (!isAbortError(err)) {
-          chunkError.value = err instanceof Error ? err.message : "读取 Chunk Manifest 失败";
-        }
-      } finally {
-        if (isCurrent()) chunkLoading.value = false;
-      }
-      return;
-    }
-    if (mode.value === "files" && domain.value?.adapter === "hoyo") {
-      artifacts.value = [];
-      nextCursor.value = null;
-      chunkLoading.value = true;
-      chunkError.value = null;
-      try {
-        const [collRes, detailRes] = await Promise.allSettled([
-          api.chunkManifestCollection(domainId.value, request.signal),
-          api.chunkManifests(domainId.value, selectedVersion.value, request.signal),
-        ]);
-        if (!isCurrent()) return;
-        if (collRes.status === "fulfilled") {
-          chunkCollection.value = collRes.value?.items || [];
-        }
-        if (detailRes.status === "fulfilled") {
-          chunkDetail.value = detailRes.value;
-        } else {
-          chunkDetail.value = null;
-        }
-      } catch (err) {
-        if (!isAbortError(err)) {
-          chunkDetail.value = null;
-          chunkError.value = err instanceof Error ? err.message : "读取 Chunk Manifest 失败";
-        }
-      } finally {
-        if (isCurrent()) chunkLoading.value = false;
-      }
-      return;
-    }
-    if (mode.value === "legacy") {
-      artifacts.value = [];
-      nextCursor.value = null;
-      const loadedLeads = await api.leads(domainId.value, request.signal);
-      if (!isCurrent()) return;
-      leads.value = loadedLeads;
-      return;
-    }
-    leads.value = [];
-    if (mode.value === "compare") {
-      artifacts.value = [];
-      nextCursor.value = null;
-      return;
-    }
-    if (usesRemoteTree.value) {
-      artifacts.value = [];
-      nextCursor.value = null;
-      return;
-    }
-    if (usesArtifactTree.value) {
-      const loadedArtifacts = await api.allArtifacts(
-        domainId.value,
-        selectedVersion.value,
-        {
-          kind: "file",
-          query: query.value.trim(),
-          state: availabilityStateForRequest.value,
-        },
-        request.signal,
-      );
-      if (!isCurrent()) return;
-      artifacts.value = loadedArtifacts;
-      nextCursor.value = null;
-      return;
-    }
-    const baseVersion = selectedVersion.value;
-    const channelTargets = channelVersions.value.length
-      ? [baseVersion, ...channelVersions.value.map((item) => item.version)]
-      : [baseVersion];
-    if (mode.value === "apk") {
-      const loaded: Artifact[] = [];
-      const queryText = query.value.trim().toLocaleLowerCase();
-      for (const [index, version] of channelTargets.entries()) {
-        if (!isCurrent()) return;
-        const record = await api.versionRecord(domainId.value, version, request.signal);
-        if (!isCurrent()) return;
-        if (queryText && !JSON.stringify(record).toLocaleLowerCase().includes(queryText)) continue;
-        if (availabilityStateForRequest.value && versionRecordState(record) !== availabilityStateForRequest.value) continue;
-        loaded.push(versionRecordArtifact(record, index + 1));
-      }
-      if (!isCurrent()) return;
-      artifacts.value = loaded;
-      nextCursor.value = null;
-      return;
-    }
-    if (channelTargets.length > 1) {
-      const loaded: Artifact[] = [];
-      for (const version of channelTargets) {
-        if (!isCurrent()) return;
-        const page = await api.artifacts(
-          domainId.value,
-          version,
-          {
-            query: searchableMode.value ? query.value.trim() : "",
-            state: availabilityStateForRequest.value,
-            kind: artifactKindForMode(mode.value),
-            limit: 500,
-          },
-          request.signal,
-        );
-        if (!isCurrent()) return;
-        loaded.push(...page.items);
-      }
-      const seenArtifacts = new Set<string>();
-      if (!isCurrent()) return;
-      artifacts.value = loaded.filter((item) => {
-        const key = String(item.name);
-        if (seenArtifacts.has(key)) return false;
-        seenArtifacts.add(key);
-        return true;
-      });
-      nextCursor.value = null;
-      return;
-    }
-    const page = await api.artifacts(
-      domainId.value,
-      selectedVersion.value,
-      {
-        cursor: append ? nextCursor.value : null,
-        query: searchableMode.value ? query.value.trim() : "",
-        state: availabilityStateForRequest.value,
-        kind: artifactKindForMode(mode.value),
-        limit: 50,
-      },
-      request.signal,
-    );
-    if (!isCurrent()) return;
-    artifacts.value = append ? [...artifacts.value, ...page.items] : page.items;
-    nextCursor.value = page.next_cursor;
-  } catch (reason) {
-    if (!isCurrent() || isAbortError(reason)) return;
-    error.value = reason instanceof Error ? reason : new Error(String(reason));
-  } finally {
-    if (requestId === artifactRequestId) {
-      loading.value = false;
-      loadingMore.value = false;
-    }
-  }
-}
-
 async function replaceQuery(name: "q" | "availability" | "from", value: string): Promise<void> {
   const next = { ...route.query };
   if (value && value !== "all") next[name] = value;
@@ -1187,8 +988,6 @@ onMounted(() => {
 });
 onBeforeUnmount(() => {
   disposeArchiveLoader();
-  artifactRequestId += 1;
-  artifactController?.abort();
   if (searchTimer !== null) window.clearTimeout(searchTimer);
   window.removeEventListener("click", onWindowRawIndexClick);
   window.removeEventListener("keydown", onWindowKeyDown);
