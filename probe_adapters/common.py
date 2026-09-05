@@ -77,9 +77,16 @@ def probe_url(url: str, timeout: int = 10) -> ProbeObservation:
             "-D", "-", "-o", body_path, "-w", write_out, url,
         ]
         try:
-            result = subprocess.run(command, capture_output=True, check=False)
+            # Keep a process-level guard in addition to curl's --max-time.
+            # On Windows a stuck curl child can outlive curl's own timeout;
+            # without this guard one worker can block the whole batch forever.
+            result = subprocess.run(
+                command, capture_output=True, check=False, timeout=timeout + 5,
+            )
         except FileNotFoundError as exc:
             raise ProbeError("系统中没有找到 curl") from exc
+        except subprocess.TimeoutExpired as exc:
+            raise ProbeError(f"curl 超时（{timeout + 5} 秒）") from exc
         try:
             with open(body_path, "rb") as body:
                 # A few package formats (notably 7z) need more than the
