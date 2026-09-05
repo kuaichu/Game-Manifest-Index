@@ -527,6 +527,27 @@ class VersionAdminTests(unittest.TestCase):
         created_game = self.client.post("/api/v1/admin/games", headers=headers, json=game_payload)
         self.assertEqual(created_game.status_code, 200, created_game.text)
         self.assertEqual(created_game.json()["version_count"], 0)
+        catalog = self.client.get("/api/v1/admin/catalog", headers=headers)
+        self.assertEqual(catalog.status_code, 200, catalog.text)
+        game = next(item for item in catalog.json()["games"] if item["id"] == "demo")
+        self.assertEqual((game["name"], game["sort_order"], game["is_enabled"]), ("演示游戏", 120, True))
+
+        updated_game = self.client.patch(
+            "/api/v1/admin/games/demo",
+            headers=headers,
+            json={**game_payload, "name": "演示游戏二", "sort_order": 5, "is_enabled": False},
+        )
+        self.assertEqual(updated_game.status_code, 200, updated_game.text)
+        self.assertEqual(
+            (updated_game.json()["name"], updated_game.json()["sort_order"], updated_game.json()["is_enabled"]),
+            ("演示游戏二", 5, False),
+        )
+        enabled_game = self.client.patch(
+            "/api/v1/admin/games/demo",
+            headers=headers,
+            json={**game_payload, "name": "演示游戏二", "sort_order": 5, "is_enabled": True},
+        )
+        self.assertEqual(enabled_game.status_code, 200, enabled_game.text)
 
         domain_payload = {
             "id": "demo-resources",
@@ -549,6 +570,7 @@ class VersionAdminTests(unittest.TestCase):
         self.assertEqual(updated_domain.status_code, 200, updated_domain.text)
         self.assertEqual(updated_domain.json()["adapter"], "hoyo")
         self.assertFalse(updated_domain.json()["is_enabled"])
+        self.assertEqual(self.client.get("/api/v1/games/demo/domains").status_code, 404)
 
         self.assertEqual(
             self.client.delete("/api/v1/admin/domains/demo-resources", headers=headers).status_code,
