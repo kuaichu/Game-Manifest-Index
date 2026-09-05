@@ -113,6 +113,15 @@ interface EditableArtifactDraft {
   name: string;
   part: number;
   size: number;
+  component: string;
+  package_type: string;
+  delivery_mode: string;
+  language: string;
+  route_from: string;
+  route_to: string;
+  decompressed_size: number | null;
+  manifestJson: string;
+  sourceJson: string;
   checksum_type: string;
   checksum_value: string;
   attributesJson: string;
@@ -160,8 +169,24 @@ const selectedDomainPlatform = computed(() => {
   return selectedDomainObj.value?.platform || "Android";
 });
 
-const selectedDomainSupportsManualVersion = computed(() =>
+function supportsPcVersionEditor(domain: AdminDomain | null | undefined): boolean {
+  const normalized = (domain?.platform || "").trim().toLowerCase();
+  if (normalized !== "windows" && normalized !== "pc") return false;
+  const capabilities = new Set((domain?.capabilities || []).map((item) => item.trim().toLowerCase()));
+  const kind = (domain?.kind || "").trim().toLowerCase();
+  return capabilities.has("packages") || capabilities.has("patches") || kind === "packages" || kind === "patches";
+}
+
+const selectedDomainSupportsCreateVersion = computed(() =>
   supportsApkVersionEditor(selectedDomainObj.value?.platform),
+);
+
+const selectedDomainUsesPcEditor = computed(() =>
+  supportsPcVersionEditor(selectedDomainObj.value),
+);
+
+const selectedDomainSupportsManualVersion = computed(() =>
+  selectedDomainSupportsCreateVersion.value || selectedDomainUsesPcEditor.value,
 );
 
 const currentVersionItem = computed(() =>
@@ -169,6 +194,30 @@ const currentVersionItem = computed(() =>
 );
 
 const currentVersionHealth = computed(() => {
+  const summary = currentVersionItem.value;
+  if (summary) {
+    if (isVersionUnavailable(summary)) {
+      return {
+        isChecked: true,
+        isOk: false,
+        httpCode: null as number | null,
+        available: false,
+        lastCheckedAt: null as string | null,
+        size: summary.packed_size || 0,
+      };
+    }
+    if (!isVersionUnknown(summary)) {
+      return {
+        isChecked: true,
+        isOk: true,
+        httpCode: null as number | null,
+        available: true,
+        lastCheckedAt: null as string | null,
+        size: summary.packed_size || 0,
+      };
+    }
+  }
+
   const art = editableDraft.value.artifacts[0];
   let attr: Record<string, any> = {};
   if (art?.attributesJson) {
@@ -196,6 +245,22 @@ const currentVersionHealth = computed(() => {
   };
 });
 
+const pcArtifactsOverview = computed(() => {
+  const artifacts = editableDraft.value.artifacts || [];
+  const packageCount = artifacts.filter((item) => item.kind === "package").length;
+  const patchCount = artifacts.filter((item) => item.kind === "patch").length;
+  const urlCount = artifacts.reduce((total, item) =>
+    total + (item.urls || []).filter((urlItem) => urlItem.url.trim()).length, 0);
+  const totalSize = artifacts.reduce((total, item) => total + (Number(item.size) || 0), 0);
+  return {
+    total: artifacts.length,
+    packageCount,
+    patchCount,
+    urlCount,
+    totalSize,
+  };
+});
+
 const isUrlChanged = computed(() => {
   if (!editableLoaded.value || !editableDraft.value.artifacts.length) return false;
   const currentUrl = editableDraft.value.artifacts[0]?.urls[0]?.url?.trim() || "";
@@ -204,11 +269,10 @@ const isUrlChanged = computed(() => {
 });
 
 function isVersionAvailable(item: VersionSummary): boolean {
-  const apkInfo = item.artifact_kinds?.apk;
-  if (!apkInfo) return true;
-  const availableCount = apkInfo.availability_states?.available ?? 0;
-  const canonicalCount = apkInfo.availability_states?.canonical ?? 0;
-  const unavailableCount = apkInfo.availability_states?.unavailable ?? 0;
+  const availability = versionAvailabilityCounts(item);
+  const availableCount = availability.available;
+  const canonicalCount = availability.canonical;
+  const unavailableCount = availability.unavailable;
   if (unavailableCount > 0 && availableCount === 0 && canonicalCount === 0) {
     return false;
   }
@@ -269,22 +333,14 @@ const dirtyChangesCount = computed(() => {
   if (editableDraft.value.checksum_crc64.trim() !== (original.checksum_crc64 || "").trim()) count++;
   if (editableDraft.value.checksum_md5.trim() !== (original.checksum_md5 || "").trim()) count++;
 
-  const currentArt = editableDraft.value.artifacts[0];
-  let origArt: any = null;
+  let currentArtifacts = "";
   try {
-    const origArts = JSON.parse(original.artifacts || "[]");
-    origArt = origArts[0];
+    currentArtifacts = normalizeArtifactsForComparison(buildArtifactsPayload());
   } catch {
-    // ignore
-  }
-
-  if (origArt) {
-    if ((currentArt?.name || "").trim() !== (origArt.name || "").trim()) count++;
-    if (Number(currentArt?.size || 0) !== Number(origArt.size || 0)) count++;
-    if ((currentArt?.urls[0]?.url || "").trim() !== (origArt.urls?.[0]?.url || "").trim()) count++;
-  } else if (currentArt) {
     count++;
+    return count;
   }
+  if (currentArtifacts !== (original.artifacts || "")) count++;
 
   return count;
 });
@@ -348,41 +404,161 @@ function getNormalizedUnpackedSize(size: number | null | undefined): number | nu
   return Number(s);
 }
 
+const ARTIFACT_ATTRIBUTE_KEYS = [
+  "component",
+  "package_type",
+  "delivery_mode",
+  "language",
+  "route_from",
+  "route_to",
+  "decompressed_size",
+  "manifest",
+  "source",
+] as const;
+
+function numberOrNull(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function jsonValueToText(value: unknown): string {
+  if (value === undefined || value === null || value === "") return "";
+  if (typeof value === "string") return value;
+  return JSON.stringify(value, null, 2);
+}
+
+function parseOptionalJsonOrString(value: string): unknown {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return trimmed;
+  }
+}
+
+function compactArtifactAttributes(attributes: Record<string, unknown>): string {
+  const extra = { ...attributes };
+  for (const key of ARTIFACT_ATTRIBUTE_KEYS) {
+    delete extra[key];
+  }
+  return JSON.stringify(extra, null, 2);
+}
+
+function artifactDraftFromPayload(item: any, idx: number): EditableArtifactDraft {
+  const attrs: Record<string, unknown> =
+    typeof item.attributes === "object" && item.attributes !== null && !Array.isArray(item.attributes)
+      ? item.attributes
+      : {};
+  return {
+    kind: String(item.kind || "file").trim(),
+    name: String(item.name || "").trim(),
+    part: Number(item.part) || idx + 1,
+    size: Number(item.size) || 0,
+    component: String(item.component ?? attrs.component ?? "game"),
+    package_type: String(item.package_type ?? attrs.package_type ?? ""),
+    delivery_mode: String(item.delivery_mode ?? attrs.delivery_mode ?? ""),
+    language: String(item.language ?? attrs.language ?? ""),
+    route_from: String(item.route_from ?? attrs.route_from ?? ""),
+    route_to: String(item.route_to ?? attrs.route_to ?? ""),
+    decompressed_size: numberOrNull(item.decompressed_size ?? attrs.decompressed_size),
+    manifestJson: jsonValueToText(item.manifest ?? attrs.manifest),
+    sourceJson: jsonValueToText(item.source ?? attrs.source),
+    checksum_type: item.checksum_type ? String(item.checksum_type).trim() : "",
+    checksum_value: item.checksum_value ? String(item.checksum_value).trim() : "",
+    attributesJson: compactArtifactAttributes(attrs),
+    urls: Array.isArray(item.urls)
+      ? item.urls.map((u: any, uIdx: number) => {
+          const parsedPriority = Number(u.priority);
+          return {
+            id: u.id,
+            persisted_url: u.url || "",
+            url: String(u.url || "").trim(),
+            priority: Number.isFinite(parsedPriority) ? parsedPriority : uIdx,
+            source_kind: String(u.source_kind || "official").trim(),
+          };
+        })
+      : [],
+  };
+}
+
+function buildVisualArtifactAttributes(art: EditableArtifactDraft): Record<string, unknown> {
+  let attributes: Record<string, unknown> = {};
+  try {
+    const parsed = JSON.parse(art.attributesJson || "{}");
+    if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+      attributes = parsed as Record<string, unknown>;
+    }
+  } catch {
+    throw new Error(`${art.name || art.kind || "artifact"} 的附加属性 JSON 格式错误`);
+  }
+  const common: Array<[string, unknown]> = [
+    ["component", art.component.trim() || "game"],
+    ["package_type", art.package_type.trim()],
+    ["delivery_mode", art.delivery_mode.trim()],
+    ["language", art.language.trim()],
+    ["route_from", art.route_from.trim()],
+    ["route_to", art.route_to.trim()],
+    ["decompressed_size", getNormalizedUnpackedSize(art.decompressed_size)],
+    ["manifest", parseOptionalJsonOrString(art.manifestJson)],
+    ["source", parseOptionalJsonOrString(art.sourceJson)],
+  ];
+  for (const [key, value] of common) {
+    if (value !== undefined && value !== null && value !== "") {
+      attributes[key] = value;
+    } else {
+      delete attributes[key];
+    }
+  }
+  return attributes;
+}
+
+function normalizeArtifactPayloadFromJson(item: any, idx: number): ManualArtifactPayload {
+  const attributes: Record<string, unknown> =
+    typeof item.attributes === "object" && item.attributes !== null && !Array.isArray(item.attributes)
+      ? { ...item.attributes }
+      : {};
+  for (const key of ARTIFACT_ATTRIBUTE_KEYS) {
+    if (item[key] !== undefined && attributes[key] === undefined) {
+      attributes[key] = item[key];
+    }
+  }
+  return {
+    kind: String(item.kind || "file").trim(),
+    name: String(item.name || `part_${idx + 1}`).trim(),
+    part: Number(item.part) || idx + 1,
+    size: Number(item.size) || 0,
+    checksum_type: item.checksum_type ? String(item.checksum_type).trim() : null,
+    checksum_value: item.checksum_value ? String(item.checksum_value).trim().toLowerCase() : null,
+    attributes,
+    urls: Array.isArray(item.urls)
+      ? item.urls.map((u: any, uIdx: number) => {
+          const parsedPriority = Number(u.priority);
+          return {
+            url: String(u.url || "").trim(),
+            priority: Number.isFinite(parsedPriority) ? parsedPriority : uIdx,
+            source_kind: String(u.source_kind || "official").trim(),
+          };
+        }).filter((u: any) => Boolean(u.url))
+      : [],
+  };
+}
+
+function parseArtifactsJsonPayload(jsonText: string): ManualArtifactPayload[] {
+  const parsed = JSON.parse(jsonText || "[]");
+  if (!Array.isArray(parsed)) {
+    throw new Error("Artifacts JSON 顶层必须是数组");
+  }
+  return parsed.map(normalizeArtifactPayloadFromJson);
+}
+
 function buildArtifactsPayload(): ManualArtifactPayload[] {
   if (editableDraft.value.artifactsMode === "json") {
-    try {
-      const parsed = JSON.parse(editableDraft.value.artifactsJson || "[]");
-      if (Array.isArray(parsed)) {
-        return parsed.map((item: any, idx: number) => ({
-          kind: String(item.kind || "file").trim(),
-          name: String(item.name || `part_${idx + 1}`).trim(),
-          part: Number(item.part) || idx + 1,
-          size: Number(item.size) || 0,
-          checksum_type: item.checksum_type ? String(item.checksum_type).trim() : null,
-          checksum_value: item.checksum_value ? String(item.checksum_value).trim().toLowerCase() : null,
-          attributes: typeof item.attributes === "object" && item.attributes !== null && !Array.isArray(item.attributes) ? item.attributes : {},
-          urls: Array.isArray(item.urls)
-            ? item.urls.map((u: any, uIdx: number) => ({
-                url: String(u.url || "").trim(),
-                priority: Number(u.priority) ?? uIdx,
-                source_kind: String(u.source_kind || "official").trim(),
-              })).filter((u: any) => Boolean(u.url))
-            : [],
-        }));
-      }
-    } catch {
-      // json parse failed
-    }
+    return parseArtifactsJsonPayload(editableDraft.value.artifactsJson);
   }
 
   return editableDraft.value.artifacts.map((art, idx) => {
-    let attr: Record<string, unknown> = {};
-    try {
-      const parsed = JSON.parse(art.attributesJson || "{}");
-      if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) attr = parsed;
-    } catch {
-      // ignore
-    }
     return {
       kind: art.kind.trim() || "file",
       name: art.name.trim() || `part_${idx + 1}`,
@@ -390,13 +566,152 @@ function buildArtifactsPayload(): ManualArtifactPayload[] {
       size: Number(art.size) || 0,
       checksum_type: art.checksum_type.trim() || null,
       checksum_value: art.checksum_value.trim().toLowerCase() || null,
-      attributes: attr,
-      urls: (art.urls || []).map((u, uIdx) => ({
-        url: u.url.trim(),
-        priority: Number(u.priority) ?? uIdx,
-        source_kind: u.source_kind.trim() || "official",
-      })).filter((u) => Boolean(u.url)),
+      attributes: buildVisualArtifactAttributes(art),
+      urls: (art.urls || []).map((u, uIdx) => {
+        const parsedPriority = Number(u.priority);
+        return {
+          url: u.url.trim(),
+          priority: Number.isFinite(parsedPriority) ? parsedPriority : uIdx,
+          source_kind: u.source_kind.trim() || "official",
+        };
+      }).filter((u) => Boolean(u.url)),
     };
+  });
+}
+
+const PC_COMPONENTS = new Set(["game", "voice", "launcher", "other"]);
+const PC_PACKAGE_TYPES = new Set(["full", "segment", "optional", "differential"]);
+const PC_DELIVERY_MODES = new Set(["direct", "archive", "file_manifest"]);
+const COMPACT_SOURCE_KEYS = new Set(["source_kind", "source_name", "source_url", "source_repo", "source_commit"]);
+const COMPACT_SOURCE_KINDS = new Set(["official_sync", "third_party_history", "legacy_migration", "manual"]);
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function validatePcArtifacts(artifacts: ManualArtifactPayload[]): void {
+  artifacts.forEach((artifact, index) => {
+    const label = `PC artifact #${index + 1}`;
+    const attributes = isPlainObject(artifact.attributes) ? artifact.attributes : {};
+    const component = String(attributes.component || "").trim();
+    const packageType = String(attributes.package_type || "").trim();
+    const deliveryMode = String(attributes.delivery_mode || "").trim();
+    const language = String(attributes.language || "").trim();
+    const routeFrom = String(attributes.route_from || "").trim();
+    const routeTo = String(attributes.route_to || "").trim();
+    const part = Number(artifact.part);
+    const size = Number(artifact.size);
+    const decompressedSize = attributes.decompressed_size;
+    const checksumType = (artifact.checksum_type || "").trim().toLowerCase();
+    const checksumValue = (artifact.checksum_value || "").trim();
+
+    if (!PC_COMPONENTS.has(component)) {
+      throw new Error(`${label} 的 component 必须是 game、voice、launcher 或 other`);
+    }
+    if (!PC_PACKAGE_TYPES.has(packageType)) {
+      throw new Error(`${label} 的 package_type 无效`);
+    }
+    if (!PC_DELIVERY_MODES.has(deliveryMode)) {
+      throw new Error(`${label} 的 delivery_mode 必须是 direct、archive 或 file_manifest`);
+    }
+    if (!Number.isInteger(size) || size < 0) {
+      throw new Error(`${label} 的 size 必须是非负整数`);
+    }
+    if (decompressedSize !== undefined && decompressedSize !== null && (!Number.isInteger(Number(decompressedSize)) || Number(decompressedSize) < 0)) {
+      throw new Error(`${label} 的 decompressed_size 必须是非负整数`);
+    }
+    if ((checksumType && !checksumValue) || (!checksumType && checksumValue)) {
+      throw new Error(`${label} 的 checksum_type 和 checksum_value 必须同时填写`);
+    }
+    if (checksumType && !new Set(["md5", "sha256", "crc64"]).has(checksumType)) {
+      throw new Error(`${label} 的 checksum_type 无效`);
+    }
+    if (artifact.kind === "patch") {
+      if (packageType !== "differential" || !routeFrom || !routeTo) {
+        throw new Error(`${label} 为 patch 时必须使用 differential 并填写 route_from、route_to`);
+      }
+    } else {
+      if (packageType === "differential") {
+        throw new Error(`${label} 的 differential 资源必须使用 patch kind`);
+      }
+      if (routeFrom || routeTo) {
+        throw new Error(`${label} 只有 patch 资源允许填写 route_from、route_to`);
+      }
+    }
+    if (packageType === "segment" && (!Number.isInteger(part) || part < 1)) {
+      throw new Error(`${label} 的 segment part 必须是正整数`);
+    }
+    if (packageType !== "segment" && part !== 1) {
+      throw new Error(`${label} 只有 segment 资源允许使用非 1 的 part`);
+    }
+    if (language && component !== "voice") {
+      throw new Error(`${label} 只有 voice 资源允许填写 language`);
+    }
+
+    const manifest = attributes.manifest;
+    if (manifest !== undefined) {
+      if (deliveryMode !== "file_manifest" || !isPlainObject(manifest)) {
+        throw new Error(`${label} 的 manifest 必须是 file_manifest 使用的 JSON 对象`);
+      }
+      if (typeof manifest.path !== "string" || !manifest.path || manifest.path.includes("\\") || manifest.path.includes("\x00") || manifest.path.includes(":") || manifest.path.startsWith("/") || manifest.path.split("/").some((partName) => !partName || partName === "." || partName === "..")) {
+        throw new Error(`${label} 的 manifest.path 必须是安全的相对 POSIX 路径`);
+      }
+      const manifestKeys = Object.keys(manifest);
+      if (manifestKeys.some((key) => key !== "path" && key !== "base_urls")) {
+        throw new Error(`${label} 的 manifest 只允许 path 和 base_urls`);
+      }
+      if (manifest.base_urls !== undefined) {
+        if (!Array.isArray(manifest.base_urls)) {
+          throw new Error(`${label} 的 manifest.base_urls 必须是数组`);
+        }
+        for (const baseUrl of manifest.base_urls) {
+          if (!isPlainObject(baseUrl) || typeof baseUrl.url !== "string" || !/^https?:\/\/[^\s]+$/i.test(baseUrl.url) || typeof baseUrl.provider !== "string" || !baseUrl.provider.trim() || typeof baseUrl.source_kind !== "string" || !baseUrl.source_kind.trim() || typeof baseUrl.priority !== "number" || !Number.isInteger(baseUrl.priority) || baseUrl.priority < 0) {
+            throw new Error(`${label} 的 manifest.base_urls 项必须包含有效的 url、provider、source_kind、priority`);
+          }
+        }
+      }
+    }
+    if (deliveryMode === "file_manifest" && (!isPlainObject(manifest) || typeof manifest.path !== "string" || !manifest.path)) {
+      throw new Error(`${label} 使用 file_manifest 时必须填写 manifest.path`);
+    }
+
+    const source = attributes.source;
+    if (source !== undefined) {
+      if (!isPlainObject(source) || Object.keys(source).some((key) => !COMPACT_SOURCE_KEYS.has(key))) {
+        throw new Error(`${label} 的 source 必须是 compact provenance JSON 对象`);
+      }
+      if (source.source_kind !== undefined && !COMPACT_SOURCE_KINDS.has(String(source.source_kind))) {
+        throw new Error(`${label} 的 source_kind 无效`);
+      }
+      for (const [key, value] of Object.entries(source)) {
+        if (key !== "source_kind" && value !== null && (typeof value !== "string" || !value.trim())) {
+          throw new Error(`${label} 的 source.${key} 必须是非空字符串或 null`);
+        }
+      }
+    }
+
+    const priorities = new Set<number>();
+    if (!artifact.urls.length) {
+      throw new Error(`${label} 至少需要一条 URL`);
+    }
+    for (const url of artifact.urls) {
+      let parsedUrl: URL;
+      try {
+        parsedUrl = new URL(url.url);
+      } catch {
+        throw new Error(`${label} 包含无效 URL`);
+      }
+      if (!/^https?:$/i.test(parsedUrl.protocol) || !parsedUrl.hostname || parsedUrl.username || parsedUrl.password || parsedUrl.hash || /[\u0000-\u001f\u007f]/.test(url.url)) {
+        throw new Error(`${label} 包含无效 URL`);
+      }
+      if (!Number.isInteger(url.priority) || url.priority < 0 || priorities.has(url.priority)) {
+        throw new Error(`${label} 的 URL priority 必须是互不重复的非负整数`);
+      }
+      if (!url.source_kind.trim()) {
+        throw new Error(`${label} 的 URL source_kind 不能为空`);
+      }
+      priorities.add(url.priority);
+    }
   });
 }
 
@@ -421,10 +736,19 @@ function normalizeArtifactsForComparison(artifacts: ManualArtifactPayload[]): st
 function addArtifactItem(): void {
   const nextPart = editableDraft.value.artifacts.reduce((max, a) => Math.max(max, a.part), 0) + 1;
   editableDraft.value.artifacts.push({
-    kind: "file",
+    kind: selectedDomainUsesPcEditor.value ? "package" : "file",
     name: "",
     part: nextPart,
     size: 0,
+    component: "game",
+    package_type: selectedDomainUsesPcEditor.value ? "segment" : "",
+    delivery_mode: selectedDomainUsesPcEditor.value ? "direct" : "",
+    language: "",
+    route_from: "",
+    route_to: "",
+    decompressed_size: null,
+    manifestJson: "",
+    sourceJson: "",
     checksum_type: "",
     checksum_value: "",
     attributesJson: "{}",
@@ -508,22 +832,7 @@ function switchArtifactsMode(mode: "visual" | "json"): void {
     try {
       const parsed = JSON.parse(editableDraft.value.artifactsJson || "[]");
       if (!Array.isArray(parsed)) throw new Error("Artifacts JSON 必须是数组");
-      editableDraft.value.artifacts = parsed.map((item: any, idx: number) => ({
-        kind: String(item.kind || "file").trim(),
-        name: String(item.name || "").trim(),
-        part: Number(item.part) || idx + 1,
-        size: Number(item.size) || 0,
-        checksum_type: item.checksum_type ? String(item.checksum_type).trim() : "",
-        checksum_value: item.checksum_value ? String(item.checksum_value).trim() : "",
-        attributesJson: JSON.stringify(item.attributes || {}, null, 2),
-        urls: Array.isArray(item.urls)
-          ? item.urls.map((u: any, uIdx: number) => ({
-              url: String(u.url || "").trim(),
-              priority: Number(u.priority) ?? uIdx,
-              source_kind: String(u.source_kind || "official").trim(),
-            }))
-          : [],
-      }));
+      editableDraft.value.artifacts = parsed.map(artifactDraftFromPayload);
       editableDraft.value.artifactsMode = "visual";
     } catch (err) {
       error.value = err instanceof Error ? `切换失败: ${err.message}` : "JSON 解析失败";
@@ -532,8 +841,12 @@ function switchArtifactsMode(mode: "visual" | "json"): void {
 }
 
 function syncArtifactsToJson(): void {
-  const payload = buildArtifactsPayload();
-  editableDraft.value.artifactsJson = JSON.stringify(payload, null, 2);
+  try {
+    const payload = buildArtifactsPayload();
+    editableDraft.value.artifactsJson = JSON.stringify(payload, null, 2);
+  } catch {
+    // Keep the visual form editable while a nested JSON field is temporarily invalid.
+  }
 }
 
 function formatArtifactsJson(): void {
@@ -547,7 +860,12 @@ function formatArtifactsJson(): void {
 
 const isEditableDirty = computed(() => {
   if (!editableLoaded.value) return false;
-  const currentArtifactsStr = normalizeArtifactsForComparison(buildArtifactsPayload());
+  let currentArtifactsStr = "";
+  try {
+    currentArtifactsStr = normalizeArtifactsForComparison(buildArtifactsPayload());
+  } catch {
+    return true;
+  }
   const current = JSON.stringify({
     channel: editableDraft.value.channel.trim(),
     version_code: editableDraft.value.version_code,
@@ -665,6 +983,15 @@ function defaultCreateDraft(): CreateVersionDraft {
       name: "",
       part: 1,
       size: 0,
+      component: "game",
+      package_type: "",
+      delivery_mode: "",
+      language: "",
+      route_from: "",
+      route_to: "",
+      decompressed_size: null,
+      manifestJson: "",
+      sourceJson: "",
       checksum_type: "",
       checksum_value: "",
       attributesJson: "{}",
@@ -877,22 +1204,61 @@ function getDomainFriendlyName(d: AdminDomain | null): string {
 }
 
 function isVersionUnavailable(item: VersionSummary): boolean {
-  const apkInfo = item.artifact_kinds?.apk;
-  if (!apkInfo) return false;
-  const availableCount = apkInfo.availability_states?.available ?? 0;
-  const canonicalCount = apkInfo.availability_states?.canonical ?? 0;
-  const unavailableCount = apkInfo.availability_states?.unavailable ?? 0;
+  const availability = versionAvailabilityCounts(item);
+  const availableCount = availability.available;
+  const canonicalCount = availability.canonical;
+  const unavailableCount = availability.unavailable;
   return unavailableCount > 0 && availableCount === 0 && canonicalCount === 0;
 }
 
 function isVersionUnknown(item: VersionSummary): boolean {
-  const apkInfo = item.artifact_kinds?.apk;
-  if (!apkInfo) return true;
-  const availableCount = apkInfo.availability_states?.available ?? 0;
-  const canonicalCount = apkInfo.availability_states?.canonical ?? 0;
-  const unavailableCount = apkInfo.availability_states?.unavailable ?? 0;
-  const unknownCount = apkInfo.availability_states?.unknown ?? 0;
-  return unknownCount > 0 && availableCount === 0 && canonicalCount === 0 && unavailableCount === 0;
+  const availability = versionAvailabilityCounts(item);
+  const availableCount = availability.available;
+  const canonicalCount = availability.canonical;
+  const unavailableCount = availability.unavailable;
+  return availableCount === 0 && canonicalCount === 0 && unavailableCount === 0;
+}
+
+function versionAvailabilityCounts(item: VersionSummary): {
+  available: number;
+  unavailable: number;
+  unknown: number;
+  canonical: number;
+} {
+  const summary = item.availability_states || {};
+  const hasSummary = Object.values(summary).some((value) => Number(value) > 0);
+  if (hasSummary) {
+    return {
+      available: Number(summary.available) || 0,
+      unavailable: Number(summary.unavailable) || 0,
+      unknown: Number(summary.unknown) || 0,
+      canonical: Number(summary.canonical) || 0,
+    };
+  }
+
+  return Object.values(item.artifact_kinds || {}).reduce(
+    (counts, artifact) => {
+      const states = artifact.availability_states || {};
+      counts.available += Number(states.available) || 0;
+      counts.unavailable += Number(states.unavailable) || 0;
+      counts.unknown += Number(states.unknown) || 0;
+      counts.canonical += Number(states.canonical) || 0;
+      return counts;
+    },
+    { available: 0, unavailable: 0, unknown: 0, canonical: 0 },
+  );
+}
+
+function versionHealthClass(item: VersionSummary): "available" | "unavailable" | "unknown" {
+  if (isVersionUnavailable(item)) return "unavailable";
+  if (isVersionUnknown(item)) return "unknown";
+  return "available";
+}
+
+function versionHealthTitle(item: VersionSummary): string {
+  if (isVersionUnavailable(item)) return "链接不可用";
+  if (isVersionUnknown(item)) return "尚未探活";
+  return "链接可用";
 }
 
 const archiveHealthStats = computed(() => {
@@ -1164,6 +1530,15 @@ watch(
     scrollToActiveVersion();
   },
   { immediate: true },
+);
+
+watch(
+  () => selectedDomainSupportsCreateVersion.value,
+  (supportsCreate) => {
+    if (!supportsCreate && contentSubTab.value === "create") {
+      contentSubTab.value = "edit";
+    }
+  },
 );
 
 // 监听健康筛选与搜索，自动展开匹配的大版本并在清除后精准恢复
@@ -2331,9 +2706,28 @@ function formatBytes(bytes: number | null | undefined): string {
   return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
 }
 
+function pcArtifactTitle(artifact: EditableArtifactDraft, index: number): string {
+  return artifact.name.trim() || `未命名资源 #${index + 1}`;
+}
+
+function pcArtifactSummaryTags(artifact: EditableArtifactDraft): string[] {
+  const tags = [
+    artifact.kind || "package",
+    `part ${Number(artifact.part) || 1}`,
+    formatBytes(artifact.size),
+    `${(artifact.urls || []).filter((item) => item.url.trim()).length} URL`,
+  ];
+  if (artifact.route_from || artifact.route_to) {
+    tags.push(`${artifact.route_from || "?"} -> ${artifact.route_to || "?"}`);
+  }
+  return tags;
+}
+
 async function loadEditableVersion(domainId = selectedDomainId.value, version = selectedVersion.value): Promise<void> {
   const domain = catalog.value.domains.find((item) => item.id === domainId);
-  if (!supportsApkVersionEditor(domain?.platform)) {
+  const isAndroid = supportsApkVersionEditor(domain?.platform);
+  const isPc = supportsPcVersionEditor(domain);
+  if (!isAndroid && !isPc) {
     editableLoaded.value = false;
     return;
   }
@@ -2344,22 +2738,30 @@ async function loadEditableVersion(domainId = selectedDomainId.value, version = 
   editableLoading.value = true;
   try {
     const data = await adminApi.editableVersion(domainId, version, token.value.trim());
-    const rawArtifacts = (data.artifacts || []).map((art, idx) => ({
+    const editableArtifactsPayload = (data.artifacts || []).map((art) => ({
+      kind: art.kind || "file",
+      name: art.name || "",
+      part: art.part,
+      size: art.size,
+      checksum_type: art.checksum_type,
+      checksum_value: art.checksum_value,
+      attributes: (art.attributes || {}) as Record<string, unknown>,
+      urls: (art.urls || []).map((u) => ({
+        url: u.url || "",
+        priority: u.priority ?? 0,
+        source_kind: u.source_kind || "official",
+      })),
+    }));
+    const rawArtifacts = (data.artifacts || []).map((art, idx) => artifactDraftFromPayload({
       kind: art.kind || "file",
       name: art.name || "",
       part: art.part ?? (idx + 1),
       size: art.size ?? 0,
       checksum_type: art.checksum_type || "",
       checksum_value: art.checksum_value || "",
-      attributesJson: JSON.stringify(art.attributes || {}, null, 2),
-      urls: (art.urls || []).map((u, uIdx) => ({
-        id: u.id,
-        persisted_url: u.url || "",
-        url: u.url || "",
-        priority: u.priority ?? uIdx,
-        source_kind: u.source_kind || "official",
-      })),
-    }));
+      attributes: art.attributes || {},
+      urls: art.urls || [],
+    }, idx));
 
     const attrs = (data.attributes || {}) as Record<string, any>;
     const firstArt = rawArtifacts[0];
@@ -2381,25 +2783,12 @@ async function loadEditableVersion(domainId = selectedDomainId.value, version = 
       checksum_crc64: String(artAttrs.crc64 || (firstArt?.checksum_type === "crc64" ? firstArt.checksum_value : "")),
       checksum_md5: String(artAttrs.md5 || (firstArt?.checksum_type === "md5" ? firstArt.checksum_value : "")),
       artifacts: rawArtifacts,
-      artifactsJson: JSON.stringify(rawArtifacts, null, 2),
+      artifactsJson: JSON.stringify(editableArtifactsPayload, null, 2),
       artifactsMode: "visual",
     };
 
     const initialArtifactsStr = normalizeArtifactsForComparison(
-      (data.artifacts || []).map((art) => ({
-        kind: art.kind || "file",
-        name: art.name || "",
-        part: art.part,
-        size: art.size,
-        checksum_type: art.checksum_type,
-        checksum_value: art.checksum_value,
-        attributes: (art.attributes || {}) as Record<string, unknown>,
-        urls: (art.urls || []).map((u) => ({
-          url: u.url || "",
-          priority: u.priority ?? 0,
-          source_kind: u.source_kind || "official",
-        })),
-      })),
+      editableArtifactsPayload,
     );
 
     originalEditableJson.value = JSON.stringify({
@@ -2448,52 +2837,24 @@ async function discardChanges(): Promise<void> {
 
 async function saveEditableVersion(): Promise<void> {
   if (!selectedDomainSupportsManualVersion.value) {
-    error.value = "当前手工编辑器只支持单 APK 的 Android 版本；PC 版本请通过官方采集流程维护。";
+    error.value = "当前模块暂不支持手工编辑。";
     return;
   }
   if (!selectedDomainId.value || !selectedVersion.value || !isEditableDirty.value) return;
 
-  const artifactsPayload = buildArtifactsPayload();
-  if (artifactsPayload.length !== 1) {
-    error.value = "只允许包含一个 APK 文件";
+  let artifactsPayload: ManualArtifactPayload[];
+  try {
+    artifactsPayload = buildArtifactsPayload();
+  } catch (err) {
+    error.value = err instanceof Error ? `Artifacts JSON 格式错误: ${err.message}` : "Artifacts 配置无效";
     return;
   }
-  const mainArt = artifactsPayload[0];
-  mainArt.kind = "apk";
-  if (!mainArt.name.trim()) {
-    error.value = "APK 文件名不能为空";
+  if (!artifactsPayload.length) {
+    error.value = "Artifacts 至少需要包含一个资源文件";
     return;
   }
-  if (!mainArt.name.trim().toLowerCase().endsWith(".apk")) {
-    error.value = "文件名必须以 .apk 结尾";
-    return;
-  }
-  if (mainArt.urls.length !== 1) {
-    error.value = "每个版本必须且仅允许包含一条下载链接 (URL)";
-    return;
-  }
-  const firstUrl = mainArt.urls[0].url.trim();
-  if (!firstUrl.startsWith("http://") && !firstUrl.startsWith("https://")) {
-    error.value = "下载链接 URL 必须使用 http:// 或 https:// 协议";
-    return;
-  }
-
-  // 注入校验值
-  const artAttrs = (mainArt.attributes || {}) as Record<string, unknown>;
-  if (editableDraft.value.checksum_etag?.trim()) {
-    artAttrs.etag = editableDraft.value.checksum_etag.trim();
-  }
-  if (editableDraft.value.checksum_crc64?.trim()) {
-    artAttrs.crc64 = editableDraft.value.checksum_crc64.trim();
-  }
-  if (editableDraft.value.checksum_md5?.trim()) {
-    artAttrs.md5 = editableDraft.value.checksum_md5.trim();
-  }
-  mainArt.attributes = artAttrs;
 
   const payload: AdminEditableVersionPayload = {
-    file_created_at_override: editableDraft.value.file_created_at_override.trim() || null,
-    file_path: mainArt.name.trim(),
     attributes: {
       channel: editableDraft.value.channel.trim() || "official",
       version_code:
@@ -2503,10 +2864,59 @@ async function saveEditableVersion(): Promise<void> {
           ? Number(editableDraft.value.version_code)
           : null,
     },
-    artifacts: [mainArt],
+    artifacts: artifactsPayload,
   };
 
-  const willProbe = isUrlChanged.value;
+  const willProbe = selectedDomainSupportsCreateVersion.value && isUrlChanged.value;
+  if (selectedDomainSupportsCreateVersion.value) {
+    if (artifactsPayload.length !== 1) {
+      error.value = "只允许包含一个 APK 文件";
+      return;
+    }
+    const mainArt = artifactsPayload[0];
+    mainArt.kind = "apk";
+    if (!mainArt.name.trim()) {
+      error.value = "APK 文件名不能为空";
+      return;
+    }
+    if (!mainArt.name.trim().toLowerCase().endsWith(".apk")) {
+      error.value = "文件名必须以 .apk 结尾";
+      return;
+    }
+    if (mainArt.urls.length !== 1) {
+      error.value = "每个版本必须且仅允许包含一条下载链接 (URL)";
+      return;
+    }
+    const firstUrl = mainArt.urls[0].url.trim();
+    if (!firstUrl.startsWith("http://") && !firstUrl.startsWith("https://")) {
+      error.value = "下载链接 URL 必须使用 http:// 或 https:// 协议";
+      return;
+    }
+
+    const artAttrs = (mainArt.attributes || {}) as Record<string, unknown>;
+    if (editableDraft.value.checksum_etag?.trim()) {
+      artAttrs.etag = editableDraft.value.checksum_etag.trim();
+    }
+    if (editableDraft.value.checksum_crc64?.trim()) {
+      artAttrs.crc64 = editableDraft.value.checksum_crc64.trim();
+    }
+    if (editableDraft.value.checksum_md5?.trim()) {
+      artAttrs.md5 = editableDraft.value.checksum_md5.trim();
+    }
+    mainArt.attributes = artAttrs;
+    payload.file_created_at_override = editableDraft.value.file_created_at_override.trim() || null;
+    payload.file_path = mainArt.name.trim();
+    payload.artifacts = [mainArt];
+  } else if (selectedDomainUsesPcEditor.value) {
+    try {
+      validatePcArtifacts(artifactsPayload);
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : "PC artifact 配置无效";
+      return;
+    }
+    payload.file_created_at_override = editableDraft.value.file_created_at_override.trim() || null;
+  }
+
   const actionPrompt = willProbe
     ? `确定要保存对版本【${selectedVersion.value}】的修改并立即向官方源探活吗？`
     : `确定要保存对版本【${selectedVersion.value}】的修改吗？`;
@@ -2624,6 +3034,15 @@ function copyCurrentVersionToCreateDraft(): void {
     name: art.name,
     part: 1,
     size: art.size,
+    component: art.component,
+    package_type: "",
+    delivery_mode: "",
+    language: art.language,
+    route_from: "",
+    route_to: "",
+    decompressed_size: art.decompressed_size,
+    manifestJson: "",
+    sourceJson: "",
     checksum_type: art.checksum_type,
     checksum_value: art.checksum_value,
     attributesJson: art.attributesJson,
@@ -2667,6 +3086,15 @@ function addCreateArtifactItem(): void {
     name: "",
     part: nextPart,
     size: 0,
+    component: "game",
+    package_type: "",
+    delivery_mode: "",
+    language: "",
+    route_from: "",
+    route_to: "",
+    decompressed_size: null,
+    manifestJson: "",
+    sourceJson: "",
     checksum_type: "",
     checksum_value: "",
     attributesJson: "{}",
@@ -2721,20 +3149,7 @@ function switchCreateArtifactsMode(mode: "visual" | "json"): void {
     try {
       const parsed = JSON.parse(createDraft.value.artifactsJson || "[]");
       if (!Array.isArray(parsed)) throw new Error("JSON 顶层必须是数组");
-      createDraft.value.artifacts = parsed.map((art: any, idx: number) => ({
-        kind: art.kind || "file",
-        name: art.name || "",
-        part: art.part ?? (idx + 1),
-        size: art.size ?? 0,
-        checksum_type: art.checksum_type || "",
-        checksum_value: art.checksum_value || "",
-        attributesJson: JSON.stringify(art.attributes || {}, null, 2),
-        urls: (art.urls || []).map((u: any, uIdx: number) => ({
-          url: u.url || "",
-          priority: u.priority ?? uIdx,
-          source_kind: u.source_kind || "official",
-        })),
-      }));
+      createDraft.value.artifacts = parsed.map(artifactDraftFromPayload);
       createDraft.value.artifactsMode = "visual";
     } catch (err) {
       error.value = err instanceof Error ? `切换失败: ${err.message}` : "JSON 解析失败";
@@ -2784,17 +3199,6 @@ function buildCreateArtifactsPayload(): ManualArtifactPayload[] {
     }
   }
   return createDraft.value.artifacts.map((art) => {
-    let artAttributes: Record<string, unknown> = {};
-    if (art.attributesJson?.trim()) {
-      try {
-        const parsed = JSON.parse(art.attributesJson);
-        if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
-          artAttributes = parsed;
-        }
-      } catch {
-        // ignore
-      }
-    }
     return {
       kind: art.kind,
       name: art.name.trim(),
@@ -2802,7 +3206,7 @@ function buildCreateArtifactsPayload(): ManualArtifactPayload[] {
       size: Number(art.size) || 0,
       checksum_type: art.checksum_type.trim() || undefined,
       checksum_value: art.checksum_value.trim().toLowerCase() || undefined,
-      attributes: artAttributes,
+      attributes: buildVisualArtifactAttributes(art),
       urls: art.urls
         .filter((u) => u.url.trim())
         .map((u) => ({
@@ -4412,12 +4816,13 @@ onBeforeUnmount(() => {
                           <div class="version-item-title-row">
                             <span
                               class="version-status-dot"
-                              :class="isVersionAvailable(entry.item) ? 'available' : 'unavailable'"
-                              :title="isVersionAvailable(entry.item) ? '链接可用' : '链接不可用'"
+                              :class="versionHealthClass(entry.item)"
+                              :title="versionHealthTitle(entry.item)"
                             ></span>
                             <strong class="version-item-title">{{ entry.item.version }}</strong>
                           </div>
                           <span v-if="!entry.item.is_visible" class="status-pill hidden">已隐藏</span>
+                          <span v-else-if="isVersionUnknown(entry.item)" class="status-pill unknown">尚未探活</span>
                           <span v-else-if="!isVersionAvailable(entry.item)" class="status-pill danger">链接不可用</span>
                           <span v-else class="version-time-muted">{{ formatSyncTime(entry.item.source_released_at || entry.item.observed_at) || '未记录时间' }}</span>
                         </div>
@@ -4457,12 +4862,13 @@ onBeforeUnmount(() => {
                               <div class="version-item-title-row">
                                 <span
                                   class="version-status-dot"
-                                  :class="isVersionAvailable(subItem) ? 'available' : 'unavailable'"
-                                  :title="isVersionAvailable(subItem) ? '链接可用' : '链接不可用'"
+                                  :class="versionHealthClass(subItem)"
+                                  :title="versionHealthTitle(subItem)"
                                 ></span>
                                 <strong class="version-item-title">{{ subItem.version }}</strong>
                               </div>
                               <span v-if="!subItem.is_visible" class="status-pill hidden">已隐藏</span>
+                              <span v-else-if="isVersionUnknown(subItem)" class="status-pill unknown">尚未探活</span>
                               <span v-else-if="!isVersionAvailable(subItem)" class="status-pill danger">链接不可用</span>
                               <span v-else class="version-time-muted">{{ formatSyncTime(subItem.source_released_at || subItem.observed_at) || '未记录时间' }}</span>
                             </div>
@@ -4488,6 +4894,7 @@ onBeforeUnmount(() => {
                   <span>🛠️ 编辑版本</span>
                 </button>
                 <button
+                  v-if="selectedDomainSupportsCreateVersion"
                   class="sub-tab-btn"
                   :class="{ active: contentSubTab === 'create' }"
                   type="button"
@@ -4540,6 +4947,7 @@ onBeforeUnmount(() => {
                             <span>{{ editableDraft.is_visible ? '👁️ 隐藏此版本' : '👁️ 恢复公开' }}</span>
                           </button>
                           <button
+                            v-if="selectedDomainSupportsCreateVersion"
                             type="button"
                             class="more-dropdown-item"
                             @click="copyCurrentVersionToCreateDraft(); moreActionsOpen = false"
@@ -4645,7 +5053,7 @@ onBeforeUnmount(() => {
                   </div>
 
                   <!-- APK 文件平铺卡片 -->
-                  <div v-if="editableDraft.artifacts[0]" class="form-section-card apk-file-card">
+                  <div v-if="selectedDomainSupportsCreateVersion && editableDraft.artifacts[0]" class="form-section-card apk-file-card">
                     <div class="section-card-title">APK 文件</div>
 
                     <div class="admin-field-grid">
@@ -4770,6 +5178,269 @@ onBeforeUnmount(() => {
                     </div>
                   </div>
 
+                  <div v-if="selectedDomainUsesPcEditor" class="form-section-card pc-artifacts-card">
+                    <div class="section-card-header pc-artifacts-head">
+                      <div class="card-title-group">
+                        <h3>PC 资源文件</h3>
+                        <p class="card-subtitle">编辑 package / patch 资源、分卷、路由、manifest/source 与下载 URL。</p>
+                      </div>
+                      <div class="section-header-tools artifact-mode-tabs">
+                        <button
+                          class="tool-pill-btn"
+                          :class="{ active: editableDraft.artifactsMode === 'visual' }"
+                          type="button"
+                          @click="switchArtifactsMode('visual')"
+                        >
+                          列表
+                        </button>
+                        <button
+                          class="tool-pill-btn"
+                          :class="{ active: editableDraft.artifactsMode === 'json' }"
+                          type="button"
+                          @click="switchArtifactsMode('json')"
+                        >
+                          JSON
+                        </button>
+                        <button
+                          v-if="editableDraft.artifactsMode === 'json'"
+                          class="tool-pill-btn"
+                          type="button"
+                          @click="formatArtifactsJson"
+                        >
+                          格式化
+                        </button>
+                        <button
+                          v-if="editableDraft.artifactsMode === 'visual'"
+                          class="tool-pill-btn highlight"
+                          type="button"
+                          @click="addArtifactItem"
+                        >
+                          添加资源
+                        </button>
+                      </div>
+                    </div>
+
+                    <div class="pc-artifacts-overview">
+                      <div class="pc-overview-item">
+                        <span>资源总数</span>
+                        <strong>{{ pcArtifactsOverview.total }}</strong>
+                      </div>
+                      <div class="pc-overview-item">
+                        <span>Package</span>
+                        <strong>{{ pcArtifactsOverview.packageCount }}</strong>
+                      </div>
+                      <div class="pc-overview-item">
+                        <span>Patch</span>
+                        <strong>{{ pcArtifactsOverview.patchCount }}</strong>
+                      </div>
+                      <div class="pc-overview-item">
+                        <span>总大小</span>
+                        <strong>{{ formatBytes(pcArtifactsOverview.totalSize) }}</strong>
+                      </div>
+                      <div class="pc-overview-item">
+                        <span>有效 URL</span>
+                        <strong>{{ pcArtifactsOverview.urlCount }}</strong>
+                      </div>
+                    </div>
+
+                    <div v-if="editableDraft.artifactsMode === 'json'" class="admin-field full-width pc-json-editor">
+                      <span class="field-label">Artifacts JSON</span>
+                      <div class="code-editor-container">
+                        <textarea
+                          v-model="editableDraft.artifactsJson"
+                          class="admin-code-textarea pc-json-textarea"
+                          spellcheck="false"
+                        ></textarea>
+                      </div>
+                      <small class="field-tip">保存时会交给后端按 PC schema 重新校验和生成 artifact_id。</small>
+                    </div>
+
+                    <div v-else class="pc-artifact-list">
+                      <div
+                        v-for="(artifact, artIndex) in editableDraft.artifacts"
+                        :key="`pc-artifact-${artIndex}`"
+                        class="pc-artifact-item"
+                      >
+                        <div class="pc-artifact-title-row">
+                          <div class="pc-artifact-title-main">
+                            <strong>{{ pcArtifactTitle(artifact, artIndex) }}</strong>
+                            <div class="pc-artifact-tags">
+                              <span
+                                v-for="tag in pcArtifactSummaryTags(artifact)"
+                                :key="tag"
+                                class="accordion-summary-tag"
+                              >
+                                {{ tag }}
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            class="tool-pill-btn danger"
+                            type="button"
+                            :disabled="editableDraft.artifacts.length <= 1"
+                            @click="removeArtifactItem(artIndex)"
+                          >
+                            删除资源
+                          </button>
+                        </div>
+
+                        <div class="pc-artifact-section">
+                          <div class="pc-artifact-section-title">资源类型</div>
+                          <div class="admin-field-grid compact-4col">
+                          <label class="admin-field">
+                            <span class="field-label">类型 <small class="field-sublabel">kind</small></span>
+                            <select v-model="artifact.kind" class="admin-input" @change="syncArtifactsToJson">
+                              <option value="package">package</option>
+                              <option value="patch">patch</option>
+                            </select>
+                          </label>
+                          <label class="admin-field">
+                            <span class="field-label">包类型 <small class="field-sublabel">package_type</small></span>
+                            <input v-model="artifact.package_type" class="admin-input" placeholder="full / segment / differential" @input="syncArtifactsToJson" />
+                          </label>
+                          <label class="admin-field">
+                            <span class="field-label">交付方式 <small class="field-sublabel">delivery_mode</small></span>
+                            <input v-model="artifact.delivery_mode" class="admin-input" placeholder="direct / archive / file_manifest" @input="syncArtifactsToJson" />
+                          </label>
+                          <label class="admin-field">
+                            <span class="field-label">组件 <small class="field-sublabel">component</small></span>
+                            <input v-model="artifact.component" class="admin-input" placeholder="game / voice" @input="syncArtifactsToJson" />
+                          </label>
+                          </div>
+                        </div>
+
+                        <div class="pc-artifact-section">
+                          <div class="pc-artifact-section-title">文件信息</div>
+                          <div class="admin-field-grid compact-4col">
+                          <div class="admin-field span-2">
+                            <div class="field-header-row">
+                              <span class="field-label">文件名</span>
+                              <button
+                                v-if="artifact.urls[0]?.url"
+                                class="tool-pill-btn"
+                                type="button"
+                                @click="forceExtractArtifactName(artifact)"
+                              >
+                                根据 URL 填写
+                              </button>
+                            </div>
+                            <input v-model="artifact.name" class="admin-input" placeholder="文件名或 manifest 名称" @input="syncArtifactsToJson" />
+                          </div>
+                          <label class="admin-field">
+                            <span class="field-label">分卷 <small class="field-sublabel">part</small></span>
+                            <input v-model.number="artifact.part" class="admin-input" type="number" min="1" @input="syncArtifactsToJson" />
+                          </label>
+                          <label class="admin-field">
+                            <span class="field-label">大小 <small class="field-sublabel">size</small></span>
+                            <input v-model.number="artifact.size" class="admin-input" type="number" min="0" @input="syncArtifactsToJson" />
+                            <small class="field-tip">{{ formatBytes(artifact.size) }}</small>
+                          </label>
+                          </div>
+                        </div>
+
+                        <div class="pc-artifact-section">
+                          <div class="pc-artifact-section-title">补丁路由</div>
+                          <div class="admin-field-grid compact-4col">
+                          <label class="admin-field">
+                            <span class="field-label">语言 <small class="field-sublabel">language</small></span>
+                            <input v-model="artifact.language" class="admin-input" placeholder="zh-cn / en-us，可留空" @input="syncArtifactsToJson" />
+                          </label>
+                          <label class="admin-field">
+                            <span class="field-label">来源版本 <small class="field-sublabel">route_from</small></span>
+                            <input v-model="artifact.route_from" class="admin-input" placeholder="patch 起始版本" @input="syncArtifactsToJson" />
+                          </label>
+                          <label class="admin-field">
+                            <span class="field-label">目标版本 <small class="field-sublabel">route_to</small></span>
+                            <input v-model="artifact.route_to" class="admin-input" placeholder="patch 目标版本" @input="syncArtifactsToJson" />
+                          </label>
+                          <label class="admin-field">
+                            <span class="field-label">解包大小 <small class="field-sublabel">decompressed_size</small></span>
+                            <input v-model.number="artifact.decompressed_size" class="admin-input" type="number" min="0" placeholder="可留空" @input="syncArtifactsToJson" />
+                          </label>
+                          </div>
+                        </div>
+
+                        <div class="pc-artifact-section">
+                          <div class="pc-artifact-section-title">校验信息</div>
+                          <div class="admin-field-grid compact-3col">
+                          <label class="admin-field">
+                            <span class="field-label">校验类型 <small class="field-sublabel">checksum_type</small></span>
+                            <input v-model="artifact.checksum_type" class="admin-input" placeholder="md5 / sha256 / crc64" @input="syncArtifactsToJson" />
+                          </label>
+                          <label class="admin-field span-2">
+                            <span class="field-label">校验值 <small class="field-sublabel">checksum_value</small></span>
+                            <input v-model="artifact.checksum_value" class="admin-input text-mono" placeholder="可留空" @input="syncArtifactsToJson" />
+                          </label>
+                          </div>
+                        </div>
+
+                        <div class="pc-artifact-section pc-url-list">
+                          <div class="field-header-row">
+                            <span class="field-label">下载 URL</span>
+                            <button class="tool-pill-btn highlight" type="button" @click="addArtifactUrlItem(artIndex)">添加 URL</button>
+                          </div>
+                          <div
+                            v-for="(urlItem, urlIndex) in artifact.urls"
+                            :key="`pc-url-${artIndex}-${urlIndex}`"
+                            class="pc-url-row"
+                          >
+                            <input
+                              v-model="urlItem.url"
+                              class="admin-input text-mono url-long-input"
+                              placeholder="https://..."
+                              @input="handleArtifactUrlChange(artifact, urlItem.url)"
+                            />
+                            <input
+                              v-model.number="urlItem.priority"
+                              class="admin-input pc-priority-input"
+                              type="number"
+                              min="0"
+                              title="priority"
+                              @input="syncArtifactsToJson"
+                            />
+                            <input
+                              v-model="urlItem.source_kind"
+                              class="admin-input pc-source-kind-input"
+                              placeholder="official"
+                              title="source_kind"
+                              @input="syncArtifactsToJson"
+                            />
+                            <button class="url-action-pill-btn" type="button" @click="copyUrl(urlItem.url)">复制</button>
+                            <button class="url-action-pill-btn" type="button" @click="probeUrlItem(urlItem)">
+                              {{ urlProbeMap[urlItem.url]?.loading ? '测试中' : '测试' }}
+                            </button>
+                            <button
+                              class="tool-pill-btn danger"
+                              type="button"
+                              :disabled="artifact.urls.length <= 1"
+                              @click="removeArtifactUrlItem(artIndex, urlIndex)"
+                            >
+                              删除
+                            </button>
+                          </div>
+                        </div>
+
+                        <div class="pc-artifact-section">
+                          <div class="pc-artifact-section-title">元数据</div>
+                          <div class="admin-field-grid compact-3col">
+                          <label class="admin-field">
+                            <span class="field-label">Manifest <small class="field-sublabel">JSON object</small></span>
+                            <textarea v-model="artifact.manifestJson" class="admin-code-textarea pc-mini-json" spellcheck="false" @input="syncArtifactsToJson"></textarea>
+                          </label>
+                          <label class="admin-field">
+                            <span class="field-label">Source <small class="field-sublabel">compact provenance JSON</small></span>
+                            <textarea v-model="artifact.sourceJson" class="admin-code-textarea pc-mini-json" spellcheck="false" @input="syncArtifactsToJson"></textarea>
+                          </label>
+                          <label class="admin-field">
+                            <span class="field-label">附加属性 <small class="field-sublabel">attributes</small></span>
+                            <textarea v-model="artifact.attributesJson" class="admin-code-textarea pc-mini-json" spellcheck="false" @input="syncArtifactsToJson"></textarea>
+                          </label>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   <!-- 底部吸附保存交互条（唯一保存入口） -->
                   <div class="sticky-save-bar" :class="{ dirty: isEditableDirty }">
                     <div class="bar-left">
@@ -4790,7 +5461,7 @@ onBeforeUnmount(() => {
                         type="submit"
                         :disabled="loading || !selectedVersion || !isEditableDirty"
                       >
-                        <span>{{ isUrlChanged ? '💾 保存并探活' : '💾 保存更改' }}</span>
+                        <span>{{ selectedDomainSupportsCreateVersion && isUrlChanged ? '💾 保存并探活' : '💾 保存更改' }}</span>
                       </button>
                     </div>
                   </div>
@@ -4798,7 +5469,7 @@ onBeforeUnmount(() => {
               </form>
 
               <!-- 表单 B：新建版本 (极简录入工作台) -->
-              <form v-else class="version-create-form" @keydown.enter="preventEnterSubmit" @submit.prevent="addVersion">
+              <form v-else-if="selectedDomainSupportsCreateVersion" class="version-create-form" @keydown.enter="preventEnterSubmit" @submit.prevent="addVersion">
                 <!-- 顶部新建版本标题栏 -->
                 <div class="version-status-topbar">
                   <div class="version-header-meta">

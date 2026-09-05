@@ -13,7 +13,16 @@ async function flushUpdates(): Promise<void> {
   await new Promise((resolve) => window.setTimeout(resolve, 0));
 }
 
-function mockAdminApi(platform: "android" | "windows") {
+function mockAdminApi(platform: "android" | "windows", pcAvailability: "available" | "unavailable" | "unknown" | "none" = "unknown") {
+  const pcStates = pcAvailability === "available"
+    ? { available: 1, unknown: 0, unavailable: 0 }
+    : pcAvailability === "unavailable"
+      ? { available: 0, unknown: 0, unavailable: 1 }
+      : { available: 0, unknown: 1, unavailable: 0 };
+  const pcArtifactKinds = pcAvailability === "none"
+    ? {}
+    : { package: { count: 1, size: 1024, availability_states: pcStates } };
+  const pcSummaryStates = pcAvailability === "none" ? {} : pcStates;
   vi.spyOn(adminApi, "catalog").mockResolvedValue({
     games: [{
       id: "demo",
@@ -42,20 +51,68 @@ function mockAdminApi(platform: "android" | "windows") {
   vi.spyOn(adminApi, "syncStatus").mockResolvedValue(null as never);
   vi.spyOn(adminApi, "syncRunStatus").mockResolvedValue(null as never);
   vi.spyOn(adminApi, "versions").mockResolvedValue({
-    items: [{ version: "1.0.0", is_visible: true }],
+    items: [{
+      version: "1.0.0",
+      is_visible: true,
+      packed_size: 1024,
+      artifact_kinds: platform === "android"
+        ? { apk: { count: 1, size: 1024, availability_states: { available: 1, unknown: 0, unavailable: 0 } } }
+        : pcArtifactKinds,
+      availability_states: platform === "android"
+        ? { available: 1, unknown: 0, unavailable: 0 }
+        : pcSummaryStates,
+    }],
   } as never);
-  vi.spyOn(adminApi, "editableVersion").mockRejectedValue(new Error("APK editor must stay gated"));
+  vi.spyOn(adminApi, "editableVersion").mockImplementation((async () => {
+    if (platform === "windows") {
+      return {
+        version: "1.0.0",
+        client_version: "1.0.0",
+        observed_at: null,
+        file_created_at_override: "2026-08-29T00:00:00Z",
+        file_path: "",
+        unpacked_size: 0,
+        files_checksum_type: null,
+        files_checksum_value: null,
+        attributes: { channel: "official", version_code: null },
+        is_visible: true,
+        artifacts: [{
+          kind: "package",
+          name: "pkg_1.zip",
+          part: 1,
+          size: 1024,
+          checksum_type: "md5",
+          checksum_value: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          attributes: {
+            component: "game",
+            package_type: "segment",
+            delivery_mode: "direct",
+          },
+          urls: [{ id: 1, url: "https://example.com/pkg_1.zip", priority: 0, source_kind: "official" }],
+        }],
+      };
+    }
+    throw new Error("APK editor was not needed for this test");
+  }) as never);
+  vi.spyOn(adminApi, "updateEditableVersion").mockResolvedValue({
+    domain_id: "demo-pc",
+    version: "1.0.0",
+    revisions_created: 1,
+    revisions_reused: 0,
+    capture_event_id: 1,
+    changed: true,
+  } as never);
   vi.spyOn(adminApi, "probeStatus").mockResolvedValue({ running: false, log: [] } as never);
   vi.spyOn(adminApi, "probeSchedule").mockResolvedValue({ enabled: false, interval_hours: 24, mode: "normal" });
   vi.spyOn(adminApi, "syncSchedule").mockResolvedValue({ enabled: false, times: ["04:45", "14:00"] });
 }
 
-async function mountAdmin(platform: "android" | "windows") {
+async function mountAdmin(platform: "android" | "windows", pcAvailability: "available" | "unavailable" | "unknown" | "none" = "unknown") {
   Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
     configurable: true,
     value: vi.fn(),
   });
-  mockAdminApi(platform);
+  mockAdminApi(platform, pcAvailability);
   localStorage.setItem("game-manifest-index-web-admin-token-v1", "test-admin-token");
   const router = createRouter({
     history: createMemoryHistory(),
@@ -128,15 +185,102 @@ describe("AdminView capability alignment", () => {
     app.unmount();
   });
 
-  it("does not expose the APK-only add/edit workspace for PC domains", async () => {
+  it("uses version summary availability for the edit health banner", async () => {
+    const { app, root } = await mountAdmin("android");
+    buttonByText(root, "版本").click();
+    await flushUpdates();
+    expect(root.textContent).toContain("链接可用");
+    expect(root.textContent).not.toContain("待探活");
+    app.unmount();
+  });
+
+  it("exposes a PC artifact edit workspace without the APK-only create flow", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
     const { app, root } = await mountAdmin("windows");
     buttonByText(root, "版本").click();
     await flushUpdates();
-    expect(root.textContent).toContain("PC 版本只读");
-    expect(root.textContent).toContain("当前单 APK 表单不适用于 PC 资源");
+    expect(root.textContent).not.toContain("PC 版本只读");
+    expect(root.textContent).toContain("PC 资源文件");
+    expect(root.textContent).toContain("添加资源");
+    expect(root.textContent).toContain("尚未探活");
+    expect(root.querySelector(".version-status-dot.unknown")).not.toBeNull();
+    expect(root.querySelector(".version-status-dot.available")).toBeNull();
     expect(root.textContent).not.toContain("新建版本");
     expect(root.textContent).not.toContain("APK 文件");
-    expect(adminApi.editableVersion).not.toHaveBeenCalled();
+    expect(adminApi.editableVersion).toHaveBeenCalledWith("demo-pc", "1.0.0", "test-admin-token");
+
+    const nameInput = [...root.querySelectorAll<HTMLInputElement>("input")]
+      .find((input) => input.value === "pkg_1.zip");
+    if (!nameInput) throw new Error("PC artifact name input not found");
+    nameInput.value = "pkg_1_v2.zip";
+    nameInput.dispatchEvent(new Event("input"));
+    await flushUpdates();
+
+    buttonByText(root, "保存更改").click();
+    await flushUpdates();
+
+    expect(adminApi.updateEditableVersion).toHaveBeenCalled();
+    const payload = vi.mocked(adminApi.updateEditableVersion).mock.calls[0][2];
+    expect(payload.file_path).toBeUndefined();
+    expect(payload.artifacts?.[0]).toMatchObject({
+      kind: "package",
+      name: "pkg_1_v2.zip",
+      attributes: {
+        component: "game",
+        package_type: "segment",
+        delivery_mode: "direct",
+      },
+    });
+    app.unmount();
+  });
+
+  it("uses aggregate PC availability states for available and unavailable versions", async () => {
+    const available = await mountAdmin("windows", "available");
+    buttonByText(available.root, "版本").click();
+    await flushUpdates();
+    expect(available.root.querySelector(".version-status-dot.available")).not.toBeNull();
+    expect(available.root.querySelector(".version-status-dot.unknown")).toBeNull();
+    expect(available.root.textContent).toContain("链接可用");
+    available.app.unmount();
+
+    document.body.innerHTML = "";
+    const unavailable = await mountAdmin("windows", "unavailable");
+    buttonByText(unavailable.root, "版本").click();
+    await flushUpdates();
+    expect(unavailable.root.querySelector(".version-status-dot.unavailable")).not.toBeNull();
+    expect(unavailable.root.querySelector(".version-status-dot.unknown")).toBeNull();
+    expect(unavailable.root.textContent).toContain("链接不可用");
+    unavailable.app.unmount();
+  });
+
+  it("keeps a PC version unknown when availability counts are absent", async () => {
+    const { app, root } = await mountAdmin("windows", "none");
+    buttonByText(root, "版本").click();
+    await flushUpdates();
+    expect(root.querySelector(".version-status-dot.unknown")).not.toBeNull();
+    expect(root.querySelector(".version-status-dot.available")).toBeNull();
+    app.unmount();
+  });
+
+  it("blocks a PC patch without both route versions before sending the update", async () => {
+    const { app, root } = await mountAdmin("windows");
+    buttonByText(root, "版本").click();
+    await flushUpdates();
+
+    const artifactSection = root.querySelectorAll<HTMLElement>(".pc-artifact-section")[0];
+    const kind = root.querySelector<HTMLSelectElement>(".pc-artifact-section select");
+    const packageType = artifactSection.querySelector<HTMLInputElement>("input[placeholder^='full / segment']");
+    if (!kind || !packageType) throw new Error("PC artifact type fields not found");
+    kind.value = "patch";
+    kind.dispatchEvent(new Event("change"));
+    packageType.value = "differential";
+    packageType.dispatchEvent(new Event("input"));
+    await flushUpdates();
+
+    buttonByText(root, "保存更改").click();
+    await flushUpdates();
+    expect(adminApi.updateEditableVersion).not.toHaveBeenCalled();
+    expect(root.textContent).toContain("必须使用 differential 并填写 route_from、route_to");
     app.unmount();
   });
 
