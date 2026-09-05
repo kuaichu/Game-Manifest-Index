@@ -41,7 +41,7 @@ def create_app(
             allow_origins=cors_origins,
             allow_credentials=False,
             allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-            allow_headers=["Content-Type", "Authorization"],
+            allow_headers=["Accept", "Authorization", "Cache-Control", "Content-Type", "Pragma"],
         )
     router, operations, store = create_admin_router(
         data_root=Path(configured), state_root=Path(state), token=token,
