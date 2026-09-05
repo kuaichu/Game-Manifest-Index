@@ -6,6 +6,7 @@ import re
 from urllib.parse import urlsplit
 
 from probe_adapters.pc.mihoyo_package_common import availability as archive_availability
+from probe_adapters.common import ProbeError
 
 
 NAME = "hypergryph_endfield_pc"
@@ -54,6 +55,17 @@ def matches(vendor: str | None, game_id: str | None, url: str) -> bool:
     return parsed.hostname == "github.com" and _MIRROR_PATH.fullmatch(parsed.path) is not None
 
 
+def preflight(url: str, **_: object) -> None:
+    """Reject Endfield runtime files before any network transport is attempted."""
+    try:
+        parsed = urlsplit(url)
+    except ValueError:
+        return None
+    if parsed.hostname == "beyond.hycdn.cn" and _OFFICIAL_RESOURCE_PATH.fullmatch(parsed.path):
+        raise ProbeError("Endfield 运行时资源不参与探活")
+    return None
+
+
 def availability(
     status: int,
     filename: str,
@@ -64,13 +76,7 @@ def availability(
     **kwargs: object,
 ) -> bool | None:
     if filename.lower().endswith((".chk", ".blc")):
-        if status in {404, 410}:
-            return False
-        if status not in {200, 206}:
-            return None
-        if observed_size is None or expected_size is None:
-            return None
-        return True if observed_size == expected_size else None
+        return None
     return archive_availability(
         status,
         filename,

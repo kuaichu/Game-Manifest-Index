@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 
 from probe_adapters.common import ProbeError
 from probe_adapters.pc import (
@@ -11,6 +12,7 @@ from probe_adapters.pc import (
 )
 from probe_adapters.pc.mihoyo_package_common import availability as hoyo_availability
 from probe_adapters.registry import adapter_for
+from probe_adapters.service import probe
 
 
 class PCAdapterTests(unittest.TestCase):
@@ -143,7 +145,7 @@ class PCAdapterTests(unittest.TestCase):
         with self.assertRaises(ProbeError):
             adapter_for("hypergryph", "arknights", arknights, platform="linux")
 
-    def test_endfield_resource_and_archive_availability_requires_observation(self):
+    def test_endfield_archive_availability_requires_observation(self):
         self.assertTrue(hypergryph_endfield.availability(206, "a.zip.001", b"PK\x03\x04"))
         self.assertFalse(hypergryph_endfield.availability(200, "a.zip.001", b"plain"))
         self.assertTrue(
@@ -156,19 +158,29 @@ class PCAdapterTests(unittest.TestCase):
                 206, "a.zip.002", b"", observed_size=9, expected_size=10,
             )
         )
-        self.assertTrue(
-            hypergryph_endfield.availability(
-                206, "A.chk", b"not-a-zip", observed_size=10, expected_size=10,
-            )
+
+    def test_endfield_runtime_resources_never_receive_availability_verdict(self):
+        for filename in ("A.chk", "A.blc"):
+            for status in (200, 206, 403, 404, 410):
+                with self.subTest(filename=filename, status=status):
+                    self.assertIsNone(hypergryph_endfield.availability(
+                        status, filename, b"PK\x03\x04", observed_size=10, expected_size=10,
+                    ))
+
+    def test_endfield_runtime_probes_are_rejected_before_network(self):
+        base = (
+            "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.0/resource/Windows/initial/"
+            "5793042-32_pUten9sPsmW2Xh8D/files/VFS/07A1BB91/"
         )
-        self.assertIsNone(
-            hypergryph_endfield.availability(
-                206, "A.chk", b"not-a-zip", observed_size=9, expected_size=10,
-            )
-        )
-        self.assertIsNone(hypergryph_endfield.availability(403, "A.chk", b""))
-        self.assertFalse(hypergryph_endfield.availability(404, "A.blc", b""))
-        self.assertFalse(hypergryph_endfield.availability(410, "A.chk", b""))
+        for filename in ("872C74CD14DB0F9D81789B343A26C123.chk", "07A1BB91.blc"):
+            for identity in ({}, {"vendor": "hypergryph", "game_id": "endfield", "platform": "windows"}):
+                with self.subTest(filename=filename, identity=identity), patch(
+                    "probe_adapters.service.probe_url"
+                ) as transport, patch("probe_adapters.service.probe_head") as head:
+                    with self.assertRaisesRegex(ProbeError, "运行时资源"):
+                        probe(base + filename, **identity)
+                    transport.assert_not_called()
+                    head.assert_not_called()
 
     def test_bh3_legacy_http_availability_needs_response_evidence(self):
         self.assertTrue(mihoyo_bh3_cdn.availability(200, "BH3_v3.8.0_x.7z", b"7z\xbc\xaf\x27\x1c"))
