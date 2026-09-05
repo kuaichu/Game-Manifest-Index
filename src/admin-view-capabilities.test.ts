@@ -215,6 +215,64 @@ describe("AdminView capability alignment", () => {
     app.unmount();
   });
 
+  it("passes edited module fields to the existing save API", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const update = vi.spyOn(adminApi, "updateDomain").mockResolvedValue({} as never);
+    const { app, root } = await mountAdmin("windows");
+    buttonByText(root, "模块").click();
+    await flushUpdates();
+    const form = root.querySelector<HTMLFormElement>(".domain-form-pane");
+    if (!form) throw new Error("module form not found");
+    const adapter = form.querySelector<HTMLInputElement>("input[placeholder^='hoyo /']");
+    const capabilities = form.querySelector<HTMLInputElement>(".raw-cap-input");
+    const order = form.querySelector<HTMLInputElement>("input[type='number']");
+    const enabled = form.querySelector<HTMLInputElement>("input[type='checkbox']");
+    if (!adapter || !capabilities || !order || !enabled) throw new Error("module fields not found");
+    for (const [input, value] of [[adapter, "hoyo"], [capabilities, "packages, archive"], [order, "7"]] as const) {
+      input.value = value;
+      input.dispatchEvent(new Event("input"));
+      await flushUpdates();
+    }
+    enabled.checked = false;
+    enabled.dispatchEvent(new Event("change"));
+    await flushUpdates();
+    buttonByText(root, "保存模块配置").click();
+    await flushUpdates();
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(update.mock.calls[0][0]).toBe("demo-pc");
+    expect(update.mock.calls[0][1]).toMatchObject({
+      id: "demo-pc", game_id: "demo", platform: "windows", adapter: "hoyo",
+      capabilities: ["packages", "archive"], sort_order: 7, is_enabled: false,
+    });
+    app.unmount();
+  });
+
+  it("keeps module game filtering and search when switching tabs", async () => {
+    const { app, root } = await mountAdmin("windows");
+    buttonByText(root, "模块").click();
+    await flushUpdates();
+    const pane = root.querySelector<HTMLElement>(".domain-list-pane");
+    if (!pane) throw new Error("module list not found");
+    pane.querySelector<HTMLButtonElement>(".custom-select-trigger")?.click();
+    await flushUpdates();
+    buttonByText(pane, "演示游戏 (1)").click();
+    await flushUpdates();
+    const search = pane.querySelector<HTMLInputElement>("input[type='search']");
+    if (!search) throw new Error("module search not found");
+    search.value = "no-match";
+    search.dispatchEvent(new Event("input"));
+    await flushUpdates();
+    expect(pane.textContent).toContain("未找到匹配的数据模块");
+    buttonByText(root, "游戏").click();
+    await flushUpdates();
+    buttonByText(root, "模块").click();
+    await flushUpdates();
+    expect(root.querySelector<HTMLInputElement>(".domain-list-pane input[type='search']")?.value).toBe("no-match");
+    expect(root.querySelector(".domain-list-pane .trigger-label")?.textContent).toContain("演示游戏 (1)");
+    expect(root.querySelectorAll(".domain-list-pane .domain-item")).toHaveLength(0);
+    app.unmount();
+  });
+
   it("keeps the game catalog search query when switching tabs", async () => {
     const { app, root } = await mountAdmin("android");
     const search = root.querySelector<HTMLInputElement>(".game-list-pane input[type='search']");
