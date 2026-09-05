@@ -14,7 +14,7 @@
     {
       "category": {
         "id": 10054,
-        "name": "æ­£å¼ç¯å¢-æ¸¸æåä½"
+        "name": "正式环境-游戏包体"
       },
       "manifest": {
         "id": "manifest_c5c685a5e727f767_f58f00f72af95baa5a627e6fe0a9fb2d",
@@ -53,7 +53,7 @@
     {
       "category": {
         "id": 10055,
-        "name": "æ­£å¼ç¯å¢-ä¸­æè¯­é³å"
+        "name": "正式环境-中文语音包"
       },
       "manifest": {
         "id": "manifest_334957009770c0c3_6a1846738a9785dff8ee7d427610224a",
@@ -92,7 +92,7 @@
     {
       "category": {
         "id": 10056,
-        "name": "æ­£å¼ç¯å¢-è±è¯­è¯­é³å"
+        "name": "正式环境-英语语音包"
       },
       "manifest": {
         "id": "manifest_e754fb2f9a802d92_1d40cb9faaeffaa02560413590520bf0",
@@ -131,7 +131,7 @@
     {
       "category": {
         "id": 10057,
-        "name": "æ­£å¼ç¯å¢-æ¥è¯­è¯­é³å"
+        "name": "正式环境-日语语音包"
       },
       "manifest": {
         "id": "manifest_cd9c610f3d2acb5c_5534eb8610ab6575838b6fcda7e135e9",
@@ -170,7 +170,7 @@
     {
       "category": {
         "id": 10058,
-        "name": "æ­£å¼ç¯å¢-é©è¯­è¯­é³å"
+        "name": "正式环境-韩语语音包"
       },
       "manifest": {
         "id": "manifest_9bcb2d4e1d41fc65_426415501d9cb01ae6d3e7e84de1610a",
