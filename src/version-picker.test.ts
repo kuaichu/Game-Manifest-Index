@@ -22,6 +22,34 @@ describe("version family labels", () => {
 describe("full-history version picker", () => {
   afterEach(() => { document.body.innerHTML = ""; });
 
+  it.each([
+    ["上游拒绝访问（HTTP 403）", "访问受限"],
+    ["没有可探活的下载 URL", "无探活链接"],
+    ["探活证据已过期", "证据过期"],
+    ["已响应，但未取得有效文件证据（HTTP 200）", "未判定"],
+  ])("explains unresolved evidence: %s", async (reason, label) => {
+    const version: VersionSummary = {
+      version: "1.1.8", current_revision_id: 1, revision_count: 1, observed_at: null,
+      packed_size: 1, unpacked_size: 1, artifact_count: 1, attributes: {},
+      artifact_kinds: { apk: { count: 1, size: 1, availability_states: { unknown: 1 }, availability_reasons: { [reason]: 1 } } },
+      availability_states: { unknown: 1 }, availability_reasons: { [reason]: 1 },
+    };
+    const domain: ArchiveDomain = {
+      id: "endfield-android", game_id: "endfield", platform: "android", kind: "apk",
+      adapter: "android", capabilities: ["apk"], version_count: 1, latest_version: "1.1.8",
+    };
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const app = createApp({ render: () => h(VersionPicker, { versions: [version], modelValue: version.version, domain, mode: "apk" }) });
+    app.mount(root);
+    (root.querySelector(".select-button") as HTMLButtonElement).click();
+    await nextTick();
+    const badge = [...root.querySelectorAll(".version-row .cap")].find((item) => item.textContent === label);
+    expect(badge?.getAttribute("title")).toBe(reason);
+    expect(root.querySelector(".version-row .cap.green")).toBeNull();
+    app.unmount();
+  });
+
   it("renders and selects all 42 WuWa versions without eager artifact loading", async () => {
     const versions = Array.from({ length: 42 }, (_, index) => ({
       version: `3.${41 - index}.0`, current_revision_id: index + 1, revision_count: 1,

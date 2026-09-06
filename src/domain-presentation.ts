@@ -481,6 +481,10 @@ export function versionSupportsMode(summary: VersionSummary, mode: string, adapt
 
 export function artifactUrlStateCounts(artifact: Artifact): Record<AvailabilityState, number> {
   const counts: Record<AvailabilityState, number> = { available: 0, unavailable: 0, unknown: 0 };
+  if (artifact.urls.length === 0 && artifact.availability) {
+    counts[artifact.availability.state] = 1;
+    return counts;
+  }
   for (const candidate of artifact.urls) {
     const verified = candidate.evidence_status === "verified" && candidate.current?.evidence_status === "verified";
     counts[verified ? candidate.current?.state || "unknown" : "unknown"] += 1;

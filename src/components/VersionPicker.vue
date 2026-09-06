@@ -185,6 +185,7 @@ function isPatchVersion(version: string): boolean {
 interface AtomicBadge {
   label: string;
   tone: string;
+  title?: string;
 }
 
 function isRowUnavailable(row: {
@@ -274,6 +275,28 @@ function atomicBadges(row: {
     }
   }
 
+  if (Number(row.states.unknown || 0) > 0) {
+    const kind = props.mode === "files" ? "package" : props.mode ? artifactKindForMode(props.mode) : "";
+    const reasons = new Set<string>();
+    for (const item of props.versions.filter((item) => displayVersion(item) === row.base)) {
+      const details = kind ? item.artifact_kinds?.[kind]?.availability_reasons : item.availability_reasons;
+      for (const [reason, count] of Object.entries(details || {})) {
+        if (count > 0) reasons.add(reason);
+      }
+    }
+    const labels: Record<string, string> = {
+      "上游拒绝访问（HTTP 403）": "访问受限",
+      "上游拒绝访问（HTTP 401）": "访问受限",
+      "没有可探活的下载 URL": "无探活链接",
+      "探活证据已过期": "证据过期",
+    };
+    for (const badge of result) {
+      if (badge.label === "未判定" || badge.label.startsWith("含未判定")) {
+        badge.title = [...reasons].join("；") || "尚无有效探活记录";
+        if (badge.label === "未判定" && reasons.size === 1) badge.label = labels[badge.title] || badge.label;
+      }
+    }
+  }
   return result;
 }
 
@@ -445,6 +468,7 @@ onBeforeUnmount(() => {
                   :key="`${row.item.version}:${cap.label}`"
                   class="cap micro-cap"
                   :class="cap.tone"
+                  :title="cap.title"
                 >
                   {{ cap.label }}
                 </span>
@@ -530,6 +554,7 @@ onBeforeUnmount(() => {
                         :key="`${row.item.version}:${cap.label}`"
                         class="cap micro-cap"
                         :class="cap.tone"
+                        :title="cap.title"
                       >
                         {{ cap.label }}
                       </span>
