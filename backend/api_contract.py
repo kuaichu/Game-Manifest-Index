@@ -763,8 +763,11 @@ def _artifact_availability(artifact: dict[str, Any]) -> dict[str, str]:
         return {"state": state, "reason": ""}
     if not candidates:
         return {"state": state, "reason": "没有可探活的下载 URL"}
+    has_fresh_unknown = any(current and current["evidence_status"] == "verified" and current["state"] == "unknown" for current in currents)
     reasons = []
     for candidate, current in zip(candidates, currents):
+        if has_fresh_unknown and (current is None or current["evidence_status"] != "verified"):
+            continue
         if current is None or current["evidence_status"] == "unverified":
             reason = "尚无有效探活记录"
         elif current["evidence_status"] == "stale":
