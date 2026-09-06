@@ -159,7 +159,7 @@ def _paginate(items: list[Any], limit: int, cursor: str | None) -> tuple[list[An
     return items[offset : offset + limit], str(offset + limit) if offset + limit < len(items) else None
 
 
-def _safe_public_url(value: Any, *, allow_query: bool = True) -> str | None:
+def _safe_public_url(value: Any, *, allow_query: bool = True, allow_http: bool = False) -> str | None:
     if not isinstance(value, str):
         return None
     try:
@@ -168,11 +168,11 @@ def _safe_public_url(value: Any, *, allow_query: bool = True) -> str | None:
     except ValueError:
         return None
     if (
-        parsed.scheme != "https"
+        parsed.scheme not in ({"http", "https"} if allow_http else {"https"})
         or not parsed.hostname
         or parsed.username is not None
         or parsed.password is not None
-        or port not in (None, 443)
+        or port not in (None, 80 if parsed.scheme == "http" else 443)
         or parsed.fragment
         or (parsed.query and not allow_query)
     ):
@@ -721,10 +721,16 @@ def _public_artifact(record: dict[str, Any], artifact: dict[str, Any]) -> dict[s
         "checksum_value": checksum.get(checksum_type) if checksum_type else None,
         "attributes": attributes,
         "urls": urls,
+        # Link publication remains HTTPS-only; probe evidence for legacy HTTP
+        # candidates still belongs to this artifact and must not be discarded.
+        "availability": _artifact_availability(artifact),
     }
 
 
 def _artifact_state(artifact: dict[str, Any]) -> str:
+    derived = artifact.get("availability")
+    if isinstance(derived, dict) and derived.get("state") in AVAILABILITY_STATES:
+        return derived["state"]
     states = []
     for url in artifact["urls"]:
         if not isinstance(url, dict) or not isinstance(url.get("current"), dict):
@@ -746,6 +752,38 @@ def _artifact_state(artifact: dict[str, Any]) -> str:
     if states and all(state == "unavailable" for state in states):
         return "unavailable"
     return "unknown"
+
+
+def _artifact_availability(artifact: dict[str, Any]) -> dict[str, str]:
+    candidates = [item for item in artifact.get("urls", [])
+                  if isinstance(item, dict) and _safe_public_url(item.get("url"), allow_http=True)]
+    currents = [_public_current(item.get("current")) for item in candidates]
+    state = _artifact_state({"urls": [{"current": current} for current in currents]})
+    if state != "unknown":
+        return {"state": state, "reason": ""}
+    if not candidates:
+        return {"state": state, "reason": "没有可探活的下载 URL"}
+    reasons = []
+    for candidate, current in zip(candidates, currents):
+        if current is None or current["evidence_status"] == "unverified":
+            reason = "尚无有效探活记录"
+        elif current["evidence_status"] == "stale":
+            reason = "探活证据已过期"
+        elif current["state"] != "unknown":
+            continue
+        else:
+            code = candidate["current"].get("http_code")
+            if code in {401, 403}:
+                reason = f"上游拒绝访问（HTTP {code}）"
+            elif code in {200, 206}:
+                reason = f"已响应，但未取得有效文件证据（HTTP {code}）"
+            elif isinstance(code, int) and not isinstance(code, bool):
+                reason = f"上游响应无法确认资源状态（HTTP {code}）"
+            else:
+                reason = "未取得有效文件证据"
+        if reason not in reasons:
+            reasons.append(reason)
+    return {"state": state, "reason": "；".join(reasons) or "未取得有效文件证据"}
 
 
 def _public_version(record: dict[str, Any]) -> dict[str, Any]:
@@ -805,13 +843,18 @@ def _summary(record: dict[str, Any]) -> dict[str, Any]:
     )
     kinds: dict[str, dict[str, Any]] = {}
     states = {state: 0 for state in AVAILABILITY_STATES}
+    reasons: dict[str, int] = {}
     for artifact in artifacts:
         state = _artifact_state(artifact)
         states[state] += 1
-        bucket = kinds.setdefault(artifact["kind"], {"count": 0, "size": 0, "availability_states": {name: 0 for name in AVAILABILITY_STATES}})
+        bucket = kinds.setdefault(artifact["kind"], {"count": 0, "size": 0, "availability_states": {name: 0 for name in AVAILABILITY_STATES}, "availability_reasons": {}})
         bucket["count"] += 1
         bucket["size"] += artifact["size"]
         bucket["availability_states"][state] += 1
+        if state == "unknown":
+            reason = artifact["availability"]["reason"]
+            reasons[reason] = reasons.get(reason, 0) + 1
+            bucket["availability_reasons"][reason] = bucket["availability_reasons"].get(reason, 0) + 1
     return {
         "version": record["version"],
         "current_revision_id": 1,
@@ -823,6 +866,7 @@ def _summary(record: dict[str, Any]) -> dict[str, Any]:
         "artifact_count": len(artifacts),
         "artifact_kinds": kinds,
         "availability_states": states,
+        "availability_reasons": reasons,
         "attributes": {"has_chunk": True} if has_chunk else {},
         "provenance": _public_provenance(record.get("provenance")),
         "is_visible": True,

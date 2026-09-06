@@ -358,6 +358,40 @@ class TemporaryContractTests(unittest.TestCase):
         self.assertEqual(current["expires_at"], "2026-08-29T21:00:00Z")
         self.assertEqual(url["evidence_status"], "verified")
 
+    def test_hidden_http_url_keeps_verified_probe_evidence_in_summary_and_filters(self):
+        item = artifact("legacy.apk", kind="apk", current={
+            "state": "unavailable", "http_code": 404, "checked_at": "2026-08-29T01:00:00Z",
+        })
+        item["urls"][0]["url"] = "http://official.example/legacy.apk"
+        write_record(self.root, record("mihoyo", "bh2", "android", "8.6.8", [item]))
+        rebuild_indexes(self.root)
+        with patch("backend.api_contract._utc_now", lambda: FROZEN_NOW):
+            summary = self.get("/api/v1/domains/bh2-android/versions").json()["items"][0]
+            page = self.get("/api/v1/domains/bh2-android/versions/8.6.8/artifacts?availability_state=unavailable").json()
+        self.assertEqual(summary["availability_states"], {"available": 0, "unavailable": 1, "unknown": 0})
+        self.assertEqual(len(page["items"]), 1)
+        self.assertEqual(page["items"][0]["urls"], [])
+        self.assertEqual(page["items"][0]["availability"]["state"], "unavailable")
+        self.assertNotIn("http://official.example", json.dumps(page))
+
+    def test_unknown_summary_explains_denied_html_missing_and_stale_evidence(self):
+        cases = [
+            ("7.0.0", {"state": "unknown", "http_code": 403, "checked_at": "2026-08-29T01:00:00Z"}, "上游拒绝访问（HTTP 403）"),
+            ("7.1.0", {"state": "unknown", "http_code": 200, "checked_at": "2026-08-29T01:00:00Z"}, "已响应，但未取得有效文件证据（HTTP 200）"),
+            ("7.2.0", None, "尚无有效探活记录"),
+            ("7.3.0", {"state": "available", "http_code": 200, "checked_at": "2026-08-20T00:00:00Z"}, "探活证据已过期"),
+        ]
+        for version, current, _ in cases:
+            write_record(self.root, record("hypergryph", "endfield", "android", version, [artifact("game.apk", kind="apk", current=current)]))
+        rebuild_indexes(self.root)
+        with patch("backend.api_contract._utc_now", lambda: FROZEN_NOW):
+            summaries = {item["version"]: item for item in self.get("/api/v1/domains/endfield-android/versions").json()["items"]}
+        for version, _, reason in cases:
+            with self.subTest(version=version):
+                self.assertEqual(summaries[version]["availability_states"]["unknown"], 1)
+                self.assertEqual(summaries[version]["availability_reasons"], {reason: 1})
+                self.assertEqual(summaries[version]["artifact_kinds"]["apk"]["availability_reasons"], {reason: 1})
+
     def test_probe_evidence_freshness_boundary_is_20_hours(self):
         cases = {
             # FROZEN_NOW is 2026-08-29T12:00:00Z; a full 20 hours turns stale.
