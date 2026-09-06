@@ -54,8 +54,9 @@ export interface VersionSummary {
   packed_size: number;
   unpacked_size: number;
   artifact_count: number;
-  artifact_kinds: Record<string, { count: number; size: number; availability_states?: Record<string, number> }>;
+  artifact_kinds: Record<string, { count: number; size: number; availability_states?: Record<string, number>; availability_reasons?: Record<string, number> }>;
   availability_states: Record<string, number>;
+  availability_reasons?: Record<string, number>;
   attributes: Record<string, unknown>;
   provenance?: Record<string, unknown>;
   is_visible?: boolean;
@@ -119,6 +120,7 @@ export interface Artifact {
   checksum_value: string | null;
   attributes: Record<string, string | number | boolean | null>;
   urls: ArtifactUrl[];
+  availability?: { state: AvailabilityState; reason: string };
 }
 
 export interface ArtifactPage {

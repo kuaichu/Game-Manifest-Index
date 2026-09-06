@@ -53,6 +53,7 @@ const OPERATION_JOB_KEY = "game-manifest-index-web-operation-job-v1";
 const AVAILABILITY_INVALIDATION_EVENT = "gmi-availability-invalidated";
 const AVAILABILITY_INVALIDATION_STORAGE_KEY = "gmi-availability-invalidated-at";
 let lastInvalidatedOperationJobId: string | null = null;
+let availabilityInvalidationSequence = 0;
 
 const router = useRouter();
 const token = ref(localStorage.getItem(TOKEN_STORAGE_KEY) || sessionStorage.getItem(TOKEN_STORAGE_KEY) || "");
@@ -2037,6 +2038,11 @@ function notifyAvailabilityInvalidated(jobId: string): void {
   }
 }
 
+function nextVersionProbeInvalidationId(domainId: string, version: string): string {
+  availabilityInvalidationSequence += 1;
+  return `version-probe:${domainId}:${version}:${Date.now()}:${availabilityInvalidationSequence}`;
+}
+
 async function applyOperationJob(job: AdminOperationJob, isInitialRestore = false, incremental = false): Promise<void> {
   const sameJob = opJob.value?.job_id === job.job_id;
   opJob.value = job;
@@ -2836,9 +2842,12 @@ async function saveEditableVersion(): Promise<void> {
       );
     }
 
+    let probeCompleted = false;
     if (willProbe) {
       try {
         await adminApi.probeVersion(selectedDomainId.value, selectedVersion.value, token.value, signal);
+        probeCompleted = true;
+        notifyAvailabilityInvalidated(nextVersionProbeInvalidationId(selectedDomainId.value, selectedVersion.value));
       } catch {
         // 探活失败不阻塞保存
       }
@@ -2848,7 +2857,9 @@ async function saveEditableVersion(): Promise<void> {
     versions.value = verRes.items;
     await loadEditableVersion(selectedDomainId.value, selectedVersion.value);
     success.value = willProbe
-      ? `版本 ${selectedVersion.value} 修改已保存并已完成探活！`
+      ? probeCompleted
+        ? `版本 ${selectedVersion.value} 修改已保存并已完成探活！`
+        : `版本 ${selectedVersion.value} 修改已保存，但探活失败，请重试。`
       : `版本 ${selectedVersion.value} 的配置修改已保存成功。`;
   });
 }
@@ -3212,6 +3223,7 @@ async function probeCurrentVersion(ver = selectedVersion.value): Promise<void> {
   await withLoading(async (signal) => {
     try {
       await adminApi.probeVersion(selectedDomainId.value, ver, token.value, signal);
+      notifyAvailabilityInvalidated(nextVersionProbeInvalidationId(selectedDomainId.value, ver));
       const verRes = await adminApi.versions(selectedDomainId.value, token.value, signal);
       versions.value = verRes.items;
       await loadEditableVersion(selectedDomainId.value, ver);

@@ -394,6 +394,7 @@ describe("AdminView capability alignment", () => {
     expect(editName.value).toBe("renamed.apk");
     buttonByText(root, "保存并探活").click();
     await flushUpdates();
+    expect(localStorage.getItem("gmi-availability-invalidated-at")).toContain("version-probe:demo-android:1.0.0");
     expect(updateVersion).toHaveBeenCalledWith("demo-android", "1.0.0", expect.objectContaining({
       artifacts: [expect.objectContaining({ kind: "apk", name: "renamed.apk" })],
     }), "test-admin-token", expect.anything());
@@ -495,6 +496,44 @@ describe("AdminView capability alignment", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("sends a fresh availability invalidation after every successful direct version probe", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const events: CustomEvent[] = [];
+    const listener = (event: Event): void => { events.push(event as CustomEvent); };
+    window.addEventListener("gmi-availability-invalidated", listener);
+    const { app, root } = await mountAdmin("windows");
+    buttonByText(root, "版本").click();
+    await flushUpdates();
+
+    buttonByText(root, "探活并保存").click();
+    await flushUpdates();
+    buttonByText(root, "探活并保存").click();
+    await flushUpdates();
+
+    expect(events).toHaveLength(2);
+    expect(events[0].detail.jobId).not.toBe(events[1].detail.jobId);
+    app.unmount();
+    window.removeEventListener("gmi-availability-invalidated", listener);
+  });
+
+  it("does not report failed save-and-probe as a completed probe", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const { app, root } = await mountAdmin("android");
+    buttonByText(root, "版本").click();
+    await flushUpdates();
+    const url = root.querySelector<HTMLInputElement>(".apk-file-card input.url-long-input")!;
+    url.value = "https://example.com/updated.apk";
+    url.dispatchEvent(new Event("input"));
+    await flushUpdates();
+    vi.mocked(adminApi.probeVersion).mockRejectedValueOnce(new Error("network failed"));
+    buttonByText(root, "保存并探活").click();
+    await flushUpdates();
+    expect(root.textContent).toContain("修改已保存，但探活失败");
+    expect(root.textContent).not.toContain("修改已保存并已完成探活");
+    expect(localStorage.getItem("gmi-availability-invalidated-at")).toBeNull();
+    app.unmount();
   });
 
   it("does not send availability invalidation for discovery-only operations", async () => {

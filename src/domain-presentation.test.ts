@@ -415,6 +415,14 @@ describe("domain presentation", () => {
     })).toEqual({ available: 1, unavailable: 1, unknown: 2 });
   });
 
+  it("retains server probe evidence when an HTTP download URL is not published", () => {
+    expect(artifactUrlStateCounts({
+      id: 1, kind: "apk", name: "legacy.apk", part: 1, size: 1,
+      checksum_type: null, checksum_value: null, attributes: {}, urls: [],
+      availability: { state: "unavailable", reason: "" },
+    })).toEqual({ available: 0, unavailable: 1, unknown: 0 });
+  });
+
   it("drives WuWa split, provider and action rendering from the capability contract", () => {
     const current = domain("generic", ["files", "patches", "archive", "compare"], "capability-game");
     current.capability_contract = {
