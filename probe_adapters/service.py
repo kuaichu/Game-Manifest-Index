@@ -16,6 +16,7 @@ from backend.android_record_compat import (
 from backend.schema_v2 import SchemaValidationError, validate_v2_record
 from probe_adapters.common import (
     ProbeError,
+    classify_oss_archive_response,
     content_md5,
     content_size,
     file_time,
@@ -58,6 +59,7 @@ def probe(
         status, headers, final_url, prefix = observation
         transport_returncode = getattr(observation, "transport_returncode", 0)
         bytes_received = getattr(observation, "bytes_received", len(prefix))
+        response_body = getattr(observation, "body", prefix)
     except ProbeError as error:
         fallback = getattr(adapter, "allows_head_fallback", None) if adapter else None
         if not fallback or not fallback(url, error):
@@ -110,6 +112,7 @@ def probe(
         adapter = redirected_adapter
         transport_returncode = getattr(error, "returncode", None)
         bytes_received = 0
+        response_body = b""
     else:
         adapter = adapter_for(vendor, game_id, final_url, platform)
         final_static = getattr(adapter, "preflight", None)
@@ -122,9 +125,12 @@ def probe(
     filename = unquote(Path(urlsplit(final_url).path).name)
     content_type = headers.get("content-type", "")
     observed_size = content_size(status, headers)
+    response_decision = classify_oss_archive_response(status, headers, response_body)
     availability = getattr(adapter, "availability", None)
     if 'fallback_decision' in locals():
         available = fallback_decision["available"]
+    elif response_decision is not None:
+        available = response_decision["available"]
     elif availability:
         try:
             available = availability(
@@ -170,15 +176,21 @@ def probe(
         "file_time": file_time(final_url, headers, adapter.URL_TIME),
         "reason": (
             fallback_decision.get("reason", f"HTTP {status}")
-            if 'fallback_decision' in locals() else f"HTTP {status}"
+            if 'fallback_decision' in locals()
+            else response_decision.get("reason", f"HTTP {status}")
+            if response_decision is not None else f"HTTP {status}"
         ),
         "confidence": (
             fallback_decision.get("confidence", "high")
-            if 'fallback_decision' in locals() else "high"
+            if 'fallback_decision' in locals()
+            else response_decision.get("confidence", "high")
+            if response_decision is not None else "high"
         ),
         "source_kind": (
             fallback_decision.get("source_kind", "live_probe")
-            if 'fallback_decision' in locals() else "live_probe"
+            if 'fallback_decision' in locals()
+            else response_decision.get("source_kind", "live_probe")
+            if response_decision is not None else "live_probe"
         ),
         "transport_returncode": transport_returncode,
         "bytes_received": bytes_received,

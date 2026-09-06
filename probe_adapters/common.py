@@ -7,6 +7,7 @@ import os
 import re
 import subprocess
 import tempfile
+import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from urllib.parse import unquote, urlsplit
@@ -44,6 +45,7 @@ class ProbeObservation:
         *,
         transport_returncode: int = 0,
         bytes_received: int = 0,
+        body: bytes = b"",
     ):
         self.status = status
         self.headers = headers
@@ -51,6 +53,7 @@ class ProbeObservation:
         self.prefix = prefix
         self.transport_returncode = transport_returncode
         self.bytes_received = bytes_received
+        self.body = body[:4096]
 
     def __iter__(self):
         yield self.status
@@ -125,7 +128,35 @@ def probe_url(url: str, timeout: int = 10) -> ProbeObservation:
         status, headers, final_url, prefix,
         transport_returncode=result.returncode,
         bytes_received=len(body_bytes),
+        body=body_bytes,
     )
+
+
+def classify_oss_archive_response(
+    status: int, headers: dict[str, str], body: bytes,
+) -> dict[str, object] | None:
+    """Recognize an OSS object that exists but has not been restored."""
+    if status != 403:
+        return None
+    evidence = {str(key).lower(): value for key, value in (headers or {}).items()}
+    storage_class = str(evidence.get("x-oss-storage-class", "")).strip().lower()
+    try:
+        root = ET.fromstring(body)
+        invalid_object_state = root.tag.rsplit("}", 1)[-1] == "Error" and any(
+            child.tag.rsplit("}", 1)[-1] == "Code"
+            and (child.text or "").strip() == "InvalidObjectState"
+            for child in root.iter()
+        )
+    except (ET.ParseError, ValueError, TypeError):
+        invalid_object_state = False
+    if storage_class != "archive" and not invalid_object_state:
+        return None
+    return {
+        "available": False,
+        "reason": "oss_archive_not_restored",
+        "confidence": "high",
+        "source_kind": "official_storage_metadata",
+    }
 
 
 def _parse_curl_metadata(output: str) -> tuple[int, dict[str, str], str]:
