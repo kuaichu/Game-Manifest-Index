@@ -39,10 +39,14 @@ class ProbeTransportTests(unittest.TestCase):
                     probe_url(self.URL)
 
     def test_curl_0_short_body_is_observation_for_adapter_to_reject(self):
-        with patch("probe_adapters.common.subprocess.run", side_effect=self._curl(0, b"")):
-            status, headers, url, prefix = probe_url(self.URL)
-        self.assertEqual(status, 206)
-        self.assertEqual(prefix, b"")
+        body = b"<Error><Code>InvalidObjectState</Code></Error>"
+        with patch("probe_adapters.common.subprocess.run", side_effect=self._curl(0, body, status=403)):
+            observation = probe_url(self.URL)
+            status, headers, url, prefix = observation
+        self.assertEqual(status, 403)
+        self.assertEqual(prefix, body[:16])
+        self.assertEqual(observation.body, body)
+        self.assertEqual(len(tuple(observation)), 4)
 
     def test_transport_error_preserves_complete_small_error_body(self):
         body = (

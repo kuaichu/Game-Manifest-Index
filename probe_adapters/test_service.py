@@ -3,7 +3,7 @@ from copy import deepcopy
 from unittest.mock import patch
 
 from backend.schema_v2 import artifact_id
-from probe_adapters.common import ProbeError
+from probe_adapters.common import ProbeError, ProbeObservation
 from probe_adapters.service import apply_result, probe
 
 
@@ -67,6 +67,65 @@ class ProbeServiceTests(unittest.TestCase):
             result = probe(url, vendor="mihoyo", game_id="bh3")
         head_probe.assert_not_called()
         self.assertTrue(result["available"])
+
+    def test_successful_403_with_oss_archive_evidence_is_unavailable(self):
+        cases = (
+            ({"x-oss-storage-class": "Archive"}, b""),
+            ({}, b"<?xml version='1.0'?><Error><Code>InvalidObjectState</Code></Error>"),
+            (
+                {"x-oss-storage-class": "Archive"},
+                b"<?xml version='1.0'?><Error><Code>InvalidObjectState</Code></Error>",
+            ),
+        )
+        urls = (
+            ("https://ak.hycdn.cn/apk/202007081730-1150-token/game.apk", "hypergryph", "arknights", None),
+            ("https://bundle.bh3.com/public/Android/archived.apk", "mihoyo", "bh3", None),
+            ("https://bundle.bh3.com/ptpublic/rel/x/PC/BH3_v6.6.0_hash.7z", "mihoyo", "bh3", "windows"),
+        )
+        for headers, body in cases:
+            for url, vendor, game_id, platform in urls:
+                with self.subTest(headers=headers, body=bool(body), url=url), patch(
+                    "probe_adapters.service.probe_url",
+                    return_value=ProbeObservation(403, headers, url, body[:16], bytes_received=len(body), body=body),
+                ):
+                    result = probe(url, vendor=vendor, game_id=game_id, platform=platform)
+                self.assertIs(result["available"], False)
+                self.assertEqual(result["http_code"], 403)
+                self.assertEqual(result["reason"], "oss_archive_not_restored")
+                self.assertEqual(result["source_kind"], "official_storage_metadata")
+
+    def test_archive_class_does_not_override_readable_200(self):
+        url = "https://bundle.bh3.com/public/Android/readable.apk"
+        body = b"PK\x03\x04" + b"x" * 12
+        with patch(
+            "probe_adapters.service.probe_url",
+            return_value=ProbeObservation(
+                200, {"x-oss-storage-class": "Archive"}, url, body,
+                bytes_received=len(body), body=body,
+            ),
+        ):
+            result = probe(url, vendor="mihoyo", game_id="bh3")
+        self.assertIs(result["available"], True)
+
+    def test_plain_403_and_html_challenge_remain_unknown(self):
+        cases = (
+            ("https://static.benghuai.com/Download/v9_7/game.apk", 403, {}, b"Forbidden", "mihoyo", "bh2"),
+            (
+                "https://mirrors-package-mc.aki-game.com/client/download/token/game.apk",
+                200,
+                {"content-type": "text/html", "error-info": "return by bot js challenge"},
+                b"<script>challenge</script>",
+                "kuro",
+                "wuwa",
+            ),
+        )
+        for url, status, headers, body, vendor, game_id in cases:
+            with self.subTest(url=url), patch(
+                "probe_adapters.service.probe_url",
+                return_value=ProbeObservation(status, headers, url, body[:16], bytes_received=len(body), body=body),
+            ):
+                result = probe(url, vendor=vendor, game_id=game_id)
+            self.assertIsNone(result["available"])
     def test_non_positive_timeout_is_rejected(self):
         for value in (0, -1, True, "10"):
             with self.subTest(value=value), patch("probe_adapters.service.probe_url") as run:
