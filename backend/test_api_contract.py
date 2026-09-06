@@ -382,7 +382,10 @@ class TemporaryContractTests(unittest.TestCase):
             ("7.3.0", {"state": "available", "http_code": 200, "checked_at": "2026-08-20T00:00:00Z"}, "探活证据已过期"),
         ]
         for version, current, _ in cases:
-            write_record(self.root, record("hypergryph", "endfield", "android", version, [artifact("game.apk", kind="apk", current=current)]))
+            item = artifact("game.apk", kind="apk", current=current)
+            if version == "7.0.0":
+                item["urls"].append({"url": "https://mirror.example/game.apk", "provider": "mirror", "source_kind": "mirror", "priority": 1})
+            write_record(self.root, record("hypergryph", "endfield", "android", version, [item]))
         rebuild_indexes(self.root)
         with patch("backend.api_contract._utc_now", lambda: FROZEN_NOW):
             summaries = {item["version"]: item for item in self.get("/api/v1/domains/endfield-android/versions").json()["items"]}
