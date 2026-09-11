@@ -1982,6 +1982,74 @@ const opTerminalHidden = ref(false);
 let operationPollTimer: number | null = null;
 let operationPollBusy = false;
 
+type TerminalLogTone = "success" | "danger" | "warning" | "info";
+type TerminalLogEntry = {
+  id: number;
+  raw: string;
+  phase: string;
+  target: string;
+  outcome: string;
+  tone: TerminalLogTone;
+  detail: string;
+};
+
+const terminalLogSource = computed(() => {
+  if (opTerminalLogs.value.length) return opTerminalLogs.value;
+  const syncTail = syncRunStatus.value?.result?.log_tail;
+  if (syncTail) return syncTail.split(/\r?\n/).filter(Boolean);
+  return (probeStatus.value?.log || []).slice(-150);
+});
+
+function terminalLogTone(outcome: string): TerminalLogTone {
+  if (/失败|失效|错误|异常|取消/i.test(outcome)) return "danger";
+  if (/未知|未判定|跳过|等待/i.test(outcome)) return "warning";
+  if (/成功|可用|完成|正常/i.test(outcome)) return "success";
+  return "info";
+}
+
+function parseTerminalLog(raw: string, id: number): TerminalLogEntry {
+  const match = raw.match(/^\[([^\]]+)\]\s+(.+?)\s+(可用|不可用|未判定|未知|失败(?::.*)?|成功|跳过.*)$/u);
+  if (!match) {
+    return { id, raw, phase: "系统", target: "运维任务", outcome: "记录", tone: "info", detail: raw };
+  }
+  const [scope, target, outcome] = match.slice(1);
+  const [phase, platform] = scope.split("/");
+  return {
+    id,
+    raw,
+    phase: phase === "probe" ? "探活" : phase === "discover" ? "发现" : phase,
+    target: `${target}${platform ? ` · ${platform}` : ""}`,
+    outcome: outcome.startsWith("失败:") ? "失败" : outcome,
+    tone: terminalLogTone(outcome),
+    detail: outcome.startsWith("失败:") ? outcome.slice(3) : "",
+  };
+}
+
+const terminalLogEntries = computed<TerminalLogEntry[]>(() =>
+  terminalLogSource.value.map((line, index) => parseTerminalLog(line, index + 1)),
+);
+
+const terminalLogStats = computed(() => terminalLogEntries.value.reduce(
+  (stats, entry) => {
+    stats.total += 1;
+    if (entry.tone === "success") stats.success += 1;
+    if (entry.tone === "danger") stats.danger += 1;
+    if (entry.tone === "warning") stats.warning += 1;
+    return stats;
+  },
+  { total: 0, success: 0, danger: 0, warning: 0 },
+));
+
+const terminalStatusText = computed(() => {
+  if (opJob.value?.status === "cancelling") return "正在取消";
+  if (opRunning.value) return "执行中";
+  if (opJob.value?.status === "finished") return "已完成";
+  if (opJob.value?.status === "failed") return "执行失败";
+  if (opJob.value?.status === "cancelled") return "已取消";
+  if (probeStatus.value?.status === "running") return "探活中";
+  return terminalLogEntries.value.length ? "最近记录" : "等待任务";
+});
+
 const operationScope = computed(() =>
   restoredOperationScope(opJob.value?.scope ?? opResult.value?.scope),
 );
@@ -5000,26 +5068,80 @@ onBeforeUnmount(() => {
             </div>
           </div>
 
-          <!-- 底部全宽黑曜石终端日志窗口 (Terminal Console) -->
+          <!-- 底部全宽运维日志面板 -->
           <div class="admin-terminal-window">
             <div class="terminal-titlebar">
-              <div class="terminal-dots">
-                <span class="dot red"></span>
-                <span class="dot yellow"></span>
-                <span class="dot green"></span>
+              <div class="terminal-heading">
+                <div class="kicker-tag">OPERATIONS LOG</div>
+                <h3>任务日志</h3>
+                <p>实时记录探活与版本发现结果，原始行可展开查看。</p>
               </div>
-              <div class="terminal-title">CONSOLE LOG STREAM · {{ operationScopeText }} · OPERATIONS & PROBE LOGS</div>
+              <div class="terminal-state" :class="`tone-${terminalLogTone(terminalStatusText)}`">
+                <span class="terminal-state-dot"></span>
+                <span>{{ terminalStatusText }}</span>
+              </div>
               <div class="terminal-actions">
-                <button class="terminal-refresh-btn" type="button" @click="opTerminalHidden = true">
-                  <span>🧹 清屏（仅当前页面）</span>
+                <button class="terminal-refresh-btn" type="button" @click="opTerminalHidden = true" title="仅隐藏当前页面的日志">
+                  <span>清屏</span>
                 </button>
-                <button class="terminal-refresh-btn" type="button" :disabled="loading || operationPollBusy" @click="refreshTerminalLogs">
-                  <span>🔄 刷新日志</span>
+                <button class="terminal-refresh-btn" type="button" :disabled="loading || operationPollBusy" @click="refreshTerminalLogs" title="重新获取日志">
+                  <span>刷新</span>
                 </button>
               </div>
             </div>
-            <div class="terminal-viewport">
-              <pre class="terminal-pre"><code>{{ opTerminalHidden ? '--- 已清屏，仅隐藏当前页面日志；新日志到达后会继续显示 ---' : (opTerminalLogs.length ? opTerminalLogs.join('\n') : (syncRunStatus?.result?.log_tail || (probeStatus?.log || []).slice(-150).join('\n') || '--- 暂无实时运维或探活日志，点击上方执行按钮开始操作 ---')) }}</code></pre>
+            <div class="terminal-summary" aria-label="日志摘要">
+              <div class="terminal-summary-item">
+                <span>范围</span>
+                <strong>{{ operationScopeText }}</strong>
+              </div>
+              <div class="terminal-summary-item">
+                <span>记录</span>
+                <strong>{{ terminalLogStats.total }}</strong>
+              </div>
+              <div class="terminal-summary-item tone-success">
+                <span>成功</span>
+                <strong>{{ terminalLogStats.success }}</strong>
+              </div>
+              <div class="terminal-summary-item tone-danger">
+                <span>异常</span>
+                <strong>{{ terminalLogStats.danger }}</strong>
+              </div>
+              <div class="terminal-summary-item tone-warning">
+                <span>待确认</span>
+                <strong>{{ terminalLogStats.warning }}</strong>
+              </div>
+            </div>
+            <div class="terminal-viewport" aria-live="polite">
+              <div v-if="opTerminalHidden" class="terminal-empty terminal-empty-muted">
+                <strong>日志已清屏</strong>
+                <span>仅隐藏当前页面，新日志到达后会继续显示。</span>
+              </div>
+              <div v-else-if="terminalLogEntries.length" class="terminal-list">
+                <article
+                  v-for="entry in terminalLogEntries"
+                  :key="entry.id"
+                  class="terminal-row"
+                  :class="`tone-${entry.tone}`"
+                >
+                  <span class="terminal-row-index">{{ String(entry.id).padStart(3, '0') }}</span>
+                  <div class="terminal-row-content">
+                    <div class="terminal-row-meta">
+                      <span class="terminal-phase">{{ entry.phase }}</span>
+                      <strong>{{ entry.target }}</strong>
+                      <span class="terminal-outcome">{{ entry.outcome }}</span>
+                    </div>
+                    <p v-if="entry.detail" class="terminal-row-detail">{{ entry.detail }}</p>
+                    <details class="terminal-raw-details">
+                      <summary>查看原始记录</summary>
+                      <code>{{ entry.raw }}</code>
+                    </details>
+                  </div>
+                </article>
+              </div>
+              <div v-else class="terminal-empty">
+                <strong>暂无运维日志</strong>
+                <span>点击上方执行按钮开始任务，或刷新以获取最新记录。</span>
+              </div>
             </div>
           </div>
         </section>
