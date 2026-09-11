@@ -332,6 +332,23 @@ export function hoyoLanguageLabel(value: unknown): string {
   return map[norm] || String(value || "语言未知");
 }
 
+/** Recover labels that were UTF-8 bytes decoded as Latin-1 upstream. */
+export function repairMojibake(value: unknown): string {
+  const text = String(value ?? "");
+  if (!/[\u00c2\u00c3\u00e2\u00e4\u00e5\u00e6\u00e7\u00e8\u00e9\u00ea\u00eb\u00ec\u00ed\u00ee\u00ef]/.test(text)) return text;
+  const bytes = new Uint8Array(text.length);
+  for (let index = 0; index < text.length; index += 1) {
+    const code = text.charCodeAt(index);
+    if (code > 0xff) return text;
+    bytes[index] = code;
+  }
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    return text;
+  }
+}
+
 export function formatBytes(value: number): string {
   if (!Number.isFinite(value) || value < 0) return "—";
   if (value < 1024) return `${value} B`;

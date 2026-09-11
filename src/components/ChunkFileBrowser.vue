@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { api, chunkContentUrl, isAbortError } from "../api";
-import { formatBytes, formatObservedDate, hoyoLanguageLabel } from "../domain-presentation";
+import { formatBytes, formatObservedDate, hoyoLanguageLabel, repairMojibake } from "../domain-presentation";
 import { chunkUrl, ChunkDownloadError, MAX_BROWSER_SYNTHESIS_SIZE, saveBlob, synthesizeChunkFile, type ChunkDownloadProgress } from "../chunk-download";
 import type {
   ArchiveDomain,
@@ -126,7 +126,7 @@ const identities = computed(() => {
     const result: Array<{ key: string; label: string; component: string; count: number }> = [];
     for (const m of props.chunkDetail.manifests) {
       const key = m.matching_field || m.language || m.component;
-      let label = m.category?.name || "";
+      let label = repairMojibake(m.category?.name || "");
       if (!label) {
         if (m.component === "game") label = "游戏主资源";
         else if (m.language) label = `${hoyoLanguageLabel(m.language)}语音包`;

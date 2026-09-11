@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ArchiveDomain, Artifact, AvailabilityCurrent, VersionSummary } from "./types";
-import { artifactActionLabel, archiveSourceLabel, artifactKindForMode, artifactUrlStateCounts, availabilityStatesForMode, availableArchiveModes, availabilityLabel, buildArchiveOverview, buildSyncStatusPresentation, buildVersionBadges, distributionProfile, domainActionSupport, domainFeatureSupport, domainFieldSupport, domainModeLabel, fileTimestampEvidence, hoyoArtifactCardPresentation, isAvailabilityActionable, preferredArtifactAction, preferredDomainArtifactAction , displayVersionLabel } from "./domain-presentation";
+import { artifactActionLabel, archiveSourceLabel, artifactKindForMode, artifactUrlStateCounts, availabilityStatesForMode, availableArchiveModes, availabilityLabel, buildArchiveOverview, buildSyncStatusPresentation, buildVersionBadges, distributionProfile, domainActionSupport, domainFeatureSupport, domainFieldSupport, domainModeLabel, fileTimestampEvidence, hoyoArtifactCardPresentation, isAvailabilityActionable, preferredArtifactAction, preferredDomainArtifactAction, repairMojibake, displayVersionLabel } from "./domain-presentation";
 
 describe("WuWa historical provenance presentation", () => {
   it("labels the real 3.5.3 migration summary as archived community data", () => {
@@ -63,6 +63,11 @@ function artifact(
 }
 
 describe("domain presentation", () => {
+  it("repairs UTF-8 labels that were decoded as Latin-1", () => {
+    expect(repairMojibake("æ¸¸æèµæº-å¤ç½")).toBe("游戏资源-外网");
+    expect(repairMojibake("English")).toBe("English");
+  });
+
   it("uses one vocabulary and stable capability order", () => {
     const hoyo = domain("hoyo", ["packages", "patches", "chunks", "archive"], "hk4e");
     const android = domain("android", ["apk"], "hk4e", "android");

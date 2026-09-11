@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import type { ArchiveDomain, Artifact, ChunkManifestDetail, ChunkManifestEntry, ChunkManifestSummaryItem, Game } from "../types";
-import { formatBytes, formatObservedDate, hoyoLanguageLabel, preferredArtifactAction, preferredDomainArtifactAction } from "../domain-presentation";
+import { formatBytes, formatObservedDate, hoyoLanguageLabel, preferredArtifactAction, preferredDomainArtifactAction, repairMojibake } from "../domain-presentation";
 import AvailabilityBadge from "./AvailabilityBadge.vue";
 
 const props = defineProps<{
@@ -155,7 +155,7 @@ function copyText(text: string, label: string): void {
               >
                 {{ manifest.component === 'game' ? '游戏主资源' : `${languageLabel(manifest.language)}语音包` }}
               </span>
-              <strong class="card-name">{{ manifest.category?.name || manifest.matching_field }}</strong>
+              <strong class="card-name">{{ repairMojibake(manifest.category?.name || manifest.matching_field) }}</strong>
             </div>
             <div class="card-meta-line">
               <span class="meta-field">
