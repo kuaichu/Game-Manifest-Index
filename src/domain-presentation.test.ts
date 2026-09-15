@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ArchiveDomain, Artifact, AvailabilityCurrent, VersionSummary } from "./types";
-import { artifactActionLabel, archiveSourceLabel, artifactKindForMode, artifactUrlStateCounts, availabilityStatesForMode, availableArchiveModes, availabilityLabel, buildArchiveOverview, buildSyncStatusPresentation, buildVersionBadges, distributionProfile, domainActionSupport, domainFeatureSupport, domainFieldSupport, domainModeLabel, fileTimestampEvidence, hoyoArtifactCardPresentation, isAvailabilityActionable, preferredArtifactAction, preferredDomainArtifactAction, repairMojibake, displayVersionLabel } from "./domain-presentation";
+import { artifactActionLabel, archiveSourceLabel, artifactKindForMode, artifactUrlStateCounts, availabilityStatesForMode, availableArchiveModes, availabilityLabel, buildArchiveOverview, buildSyncStatusPresentation, buildVersionBadges, distributionProfile, domainActionSupport, domainFeatureSupport, domainFieldSupport, domainModeLabel, fileTimestampEvidence, hoyoArtifactCardPresentation, isAvailabilityActionable, preferredArtifactAction, preferredDomainArtifactAction, repairMojibake, displayVersionLabel, versionSupportsMode } from "./domain-presentation";
 
 describe("WuWa historical provenance presentation", () => {
   it("labels the real 3.5.3 migration summary as archived community data", () => {
@@ -75,6 +75,15 @@ describe("domain presentation", () => {
     expect(domainModeLabel(hoyo, "patches")).toBe("更新补丁");
     expect(domainModeLabel(domain("aethergazer-resources", ["resources"], "aethergazer"), "resources")).toBe("运行时资源");
     expect(availableArchiveModes([android, hoyo]).map((item) => item.capability)).toEqual(["packages", "patches", "chunks", "apk"]);
+  });
+
+  it("treats a generic file-manifest package as a browsable files mode", () => {
+    const manjuu = domain("generic", ["packages", "files", "archive"], "azurpromilia");
+    manjuu.kind = "files";
+    const item = summary({
+      artifact_kinds: { package: { count: 645, size: 142235777925, availability_states: { unknown: 645 } } },
+    });
+    expect(versionSupportsMode(item, "files", manjuu.adapter)).toBe(true);
   });
 
   it("deduplicates compare mode across multiple domains of the same game", () => {

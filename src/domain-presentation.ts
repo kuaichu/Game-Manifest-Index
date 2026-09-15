@@ -492,6 +492,9 @@ export function versionSupportsMode(summary: VersionSummary, mode: string, adapt
   if (mode === "files" && adapter === "hoyo") {
     return Boolean(summary.attributes?.has_chunk) || Number(summary.artifact_kinds?.package?.count || 0) > 0;
   }
+  if (mode === "files" && adapter === "generic") {
+    return Number(summary.artifact_kinds?.package?.count || 0) > 0;
+  }
   const kind = artifactKindForMode(mode);
   return kind ? artifactCountForMode(summary, mode, adapter) > 0 : true;
 }

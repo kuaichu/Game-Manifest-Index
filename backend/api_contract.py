@@ -62,7 +62,7 @@ MAX_RECORD_BYTES = 8 * 1024 * 1024
 MAX_INDEX_BYTES = 2 * 1024 * 1024
 MAX_DOCUMENT_BYTES = 16 * 1024 * 1024
 SAFE_COMPONENT = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
-VENDORS = ("mihoyo", "hypergryph", "kuro", "perfectworld")
+VENDORS = ("mihoyo", "hypergryph", "kuro", "perfectworld", "manjuu")
 PLATFORMS = (("android", "android"), ("pc", "windows"))
 ARTIFACT_KINDS = frozenset({"apk", "package", "patch", "resource"})
 TREE_KINDS = ARTIFACT_KINDS | {"all", "file"}
@@ -77,6 +77,7 @@ LOCAL_OFFICIAL_HOSTS = {
         }
     ),
     "perfectworld": frozenset({"yhcdn1.wmupd.com", "nsywl-client-dev1.wmupd.com", "htcdn1.wmupd.com"}),
+    "manjuu": frozenset({"syncstation.manjuu.com"}),
 }
 
 GAME_CATALOG: tuple[tuple[str, str, str], ...] = (
@@ -937,6 +938,10 @@ def _domain_projection(domain: DomainData, sort_order: int) -> dict[str, Any]:
         }
     )
     adapter = _domain_adapter(domain)
+    metadata_only_availability = (
+        domain.vendor == "manjuu"
+        and domain.game_id == "azurpromilia"
+    )
     return {
         "id": domain.domain_id,
         "game_id": domain.game_id,
@@ -948,7 +953,10 @@ def _domain_projection(domain: DomainData, sort_order: int) -> dict[str, Any]:
             "artifact_fields": {"size": "supported", "checksum": "supported", "availability": "supported"},
             "url_source_kinds": sorted({candidate.get("source_kind") for item in artifacts for candidate in item.get("urls", []) if isinstance(candidate, dict) and isinstance(candidate.get("source_kind"), str)}),
             "checksum_algorithms": checksums,
-            "availability_source_kinds": [],
+            # Azur Promilia is a checked-in launcher archive without a probe
+            # adapter. Its official URLs remain directly usable from metadata;
+            # other domains keep the default probe-gated contract.
+            "availability_source_kinds": ["metadata_inference"] if metadata_only_availability else [],
             "url_providers": providers,
             "features": {"compare": "supported" if len(domain.records) > 1 else "unsupported", "chunks": "supported" if has_chunk else "unsupported"},
             "actions": {"download": "conditional"},
@@ -1174,8 +1182,9 @@ def create_api_app(data_root: Path, upstream: Any | None = None, *, state_root: 
             needle = q.casefold()
             items = [item for item in items if needle in json.dumps(item, ensure_ascii=False).casefold()]
         items.sort(key=lambda item: (item["kind"], item["name"].casefold(), item["part"], item["id"]))
+        total = len(items)
         page, next_cursor = _paginate(items, limit, cursor)
-        return {"items": page, "next_cursor": next_cursor}
+        return {"items": page, "next_cursor": next_cursor, "total": total}
 
     def file_compare_rows(
         domain: DomainData, before_record: dict[str, Any], after_record: dict[str, Any],

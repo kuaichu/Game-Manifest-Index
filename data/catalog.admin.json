@@ -1,0 +1,31 @@
+{
+  "games": {
+    "azurpromilia": {
+      "id": "azurpromilia",
+      "name": "蓝色星原：旅谣",
+      "sub_name": "Azur Promilia",
+      "platform": "windows",
+      "icon_source": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/8e/6f/71/8e6f710c-03f5-9a08-870d-ebb5f9ebc221/AppIcon-0-0-1x_U007emarketing-0-8-0-85-220.png/512x512bb.jpg",
+      "is_enabled": true,
+      "sort_order": 12,
+      "vendor": "manjuu"
+    }
+  },
+  "domains": {
+    "azurpromilia-pc": {
+      "id": "azurpromilia-pc",
+      "game_id": "azurpromilia",
+      "kind": "files",
+      "platform": "windows",
+      "capabilities": [
+        "packages",
+        "files",
+        "archive"
+      ],
+      "adapter": "generic",
+      "is_enabled": true,
+      "sort_order": 0,
+      "vendor": "manjuu"
+    }
+  }
+}

@@ -10,6 +10,7 @@ import VersionPicker from "../components/VersionPicker.vue";
 import AvailabilityBadge from "../components/AvailabilityBadge.vue";
 import ChunkManifestView from "../components/ChunkManifestView.vue";
 import ChunkFileBrowser from "../components/ChunkFileBrowser.vue";
+import ArtifactPagination from "../components/ArtifactPagination.vue";
 import CustomSelect from "../components/CustomSelect.vue";
 import { copyTextToClipboard } from "../clipboard";
 import {
@@ -84,6 +85,8 @@ const availabilityFilter = ref<"all" | "available" | "unavailable" | "unknown">(
 const toast = ref("");
 const selectedCategory = ref<string>("all");
 const chunkCategoryFilter = ref<string>("all");
+const artifactPage = ref(1);
+const artifactPageSize = ref(50);
 const SEARCHABLE_MODES = new Set(["apk", "chunks", "files", "packages", "patches"]);
 
 let archiveArtifactsLoader: ArchiveArtifactsLoaderState | null = null;
@@ -213,7 +216,10 @@ const compareScope = computed<"artifacts" | "files">(() => {
 });
 const searchableMode = computed(() => SEARCHABLE_MODES.has(mode.value));
 const isFileTreeMode = computed(
-  () => mode.value === "files" && ["patchersdk", "perfectworld_patcher", "wuwa", "hoyo"].includes(domain.value?.adapter || ""),
+  () => mode.value === "files" && (
+    ["patchersdk", "perfectworld_patcher", "wuwa", "hoyo"].includes(domain.value?.adapter || "")
+    || (domain.value?.kind === "files" && domain.value?.adapter === "generic" && domain.value.capabilities.includes("packages"))
+  ),
 );
 const usesArtifactTree = computed(() => isFileTreeMode.value && Boolean(query.value.trim()));
 const usesRemoteTree = computed(() => mode.value === "resources" || (isFileTreeMode.value && !query.value.trim()));
@@ -276,7 +282,11 @@ const loadedArchiveArtifacts = useArchiveArtifactsLoader({
     gameId: gameId.value,
     selectedVersion: selectedVersion.value,
     mode: mode.value,
+    artifactPage: artifactPage.value,
+    artifactPageSize: artifactPageSize.value,
     domainGameId: domain.value?.game_id,
+    domainKind: domain.value?.kind,
+    domainHasPackageManifest: domain.value?.capabilities.includes("packages"),
     domainAdapter: domain.value?.adapter,
     versionsDomainId: versionsDomainId.value,
     hasSelectedVersion: versions.value.some((item) => item.version === selectedVersion.value),
@@ -298,13 +308,36 @@ const loadedArchiveArtifacts = useArchiveArtifactsLoader({
   },
 });
 archiveArtifactsLoader = loadedArchiveArtifacts;
-const { artifacts, nextCursor, loadingMore, error } = loadedArchiveArtifacts;
+const { artifacts, nextCursor, total: artifactTotal, loadingMore, error } = loadedArchiveArtifacts;
+
+function selectArtifactPage(page: number): void {
+  artifactPage.value = page;
+  void loadArtifacts(false);
+}
+
+function selectArtifactPageSize(pageSize: number): void {
+  artifactPageSize.value = pageSize;
+  artifactPage.value = 1;
+  void loadArtifacts(false);
+}
+
+watch(
+  () => [domainId.value, selectedVersion.value, mode.value, query.value, availabilityFilter.value],
+  (next, previous) => {
+    if (previous && next.some((value, index) => value !== previous[index])) artifactPage.value = 1;
+  },
+);
 
 const usesPreferredUrlPresentation = computed(
   () =>
     supportsArtifactField("urls") &&
     supportsArtifactField("availability") &&
     Boolean(domain.value?.capability_contract?.url_source_kinds?.includes("mirror")),
+);
+const suppressAvailabilityPresentation = computed(() =>
+  domain.value?.game_id === "azurpromilia"
+  && domain.value.capability_contract?.live_probe === false
+  && domain.value.capability_contract?.availability_source_kinds?.includes("metadata_inference"),
 );
 const displayedAvailabilityFilters = computed(() => {
   const kind = exportArtifactKind.value;
@@ -698,7 +731,7 @@ const currentVersionApiUrl = computed(() => {
   if (mode.value === "chunks") {
     return apiUrl(`/domains/${encodeURIComponent(domainId.value)}/versions/${encodeURIComponent(selectedVersion.value)}/chunk-manifests`);
   }
-  if (mode.value === "files" && ["hoyo", "perfectworld_patcher"].includes(domain.value?.adapter || "")) {
+  if (mode.value === "files" && ["hoyo", "perfectworld_patcher", "generic"].includes(domain.value?.adapter || "")) {
     return apiUrl(`/domains/${encodeURIComponent(domainId.value)}/versions/${encodeURIComponent(selectedVersion.value)}/files`);
   }
   return apiUrl(`/domains/${encodeURIComponent(domainId.value)}/versions/${encodeURIComponent(selectedVersion.value)}`);
@@ -1714,9 +1747,7 @@ function chunkMatchingField(artifact: Artifact): string {
             <span>{{ formatBytes(artifact.size) }}</span>
             <code>{{ artifact.checksum_value || '—' }}</code>
           </div>
-          <button v-if="nextCursor" class="load-more" :disabled="loadingMore" @click="loadArtifacts(true)">
-            {{ loadingMore ? '读取中…' : '加载下一页' }}
-          </button>
+          <ArtifactPagination :page="artifactPage" :total="artifactTotal || 0" :page-size="artifactPageSize" :loading="loadingMore" @update:page="selectArtifactPage" @update:page-size="selectArtifactPageSize" />
         </div>
         <div v-else-if="mode === 'manifest'" class="empty">当前版本没有官方清单记录。</div>
         <div v-else-if="mode === 'chunks'" class="chunk-manifest-wrapper">
@@ -1734,7 +1765,7 @@ function chunkMatchingField(artifact: Artifact): string {
             @copy-url="onCopyChunkUrl"
           />
         </div>
-        <div v-else-if="mode === 'files' && domain?.adapter === 'hoyo'" class="chunk-file-browser-wrapper">
+        <div v-else-if="mode === 'files' && (domain?.adapter === 'hoyo' || (domain?.kind === 'files' && domain?.adapter === 'generic' && domain?.capabilities.includes('packages')))" class="chunk-file-browser-wrapper">
           <ChunkFileBrowser
             :domain="domain"
             :game="game"
@@ -1746,7 +1777,7 @@ function chunkMatchingField(artifact: Artifact): string {
             :search-query="query"
           />
         </div>
-        <template v-if="!loading && !error && !['legacy', 'archive', 'compare', 'manifest', 'chunks'].includes(mode) && !(mode === 'files' && domain?.adapter === 'hoyo')">
+        <template v-if="!loading && !error && !['legacy', 'archive', 'compare', 'manifest', 'chunks'].includes(mode) && !(mode === 'files' && (domain?.adapter === 'hoyo' || (domain?.kind === 'files' && domain?.adapter === 'generic'))) ">
           <div v-if="usesRemoteTree && domain" class="remote-workspace">
             <template v-if="mode === 'resources' && selectedSummary">
               <div class="chunk-summary resource-summary">
@@ -2002,9 +2033,7 @@ function chunkMatchingField(artifact: Artifact): string {
                 </button>
               </div>
             </article>
-            <button v-if="nextCursor" class="load-more" :disabled="loadingMore" @click="loadArtifacts(true)">
-              {{ loadingMore ? '读取中…' : '加载下一页' }}
-            </button>
+          <ArtifactPagination :page="artifactPage" :total="artifactTotal || 0" :page-size="artifactPageSize" :loading="loadingMore" @update:page="selectArtifactPage" @update:page-size="selectArtifactPageSize" />
           </div>
           <div v-else-if="mode === 'packages'" class="file-list package-list">
             <article v-for="(artifact, index) in displayedArtifacts" :key="artifact.id" class="file-card package-card">
@@ -2034,7 +2063,7 @@ function chunkMatchingField(artifact: Artifact): string {
                   <button v-if="baseUrlFor(artifact)" class="icon-button" type="button" @click="copyBaseUrl(artifact)"><span>复制资源文件根目录</span></button>
                 </template>
                 <template v-else>
-                <AvailabilityBadge :value="preferredArtifactAction(artifact)?.current || artifact.urls[0]?.current || null" />
+                <AvailabilityBadge v-if="!suppressAvailabilityPresentation" :value="preferredArtifactAction(artifact)?.current || artifact.urls[0]?.current || null" />
                 <button
                   v-if="preferredAvailableUrl(artifact, 'copy')"
                   class="icon-button"
@@ -2072,7 +2101,7 @@ function chunkMatchingField(artifact: Artifact): string {
                   <span>下载</span>
                 </a>
                 <button
-                  v-else
+                  v-else-if="!suppressAvailabilityPresentation"
                   class="icon-button is-disabled is-locked"
                   disabled
                   type="button"
@@ -2087,9 +2116,7 @@ function chunkMatchingField(artifact: Artifact): string {
                 </template>
               </div>
             </article>
-            <button v-if="nextCursor" class="load-more" :disabled="loadingMore" @click="loadArtifacts(true)">
-              {{ loadingMore ? '读取中…' : '加载下一页' }}
-            </button>
+          <ArtifactPagination :page="artifactPage" :total="artifactTotal || 0" :page-size="artifactPageSize" :loading="loadingMore" @update:page="selectArtifactPage" @update:page-size="selectArtifactPageSize" />
           </div>
           <div v-else-if="mode === 'patches' && usesPreferredUrlPresentation && domain?.adapter !== 'wuwa'" class="file-list patch-route-list endfield-list">
             <article v-for="(artifact, index) in displayedArtifacts" :key="artifact.id" class="file-card patch-route-card">
@@ -2179,9 +2206,7 @@ function chunkMatchingField(artifact: Artifact): string {
                 </button>
               </div>
             </article>
-            <button v-if="nextCursor" class="load-more" :disabled="loadingMore" @click="loadArtifacts(true)">
-              {{ loadingMore ? '读取中…' : '加载下一页' }}
-            </button>
+          <ArtifactPagination :page="artifactPage" :total="artifactTotal || 0" :page-size="artifactPageSize" :loading="loadingMore" @update:page="selectArtifactPage" @update:page-size="selectArtifactPageSize" />
           </div>
           <div v-else-if="mode === 'patches' && domain?.adapter === 'wuwa'" class="file-list patch-route-list">
             <article v-for="(artifact, index) in displayedArtifacts" :key="artifact.id" class="file-card patch-route-card">
@@ -2264,9 +2289,7 @@ function chunkMatchingField(artifact: Artifact): string {
                 </template>
               </div>
             </article>
-            <button v-if="nextCursor" class="load-more" :disabled="loadingMore" @click="loadArtifacts(true)">
-              {{ loadingMore ? '读取中…' : '加载下一页' }}
-            </button>
+          <ArtifactPagination :page="artifactPage" :total="artifactTotal || 0" :page-size="artifactPageSize" :loading="loadingMore" @update:page="selectArtifactPage" @update:page-size="selectArtifactPageSize" />
           </div>
           <div v-else-if="mode === 'patches' && domain?.adapter === 'hoyo'" class="file-list patch-route-list">
             <article v-for="(artifact, index) in displayedArtifacts" :key="artifact.id" class="file-card package-card">
@@ -2343,9 +2366,7 @@ function chunkMatchingField(artifact: Artifact): string {
                 </button>
               </div>
             </article>
-            <button v-if="nextCursor" class="load-more" :disabled="loadingMore" @click="loadArtifacts(true)">
-              {{ loadingMore ? '读取中…' : '加载下一页' }}
-            </button>
+          <ArtifactPagination :page="artifactPage" :total="artifactTotal || 0" :page-size="artifactPageSize" :loading="loadingMore" @update:page="selectArtifactPage" @update:page-size="selectArtifactPageSize" />
           </div>
           <div v-else class="file-list">
             <article v-for="artifact in displayedArtifacts" :key="artifact.id" class="file-card">
@@ -2434,9 +2455,7 @@ function chunkMatchingField(artifact: Artifact): string {
                 </button>
               </div>
             </article>
-            <button v-if="nextCursor" class="load-more" :disabled="loadingMore" @click="loadArtifacts(true)">
-              {{ loadingMore ? '读取中…' : '加载下一页' }}
-            </button>
+          <ArtifactPagination :page="artifactPage" :total="artifactTotal || 0" :page-size="artifactPageSize" :loading="loadingMore" @update:page="selectArtifactPage" @update:page-size="selectArtifactPageSize" />
           </div>
         </template>
       </section>

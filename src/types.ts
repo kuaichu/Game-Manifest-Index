@@ -126,6 +126,7 @@ export interface Artifact {
 export interface ArtifactPage {
   items: Artifact[];
   next_cursor: string | null;
+  total?: number;
 }
 
 export interface ArtifactTreePage {

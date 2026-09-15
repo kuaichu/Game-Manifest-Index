@@ -1,0 +1,14 @@
+{
+  "vendor": "manjuu",
+  "game_id": "azurpromilia",
+  "platform": "windows",
+  "versions": [
+    {
+      "version": "0.3.0.6",
+      "updated_at": null,
+      "available": null,
+      "size": 77865464813
+    }
+  ],
+  "domain_id": "azurpromilia-pc"
+}

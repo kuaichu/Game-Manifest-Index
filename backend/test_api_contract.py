@@ -774,11 +774,41 @@ class CheckedInContractTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.client = TestClient(app)
 
-    def test_checked_in_inventory_is_12_games_and_23_domains(self):
+    def test_checked_in_inventory_is_13_games_and_24_domains(self):
         games = self.client.get("/api/v1/games").json()
-        self.assertEqual(len(games), 12)
+        self.assertEqual(len(games), 13)
         domains = [domain for game in games for domain in self.client.get(f"/api/v1/games/{game['id']}/domains").json()]
-        self.assertEqual(len(domains), 23)
+        self.assertEqual(len(domains), 24)
+
+    def test_manjuu_catalog_packages_and_local_files(self):
+        games = self.client.get("/api/v1/games").json()
+        game = next(item for item in games if item["id"] == "azurpromilia")
+        self.assertEqual((game["name"], game["platform"]), ("蓝色星原：旅谣", "windows"))
+        response = self.client.get("/api/v1/games/azurpromilia/domains")
+        self.assertEqual(response.status_code, 200, response.text)
+        domain = response.json()[0]
+        self.assertEqual(domain["capabilities"], ["packages", "files", "archive"])
+        self.assertFalse(domain["capability_contract"]["live_probe"])
+        self.assertEqual(domain["capability_contract"]["availability_source_kinds"], ["metadata_inference"])
+        prefix = "/api/v1/domains/azurpromilia-pc/versions/0.3.0.6"
+        first = self.client.get(prefix + "/artifacts", params={"kind": "package", "limit": 500}).json()
+        self.assertEqual(first["total"], 645)
+        self.assertIsNotNone(first["next_cursor"])
+        second = self.client.get(prefix + "/artifacts", params={"kind": "package", "limit": 500, "cursor": first["next_cursor"]}).json()
+        artifacts = first["items"] + second["items"]
+        self.assertEqual(sum(item["attributes"].get("package_type") == "segment" for item in artifacts), 644)
+        self.assertEqual(sum(item["attributes"].get("delivery_mode") == "file_manifest" for item in artifacts), 1)
+        response = self.client.get(prefix + "/files", params={"source": "package", "identity": "game"})
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["totals"]["files"], 34758)
+        self.assertEqual(response.json()["totals"]["size"], 77865464813)
+        search = self.client.get(prefix + "/files", params={"source": "package", "q": "unity default resources"})
+        self.assertEqual(search.status_code, 200, search.text)
+        item = search.json()["items"][0]
+        detail = self.client.get(prefix + "/file", params={"source": "package", "path": item["path"]})
+        self.assertEqual(detail.status_code, 200, detail.text)
+        self.assertIn("/unity%20default%20resources", detail.json()["download_url"])
+        self.assertEqual(detail.json()["md5"], item["md5"])
 
     def test_checked_in_android_mihoyo_kuro_and_perfectworld_records(self):
         for path in (
