@@ -32,6 +32,9 @@ export const gameMeta: Record<string, GameMeta> = {
   snowbreak: { publisher: "西山居", releaseDate: "2023-07-20" },
   gf2: { publisher: "散爆网络", releaseDate: "2023-12-07" },
   calabiyau: { publisher: "创梦天地", releaseDate: "2024-02-01" },
+  // App Store currently exposes a future placeholder release date for the beta listing.
+  // Keep the confirmed publisher while sorting this title after dated releases.
+  azurpromilia: { publisher: "蛮啾网络", releaseDate: "9999-12-31" },
 };
 
 export interface PublisherGroup {

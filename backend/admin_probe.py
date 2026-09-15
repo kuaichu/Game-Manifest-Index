@@ -143,6 +143,10 @@ def iter_records(root: Path, *, scopes: Iterable[str] = ("android", "pc")):
 
 
 def candidates(record: dict[str, Any]):
+    # Azur Promilia's launcher CDN has no registered PC probe adapter yet.
+    # Keep its checked-in URLs browsable without scheduling unsupported probes.
+    if record.get("vendor") == "manjuu" and record.get("game_id") == "azurpromilia":
+        return
     endfield_pc = (
         record.get("vendor") == "hypergryph"
         and record.get("game_id") == "endfield"
