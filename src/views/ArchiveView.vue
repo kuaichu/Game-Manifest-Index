@@ -227,11 +227,16 @@ const exportArtifactKind = computed(() => artifactKindForMode(mode.value));
 const supportsArtifactField = (field: string) =>
   domainFieldSupport(domain.value, "artifact_fields", field) === "supported";
 const supportsDomainAction = (action: string) => domainActionSupport(domain.value, action);
+const isMetadataOnlyDomain = (candidate: ArchiveDomain | null) =>
+  candidate?.game_id === "azurpromilia"
+  && candidate.capability_contract?.live_probe === false
+  && candidate.capability_contract?.availability_source_kinds?.includes("metadata_inference");
 const canExportArtifacts = computed(() => mode.value !== "files" && mode.value !== "apk" && Boolean(exportArtifactKind.value));
 const canExportUrls = computed(
   () => canExportArtifacts.value && (supportsDomainAction("download") || supportsDomainAction("open") || supportsArtifactField("urls")),
 );
 const canFilterAvailability = computed(() => {
+  if (isMetadataOnlyDomain(domain.value)) return false;
   if (!supportsArtifactField("availability")) return false;
   if (!["apk", "packages", "patches"].includes(mode.value)) return false;
   const kind = exportArtifactKind.value;
@@ -240,7 +245,9 @@ const canFilterAvailability = computed(() => {
   return total > 1;
 });
 const availabilityStateForRequest = computed(() =>
-  mode.value === "files" || availabilityFilter.value === "all" ? undefined : availabilityFilter.value,
+  mode.value === "files" || availabilityFilter.value === "all" || isMetadataOnlyDomain(domain.value)
+    ? undefined
+    : availabilityFilter.value,
 );
 
 async function loadChunkState(
@@ -335,9 +342,7 @@ const usesPreferredUrlPresentation = computed(
     Boolean(domain.value?.capability_contract?.url_source_kinds?.includes("mirror")),
 );
 const suppressAvailabilityPresentation = computed(() =>
-  domain.value?.game_id === "azurpromilia"
-  && domain.value.capability_contract?.live_probe === false
-  && domain.value.capability_contract?.availability_source_kinds?.includes("metadata_inference"),
+  isMetadataOnlyDomain(domain.value),
 );
 const displayedAvailabilityFilters = computed(() => {
   const kind = exportArtifactKind.value;
@@ -1414,7 +1419,7 @@ function chunkMatchingField(artifact: Artifact): string {
           :domain="domain"
           :mode="mode"
           :label-override="mode === 'legacy' ? '候选线索' : undefined"
-          :show-availability="mode !== 'files'"
+          :show-availability="mode !== 'files' && !suppressAvailabilityPresentation"
           @select="navigate({ version: $event })"
         />
         <div class="mode-field">
@@ -1865,12 +1870,15 @@ function chunkMatchingField(artifact: Artifact): string {
                     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
                     <span>复制资源文件根目录</span>
                   </button>
-                  <AvailabilityBadge :value="preferredArtifactAction(artifact)?.current || artifact.urls[0]?.current || null" />
+                  <AvailabilityBadge
+                    v-if="!suppressAvailabilityPresentation"
+                    :value="preferredArtifactAction(artifact)?.current || artifact.urls[0]?.current || null"
+                  />
                   <button
-                  v-if="preferredAvailableUrl(artifact, 'copy')"
-                  class="icon-button"
-                  @click="copyArtifactUrl(artifact)"
-                >
+                    v-if="preferredAvailableUrl(artifact, 'copy') || (suppressAvailabilityPresentation && rawArtifactUrl(artifact))"
+                    class="icon-button"
+                    @click="suppressAvailabilityPresentation ? copyUrl(rawArtifactUrl(artifact)) : copyArtifactUrl(artifact)"
+                  >
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <rect x="9" y="9" width="11" height="11" rx="2" />
                     <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
@@ -1917,7 +1925,7 @@ function chunkMatchingField(artifact: Artifact): string {
                   <span>下载</span>
                 </a>
                 <button
-                  v-else
+                  v-else-if="!suppressAvailabilityPresentation"
                   class="icon-button is-disabled is-locked"
                   disabled
                   type="button"
