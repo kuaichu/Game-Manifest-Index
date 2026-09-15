@@ -339,6 +339,16 @@ export interface ProbeSchedule {
   mode: "normal" | "full";
 }
 
+export interface ProbeSchedulerStatus {
+  driver: "apscheduler";
+  running: boolean;
+  enabled: boolean;
+  next_run_at: string | null;
+  last_started_at: string | null;
+  last_job_id: string | null;
+  error: string | null;
+}
+
 export interface RetentionConfig {
   cache_days: number;
   observation_days: number;
@@ -415,6 +425,7 @@ export interface ProbeResultItem {
   available: boolean | null;
   adapter: string | null;
   error: string | null;
+  reason?: string | null;
   platform?: string | null;
   kind?: string | null;
   url?: string | null;

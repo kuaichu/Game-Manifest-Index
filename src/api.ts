@@ -20,6 +20,7 @@ import type {
   ManualArtifactPayload,
   ManualVersionPayload,
   ProbeSchedule,
+  ProbeSchedulerStatus,
   ProbeStatus,
   ProbeUrlResult,
   VersionRecord,
@@ -383,6 +384,8 @@ export const adminApi = {
     requestJson<ProbeStatus>("/admin/probe/status", signal, { headers: adminApi.auth(token) }),
   probeSchedule: (token: string, signal?: AbortSignal) =>
     requestJson<ProbeSchedule>("/admin/probe/schedule", signal, { headers: adminApi.auth(token) }),
+  probeScheduler: (token: string, signal?: AbortSignal) =>
+    requestJson<ProbeSchedulerStatus>("/admin/probe/scheduler", signal, { headers: adminApi.auth(token) }),
   saveProbeSchedule: (payload: ProbeSchedule, token: string, signal?: AbortSignal) =>
     requestJson<ProbeSchedule>("/admin/probe/schedule", signal, { method: "PUT", headers: { ...adminApi.auth(token), "Content-Type": "application/json" }, body: JSON.stringify(payload) }),
   probeUrl: (url: string, token: string, timeout = 10, artifactUrlId?: number, signal?: AbortSignal) =>

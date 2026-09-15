@@ -92,6 +92,41 @@ describe("archive route state", () => {
     app.unmount();
   });
 
+  it.each([
+    [false, null, "2026-09-15T03:03:22Z", "verified", "失效", false],
+    [true, null, "2026-09-15T03:03:22Z", "verified", "可用", true],
+    [null, 403, "2026-09-15T03:03:22Z", "verified", "探测未判定", false],
+    [null, null, "2026-09-15T03:03:22Z", "unverified", "未验证", false],
+    [false, null, null, "unverified", "未验证", false],
+  ] as const)("renders APK probe evidence with available=%s and HTTP=%s", async (available, http_code, last_checked_at, evidence, label, canDownload) => {
+    vi.spyOn(api, "games").mockResolvedValue([game] as never);
+    vi.spyOn(api, "domains").mockResolvedValue([{
+      ...domain, id: "demo-android", kind: "apk", platform: "android", capabilities: ["apk"], adapter: "android",
+    }] as never);
+    vi.spyOn(api, "versions").mockResolvedValue(versions as never);
+    const url = "https://example.test/demo_2.0.apk";
+    vi.spyOn(api, "versionRecord").mockResolvedValue({
+      vendor: "demo", game_id: "demo", platform: "android", channel: "official", version: "2.0",
+      version_code: null, filename: "demo_2.0.apk", url, size: 42,
+      checksum: { etag: null, crc64: null, md5: null }, file_time: null,
+      status: { http_code, available, last_checked_at },
+    });
+    const router = testRouter();
+    await router.push("/games/demo/demo-android/2.0/apk"); await router.isReady();
+    const root = document.createElement("div"); document.body.appendChild(root);
+    const app = createApp(ArchiveView); app.use(router); app.mount(root);
+    try {
+      await flushUpdates(); await flushUpdates();
+      const badge = root.querySelector(".file-actions .availability");
+      expect(badge?.textContent?.trim()).toBe(label);
+      expect(badge?.getAttribute("data-evidence-status")).toBe(evidence);
+      expect(Boolean(root.querySelector(`.file-actions a[href="${url}"]`))).toBe(canDownload);
+      if (available === false && evidence === "verified") expect(badge?.getAttribute("title")).not.toContain("无有效探测结果");
+    } finally {
+      app.unmount();
+    }
+  });
+
   it("keeps file search while discarding URL availability state", async () => {
     vi.spyOn(api, "games").mockResolvedValue([game] as never);
     vi.spyOn(api, "domains").mockResolvedValue([domain] as never);

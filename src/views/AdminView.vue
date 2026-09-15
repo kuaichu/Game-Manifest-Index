@@ -6,6 +6,7 @@ import {
   adminUiCapabilities,
   externalScheduleNotice,
   manualVersionSavedMessage,
+  probeScheduleNotice,
   supportsApkVersionEditor,
 } from "../admin-ui-capabilities";
 import { gameIcons } from "../game-icons";
@@ -17,12 +18,14 @@ import AdminOperationProgress from "../components/admin/AdminOperationProgress.v
 import {
   discoverItemState,
   discoverSkippedCount,
+  isProbeUnknownItem,
   operationControlsDisabled,
   operationScopeLabel,
   probeAvailableUrls,
   probeCheckedUrls,
   probeFailedUrls,
   probeItemKey,
+  probeResultReason,
   probeUnavailableUrls,
   probeUnknownUrls,
   restoredOperationScope,
@@ -37,6 +40,7 @@ import type {
   AdminSyncStatus,
   ManualArtifactPayload,
   ProbeSchedule,
+  ProbeSchedulerStatus,
   ProbeStatus,
   ProbeUrlResult,
   RetentionConfig,
@@ -110,6 +114,7 @@ const selectedVersion = ref("");
 const syncStatus = ref<AdminSyncStatus | null>(null);
 const probeStatus = ref<ProbeStatus | null>(null);
 const probeSchedule = ref<ProbeSchedule>({ enabled: false, interval_hours: 24, mode: "normal" });
+const probeSchedulerStatus = ref<ProbeSchedulerStatus | null>(null);
 let probePollTimer: number | null = null;
 const newGame = ref(false);
 const newDomain = ref(false);
@@ -1662,11 +1667,21 @@ async function loadProbeStatus(): Promise<void> {
   }
 }
 
+async function loadProbeSchedulerStatus(): Promise<void> {
+  try {
+    probeSchedulerStatus.value = await adminApi.probeScheduler(token.value.trim());
+  } catch (reason) {
+    probeSchedulerStatus.value = null;
+    if (!(reason instanceof DOMException && reason.name === "AbortError")) showError(reason);
+  }
+}
+
 function startProbePolling(): void {
   stopProbePolling();
   probePollTimer = window.setInterval(async () => {
     if (!authenticated.value || tab.value !== "probe") return;
     await loadProbeStatus();
+    await loadProbeSchedulerStatus();
     await loadSyncRunStatus();
   }, 2500);
 }
@@ -1685,6 +1700,7 @@ async function openProbe(): Promise<void> {
   cancelRetentionSave();
   tab.value = "probe";
   await loadProbeStatus();
+  await loadProbeSchedulerStatus();
   await loadSyncRunStatus();
   try {
     probeSchedule.value = await adminApi.probeSchedule(token.value.trim());
@@ -1712,7 +1728,8 @@ async function saveProbeSchedule(): Promise<void> {
   if (!confirmed) return;
   await withLoading(async (signal) => {
     probeSchedule.value = await adminApi.saveProbeSchedule(probeSchedule.value, token.value, signal);
-    success.value = `探活计划参数已保存。${externalScheduleNotice}`;
+    await loadProbeSchedulerStatus();
+    success.value = "定时探活计划已保存。";
   });
 }
 
@@ -2070,7 +2087,7 @@ const filteredProbeItems = computed(() => {
     return items.filter((it) => it.available === false);
   }
   if (probeTableFilter.value === "unknown") {
-    return items.filter((it) => it.available !== true && it.available !== false);
+    return items.filter(isProbeUnknownItem);
   }
   if (probeTableFilter.value === "failed") {
     return items.filter((it) => it.ok === false);
@@ -4778,7 +4795,7 @@ onBeforeUnmount(() => {
             <div class="probe-card">
               <div class="card-title-group">
                 <div class="kicker-tag">AUTOMATION & SCHEDULES</div>
-                <h3>外部调度计划参数</h3>
+                <h3>定时探活与采集计划</h3>
                 <p class="card-subtitle">{{ externalScheduleNotice }}</p>
               </div>
 
@@ -4807,11 +4824,25 @@ onBeforeUnmount(() => {
               <hr style="border: 0; border-top: 1px solid var(--line-soft); margin: 6px 0;" />
 
               <!-- 定时探活计划 -->
+              <div class="schedule-runtime-status" aria-live="polite">
+                <div>
+                  内置探活计时器：<strong>{{ !probeSchedulerStatus ? '状态未知' : probeSchedulerStatus.running ? '运行中' : '已停止' }}</strong>
+                </div>
+                <div v-if="probeSchedulerStatus?.next_run_at">
+                  下次探活：{{ formatSyncTime(probeSchedulerStatus.next_run_at) || '时间无效' }}
+                </div>
+                <div v-if="probeSchedulerStatus?.last_started_at">
+                  最近触发：{{ formatSyncTime(probeSchedulerStatus.last_started_at) || '时间无效' }}
+                  <span v-if="probeSchedulerStatus.last_job_id"> · 任务 {{ probeSchedulerStatus.last_job_id }}</span>
+                </div>
+                <div v-if="probeSchedulerStatus?.error" class="text-danger">错误：{{ probeSchedulerStatus.error }}</div>
+              </div>
+              <p class="card-subtitle">{{ probeScheduleNotice }}</p>
               <div class="schedule-toggle-row">
                 <label class="admin-toggle-label">
                   <input v-model="probeSchedule.enabled" class="admin-toggle-checkbox" type="checkbox" />
                   <span class="toggle-slider"></span>
-                  <span class="toggle-text">{{ probeSchedule.enabled ? '探活计划参数已启用' : '探活计划参数已停用' }}</span>
+                  <span class="toggle-text">{{ probeSchedule.enabled ? '定时探活已启用' : '定时探活已停用' }}</span>
                 </label>
               </div>
               <div class="schedule-inputs-row">
@@ -4824,14 +4855,14 @@ onBeforeUnmount(() => {
                   <CustomSelect
                     v-model="probeSchedule.mode"
                     :options="[
-                      { label: '正常轮 (TTL 20h)', value: 'normal' },
-                      { label: '全量轮 (全部)', value: 'full' }
+                      { label: '普通轮（跳过 20h 内有效证据）', value: 'normal' },
+                      { label: '全量轮（全部官方 URL）', value: 'full' }
                     ]"
                   />
                 </div>
               </div>
               <button class="admin-btn secondary full-width" type="button" :disabled="loading" @click="saveProbeSchedule">
-                <span>保存探活计划参数</span>
+                <span>保存定时探活计划</span>
               </button>
             </div>
           </div>
@@ -5032,7 +5063,7 @@ onBeforeUnmount(() => {
                       <th>Artifact / URL</th>
                       <th>可用性状态</th>
                       <th>探活适配器</th>
-                      <th>错误 / 异常信息</th>
+                      <th>探活原因 / 异常信息</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -5053,8 +5084,10 @@ onBeforeUnmount(() => {
                       </td>
                       <td><span class="text-mono text-muted" style="font-size: 11.5px;">{{ pItem.adapter || 'default' }}</span></td>
                       <td>
-                        <span v-if="pItem.error" class="text-rose text-mono" style="font-size: 11.5px;">{{ pItem.error }}</span>
-                        <span v-else class="text-emerald" style="font-size: 11.5px;">正常</span>
+                        <span
+                          :class="!pItem.ok || pItem.available === false ? 'text-rose' : isProbeUnknownItem(pItem) ? 'text-amber' : 'text-emerald'"
+                          style="font-size: 11.5px;"
+                        >{{ probeResultReason(pItem) }}</span>
                       </td>
                     </tr>
                     <tr v-if="filteredProbeItems.length === 0">

@@ -193,6 +193,21 @@ describe("API client", () => {
     expect(JSON.parse(options.body)).toEqual(payload);
   });
 
+  it("gets the authenticated probe scheduler status", async () => {
+    const status = {
+      driver: "apscheduler", running: true, enabled: true,
+      next_run_at: "2026-09-15T12:00:00Z", last_started_at: "2026-09-14T12:00:00Z",
+      last_job_id: "job-1", error: null,
+    };
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(status), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(adminApi.probeScheduler("admin-secret-token")).resolves.toEqual(status);
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toContain("/admin/probe/scheduler");
+    expect(options.headers.Authorization).toBe("Bearer admin-secret-token");
+  });
+
   it("uses authenticated retention config/run/status endpoints", async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({ cache_days: 30, observation_days: 90, interval_hours: 24 }), { status: 200 }))

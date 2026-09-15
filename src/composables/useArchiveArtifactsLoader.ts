@@ -51,12 +51,19 @@ function versionRecordState(record: VersionRecord): "available" | "unavailable" 
 
 function versionRecordArtifact(record: VersionRecord, id: number): Artifact {
   const state = versionRecordState(record);
-  const verified = record.status.http_code !== null && record.status.last_checked_at !== null;
+  // A completed unavailable result may have no HTTP status code (for example
+  // when an archived object is known not to be downloadable).
+  const verified = record.status.last_checked_at !== null
+    && (record.status.http_code !== null || record.status.available !== null);
   const checksumType = record.checksum.md5 ? "md5" : record.checksum.crc64 ? "crc64" : null;
   const checksumValue = record.checksum.md5 || record.checksum.crc64;
+  let reason = record.status.http_code === null ? "无有效探测结果" : `HTTP ${record.status.http_code}`;
+  if (verified && record.status.http_code === null) {
+    reason = state === "unavailable" ? "探活判定不可用" : "探活判定可用";
+  }
   const current = {
     state,
-    reason: record.status.http_code === null ? "无有效探测结果" : `HTTP ${record.status.http_code}`,
+    reason,
     confidence: state === "unknown" ? "low" as const : "high" as const,
     retained: false,
     checked_at: record.status.last_checked_at,

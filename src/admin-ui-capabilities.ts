@@ -16,4 +16,7 @@ export function manualVersionSavedMessage(version: string, probeError?: string |
 }
 
 export const externalScheduleNotice =
-  "这里只保存计划参数；服务不会启动内置计时器，实际触发、时区、漏跑策略及采集动作由外部计划任务决定。";
+  "这里只保存每日采集计划参数；实际触发、时区、漏跑策略及采集动作由外部计划任务决定。";
+
+export const probeScheduleNotice =
+  "服务运行时由内置计时器执行探活，覆盖 Android+PC 官方 URL；普通轮跳过 20 小时内已有有效证据的链接，全量轮忽略 TTL；启用或修改配置会启动新的间隔周期（下一周期生效），运行繁忙时顺延，服务停机后合并为一次补跑。";

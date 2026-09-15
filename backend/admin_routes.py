@@ -9,7 +9,7 @@ from pathlib import Path
 from threading import RLock
 from typing import Any, Callable, Literal
 
-from fastapi import APIRouter, Body, Depends, Header, Query, Response
+from fastapi import APIRouter, Body, Depends, Header, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
 
 from backend.admin_operations import OperationManager
@@ -175,6 +175,10 @@ def create_admin_router(
         return value.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
     def manual_start(family: str) -> None:
+        try:
+            operations.begin_manual_probe()
+        except RuntimeError:
+            fail(409, "operation_already_running", "已有运维任务正在执行")
         with probe_status_lock:
             manual_probe_status.update({"status": "running", "started_at": now(), "finished_at": None, "family": family, "log": ["开始同步探活"]})
 
@@ -182,6 +186,7 @@ def create_admin_router(
         with probe_status_lock:
             manual_probe_status.update({"status": "finished", "finished_at": now()})
             manual_probe_status["log"].append("同步探活完成")
+        operations.end_manual_probe()
 
     def auth(authorization: str | None = Header(default=None)) -> None:
         if not _valid_token(token):
@@ -217,10 +222,14 @@ def create_admin_router(
         return store.schedules()["probe"]
 
     @router.put("/probe/schedule", dependencies=protected)
-    def put_probe_schedule(payload: ProbeSchedule) -> dict[str, Any]:
+    def put_probe_schedule(payload: ProbeSchedule, request: Request) -> dict[str, Any]:
         if isinstance(payload.interval_hours, bool) or not 1 <= payload.interval_hours <= 168:
             fail(422, "invalid_probe_schedule", "interval_hours 必须在 1..168 之间")
-        return store.write_schedule("probe", payload.model_dump())
+        return request.app.state.probe_scheduler.configure(payload.model_dump())
+
+    @router.get("/probe/scheduler", dependencies=protected)
+    def get_probe_scheduler(request: Request) -> dict[str, Any]:
+        return request.app.state.probe_scheduler.status()
 
     def one(payload: ProbeOne) -> dict[str, Any]:
         if not valid_probe_url(payload.url):

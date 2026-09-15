@@ -134,6 +134,12 @@ function mockAdminApi(platform: "android" | "windows", pcAvailability: "availabl
   vi.spyOn(adminApi, "probeVersion").mockResolvedValue({} as never);
   vi.spyOn(adminApi, "probeStatus").mockResolvedValue({ running: false, log: [] } as never);
   vi.spyOn(adminApi, "probeSchedule").mockResolvedValue({ enabled: false, interval_hours: 24, mode: "normal" });
+  vi.spyOn(adminApi, "saveProbeSchedule").mockResolvedValue({ enabled: false, interval_hours: 24, mode: "normal" });
+  vi.spyOn(adminApi, "probeScheduler").mockResolvedValue({
+    driver: "apscheduler", running: true, enabled: false,
+    next_run_at: "2026-09-15T12:00:00Z", last_started_at: "2026-09-14T12:00:00Z",
+    last_job_id: "probe-job-1", error: null,
+  });
   vi.spyOn(adminApi, "syncSchedule").mockResolvedValue({ enabled: false, times: ["04:45", "14:00"] });
 }
 
@@ -470,15 +476,85 @@ describe("AdminView capability alignment", () => {
     app.unmount();
   });
 
-  it("describes schedule values as external configuration without an internal timer", async () => {
+  it("shows built-in probe scheduler status while keeping daily collection external", async () => {
     const { app, root } = await mountAdmin("android");
     buttonByText(root, "监控").click();
     await flushUpdates();
-    expect(root.textContent).toContain("这里只保存计划参数");
-    expect(root.textContent).toContain("服务不会启动内置计时器");
+    expect(root.textContent).toContain("这里只保存每日采集计划参数");
     expect(root.textContent).toContain("时区、漏跑策略及采集动作由外部计划任务决定");
+    expect(root.textContent).toContain("内置探活计时器：运行中");
+    expect(root.textContent).toContain("下次探活：");
+    expect(root.textContent).toContain("服务运行时由内置计时器执行探活");
+    expect(root.textContent).toContain("Android+PC 官方 URL");
+    expect(root.textContent).toContain("启动新的间隔周期");
     expect(root.textContent).not.toContain("北京时间");
+    expect(adminApi.probeScheduler).toHaveBeenCalled();
     app.unmount();
+  });
+
+  it("refreshes built-in scheduler status after saving probe schedule", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const { app, root } = await mountAdmin("android");
+    buttonByText(root, "监控").click();
+    await flushUpdates();
+    const scheduler = vi.mocked(adminApi.probeScheduler);
+    const callsBeforeSave = scheduler.mock.calls.length;
+    buttonByText(root, "保存定时探活计划").click();
+    await flushUpdates();
+    expect(scheduler.mock.calls.length).toBeGreaterThan(callsBeforeSave);
+    app.unmount();
+  });
+
+  it("does not retain a running scheduler claim when status refresh fails", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const { app, root } = await mountAdmin("android");
+    buttonByText(root, "监控").click();
+    await flushUpdates();
+    expect(root.textContent).toContain("内置探活计时器：运行中");
+    vi.mocked(adminApi.probeScheduler).mockRejectedValueOnce(new Error("status unavailable"));
+    buttonByText(root, "保存定时探活计划").click();
+    await flushUpdates();
+    expect(root.textContent).toContain("内置探活计时器：状态未知");
+    expect(root.textContent).not.toContain("内置探活计时器：运行中");
+    app.unmount();
+  });
+
+  it("keeps unknown probe rows separate from failures and explains their results", async () => {
+    const items = [
+      { game_id: "demo", version: "403", ok: true, available: null, adapter: "demo", error: null, reason: "HTTP 403" },
+      { game_id: "demo", version: "200", ok: true, available: null, adapter: "demo", error: null, reason: "HTTP 200" },
+      { game_id: "demo", version: "archive", ok: true, available: false, adapter: "demo", error: null, reason: "oss_archive_not_restored" },
+      { game_id: "demo", version: "error", ok: false, available: null, adapter: "demo", error: "ProbeError", reason: "probe_failed" },
+    ];
+    vi.spyOn(adminApi, "operationStatus").mockResolvedValue(operationJob({
+      result: { actions: ["probe"], game_ids: ["demo"], scope: "all", probe: {
+        checked: 4, available: 0, unavailable: 1, unknown: 2, failed: 1, items,
+      } },
+    }) as never);
+    sessionStorage.setItem("game-manifest-index-web-operation-job-v1", "probe-job-1");
+    const { app, root } = await mountAdmin("windows");
+    try {
+      buttonByText(root, "监控").click();
+      await flushUpdates();
+      buttonByText(root, "? 未知 (2)").click();
+      await flushUpdates();
+      const table = root.querySelector(".op-table-section");
+      expect(table?.querySelectorAll("tbody tr")).toHaveLength(2);
+      expect(table?.textContent).toContain("仅显示未知: 2 条");
+      expect(table?.textContent).toContain("上游拒绝访问（HTTP 403）");
+      expect(table?.textContent).toContain("已响应，但未取得有效文件证据（HTTP 200）");
+      expect(table?.textContent).not.toContain("正常");
+      expect(table?.textContent).not.toContain("ProbeError");
+      buttonByText(root, "✕ 失效 (1)").click();
+      await flushUpdates();
+      expect(table?.textContent).toContain("对象已归档，尚未恢复下载");
+      buttonByText(root, "⚠ 异常 (1)").click();
+      await flushUpdates();
+      expect(table?.querySelectorAll("tbody tr")).toHaveLength(1);
+      expect(table?.textContent).toContain("ProbeError");
+    } finally {
+      app.unmount();
+    }
   });
 
   it("sends one availability invalidation when a probe operation finishes", async () => {

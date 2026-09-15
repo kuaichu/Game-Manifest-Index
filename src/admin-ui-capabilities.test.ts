@@ -4,6 +4,7 @@ import {
   adminUiCapabilities,
   externalScheduleNotice,
   manualVersionSavedMessage,
+  probeScheduleNotice,
   supportsApkVersionEditor,
 } from "./admin-ui-capabilities";
 
@@ -28,11 +29,22 @@ describe("admin UI capability gates", () => {
     expect(manualVersionSavedMessage("2.0.0", null)).not.toContain("自动探活成功");
   });
 
-  it("states that schedule values need an external trigger with undefined semantics", () => {
-    expect(externalScheduleNotice).toContain("只保存计划参数");
+  it("keeps the daily collection schedule explicitly external", () => {
+    expect(externalScheduleNotice).toContain("只保存每日采集计划参数");
     expect(externalScheduleNotice).toContain("外部计划任务");
     expect(externalScheduleNotice).toContain("时区");
     expect(externalScheduleNotice).toContain("漏跑");
     expect(externalScheduleNotice).toContain("采集动作");
+    expect(externalScheduleNotice).not.toContain("内置计时器");
+  });
+
+  it("describes the built-in probe timer behavior", () => {
+    expect(probeScheduleNotice).toContain("服务运行时由内置计时器执行探活");
+    expect(probeScheduleNotice).toContain("Android+PC 官方 URL");
+    expect(probeScheduleNotice).toContain("普通轮跳过 20 小时内已有有效证据");
+    expect(probeScheduleNotice).toContain("全量轮忽略 TTL");
+    expect(probeScheduleNotice).toContain("下一周期生效");
+    expect(probeScheduleNotice).toContain("运行繁忙时顺延");
+    expect(probeScheduleNotice).toContain("合并为一次补跑");
   });
 });

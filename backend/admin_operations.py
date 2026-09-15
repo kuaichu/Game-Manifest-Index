@@ -9,7 +9,8 @@ from threading import Event, RLock, Thread
 from typing import Any, Callable
 from uuid import uuid4
 
-from backend.admin_probe import ADMIN_PROBE_LOCK, candidates, probe_records, selected_records
+from backend.admin_probe import ADMIN_PROBE_LOCK, CandidateFilter, candidates, probe_records, selected_records
+from backend.api_contract import PROBE_EVIDENCE_TTL, _probe_checked_at
 from backend.admin_state import AdminStateError, AdminStateStore
 from backend.indexes import rebuild_index
 from url_adapters.service import DISCOVERERS, PC_DISCOVERERS, discover_games
@@ -43,6 +44,21 @@ def _safe_discover_item(item: dict[str, Any]) -> dict[str, Any]:
         "new": bool(item.get("new")), "available": item.get("available"),
         "path": None, "error": "discovery_failed" if item.get("error") else None,
     }
+
+
+def _scheduled_candidate_filter(mode: str, now: datetime) -> CandidateFilter:
+    def include(_artifact_index: int, _url_index: int, _artifact: dict[str, Any], candidate: dict[str, Any]) -> bool:
+        if candidate.get("source_kind") != "official":
+            return False
+        if mode == "full":
+            return True
+        current = candidate.get("current")
+        checked = _probe_checked_at(current) if isinstance(current, dict) else None
+        if checked is not None and checked[1] <= now and now - checked[1] < PROBE_EVIDENCE_TTL:
+            return False
+        return True
+
+    return include
 
 
 def _valid_job_snapshot(value: dict[str, Any]) -> bool:
@@ -89,6 +105,8 @@ class OperationManager:
         self._lock = RLock()
         self._cancel = Event()
         self._job: dict[str, Any] | None = None
+        self._thread: Thread | None = None
+        self._manual_probe_active = False
         self._restore()
 
     def _restore(self) -> None:
@@ -138,27 +156,63 @@ class OperationManager:
                 raise KeyError(job_id)
             return self._view(after)
 
-    def start(self, actions: list[str], game_ids: list[str], scope: str, timeout: int, workers: int) -> dict[str, Any]:
+    def start(self, actions: list[str], game_ids: list[str], scope: str, timeout: int, workers: int, *, scheduled_mode: str | None = None) -> dict[str, Any]:
+        if scheduled_mode is not None and (scheduled_mode not in {"normal", "full"} or actions != ["probe"]):
+            raise ValueError("invalid_scheduled_mode")
         with self._lock:
-            if self._job is not None and self._job.get("status") in {"running", "cancelling"}:
+            if self._manual_probe_active or self._job is not None and self._job.get("status") in {"running", "cancelling"}:
                 raise RuntimeError("operation_already_running")
             self._cancel = Event()
+            candidate_filter = None
+            started_at = None
+            if scheduled_mode is not None:
+                selected_at = self.clock()
+                if selected_at.tzinfo is None:
+                    selected_at = selected_at.replace(tzinfo=timezone.utc)
+                selected_at = selected_at.astimezone(timezone.utc)
+                candidate_filter = _scheduled_candidate_filter(scheduled_mode, selected_at)
+                started_at = selected_at.isoformat(timespec="seconds").replace("+00:00", "Z")
             discover_total = sum(len([g for g in game_ids if g in registry]) for registry in ((DISCOVERERS,) if scope == "android" else (PC_DISCOVERERS,) if scope == "pc" else (DISCOVERERS, PC_DISCOVERERS))) if "discover" in actions else 0
             records = selected_records(self.data_root, game_ids, scope) if "probe" in actions else []
-            probe_total = sum(sum(1 for _ in candidates(record)) for _, record in records)
+            probe_total = sum(sum(1 for candidate in candidates(record) if candidate_filter is None or candidate_filter(*candidate)) for _, record in records)
             self._job = {
                 "job_id": uuid4().hex[:16], "status": "running",
                 "phase": actions[0], "actions": list(actions), "game_ids": list(game_ids), "scope": scope,
                 "completed": 0, "total": discover_total + probe_total,
                 "phase_completed": 0, "phase_total": discover_total if actions[0] == "discover" else probe_total,
                 "succeeded": 0, "failed": 0, "current": None,
-                "started_at": _timestamp(self.clock), "finished_at": None,
+                "started_at": started_at or _timestamp(self.clock), "finished_at": None,
                 "result": None, "error": None, "logs": [f"任务启动 scope={scope}"],
             }
+            if scheduled_mode is not None:
+                self._log(f"自动探活任务 scheduled_mode={scheduled_mode}")
             self._save()
             job_id = self._job["job_id"]
-            Thread(target=self._run, args=(job_id, actions, game_ids, scope, timeout, workers), daemon=True).start()
+            thread = Thread(target=self._run, args=(job_id, actions, game_ids, scope, timeout, workers, candidate_filter), daemon=True)
+            self._thread = thread
+            thread.start()
             return self._view()
+
+    def shutdown(self, timeout: float = 30) -> bool:
+        with self._lock:
+            thread = self._thread
+            if thread is None:
+                return True
+            if self._job is not None and self._job.get("status") in {"running", "cancelling"}:
+                self._cancel.set()
+        thread.join(max(0.0, timeout))
+        return not thread.is_alive()
+
+    def begin_manual_probe(self) -> None:
+        """Reserve the same execution slot used by background probe jobs."""
+        with self._lock:
+            if self._manual_probe_active or self._job is not None and self._job.get("status") in {"running", "cancelling"}:
+                raise RuntimeError("operation_already_running")
+            self._manual_probe_active = True
+
+    def end_manual_probe(self) -> None:
+        with self._lock:
+            self._manual_probe_active = False
 
     def cancel(self, job_id: str) -> dict[str, Any]:
         with self._lock:
@@ -249,7 +303,7 @@ class OperationManager:
                     if item.get("game_id") == game_id and item.get("platform") == platform:
                         item.update({"ok": False, "status": "failed", "error": "index_rebuild_failed"})
 
-    def _run(self, job_id: str, actions: list[str], game_ids: list[str], scope: str, timeout: int, workers: int) -> None:
+    def _run(self, job_id: str, actions: list[str], game_ids: list[str], scope: str, timeout: int, workers: int, candidate_filter: CandidateFilter | None = None) -> None:
         result = {"actions": actions, "game_ids": game_ids, "scope": scope, "discover": None, "probe": None}
         completed = failed = 0
         try:
@@ -281,13 +335,15 @@ class OperationManager:
                 return
             if "probe" in actions:
                 records = selected_records(self.data_root, game_ids, scope)
-                probe_total = sum(sum(1 for _ in candidates(record)) for _, record in records)
+                probe_total = sum(sum(1 for candidate in candidates(record) if candidate_filter is None or candidate_filter(*candidate)) for _, record in records)
                 with self._lock:
                     if self._job and self._job["job_id"] == job_id:
                         self._job["total"] = completed + probe_total
                         self._job["_phase_failed"] = 0
                 self._phase(job_id, "probe", completed, probe_total)
                 kwargs: dict[str, Any] = {"progress": lambda item, done, total: self._progress(job_id, "probe", completed, failed, item, done, total), "cancelled": self._cancel.is_set}
+                if candidate_filter is not None:
+                    kwargs["candidate_filter"] = candidate_filter
                 if self.probe_fn is not None:
                     kwargs["probe_fn"] = self.probe_fn
                 if self.apply_fn is not None:

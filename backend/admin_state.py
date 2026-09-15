@@ -68,7 +68,7 @@ class AdminStateStore:
         self._lock = RLock()
 
     def _path(self, name: str) -> Path:
-        if name not in {"schedules", "latest_operation"}:
+        if name not in {"schedules", "latest_operation", "probe_scheduler"}:
             raise ValueError("unknown admin state document")
         directory = _ensure_directory(self.root / "admin")
         return directory / f"{name}.json"

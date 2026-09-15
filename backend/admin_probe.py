@@ -27,6 +27,7 @@ from probe_adapters.service import probe as default_probe
 
 ProbeCallable = Callable[..., dict[str, Any]]
 ApplyCallable = Callable[[dict[str, Any], dict[str, Any]], dict[str, Any]]
+CandidateFilter = Callable[[int, int, dict[str, Any], dict[str, Any]], bool]
 ADMIN_PROBE_LOCK = RLock()
 
 
@@ -301,10 +302,17 @@ def probe_public_url(root: Path, url: str, artifact_url_id: int, timeout: int, *
     return _public_result(url, result, None, persisted=True, artifact_url_id=artifact_url_id)
 
 
-def _probe_record(root: Path, path: Path, record: dict[str, Any], timeout: int, probe_fn: ProbeCallable, apply_fn: ApplyCallable, cancelled: Callable[[], bool]) -> list[dict[str, Any]]:
+def _filtered_candidates(record: dict[str, Any], candidate_filter: CandidateFilter | None) -> list[tuple[int, int, dict[str, Any], dict[str, Any]]]:
+    values = list(candidates(record))
+    if candidate_filter is None:
+        return values
+    return [item for item in values if candidate_filter(*item)]
+
+
+def _probe_record(root: Path, path: Path, record: dict[str, Any], timeout: int, probe_fn: ProbeCallable, apply_fn: ApplyCallable, cancelled: Callable[[], bool], candidate_filter: CandidateFilter | None = None) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
     current = deepcopy(record)
-    for ai, ui, artifact, candidate in list(candidates(record)):
+    for ai, ui, artifact, candidate in _filtered_candidates(record, candidate_filter):
         if cancelled():
             break
         url = candidate["url"]
@@ -340,14 +348,14 @@ def selected_records(root: Path, game_ids: list[str], scope: str, *, domain_id: 
     return result
 
 
-def probe_records(root: Path, records: list[tuple[Path, dict[str, Any]]], timeout: int, workers: int, *, probe_fn: ProbeCallable = default_probe, apply_fn: ApplyCallable = default_apply_result, progress: Callable[[dict[str, Any], int, int], None] | None = None, cancelled: Callable[[], bool] | None = None) -> dict[str, Any]:
+def probe_records(root: Path, records: list[tuple[Path, dict[str, Any]]], timeout: int, workers: int, *, probe_fn: ProbeCallable = default_probe, apply_fn: ApplyCallable = default_apply_result, progress: Callable[[dict[str, Any], int, int], None] | None = None, cancelled: Callable[[], bool] | None = None, candidate_filter: CandidateFilter | None = None) -> dict[str, Any]:
     is_cancelled = cancelled or (lambda: False)
-    total = sum(sum(1 for _ in candidates(record)) for _, record in records)
+    total = sum(len(_filtered_candidates(record, candidate_filter)) for _, record in records)
     items: list[dict[str, Any]] = []
     affected: set[tuple[str, str, str, str]] = set()
     with ThreadPoolExecutor(max_workers=max(1, min(workers, len(records) or 1))) as pool:
         futures = {
-            pool.submit(_probe_record, root, path, record, timeout, probe_fn, apply_fn, is_cancelled): record
+            pool.submit(_probe_record, root, path, record, timeout, probe_fn, apply_fn, is_cancelled, candidate_filter): record
             for path, record in records if not is_cancelled()
         }
         for future in as_completed(futures):
@@ -355,7 +363,7 @@ def probe_records(root: Path, records: list[tuple[Path, dict[str, Any]]], timeou
             try:
                 batch = future.result()
             except Exception as error:  # isolate one corrupt/custom adapter record
-                failed_candidates = list(candidates(record))
+                failed_candidates = _filtered_candidates(record, candidate_filter)
                 batch = [
                     {
                         "game_id": record["game_id"], "version": record["version"], "platform": record["platform"],
