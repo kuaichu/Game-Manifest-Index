@@ -6,13 +6,13 @@
 
 ## 当前结论
 
-- 定时探活、探活状态展示修复、未知筛选修复、前台管理入口移除及蓝色星原归档下载展示修复，已提交并推送到 GitHub。
-- 本轮功能发布基线为 `integration/v5` 的 `4d71430` 和 `main` 的 `1747971`，均已推送。后续交接文档提交不改变功能代码或数据；最新分支 tip 以 Git 为准。`main` 保留此前触发 Cloudflare 部署的空提交，因此本次晋级使用正常合并提交。
-- Debian 12 服务器 `10.0.0.234` 的后端位于 `/opt/GMI`，代码为 `1747971`；systemd 服务 `gmi-v5.service` 为 `active`、`enabled`，监听 `0.0.0.0:8000`，单 worker。
+- 定时探活、探活状态展示修复、未知筛选修复、前台管理入口移除及蓝色星原 PC / Android 归档下载展示修复，已提交并推送到 GitHub。
+- 本轮功能发布基线为 `integration/v5` 的 `fd4dcd6` 和 `main` 的 `2714bb1`，均已推送。后续交接文档提交不改变功能代码或数据；最新分支 tip 以 Git 为准。`main` 保留此前触发 Cloudflare 部署的空提交，因此本次晋级使用正常合并提交。
+- Debian 12 服务器 `10.0.0.234` 的后端位于 `/opt/GMI`，代码为 `2714bb1`；systemd 服务 `gmi-v5.service` 为 `active`、`enabled`，监听 `0.0.0.0:8000`，单 worker。
 - 内网 API：`http://10.0.0.234:8000/api/v1`。本轮服务重启后健康及蓝色星原域能力接口均为 200；公网 API 已确认为 `https://api.yeque.top:9000/gmi/api/v1`，健康、域、artifact 和文件清单接口均已验证。
 - 服务器计时器 `running=true`，但计划 `enabled=false`、`next_run_at=null`。进程运行不等于启用了自动探活，不应自行改为启用。
 - 本机数据仍有大量未提交修改。迁移快照已在服务器核对一致；后续本机与服务器各自的探活和管理操作不会通过 Git 自动同步。
-- 当前工作分支为 `integration/v5`。蓝色星原归档及下载展示修复已晋级并推送；工作区仍保留此前大量未提交的其他游戏数据、README 和新增条目，未纳入本次发布。
+- 当前工作分支为 `integration/v5`。蓝色星原 PC 与 Android APK 归档及下载展示修复已晋级并推送；工作区仍保留此前大量未提交的其他游戏数据、README 和新增条目，未纳入本次发布。
 
 ## 项目与入口
 
@@ -27,8 +27,9 @@ Game Manifest Index 索引游戏资源链接、版本及元数据，不托管安
 - `data/` 保存记录、索引和清单；`.cache/` 是默认状态及缓存目录。
 - `README.md` 面向 GitHub 访客，仅介绍项目用途、功能、游戏支持和边界；安装、启动、环境变量及部署说明保留在本文。分支晋级以 `BRANCHING.md` 为最高仓库级规则。
 - 新增内测归档：`data/manjuu/azurpromilia/pc/0.3.0.6.json`、`index.json` 和 `manifests/0.3.0.6/pg_item_v2.json`。版本记录含 644 个 `pg_chunk` segment artifact 和 1 个 `pg_item_v2` file-manifest artifact；独立文件清单含 34,758 个文件，官方 URL 由清单 base URL 与相对路径还原。
+- 新增 Android 内测 APK：`data/manjuu/azurpromilia/android/0.3.0.2634121.json` 和 `index.json`，后端自动识别默认域 `azurpromilia-android`。仅保存官方直链和元数据，未注册自动采集或探活适配器。
 - `data/catalog.admin.json` 注册游戏 `azurpromilia`（蓝色星原：旅谣）和 `azurpromilia-pc`；厂商为 `manjuu`，域能力为 `packages/files/archive`，适配器显示为 `generic`。图标使用 Apple App Store `artworkUrl512` 远程地址；前端厂商显示元数据为“蛮啾网络”。
-- 蓝色星原没有注册自动采集适配器，也不会进入批量或定时探活候选；当前版本的 645 个 URL 均没有 `urls[].current` 探活证据。
+- 蓝色星原没有注册自动采集适配器，也不会进入批量或定时探活候选；PC 版本的 645 个 URL 和 Android 内测 APK 的 1 个 URL 均没有 `urls[].current` 探活证据。
 - 蓝色星原域仅声明 `metadata_inference`、`live_probe=false`；前端隐藏该游戏的“无证据”徽章并允许官方直链下载，不伪造探活结果。其他游戏仍保留原有证据门控。
 
 ## 本地开发与运行
@@ -101,19 +102,20 @@ npm run build
 
 | 功能发布引用 | 提交 | 说明 |
 | --- | --- | --- |
-| `integration/v5` 功能基线 | `4d71430` | 蓝色星原归档与下载展示修复发布；其后仅有交接文档提交 |
-| `main` 功能基线 | `1747971` | 正常合并 `integration/v5`；其后仅有交接文档提交 |
-| `codex/project-overview` | `c7538db` | 本轮文档任务分支，修改未提交 |
-| 服务器 `/opt/GMI` | `1747971` | 与当前 main 的代码内容一致，已重启验收 |
+| `integration/v5` 功能基线 | `fd4dcd6` | 蓝色星原 Android APK 归档与展示修复发布；其后仅有交接文档提交 |
+| `main` 功能基线 | `2714bb1` | 正常合并 `integration/v5`；其后仅有交接文档提交 |
+| `codex/project-overview` | `c7538db` | 历史任务分支，保留原引用 |
+| `data/azurpromilia-apk` | `9bd9647` | 蓝色星原 Android APK 数据与前端展示修复，已 squash 到 `integration/v5` |
+| 服务器 `/opt/GMI` | `2714bb1` | 与当前 main 的功能代码内容一致，已重启验收 |
 
-发布过程：蓝色星原任务分支提交 `9e41f49`，squash 到 `integration/v5` 得到 `4d71430`；由于 `main` 保留此前空提交，使用正常合并得到 `1747971`，随后推送 GitHub 并部署服务器。
+此前 PC 发布过程：蓝色星原任务分支提交 `9e41f49`，squash 到 `integration/v5` 得到 `4d71430`；由于 `main` 保留此前空提交，使用正常合并得到 `1747971`，随后推送 GitHub 并部署服务器。本次 Android 发布记录见文末补充。
 
 2026-09-15 16:15 本机统计有 565 项已跟踪 `data/` 修改、13 项未跟踪数据条目。此前发布排除了这些内容和本交接文档。它们来自历史同步、探活或管理操作，不可 reset、clean、覆盖或直接批量提交。
 
 - 本交接文档已在本轮更新，并随文档提交晋级到 `integration/v5` / `main`。
 - `E:\Project\Active\GMI V5-main-release` 是晋级时创建的 main worktree；其他历史 worktree 仍存在。
 - 不要擅自删除 worktree 或任务分支。下一次变更前重新检查分支占用和用户改动。
-- 本轮蓝色星原任务修改了 catalog、后端厂商/官方域白名单、探活候选排除、仅元数据直链下载展示、前端通用 file-manifest 展示与分页；未修改其他游戏数据，也未更改服务器计划或环境变量名。代码已推送并部署至服务器 `1747971`。
+- 此前蓝色星原 PC 任务修改了 catalog、后端厂商/官方域白名单、探活候选排除、仅元数据直链下载展示、前端通用 file-manifest 展示与分页。本次新增 Android APK 数据并统一前台验证状态隐藏逻辑；未修改其他游戏数据，也未更改服务器计划或环境变量名。功能代码已推送并部署至服务器 `2714bb1`。
 
 ## 已完成能力与最近修复
 
@@ -249,3 +251,13 @@ curl --fail --max-time 10 http://127.0.0.1:8000/api/v1/health
 9. 本轮功能代码已提交、推送并部署；交接文档随后提交并推送。`AGENTS.md`、`BRANCHING.md` 未修改。工作区中此前未提交的其他游戏数据、README 和新增条目仍保留，后续操作前必须重新核对范围。
 
 早前本机后台启动曾在进程创建前被执行层返回 `blocked by policy`，根因未确认，之后用户手动启动成功。它不代表应用启动失败，也不应再作为服务器部署未完成的依据。
+
+## 2026-09-16 蓝色星原 Android APK 发布补充
+
+- 新增 `data/manjuu/azurpromilia/android/0.3.0.2634121.json` 和 `index.json`，域为 `azurpromilia-android`。APK 文件大小为 `1,384,742,820` 字节，CRC64 为 `18123626472714408145`，来源为用户提供的 Manjuu 官方直链；未解析 APK 内部 version code，记录保持 `null`。
+- 前端 `src/views/ArchiveView.vue` 对蓝色星原的 PC 与 Android 域统一使用 metadata-only 展示：隐藏“未验证”徽章、可用性筛选和锁定下载状态，保留官方直链复制与下载。未新增适配器，未写入探活证据。
+- 发布提交：任务分支 `9bd9647`；`integration/v5` squash 提交 `fd4dcd6`；`main` 正常合并提交 `2714bb1`。两条远程分支均已推送到 GitHub。
+- 服务器 `/opt/GMI` 已快进到 `2714bb1` 并重启 `gmi-v5.service`。验收结果：服务 `active` / `enabled`，`GET /api/v1/health` 返回 200，蓝色星原域列表和 `azurpromilia-android` 版本接口返回 200。
+- 公网 API 的健康、Android 版本列表和版本详情均返回 200。`https://gmi.yeque.top` 用常规 HTTP User-Agent 请求返回 200，线上 JS `index-CyxHGaab.js` 已包含蓝色星原统一隐藏可用性展示的条件；Python 默认 User-Agent 曾返回 403，未将其误判为应用故障。
+- 本次实际验证：`src/azurpromilia-catalog.test.ts` 与 `src/archive-navigation.test.ts` 共 22 项通过，`npm run build` 通过。未进行客户端浏览器像素级验收。
+- 本机和服务器仍保留此前未提交的数据变更；服务器探活计划仍为 `enabled=false`，本次部署没有启用或修改计划。
