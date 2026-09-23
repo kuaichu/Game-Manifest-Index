@@ -77,7 +77,7 @@ class SchedulerTests(unittest.TestCase):
         self.operations.start.assert_not_called()
         self.advance(seconds=1)
         args, kwargs = self.operations.start.call_args
-        self.assertEqual(args[0], ["probe"])
+        self.assertEqual(args[0], ["discover", "probe"])
         self.assertEqual(args[2:], ("all", 10, 8))
         self.assertIn("hk4e", args[1])
         self.assertEqual(kwargs, {"scheduled_mode": "normal"})
@@ -193,9 +193,11 @@ class SchedulerAppTests(unittest.TestCase):
             def probe(url, **kwargs):
                 called.set()
                 return fake_probe(url, **kwargs)
+            discovery = Mock(return_value={"items": []})
             timer = APSchedulerTimer(poll_seconds=0.02)
             app = create_app(data, state_root=state, admin_token="fixture-token",
-                             probe_fn=probe, clock=lambda: now[0], scheduler_timer=timer)
+                             discovery=discovery, probe_fn=probe,
+                             clock=lambda: now[0], scheduler_timer=timer)
             auth = {"Authorization": "Bearer fixture-token"}
             with TestClient(app) as client:
                 self.assertEqual(client.get("/api/v1/admin/probe/scheduler").status_code, 401)
@@ -216,6 +218,7 @@ class SchedulerAppTests(unittest.TestCase):
                     self.assertLess(time.monotonic(), deadline)
                     time.sleep(0.01)
                 self.assertEqual(job["result"]["probe"]["checked"], 1)
+                self.assertTrue(discovery.called)
                 saved = json.loads((data / "mihoyo/hk4e/android/1.0.0.json").read_text())
                 self.assertEqual(saved["artifacts"][0]["urls"][0]["current"]["state"], "available")
             self.assertFalse(app.state.probe_scheduler.status()["running"])

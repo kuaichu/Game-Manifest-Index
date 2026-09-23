@@ -1,4 +1,4 @@
-"""Portable timer adapter and persisted, single-worker probe scheduling policy."""
+"""Portable timer adapter and persisted, single-worker discovery/probe schedule."""
 
 from __future__ import annotations
 
@@ -195,7 +195,7 @@ class ProbeScheduler:
         self._runtime = reserved
         try:
             job = self.operations.start(
-                ["probe"], sorted(set(DISCOVERERS) | set(PC_DISCOVERERS)),
+                ["discover", "probe"], sorted(set(DISCOVERERS) | set(PC_DISCOVERERS)),
                 "all", 10, 8, scheduled_mode=schedule["mode"],
             )
         except RuntimeError:
