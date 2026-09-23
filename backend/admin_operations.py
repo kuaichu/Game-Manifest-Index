@@ -48,7 +48,9 @@ def _safe_discover_item(item: dict[str, Any]) -> dict[str, Any]:
 
 def _scheduled_candidate_filter(mode: str, now: datetime) -> CandidateFilter:
     def include(_artifact_index: int, _url_index: int, _artifact: dict[str, Any], candidate: dict[str, Any]) -> bool:
-        if candidate.get("source_kind") != "official":
+        # Historical URLs already in the archive are probed without changing their provenance.
+        # New URL discovery still uses only the registered official adapters.
+        if candidate.get("source_kind") not in {"official", "legacy"}:
             return False
         if mode == "full":
             return True
@@ -157,7 +159,10 @@ class OperationManager:
             return self._view(after)
 
     def start(self, actions: list[str], game_ids: list[str], scope: str, timeout: int, workers: int, *, scheduled_mode: str | None = None) -> dict[str, Any]:
-        if scheduled_mode is not None and (scheduled_mode not in {"normal", "full"} or actions != ["probe"]):
+        if scheduled_mode is not None and (
+            scheduled_mode not in {"normal", "full"}
+            or actions not in (["probe"], ["discover", "probe"])
+        ):
             raise ValueError("invalid_scheduled_mode")
         with self._lock:
             if self._manual_probe_active or self._job is not None and self._job.get("status") in {"running", "cancelling"}:
