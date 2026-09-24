@@ -4856,7 +4856,7 @@ onBeforeUnmount(() => {
                     v-model="probeSchedule.mode"
                     :options="[
                       { label: '普通轮（跳过 20h 内有效证据）', value: 'normal' },
-                      { label: '全量轮（官方与历史 URL）', value: 'full' }
+                      { label: '全量轮（新发现及上次可用 URL）', value: 'full' }
                     ]"
                   />
                 </div>

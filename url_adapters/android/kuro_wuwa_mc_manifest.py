@@ -47,7 +47,7 @@ def discover_collection(collection: KuroApkCollection, output_root: Path) -> Pat
     """Organize, validate, and safely persist one collected APK."""
     try:
         record = organize_kuro_apk(collection)
-        return persist_v2_record(record, output_root)
+        return persist_v2_record(record, output_root, preserve_url_current=True)
     except (KuroApkOrganizationError, VersionStoreError) as error:
         raise AdapterError(str(error)) from error
 

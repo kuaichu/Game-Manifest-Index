@@ -27,7 +27,7 @@ from probe_adapters.service import probe as default_probe
 
 ProbeCallable = Callable[..., dict[str, Any]]
 ApplyCallable = Callable[[dict[str, Any], dict[str, Any]], dict[str, Any]]
-CandidateFilter = Callable[[int, int, dict[str, Any], dict[str, Any]], bool]
+CandidateFilter = Callable[[dict[str, Any], int, int, dict[str, Any], dict[str, Any]], bool]
 ADMIN_PROBE_LOCK = RLock()
 
 
@@ -310,7 +310,7 @@ def _filtered_candidates(record: dict[str, Any], candidate_filter: CandidateFilt
     values = list(candidates(record))
     if candidate_filter is None:
         return values
-    return [item for item in values if candidate_filter(*item)]
+    return [item for item in values if candidate_filter(record, *item)]
 
 
 def _probe_record(root: Path, path: Path, record: dict[str, Any], timeout: int, probe_fn: ProbeCallable, apply_fn: ApplyCallable, cancelled: Callable[[], bool], candidate_filter: CandidateFilter | None = None) -> list[dict[str, Any]]:

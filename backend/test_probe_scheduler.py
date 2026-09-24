@@ -80,6 +80,7 @@ class SchedulerTests(unittest.TestCase):
         self.assertEqual(args[0], ["discover", "probe"])
         self.assertEqual(args[2:], ("all", 10, 8))
         self.assertIn("hk4e", args[1])
+        self.assertNotIn("azurpromilia", args[1])
         self.assertEqual(kwargs, {"scheduled_mode": "normal"})
         self.assertEqual(self.scheduler.status()["last_job_id"], "scheduled-1")
         self.assertEqual(self.scheduler.status()["next_run_at"], "2026-09-14T02:00:00Z")
@@ -186,7 +187,11 @@ class SchedulerAppTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             data, state = Path(temp) / "data", Path(temp) / "state"
             data.mkdir()
-            write_v2_record(record("android"), data)
+            fixture = record("android")
+            fixture["artifacts"][0]["urls"][0]["current"] = {
+                "state": "available", "checked_at": "2026-09-12T00:00:00Z",
+            }
+            write_v2_record(fixture, data)
             rebuild_index(data, "mihoyo", "hk4e", "android")
             now = [datetime(2026, 9, 14, tzinfo=timezone.utc)]
             called = Event()
