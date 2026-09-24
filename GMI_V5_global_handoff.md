@@ -7,12 +7,12 @@
 ## 当前结论
 
 - 定时探活、探活状态展示修复、未知筛选修复、前台管理入口移除及蓝色星原 PC / Android 归档下载展示修复，已提交并推送到 GitHub。
-- 本轮功能发布基线为 `integration/v5` 的 `fd4dcd6` 和 `main` 的 `2714bb1`，均已推送。后续交接文档提交不改变功能代码或数据；最新分支 tip 以 Git 为准。`main` 保留此前触发 Cloudflare 部署的空提交，因此本次晋级使用正常合并提交。
-- Debian 12 服务器 `10.0.0.234` 的后端位于 `/opt/GMI`，代码为 `2714bb1`；systemd 服务 `gmi-v5.service` 为 `active`、`enabled`，监听 `0.0.0.0:8000`，单 worker。
+- 定时探活可用 URL 轮换修复已推送：`integration/v5` 功能提交为 `c363cdf`，`main` 正常合并提交为 `ba78e67`。交接文档保留在 `integration/v5`；`main` 按公开仓库清理约定不跟踪内部交接文档。
+- Debian 12 服务器 `10.0.0.234` 的后端位于 `/opt/GMI`，代码为 `ba78e67`；systemd 服务 `gmi-v5.service` 为 `active`、`enabled`，监听 `0.0.0.0:8000`，单 worker。
 - 内网 API：`http://10.0.0.234:8000/api/v1`。本轮服务重启后健康及蓝色星原域能力接口均为 200；公网 API 已确认为 `https://api.yeque.top:9000/gmi/api/v1`，健康、域、artifact 和文件清单接口均已验证。
-- 服务器计时器 `running=true`，但计划 `enabled=false`、`next_run_at=null`。进程运行不等于启用了自动探活，不应自行改为启用。
+- 服务器计时器 `running=true`，现有计划保持 `enabled=true`、`interval_hours=12`、`mode=normal`；2026-09-24 发布验收时下一轮为 `2026-09-24T08:17:26Z`。
 - 本机数据仍有大量未提交修改。迁移快照已在服务器核对一致；后续本机与服务器各自的探活和管理操作不会通过 Git 自动同步。
-- 当前工作分支为 `integration/v5`。蓝色星原 PC 与 Android APK 归档及下载展示修复已晋级并推送；工作区仍保留此前大量未提交的其他游戏数据、README 和新增条目，未纳入本次发布。
+- 日常工作区 `E:\Project\Active\GMI V5` 仍保留大量未提交的其他游戏数据、README 和新增条目；本次发布在隔离工作树中完成，未纳入这些变更。
 
 ## 项目与入口
 
@@ -31,7 +31,7 @@ Game Manifest Index 索引游戏资源链接、版本及元数据，不托管安
 - `data/catalog.admin.json` 注册游戏 `azurpromilia`（蓝色星原：旅谣）和 `azurpromilia-pc`；厂商为 `manjuu`，域能力为 `packages/files/archive`，适配器显示为 `generic`。图标使用 Apple App Store `artworkUrl512` 远程地址；前端厂商显示元数据为“蛮啾网络”。
 - 蓝色星原没有注册自动采集适配器，也不会进入批量或定时探活候选；PC 版本的 645 个 URL 和 Android 内测 APK 的 1 个 URL 均没有 `urls[].current` 探活证据。
 - 蓝色星原域仅声明 `metadata_inference`、`live_probe=false`；前端隐藏该游戏的“无证据”徽章并允许官方直链下载，不伪造探活结果。其他游戏仍保留原有证据门控。
-- 2026-09-24 本轮待晋级的定时探活修复已在独立工作树完成真实本地调度验证：候选只保留 `official` / `legacy` 中当前状态为 `available` 的 URL；新发现且没有 `current` 的 URL 首次进入探活；`unavailable` / `unknown` URL 后续跳过；蓝色星原 Android / PC 候选继续为 0。
+- 2026-09-24 定时探活修复已在独立工作树完成真实本地调度验证并发布：候选只保留 `official` / `legacy` 中当前状态为 `available` 的 URL；新发现且没有 `current` 的 URL 首次进入探活；`unavailable` / `unknown` URL 后续跳过；蓝色星原 Android / PC 候选继续为 0。
 - 证据过期投影已与定时探活候选资格联动：仍在轮换范围内的可用 URL 才会显示过期状态；不再轮换的旧失效 URL 保留 `unavailable`，不附加“证据过期”或下载门控。
 
 ## 本地开发与运行
@@ -87,7 +87,7 @@ npm run build
 - `GET /api/v1/admin/probe/schedule` 读取计划，`PUT` 保存计划；`GET /api/v1/admin/probe/scheduler` 返回运行状态。这些接口均受管理鉴权保护。
 - 计划支持 1～168 小时间隔及 `normal` / `full`；首次启用或修改后等待完整周期，相同计划不重置倒计时。
 - 每 5 秒检查一次，UTC 计算间隔，前端按浏览器时区展示。
-- `normal` 跳过 20 小时内有效的官方 URL 证据，`full` 忽略新鲜度；两者只选 `source_kind=official`，不自动纳入历史导入链接。
+- `normal` 跳过 20 小时内有效的可用 URL 证据，`full` 忽略新鲜度；两者均先从官方来源发现新 URL，再轮换 `source_kind=official` / `legacy` 中新发现或上次可用的链接，跳过已失效及未判定链接。
 - 自动任务、手动批量任务、单 URL / 单版本探活互斥；忙时顺延，停机漏跑合并为一轮。终末地 PC `.chk/.blc` 运行时资源不进入批量探活。
 - `admin/probe_scheduler.json` 保存下次执行时间；保留状态目录才能重启续计时。派发前先保存下周期，若此时崩溃可能跳过本轮；派发失败留错误并下周期重试。
 - 停用计划取消未来触发，已运行任务单独取消。关闭服务会请求取消任务并最多等待 30 秒；不支持多 worker / 多实例协调。
@@ -100,7 +100,7 @@ npm run build
 
 ## Git 与工作区
 
-本轮读取远程 refs 后核对：
+以下为 2026-09-16 的历史发布引用；当前提交见文首和文末 2026-09-24 记录：
 
 | 功能发布引用 | 提交 | 说明 |
 | --- | --- | --- |
@@ -194,7 +194,7 @@ curl --fail --max-time 10 http://127.0.0.1:8000/api/v1/health
 
 上述一致性是迁移快照验收结果，不代表后续本机定时探活产生的新证据会自动同步到服务器。不要再次覆盖已经验收的数据或删除 `.cache/admin`。
 
-### 调度现状
+### 2026-09-16 调度状态（历史记录）
 
 - 本机 `.cache/admin/schedules.json`：探活启用，每小时、`normal`；本轮读取到后续任务已执行并生成下次时间。
 - 服务器计划：`enabled=false`、`interval_hours=1`、`mode=normal`；每日采集为禁用。
@@ -224,7 +224,7 @@ curl --fail --max-time 10 http://127.0.0.1:8000/api/v1/health
 
 崩坏3 Android 8.3 曾返回 `available=false`，原因 `oss_archive_not_restored`。前端把缺失 HTTP 状态码当作未验证的错误已修复，不需要修改该条数据或来源。
 
-20 小时证据有效期仍保留：公共 API `_public_current()` 标记 `stale`，资源汇总 `_artifact_state()` 只采用 `verified`。先前讨论的“保留旧可用状态并放宽汇总”尚未实施。APK 兼容详情与公共 artifact 汇总仍是不同投影，不能声称已全面统一过期展示。
+20 小时证据有效期仍保留，但只对仍在定时轮换范围内的可用 URL 标记 `stale`。失效或未判定的旧 URL 保留真实状态且无过期时间；版本与 artifact 汇总使用同一判断。APK 兼容详情仍是独立投影。
 
 ## 已实际验证
 
@@ -242,7 +242,7 @@ curl --fail --max-time 10 http://127.0.0.1:8000/api/v1/health
 
 ## 剩余事项与工作约束
 
-1. 按用户答复决定是否恢复服务器每小时探活；未答复前保持关闭。蓝色星原即使恢复全局任务也会被候选排除。
+1. 服务器现有定时计划为已启用、每 12 小时、`normal`；本轮部署保持原配置。蓝色星原仍被候选排除。
 2. 公网 API、线上前端构建 API 基址和本次蓝色星原更新已完成 HTTP 验收；浏览器像素级验收仍未进行。
 3. 当前 CI 使用宽松依赖安装，本会话未读取 GitHub Actions 运行结果；不能宣称三平台全绿。若处理兼容性，应在独立任务中固定或升级依赖并验证。
 4. 每日采集外部调度、retention、多 worker / 多实例协调仍未实现；macOS 实际运行尚未核实。
@@ -271,5 +271,6 @@ curl --fail --max-time 10 http://127.0.0.1:8000/api/v1/health
 - `backend/version_store.py` 及 Android / PC 官方发现适配器：发现写回按 artifact、来源和 URL 保留已有探活 `current`，即使发现器返回同一 URL 的新状态，也不会重新激活已确认失效的链接。
 - 蓝色星原 PC / Android 仍未注册定时探活，候选生成器对两端返回 0。
 - 本地真实调度任务 `2049512056b84f76`：发现 20/20 成功；探活只检查 1 条新发现且无旧证据的原神 PC 3.7.0 patch URL，结果 HTTP 206；已有可用证据和旧失效 URL 均未重复检查。旧明日方舟 Android 1.1.50 的 403 URL 仍投影为 `unavailable`、`evidence_status=verified`、`expires_at=null`。
-- 本地调度计划已恢复为 `enabled=false`、`interval_hours=24`、`mode=normal`。本轮相关后端测试 42 项、Android / PC 适配测试 43 项通过；完整 API 合约测试仍保留此前记录的两个基线断言差异，详见测试报告，不归因于本轮改动。
-- 本节代码尚待按 `BRANCHING.md` 晋级到 `integration/v5`、`main` 并部署服务器；服务器现有计划和数据在发布前保持不变。
+- 本地调度计划已恢复为 `enabled=false`、`interval_hours=24`、`mode=normal`。本轮相关后端测试 86 项、Android / PC 适配测试 43 项、前端相关 Vitest 5 项及生产构建通过。完整 API 合约测试 58 项中 56 项通过，2 项基线断言仍预期 24 个域和蓝色星原 `windows`，而当前数据为 25 个域、`multi`；与本轮改动无关。
+- 发布提交：`integration/v5` 为 `c363cdf`，`main` 为 `ba78e67`，均已推送 GitHub。服务器 `/opt/GMI` 已更新到 `ba78e67` 并重启；服务 `active` / `enabled`，内网健康接口 200。旧明日方舟 Android 1.1.50 失效 URL 在服务器 API 中仍为 `unavailable`、`evidence_status=verified`、`expires_at=null`。
+- 服务器保留原有 `enabled=true`、12 小时、`normal` 计划与现存数据；本次未同步或提交本机、服务器未提交的 `data/` 记录。`main` 不跟踪内部交接文档，本文保留在 `integration/v5`。
