@@ -7,8 +7,8 @@
 ## 当前结论
 
 - 定时探活、探活状态展示修复、未知筛选修复、前台管理入口移除及蓝色星原 PC / Android 归档下载展示修复，已提交并推送到 GitHub。
-- 定时探活可用 URL 轮换修复已推送：`integration/v5` 功能提交为 `c363cdf`，`main` 正常合并提交为 `ba78e67`。交接文档保留在 `integration/v5`；`main` 按公开仓库清理约定不跟踪内部交接文档。
-- Debian 12 服务器 `10.0.0.234` 的后端位于 `/opt/GMI`，代码为 `ba78e67`；systemd 服务 `gmi-v5.service` 为 `active`、`enabled`，监听 `0.0.0.0:8000`，单 worker。
+- 定时探活可用 URL 轮换修复的功能提交为 `c363cdf`；交接文档提交后 `integration/v5` tip 为 `d65078b`，`main` tip 为 `3abae81`。交接文档保留在 `integration/v5`；`main` 按公开仓库清理约定不跟踪内部交接文档。
+- Debian 12 服务器 `10.0.0.234` 的后端位于 `/opt/GMI`，代码 tip 为 `3abae81`（运行时代码与 `ba78e67` 相同）；systemd 服务 `gmi-v5.service` 为 `active`、`enabled`，监听 `0.0.0.0:8000`，单 worker。
 - 内网 API：`http://10.0.0.234:8000/api/v1`。本轮服务重启后健康及蓝色星原域能力接口均为 200；公网 API 已确认为 `https://api.yeque.top:9000/gmi/api/v1`，健康、域、artifact 和文件清单接口均已验证。
 - 服务器计时器 `running=true`，现有计划保持 `enabled=true`、`interval_hours=12`、`mode=normal`；2026-09-24 发布验收时下一轮为 `2026-09-24T08:17:26Z`。
 - 本机数据仍有大量未提交修改。迁移快照已在服务器核对一致；后续本机与服务器各自的探活和管理操作不会通过 Git 自动同步。
@@ -272,5 +272,5 @@ curl --fail --max-time 10 http://127.0.0.1:8000/api/v1/health
 - 蓝色星原 PC / Android 仍未注册定时探活，候选生成器对两端返回 0。
 - 本地真实调度任务 `2049512056b84f76`：发现 20/20 成功；探活只检查 1 条新发现且无旧证据的原神 PC 3.7.0 patch URL，结果 HTTP 206；已有可用证据和旧失效 URL 均未重复检查。旧明日方舟 Android 1.1.50 的 403 URL 仍投影为 `unavailable`、`evidence_status=verified`、`expires_at=null`。
 - 本地调度计划已恢复为 `enabled=false`、`interval_hours=24`、`mode=normal`。本轮相关后端测试 86 项、Android / PC 适配测试 43 项、前端相关 Vitest 5 项及生产构建通过。完整 API 合约测试 58 项中 56 项通过，2 项基线断言仍预期 24 个域和蓝色星原 `windows`，而当前数据为 25 个域、`multi`；与本轮改动无关。
-- 发布提交：`integration/v5` 为 `c363cdf`，`main` 为 `ba78e67`，均已推送 GitHub。服务器 `/opt/GMI` 已更新到 `ba78e67` 并重启；服务 `active` / `enabled`，内网健康接口 200。旧明日方舟 Android 1.1.50 失效 URL 在服务器 API 中仍为 `unavailable`、`evidence_status=verified`、`expires_at=null`。
+- 发布提交：功能提交 `c363cdf`、`integration/v5` tip `d65078b`、`main` tip `3abae81` 均已推送 GitHub。服务器 `/opt/GMI` 已更新到 `3abae81`，功能发布时已重启 `gmi-v5.service`；服务 `active` / `enabled`，内网健康接口 200。旧明日方舟 Android 1.1.50 失效 URL 在服务器 API 中仍为 `unavailable`、`evidence_status=verified`、`expires_at=null`。
 - 服务器保留原有 `enabled=true`、12 小时、`normal` 计划与现存数据；本次未同步或提交本机、服务器未提交的 `data/` 记录。`main` 不跟踪内部交接文档，本文保留在 `integration/v5`。
