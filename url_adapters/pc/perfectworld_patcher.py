@@ -531,7 +531,7 @@ def discover_collection(collection: Collection, output_root: Path) -> Path:
     except (OSError, ValueError) as error:
         raise AdapterError("无法安全写入 Perfect World manifest") from error
     try:
-        return persist_v2_record(record, root, preserve_references=True)
+        return persist_v2_record(record, root, preserve_references=True, preserve_url_current=True)
     except (VersionStoreError, OSError, ValueError) as error:
         raise AdapterError(str(error)) from error
 

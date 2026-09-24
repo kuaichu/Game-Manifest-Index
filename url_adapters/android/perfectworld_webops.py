@@ -71,7 +71,7 @@ def discover_collection(collection: PerfectWorldApkCollection, output_root: Path
     """Organize, validate, and safely persist one collected APK."""
     try:
         record = organize_perfectworld_apk(collection)
-        return persist_v2_record(record, output_root)
+        return persist_v2_record(record, output_root, preserve_url_current=True)
     except (PerfectWorldApkOrganizationError, VersionStoreError) as error:
         raise AdapterError(str(error)) from error
 

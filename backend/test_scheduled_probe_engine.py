@@ -23,7 +23,7 @@ from probe_adapters.service import apply_result
 NOW = datetime(2026, 9, 14, 12, 0, tzinfo=timezone.utc)
 
 
-def _record(platform: str, urls: list[dict], game_id: str = "hk4e") -> dict:
+def _record(platform: str, urls: list[dict], game_id: str = "hk4e", version: str = "1.0.0", vendor: str = "mihoyo") -> dict:
     artifact = {
         "kind": "package" if platform == "windows" else "apk",
         "component": "game", "package_type": "full", "delivery_mode": "direct",
@@ -32,9 +32,9 @@ def _record(platform: str, urls: list[dict], game_id: str = "hk4e") -> dict:
         "checksum": {"md5": hashlib.md5(platform.encode()).hexdigest()}, "urls": urls,
     }
     value = {
-        "schema_version": 2, "vendor": "mihoyo", "game_id": game_id,
+        "schema_version": 2, "vendor": vendor, "game_id": game_id,
         "domain_id": f"{game_id}-{'pc' if platform == 'windows' else 'android'}",
-        "platform": platform, "channel": "official", "version": "1.0.0",
+        "platform": platform, "channel": "official", "version": version,
         "version_code": None if platform == "windows" else 1,
         "file_time": "2026-08-29T00:00:00Z", "artifacts": [artifact],
         "references": [], "is_visible": True,
@@ -46,10 +46,10 @@ def _record(platform: str, urls: list[dict], game_id: str = "hk4e") -> dict:
     return value
 
 
-def _url(name: str, source_kind: str = "official", checked_at: str | None = None) -> dict:
+def _url(name: str, source_kind: str = "official", checked_at: str | None = None, state: str = "available") -> dict:
     value = {"url": f"https://autopatchcn.yuanshen.com/{name}", "provider": "fixture", "source_kind": source_kind, "priority": 0}
     if checked_at is not None:
-        value["current"] = {"state": "available", "checked_at": checked_at}
+        value["current"] = {"state": state, "checked_at": checked_at}
     return value
 
 
@@ -93,8 +93,12 @@ class ScheduledProbeEngineTests(unittest.TestCase):
             _url("future.apk", checked_at=stamp(timedelta(minutes=1))),
             _url("invalid.apk", checked_at="not-a-timestamp"),
             _url("legacy.apk", "legacy", checked_at=stamp(-timedelta(hours=21))),
+            _url("legacy-fresh.apk", "legacy", checked_at=stamp(-timedelta(hours=19))),
             _url("mirror.apk", "mirror", checked_at=stamp(-timedelta(hours=21))),
             _url("unknown.apk", "unknown"),
+            _url("gone.apk", checked_at=stamp(-timedelta(hours=21)), state="unavailable"),
+            _url("inconclusive.apk", checked_at=stamp(-timedelta(hours=21)), state="unknown"),
+            _url("never-probed.apk"),
         ]
         original = _record("android", urls)
         self._save(original)
@@ -107,18 +111,25 @@ class ScheduledProbeEngineTests(unittest.TestCase):
         manager = OperationManager(AdminStateStore(self.state), self.data, probe_fn=probe, apply_fn=apply_result, clock=lambda: NOW)
         started = manager.start(["probe"], ["hk4e"], "android", 5, 1, scheduled_mode="normal")
         finished = self._wait(manager)
-        self.assertEqual(started["phase_total"], 4)
-        self.assertEqual(finished["result"]["probe"]["selected"], 4)
-        self.assertEqual(finished["result"]["probe"]["checked"], 4)
-        self.assertEqual(set(calls), {"boundary.apk", "stale.apk", "future.apk", "invalid.apk"})
+        self.assertEqual(started["phase_total"], 5)
+        self.assertEqual(finished["result"]["probe"]["selected"], 5)
+        self.assertEqual(finished["result"]["probe"]["checked"], 5)
+        self.assertEqual(set(calls), {"boundary.apk", "stale.apk", "future.apk", "invalid.apk", "legacy.apk"})
         self.assertTrue(any("自动探活任务 scheduled_mode=normal" in line for line in finished["logs"]))
         saved = json.loads((self.data / "mihoyo/hk4e/android/1.0.0.json").read_text())
-        for index in (1, 2, 3, 4):
+        for index in (1, 2, 3, 4, 5):
             saved["artifacts"][0]["urls"][index]["current"] = original["artifacts"][0]["urls"][index]["current"]
         self.assertEqual(saved, original)
 
-    def test_full_selects_official_only_and_scope_all_covers_both_platforms(self):
-        urls = [_url("fresh", "official", NOW.isoformat().replace("+00:00", "Z")), _url("legacy", "legacy"), _url("unknown", "unknown"), _url("mirror", "mirror")]
+    def test_full_selects_official_and_legacy_and_scope_all_covers_both_platforms(self):
+        stamp = NOW.isoformat().replace("+00:00", "Z")
+        urls = [
+            _url("fresh", "official", stamp), _url("legacy", "legacy", stamp),
+            _url("gone", "official", stamp, "unavailable"),
+            _url("uncertain", "legacy", stamp, "unknown"),
+            _url("never-probed"), _url("unknown", "unknown", stamp),
+            _url("mirror", "mirror", stamp),
+        ]
         self._save(_record("android", deepcopy(urls)))
         self._save(_record("windows", deepcopy(urls)))
         calls = []
@@ -130,13 +141,160 @@ class ScheduledProbeEngineTests(unittest.TestCase):
         manager = OperationManager(AdminStateStore(self.state), self.data, probe_fn=probe, apply_fn=apply_result, clock=lambda: NOW)
         manager.start(["probe"], ["hk4e"], "all", 5, 2, scheduled_mode="full")
         finished = self._wait(manager)
-        self.assertEqual(finished["result"]["probe"]["selected"], 2)
-        self.assertEqual(finished["result"]["probe"]["checked"], 2)
+        self.assertEqual(finished["result"]["probe"]["selected"], 4)
+        self.assertEqual(finished["result"]["probe"]["checked"], 4)
         self.assertEqual({platform for platform, _name in calls}, {"android", "windows"})
-        self.assertEqual({name for _platform, name in calls}, {"fresh"})
+        self.assertEqual({name for _platform, name in calls}, {"fresh", "legacy"})
+
+    def test_scheduled_discovery_then_probes_new_and_historical_urls(self):
+        self._save(_record("android", [
+            _url("old.apk", "legacy", (NOW - timedelta(hours=21)).isoformat().replace("+00:00", "Z")),
+            _url("unprobed-history.apk"),
+        ]))
+        discovered = _record("android", [_url("new.apk")], version="2.0.0")
+        calls = []
+
+        def discovery(game_ids, root, timeout, workers, *, scope, progress, cancelled):
+            self.assertEqual((game_ids, scope), (["hk4e"], "android"))
+            write_v2_record(discovered, root)
+            item = {"game_id": "hk4e", "platform": "android", "ok": True,
+                    "status": "created", "version": "2.0.0", "new": True}
+            progress(item, 1, 1)
+            return {"items": [item]}
+
+        def probe(url, **kwargs):
+            calls.append(url.rsplit("/", 1)[-1])
+            return _probe(url, **kwargs)
+
+        manager = OperationManager(AdminStateStore(self.state), self.data,
+                                   discovery=discovery, probe_fn=probe,
+                                   apply_fn=apply_result, clock=lambda: NOW)
+        manager.start(["discover", "probe"], ["hk4e"], "android", 5, 1,
+                      scheduled_mode="normal")
+        finished = self._wait(manager)
+        self.assertEqual(finished["status"], "finished")
+        self.assertEqual(finished["result"]["discover"]["new_versions"], 1)
+        self.assertEqual(finished["result"]["probe"]["checked"], 2)
+        self.assertEqual(set(calls), {"old.apk", "new.apk"})
+        for version, source_kind in (("1.0.0", "legacy"), ("2.0.0", "official")):
+            saved = json.loads((self.data / f"mihoyo/hk4e/android/{version}.json").read_text())
+            url = saved["artifacts"][0]["urls"][0]
+            self.assertEqual(url["source_kind"], source_kind)
+            self.assertEqual(url["current"]["state"], "available")
+
+    def test_scheduled_probe_still_checks_history_when_discovery_fails(self):
+        self._save(_record("android", [
+            _url("old.apk", "legacy", (NOW - timedelta(hours=21)).isoformat().replace("+00:00", "Z")),
+            _url("unprobed-history.apk"),
+        ]))
+        calls = []
+
+        def failing_discovery(*args, **kwargs):
+            raise OSError("official endpoint unavailable")
+
+        def probe(url, **kwargs):
+            calls.append(url.rsplit("/", 1)[-1])
+            return _probe(url, **kwargs)
+
+        manager = OperationManager(AdminStateStore(self.state), self.data,
+                                   discovery=failing_discovery, probe_fn=probe,
+                                   apply_fn=apply_result, clock=lambda: NOW)
+        manager.start(["discover", "probe"], ["hk4e"], "android", 5, 1,
+                      scheduled_mode="normal")
+        finished = self._wait(manager)
+        self.assertEqual(finished["status"], "finished")
+        self.assertEqual(finished["result"]["discover"]["failed"], 1)
+        self.assertEqual(finished["result"]["probe"]["checked"], 1)
+        self.assertEqual(calls, ["old.apk"])
+
+    def test_pc_discovery_initially_probes_only_new_and_previously_available_urls(self):
+        stamp = (NOW - timedelta(hours=21)).isoformat().replace("+00:00", "Z")
+        self._save(_record("windows", [
+            _url("old.7z", checked_at=stamp),
+            _url("unprobed-history.7z"),
+        ]))
+        discovered = _record("windows", [_url("new.7z")], version="2.0.0")
+        calls = []
+
+        def discovery(game_ids, root, timeout, workers, *, scope, progress, cancelled):
+            self.assertEqual(scope, "pc")
+            write_v2_record(discovered, root)
+            item = {"game_id": "hk4e", "platform": "windows", "ok": True,
+                    "status": "created", "version": "2.0.0", "new": True}
+            progress(item, 1, 1)
+            return {"items": [item]}
+
+        def probe(url, **kwargs):
+            calls.append(url.rsplit("/", 1)[-1])
+            return _probe(url, **kwargs)
+
+        manager = OperationManager(AdminStateStore(self.state), self.data,
+                                   discovery=discovery, probe_fn=probe,
+                                   apply_fn=apply_result, clock=lambda: NOW)
+        manager.start(["discover", "probe"], ["hk4e"], "pc", 5, 1,
+                      scheduled_mode="normal")
+        finished = self._wait(manager)
+        self.assertEqual(finished["result"]["probe"]["checked"], 2)
+        self.assertEqual(set(calls), {"old.7z", "new.7z"})
+
+    def test_azurpromilia_android_and_pc_never_enter_scheduled_probe(self):
+        stamp = (NOW - timedelta(hours=21)).isoformat().replace("+00:00", "Z")
+        for platform in ("android", "windows"):
+            write_v2_record(
+                _record(platform, [_url("game.bin", checked_at=stamp)],
+                        game_id="azurpromilia", vendor="manjuu"), self.data,
+            )
+        manager = OperationManager(AdminStateStore(self.state), self.data,
+                                   probe_fn=lambda *_args, **_kwargs: self.fail("Azur Promilia was probed"),
+                                   clock=lambda: NOW)
+        manager.start(["probe"], ["azurpromilia"], "all", 5, 1, scheduled_mode="full")
+        finished = self._wait(manager)
+        self.assertEqual(finished["result"]["probe"]["selected"], 0)
+        self.assertEqual(finished["result"]["probe"]["checked"], 0)
+
+    def test_confirmed_unavailable_stops_future_scheduled_probes(self):
+        stamp = (NOW - timedelta(hours=21)).isoformat().replace("+00:00", "Z")
+        self._save(_record("android", [_url("old.apk", "legacy", stamp)]))
+        calls = []
+
+        def probe(url, **kwargs):
+            calls.append(url)
+            return {**_probe(url, **kwargs), "http_code": 404, "available": False, "reason": "HTTP 404"}
+
+        manager = OperationManager(AdminStateStore(self.state), self.data,
+                                   probe_fn=probe, apply_fn=apply_result, clock=lambda: NOW)
+        manager.start(["probe"], ["hk4e"], "android", 5, 1, scheduled_mode="full")
+        first = self._wait(manager)
+        self.assertEqual(first["result"]["probe"]["unavailable"], 1)
+        saved = json.loads((self.data / "mihoyo/hk4e/android/1.0.0.json").read_text())
+        self.assertEqual(saved["artifacts"][0]["urls"][0]["current"]["state"], "unavailable")
+        manager.start(["probe"], ["hk4e"], "android", 5, 1, scheduled_mode="full")
+        second = self._wait(manager)
+        self.assertEqual(second["result"]["probe"]["selected"], 0)
+        self.assertEqual(len(calls), 1)
+
+    def test_probe_failure_keeps_available_url_in_future_rotation(self):
+        from probe_adapters.common import ProbeError
+
+        stamp = (NOW - timedelta(hours=21)).isoformat().replace("+00:00", "Z")
+        self._save(_record("android", [_url("old.apk", checked_at=stamp)]))
+        calls = []
+
+        def failing_probe(url, **kwargs):
+            calls.append(url)
+            raise ProbeError("fixture timeout")
+
+        manager = OperationManager(AdminStateStore(self.state), self.data,
+                                   probe_fn=failing_probe, clock=lambda: NOW)
+        for _ in range(2):
+            manager.start(["probe"], ["hk4e"], "android", 5, 1, scheduled_mode="normal")
+            finished = self._wait(manager)
+            self.assertEqual(finished["result"]["probe"]["selected"], 1)
+            self.assertEqual(finished["result"]["probe"]["failed"], 1)
+        self.assertEqual(len(calls), 2)
 
     def test_scheduled_mode_validation_and_shutdown_share_active_guard(self):
-        self._save(_record("android", [_url("game.apk")]))
+        self._save(_record("android", [_url("game.apk", checked_at=(NOW - timedelta(hours=21)).isoformat().replace("+00:00", "Z"))]))
         gate = Event()
         probe_started = Event()
 
@@ -147,7 +305,7 @@ class ScheduledProbeEngineTests(unittest.TestCase):
 
         manager = OperationManager(AdminStateStore(self.state), self.data, probe_fn=slow_probe, apply_fn=apply_result, clock=lambda: NOW)
         with self.assertRaises(ValueError):
-            manager.start(["discover", "probe"], ["hk4e"], "android", 5, 1, scheduled_mode="normal")
+            manager.start(["discover"], ["hk4e"], "android", 5, 1, scheduled_mode="normal")
         manager.start(["probe"], ["hk4e"], "android", 5, 1, scheduled_mode="full")
         self.assertTrue(probe_started.wait(1))
         with self.assertRaises(RuntimeError):
@@ -168,19 +326,20 @@ class ScheduledProbeEngineTests(unittest.TestCase):
         manager.start(["probe"], ["hk4e"], "all", 1, 1, scheduled_mode="normal")
         self.assertEqual(self._wait(manager)["status"], "finished")
 
-    def test_filtered_record_failure_counts_only_selected_official_candidates(self):
+    def test_filtered_record_failure_counts_selected_official_and_legacy_candidates(self):
         from backend.admin_operations import _scheduled_candidate_filter
-        self._save(_record("android", [_url("official.apk"), _url("legacy.apk", "legacy")]))
+        stamp = (NOW - timedelta(hours=21)).isoformat().replace("+00:00", "Z")
+        self._save(_record("android", [_url("official.apk", checked_at=stamp), _url("legacy.apk", "legacy", checked_at=stamp)]))
         events = []
         with patch("backend.admin_probe._probe_record", side_effect=OSError("fixture failure")):
             result = probe_records(
                 self.data, selected_records(self.data, ["hk4e"], "android"), 1, 1,
-                candidate_filter=_scheduled_candidate_filter("full", NOW),
+                candidate_filter=_scheduled_candidate_filter("full", NOW, frozenset()),
                 progress=lambda item, done, total: events.append((done, total)),
             )
-        self.assertEqual((result["selected"], result["checked"], result["failed"]), (1, 1, 1))
-        self.assertEqual(events, [(1, 1)])
-        self.assertEqual(result["items"][0]["url_index"], 0)
+        self.assertEqual((result["selected"], result["checked"], result["failed"]), (2, 2, 2))
+        self.assertEqual(events, [(1, 2), (2, 2)])
+        self.assertEqual([item["url_index"] for item in result["items"]], [0, 1])
 
 
 if __name__ == "__main__":

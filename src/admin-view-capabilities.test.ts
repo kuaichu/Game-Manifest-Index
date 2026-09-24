@@ -484,8 +484,8 @@ describe("AdminView capability alignment", () => {
     expect(root.textContent).toContain("时区、漏跑策略及采集动作由外部计划任务决定");
     expect(root.textContent).toContain("内置探活计时器：运行中");
     expect(root.textContent).toContain("下次探活：");
-    expect(root.textContent).toContain("服务运行时由内置计时器执行探活");
-    expect(root.textContent).toContain("Android+PC 官方 URL");
+    expect(root.textContent).toContain("内置计时器先从官方来源采集新 URL");
+    expect(root.textContent).toContain("Android+PC 已收录的官方与历史 URL");
     expect(root.textContent).toContain("启动新的间隔周期");
     expect(root.textContent).not.toContain("北京时间");
     expect(adminApi.probeScheduler).toHaveBeenCalled();

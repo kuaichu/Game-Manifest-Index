@@ -14,7 +14,7 @@ import httpx
 import zstandard
 from fastapi.testclient import TestClient
 
-from backend.api_contract import create_api_app
+from backend.api_contract import _public_artifact, create_api_app
 from backend.app import app
 from backend.indexes import rebuild_indexes
 from backend.manifest_readers import (
@@ -415,7 +415,7 @@ class TemporaryContractTests(unittest.TestCase):
             self.assertEqual(url["current"]["expires_at"], "2026-08-29T12:01:00Z" if version == "5.0.0" else "2026-08-29T12:00:00Z" if version == "5.1.0" else "2026-08-20T20:00:00Z")
             self.assertEqual(url["evidence_status"], expected)
 
-    def test_stale_evidence_keeps_the_real_state(self):
+    def test_non_rotating_unavailable_and_unknown_evidence_does_not_expire(self):
         write_record(self.root, record("mihoyo", "hk4e", "android", "6.0.0", [
             artifact("common.apk", kind="apk", current={"state": "unavailable", "http_code": 404, "checked_at": "2026-08-20T00:00:00Z"}),
         ]))
@@ -425,8 +425,37 @@ class TemporaryContractTests(unittest.TestCase):
         rebuild_indexes(self.root)
         unavailable = self.get_probed_url("/api/v1/domains/hk4e-android/versions/6.0.0/artifacts?q=common")
         unknown = self.get_probed_url("/api/v1/domains/hk4e-android/versions/6.1.0/artifacts?q=common")
-        self.assertEqual((unavailable["current"]["state"], unavailable["current"]["evidence_status"]), ("unavailable", "stale"))
-        self.assertEqual((unknown["current"]["state"], unknown["current"]["evidence_status"]), ("unknown", "stale"))
+        self.assertEqual((unavailable["current"]["state"], unavailable["current"]["evidence_status"]), ("unavailable", "verified"))
+        self.assertIsNone(unavailable["current"]["expires_at"])
+        self.assertEqual((unknown["current"]["state"], unknown["current"]["evidence_status"]), ("unknown", "verified"))
+        self.assertIsNone(unknown["current"]["expires_at"])
+        with patch("backend.api_contract._utc_now", lambda: FROZEN_NOW):
+            summary = next(item for item in self.get("/api/v1/domains/hk4e-android/versions").json()["items"] if item["version"] == "6.0.0")
+            unavailable_page = self.get("/api/v1/domains/hk4e-android/versions/6.0.0/artifacts?availability_state=unavailable").json()
+        self.assertEqual(summary["availability_states"], {"available": 0, "unavailable": 1, "unknown": 0})
+        self.assertEqual(unavailable_page["total"], 1)
+
+    def test_only_rotating_available_urls_show_stale_evidence(self):
+        stamp = "2026-08-20T00:00:00Z"
+        mirror_artifact = artifact("mirror.apk", kind="apk", current={
+            "state": "available", "http_code": 206, "checked_at": stamp,
+        })
+        mirror_artifact["urls"][0]["source_kind"] = "mirror"
+        write_record(self.root, record("mihoyo", "hk4e", "android", "6.0.2", [mirror_artifact]))
+        azur_record = record("manjuu", "azurpromilia", "android", "0.3.0", [
+            artifact("game.apk", kind="apk", current={"state": "available", "http_code": 206, "checked_at": stamp}),
+        ])
+        endfield_record = record("hypergryph", "endfield", "windows", "1.0.0", [
+            artifact("runtime.chk", kind="resource", current={"state": "available", "http_code": 206, "checked_at": stamp}),
+        ])
+        rebuild_indexes(self.root)
+        mirror = self.get_probed_url("/api/v1/domains/hk4e-android/versions/6.0.2/artifacts?q=mirror")
+        with patch("backend.api_contract._utc_now", lambda: FROZEN_NOW):
+            azur = _public_artifact(azur_record, azur_record["artifacts"][0])["urls"][0]
+            endfield = _public_artifact(endfield_record, endfield_record["artifacts"][0])["urls"][0]
+        for url in (mirror, azur, endfield):
+            self.assertEqual(url["current"]["evidence_status"], "unverified")
+            self.assertIsNone(url["current"]["expires_at"])
 
     def test_stale_available_evidence_does_not_count_as_currently_available(self):
         write_record(self.root, record("mihoyo", "hk4e", "android", "6.1.1", [

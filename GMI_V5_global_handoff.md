@@ -1,6 +1,6 @@
 # Game Manifest Index 项目交接文档
 
-更新日期：2026-09-16（Asia/Shanghai）
+更新日期：2026-09-24（Asia/Shanghai）
 
 本文按当前 Git、代码、服务器状态和本会话实际验证结果整理。项目名称统一使用 **Game Manifest Index**。保留现有文件名 `GMI_V5_global_handoff.md` 作为交接入口；本机目录、环境变量、分支和服务器服务名是既有技术标识，本轮未重命名。
 
@@ -31,6 +31,8 @@ Game Manifest Index 索引游戏资源链接、版本及元数据，不托管安
 - `data/catalog.admin.json` 注册游戏 `azurpromilia`（蓝色星原：旅谣）和 `azurpromilia-pc`；厂商为 `manjuu`，域能力为 `packages/files/archive`，适配器显示为 `generic`。图标使用 Apple App Store `artworkUrl512` 远程地址；前端厂商显示元数据为“蛮啾网络”。
 - 蓝色星原没有注册自动采集适配器，也不会进入批量或定时探活候选；PC 版本的 645 个 URL 和 Android 内测 APK 的 1 个 URL 均没有 `urls[].current` 探活证据。
 - 蓝色星原域仅声明 `metadata_inference`、`live_probe=false`；前端隐藏该游戏的“无证据”徽章并允许官方直链下载，不伪造探活结果。其他游戏仍保留原有证据门控。
+- 2026-09-24 本轮待晋级的定时探活修复已在独立工作树完成真实本地调度验证：候选只保留 `official` / `legacy` 中当前状态为 `available` 的 URL；新发现且没有 `current` 的 URL 首次进入探活；`unavailable` / `unknown` URL 后续跳过；蓝色星原 Android / PC 候选继续为 0。
+- 证据过期投影已与定时探活候选资格联动：仍在轮换范围内的可用 URL 才会显示过期状态；不再轮换的旧失效 URL 保留 `unavailable`，不附加“证据过期”或下载门控。
 
 ## 本地开发与运行
 
@@ -261,3 +263,13 @@ curl --fail --max-time 10 http://127.0.0.1:8000/api/v1/health
 - 公网 API 的健康、Android 版本列表和版本详情均返回 200。`https://gmi.yeque.top` 用常规 HTTP User-Agent 请求返回 200，线上 JS `index-CyxHGaab.js` 已包含蓝色星原统一隐藏可用性展示的条件；Python 默认 User-Agent 曾返回 403，未将其误判为应用故障。
 - 本次实际验证：`src/azurpromilia-catalog.test.ts` 与 `src/archive-navigation.test.ts` 共 22 项通过，`npm run build` 通过。未进行客户端浏览器像素级验收。
 - 本机和服务器仍保留此前未提交的数据变更；服务器探活计划仍为 `enabled=false`，本次部署没有启用或修改计划。
+
+## 2026-09-24 定时探活可用 URL 轮换修复
+
+- `backend/admin_operations.py` / `backend/admin_probe.py`：定时任务只处理官方或历史来源中当前可用的 URL；新发现 URL 允许首次探活，已确认失效或未知的 URL 不再被后续自动轮次反复检查；`normal` 仍按 20 小时证据有效期轮换，`full` 仅用于显式全量轮次。
+- `backend/api_contract.py`：公共版本、artifact 和 URL 投影使用同一轮换资格判断。旧的 `unavailable` / `unknown` 状态不再被错误转换成证据过期；只有仍在定时轮换范围内的可用 URL 才会产生 `stale` / `expires_at`。
+- `backend/version_store.py` 及 Android / PC 官方发现适配器：发现写回按 artifact、来源和 URL 保留已有探活 `current`，即使发现器返回同一 URL 的新状态，也不会重新激活已确认失效的链接。
+- 蓝色星原 PC / Android 仍未注册定时探活，候选生成器对两端返回 0。
+- 本地真实调度任务 `2049512056b84f76`：发现 20/20 成功；探活只检查 1 条新发现且无旧证据的原神 PC 3.7.0 patch URL，结果 HTTP 206；已有可用证据和旧失效 URL 均未重复检查。旧明日方舟 Android 1.1.50 的 403 URL 仍投影为 `unavailable`、`evidence_status=verified`、`expires_at=null`。
+- 本地调度计划已恢复为 `enabled=false`、`interval_hours=24`、`mode=normal`。本轮相关后端测试 42 项、Android / PC 适配测试 43 项通过；完整 API 合约测试仍保留此前记录的两个基线断言差异，详见测试报告，不归因于本轮改动。
+- 本节代码尚待按 `BRANCHING.md` 晋级到 `integration/v5`、`main` 并部署服务器；服务器现有计划和数据在发布前保持不变。

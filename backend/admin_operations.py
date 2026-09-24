@@ -46,14 +46,28 @@ def _safe_discover_item(item: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _scheduled_candidate_filter(mode: str, now: datetime) -> CandidateFilter:
-    def include(_artifact_index: int, _url_index: int, _artifact: dict[str, Any], candidate: dict[str, Any]) -> bool:
-        if candidate.get("source_kind") != "official":
+def _candidate_key(record: dict[str, Any], _artifact_index: int, _url_index: int, artifact: dict[str, Any], candidate: dict[str, Any]) -> tuple[str, ...]:
+    return (
+        record["vendor"], record["game_id"], record["domain_id"],
+        record["platform"], record["version"], artifact["artifact_id"],
+        candidate["url"],
+    )
+
+
+def _scheduled_candidate_filter(mode: str, now: datetime, known_urls: frozenset[tuple[str, ...]]) -> CandidateFilter:
+    def include(record: dict[str, Any], artifact_index: int, url_index: int, artifact: dict[str, Any], candidate: dict[str, Any]) -> bool:
+        # Historical URLs already in the archive are probed without changing their provenance.
+        # New URL discovery still uses only the registered official adapters.
+        if candidate.get("source_kind") not in {"official", "legacy"}:
+            return False
+        current = candidate.get("current")
+        if not isinstance(current, dict):
+            return current is None and _candidate_key(record, artifact_index, url_index, artifact, candidate) not in known_urls
+        if current.get("state") != "available":
             return False
         if mode == "full":
             return True
-        current = candidate.get("current")
-        checked = _probe_checked_at(current) if isinstance(current, dict) else None
+        checked = _probe_checked_at(current)
         if checked is not None and checked[1] <= now and now - checked[1] < PROBE_EVIDENCE_TTL:
             return False
         return True
@@ -157,7 +171,10 @@ class OperationManager:
             return self._view(after)
 
     def start(self, actions: list[str], game_ids: list[str], scope: str, timeout: int, workers: int, *, scheduled_mode: str | None = None) -> dict[str, Any]:
-        if scheduled_mode is not None and (scheduled_mode not in {"normal", "full"} or actions != ["probe"]):
+        if scheduled_mode is not None and (
+            scheduled_mode not in {"normal", "full"}
+            or actions not in (["probe"], ["discover", "probe"])
+        ):
             raise ValueError("invalid_scheduled_mode")
         with self._lock:
             if self._manual_probe_active or self._job is not None and self._job.get("status") in {"running", "cancelling"}:
@@ -165,16 +182,20 @@ class OperationManager:
             self._cancel = Event()
             candidate_filter = None
             started_at = None
+            records = selected_records(self.data_root, game_ids, scope) if "probe" in actions else []
             if scheduled_mode is not None:
                 selected_at = self.clock()
                 if selected_at.tzinfo is None:
                     selected_at = selected_at.replace(tzinfo=timezone.utc)
                 selected_at = selected_at.astimezone(timezone.utc)
-                candidate_filter = _scheduled_candidate_filter(scheduled_mode, selected_at)
+                known_urls = frozenset(
+                    _candidate_key(record, *item)
+                    for _, record in records for item in candidates(record)
+                )
+                candidate_filter = _scheduled_candidate_filter(scheduled_mode, selected_at, known_urls)
                 started_at = selected_at.isoformat(timespec="seconds").replace("+00:00", "Z")
             discover_total = sum(len([g for g in game_ids if g in registry]) for registry in ((DISCOVERERS,) if scope == "android" else (PC_DISCOVERERS,) if scope == "pc" else (DISCOVERERS, PC_DISCOVERERS))) if "discover" in actions else 0
-            records = selected_records(self.data_root, game_ids, scope) if "probe" in actions else []
-            probe_total = sum(sum(1 for candidate in candidates(record) if candidate_filter is None or candidate_filter(*candidate)) for _, record in records)
+            probe_total = sum(sum(1 for candidate in candidates(record) if candidate_filter is None or candidate_filter(record, *candidate)) for _, record in records)
             self._job = {
                 "job_id": uuid4().hex[:16], "status": "running",
                 "phase": actions[0], "actions": list(actions), "game_ids": list(game_ids), "scope": scope,
@@ -335,7 +356,7 @@ class OperationManager:
                 return
             if "probe" in actions:
                 records = selected_records(self.data_root, game_ids, scope)
-                probe_total = sum(sum(1 for candidate in candidates(record) if candidate_filter is None or candidate_filter(*candidate)) for _, record in records)
+                probe_total = sum(sum(1 for candidate in candidates(record) if candidate_filter is None or candidate_filter(record, *candidate)) for _, record in records)
                 with self._lock:
                     if self._job and self._job["job_id"] == job_id:
                         self._job["total"] = completed + probe_total

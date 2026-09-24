@@ -37,7 +37,7 @@ def discover_collection(collection: MihoyoApkCollection, output_root: Path) -> P
     """Persist one collected MiHoYo APK through the canonical v2 pipeline."""
     try:
         record = organize_apk(collection)
-        return persist_v2_record(record, output_root)
+        return persist_v2_record(record, output_root, preserve_url_current=True)
     except (MihoyoApkOrganizationError, VersionStoreError) as error:
         raise AdapterError(str(error)) from error
 

@@ -39,8 +39,10 @@ describe("admin UI capability gates", () => {
   });
 
   it("describes the built-in probe timer behavior", () => {
-    expect(probeScheduleNotice).toContain("服务运行时由内置计时器执行探活");
-    expect(probeScheduleNotice).toContain("Android+PC 官方 URL");
+    expect(probeScheduleNotice).toContain("服务运行时由内置计时器先从官方来源采集新 URL");
+    expect(probeScheduleNotice).toContain("Android+PC 新发现或上次探活可用的官方与历史 URL");
+    expect(probeScheduleNotice).toContain("失效、未判定、镜像和来源未知链接不再自动探活");
+    expect(probeScheduleNotice).toContain("证据过期提示只对仍在定时轮换的 URL 显示");
     expect(probeScheduleNotice).toContain("普通轮跳过 20 小时内已有有效证据");
     expect(probeScheduleNotice).toContain("全量轮忽略 TTL");
     expect(probeScheduleNotice).toContain("下一周期生效");

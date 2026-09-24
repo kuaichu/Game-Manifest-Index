@@ -24,6 +24,7 @@ from fastapi.responses import JSONResponse, Response
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from backend import catalog_admin
+from backend.admin_probe import candidates as scheduled_probe_candidates
 from backend.catalog_admin import CatalogConfigError
 from backend.indexes import IndexReadError, _entry as index_entry, read_index
 from backend.domain_registry import nondefault_pc_domains
@@ -56,6 +57,7 @@ from backend.mihoyo_package_files import (
     package_files as mihoyo_package_files,
 )
 from backend.schema_v2 import SchemaValidationError, artifact_identity_key, validate_v2_record
+from url_adapters.service import DISCOVERERS, PC_DISCOVERERS
 
 
 MAX_RECORD_BYTES = 8 * 1024 * 1024
@@ -633,8 +635,9 @@ def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-# Live-probe evidence counts as verified for 20 hours after checked_at
-# (the current probe rotation rule), then stays visible as stale.
+# Live-probe evidence for URLs in the scheduled rotation counts as verified
+# for 20 hours after checked_at, then stays visible as stale. Terminal or
+# otherwise excluded URLs retain their concrete state without a stale timer.
 PROBE_EVIDENCE_TTL = timedelta(hours=20)
 
 
@@ -653,7 +656,7 @@ def _probe_checked_at(current: dict[str, Any]) -> tuple[str, datetime] | None:
     return value, parsed
 
 
-def _public_current(current: Any) -> dict[str, Any] | None:
+def _public_current(current: Any, *, rotation_eligible: bool = True) -> dict[str, Any] | None:
     if not isinstance(current, dict):
         return None
     state = current.get("state") if current.get("state") in AVAILABILITY_STATES else "unknown"
@@ -666,9 +669,20 @@ def _public_current(current: Any) -> dict[str, Any] | None:
     expires_at = None
     # A future checked_at cannot prove a completed probe; treat it as unverified.
     if probe is not None and probe[1] <= now:
-        evidence_status = "verified" if now - probe[1] < PROBE_EVIDENCE_TTL else "stale"
+        age = now - probe[1]
+        if state == "available" and rotation_eligible:
+            evidence_status = "verified" if age < PROBE_EVIDENCE_TTL else "stale"
+        elif state == "available" and age >= PROBE_EVIDENCE_TTL:
+            # URLs outside the scheduled rotation cannot refresh this evidence;
+            # keep them non-actionable without presenting a stale timer badge.
+            evidence_status = "unverified"
+        else:
+            # A confirmed unavailable/unknown result is terminal for the
+            # scheduled rotation, so keep its real state visible after TTL.
+            evidence_status = "verified"
         source_kind = "live_probe"
-        expires_at = (probe[1] + PROBE_EVIDENCE_TTL).isoformat().replace("+00:00", "Z")
+        if state == "available" and rotation_eligible:
+            expires_at = (probe[1] + PROBE_EVIDENCE_TTL).isoformat().replace("+00:00", "Z")
     return {
         "state": state,
         "reason": f"HTTP {http_code}" if http_code is not None else "",
@@ -683,7 +697,19 @@ def _public_current(current: Any) -> dict[str, Any] | None:
     }
 
 
-def _public_artifact(record: dict[str, Any], artifact: dict[str, Any]) -> dict[str, Any]:
+def _scheduled_probe_indices(record: dict[str, Any]) -> set[tuple[int, int]] | None:
+    if not record:
+        return None
+    if record.get("game_id") not in DISCOVERERS and record.get("game_id") not in PC_DISCOVERERS:
+        return set()
+    return {
+        (artifact_index, url_index)
+        for artifact_index, url_index, _artifact, candidate in scheduled_probe_candidates(record)
+        if candidate.get("source_kind") in {"official", "legacy"}
+    }
+
+
+def _public_artifact(record: dict[str, Any], artifact: dict[str, Any], artifact_index: int = 0, scheduled_indices: set[tuple[int, int]] | None = None) -> dict[str, Any]:
     artifact_id = artifact["artifact_id"]
     checksum = artifact.get("checksum") if isinstance(artifact.get("checksum"), dict) else {}
     checksum_type = next((kind for kind in ("md5", "sha256", "crc64") if isinstance(checksum.get(kind), str)), None)
@@ -692,6 +718,8 @@ def _public_artifact(record: dict[str, Any], artifact: dict[str, Any]) -> dict[s
         for key in ("component", "package_type", "delivery_mode", "language", "route_from", "route_to", "decompressed_size")
         if artifact.get(key) is not None and isinstance(artifact.get(key), (str, int, bool))
     }
+    if scheduled_indices is None:
+        scheduled_indices = _scheduled_probe_indices(record)
     urls = []
     for index, candidate in enumerate(artifact.get("urls", [])):
         if not isinstance(candidate, dict):
@@ -700,7 +728,8 @@ def _public_artifact(record: dict[str, Any], artifact: dict[str, Any]) -> dict[s
         if url is None:
             continue
         source_kind = candidate.get("source_kind") if isinstance(candidate.get("source_kind"), str) else "unknown"
-        current = _public_current(candidate.get("current"))
+        rotation_eligible = scheduled_indices is None or (artifact_index, index) in scheduled_indices
+        current = _public_current(candidate.get("current"), rotation_eligible=rotation_eligible)
         urls.append(
             {
                 "id": _stable_id(artifact_id, index, url),
@@ -724,7 +753,7 @@ def _public_artifact(record: dict[str, Any], artifact: dict[str, Any]) -> dict[s
         "urls": urls,
         # Link publication remains HTTPS-only; probe evidence for legacy HTTP
         # candidates still belongs to this artifact and must not be discarded.
-        "availability": _artifact_availability(artifact),
+        "availability": _artifact_availability(artifact, scheduled_indices=scheduled_indices, artifact_index=artifact_index),
     }
 
 
@@ -755,10 +784,17 @@ def _artifact_state(artifact: dict[str, Any]) -> str:
     return "unknown"
 
 
-def _artifact_availability(artifact: dict[str, Any]) -> dict[str, str]:
+def _artifact_availability(artifact: dict[str, Any], *, scheduled_indices: set[tuple[int, int]] | None = None, artifact_index: int = 0) -> dict[str, str]:
     candidates = [item for item in artifact.get("urls", [])
                   if isinstance(item, dict) and _safe_public_url(item.get("url"), allow_http=True)]
-    currents = [_public_current(item.get("current")) for item in candidates]
+    currents = [
+        _public_current(
+            item.get("current"),
+            rotation_eligible=scheduled_indices is None or (artifact_index, index) in scheduled_indices,
+        )
+        for index, item in enumerate(artifact.get("urls", []))
+        if isinstance(item, dict) and _safe_public_url(item.get("url"), allow_http=True)
+    ]
     state = _artifact_state({"urls": [{"current": current} for current in currents]})
     if state != "unknown":
         return {"state": state, "reason": ""}
@@ -840,7 +876,11 @@ def _public_version(record: dict[str, Any]) -> dict[str, Any]:
 
 
 def _summary(record: dict[str, Any]) -> dict[str, Any]:
-    artifacts = [_public_artifact(record, item) for item in record.get("artifacts", []) if isinstance(item, dict)]
+    scheduled_indices = _scheduled_probe_indices(record)
+    artifacts = [
+        _public_artifact(record, item, index, scheduled_indices)
+        for index, item in enumerate(record.get("artifacts", [])) if isinstance(item, dict)
+    ]
     has_chunk = any(
         isinstance(reference, dict) and reference.get("kind") == "chunk_manifest"
         for reference in record.get("references", [])
@@ -1173,7 +1213,8 @@ def create_api_app(data_root: Path, upstream: Any | None = None, *, state_root: 
             fail(400, "bad_availability", "availability_state 无效")
         domain = service().domain(domain_id)
         record = service().record(domain, version)
-        items = [_public_artifact(record, item) for item in record["artifacts"]]
+        scheduled_indices = _scheduled_probe_indices(record)
+        items = [_public_artifact(record, item, index, scheduled_indices) for index, item in enumerate(record["artifacts"])]
         if kind:
             items = [item for item in items if item["kind"] == kind]
         if availability_state:
@@ -1459,7 +1500,11 @@ def create_api_app(data_root: Path, upstream: Any | None = None, *, state_root: 
             ]
             items = [tree_artifact(artifact["artifact_id"], item) for item in page["items"] if item.get("type") == "file"]
             return {"prefix": prefix, "folders": folders, "items": items, "next_cursor": page["next_cursor"], "base_url": base_urls[0] if base_urls else None, "base_urls": base_urls}
-        public = [_public_artifact(record, item) for item in record["artifacts"] if kind == "all" or item["kind"] == kind]
+        scheduled_indices = _scheduled_probe_indices(record)
+        public = [
+            _public_artifact(record, item, index, scheduled_indices)
+            for index, item in enumerate(record["artifacts"]) if kind == "all" or item["kind"] == kind
+        ]
         if availability_state:
             public = [item for item in public if _artifact_state(item) == availability_state]
         if q:
