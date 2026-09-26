@@ -393,8 +393,8 @@ export function hoyoArtifactCardPresentation(
   const packageType = String(artifact.attributes.package_type || "");
   const availability = artifactActionLabel(artifact);
   if (artifact.kind === "patch") {
-    const from = String(artifact.attributes.route_from || "未知版本");
-    const to = String(artifact.attributes.route_to || selectedVersion || "未知版本");
+    const from = displayVersionLabel(String(artifact.attributes.route_from || "未知版本"));
+    const to = displayVersionLabel(String(artifact.attributes.route_to || selectedVersion || "未知版本"));
     const route = `${from} -> ${to}`;
     const voice = component === "voice";
     const lang = voice && artifact.attributes.language ? hoyoLanguageLabel(artifact.attributes.language) : "";
@@ -589,7 +589,25 @@ export function displayVersionLabel(
   // The picker and headers show only the plain version number; channel
   // details live on the artifact cards in the download area.
   const raw = String((attributes && attributes.display_version) || version);
-  return raw.split("@")[0] || raw;
+  const plain = raw.split("@")[0] || raw;
+  // Some official Android catalogs publish versions as "major.minor",
+  // while their PC catalogs use "major.minor.patch". Keep the raw identity
+  // for record selection and API requests, but make the public label consistent.
+  const match = plain.match(/^(\d+)\.(\d+)$/);
+  return match ? `${match[1]}.${match[2]}.0` : plain;
+}
+
+/**
+ * Return the canonical public route label without dropping a channel suffix.
+ * The route may use this alias, while API calls continue to use the raw
+ * version stored in the record.
+ */
+export function routeVersionLabel(version: string): string {
+  const raw = String(version);
+  const [base, ...suffix] = raw.split("@");
+  const match = base.match(/^(\d+)\.(\d+)$/);
+  const normalized = match ? `${match[1]}.${match[2]}.0` : base;
+  return suffix.length ? `${normalized}@${suffix.join("@")}` : normalized;
 }
 
 
@@ -705,7 +723,7 @@ export function buildArchiveOverview(input: {
     ];
   } else if (domain.capabilities.includes("resources")) {
     moduleDetails = [
-      { label: "资源快照", value: String(attrs.resource_version || currentVersion) },
+      { label: "资源快照", value: displayVersionLabel(String(attrs.resource_version || currentVersion)) },
       { label: "主 / 初始", value: `${Number(attrs.main_file_count || 0).toLocaleString()} / ${Number(attrs.initial_file_count || 0).toLocaleString()}` },
       { label: "素材 / 语音", value: `${Number(attrs.asset_count || 0).toLocaleString()} / ${Number(attrs.voice_count || 0).toLocaleString()}` },
       { label: "Unity", value: String(attrs.unity_version || "—") },

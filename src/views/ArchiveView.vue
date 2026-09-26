@@ -31,12 +31,13 @@ import {
   preferredArtifactAction,
   preferredDomainArtifactAction,
   displayVersionLabel,
+  routeVersionLabel,
   versionSupportsMode,
 } from "../domain-presentation";
 import { gameIcons } from "../game-icons";
 import { publisherGroups } from "../game-meta";
 import SourceProvenanceModal from "../components/SourceProvenanceModal.vue";
-import { useArchiveLoader } from "../composables/useArchiveLoader";
+import { domainRouteLabel, resolveRouteDomain, useArchiveLoader } from "../composables/useArchiveLoader";
 import { useArchiveArtifactsLoader, type ArchiveArtifactsLoaderState, type ArchiveArtifactLoadContext } from "../composables/useArchiveArtifactsLoader";
 import type {
   ArchiveDomain,
@@ -119,8 +120,18 @@ const {
 });
 
 const gameId = computed(() => String(route.params.gameId || ""));
-const domainId = computed(() => String(route.params.domainId || domains.value[0]?.id || ""));
-const selectedVersion = computed(() => String(route.params.version || versions.value[0]?.version || ""));
+const domainId = computed(() => {
+  const requested = String(route.params.domainId || "");
+  const matched = resolveRouteDomain(gameId.value, requested, domains.value);
+  return matched?.id || requested || domains.value[0]?.id || "";
+});
+const selectedVersion = computed(() => {
+  const requested = String(route.params.version || "");
+  const matched = versions.value.find(
+    (item) => item.version === requested || routeVersionLabel(item.version) === requested,
+  );
+  return matched?.version || requested || versions.value[0]?.version || "";
+});
 const mode = computed(() =>
   String(route.params.mode || domains.value.find((item) => item.id === domainId.value)?.capabilities[0] || ""),
 );
@@ -193,8 +204,11 @@ async function switchCompareDomain(targetDomain: ArchiveDomain): Promise<void> {
 }
 const compareBaseVersion = computed(() => {
   const requested = String(route.query.from || "");
-  if (requested && requested !== selectedVersion.value && versions.value.some((item) => item.version === requested)) {
-    return requested;
+  const requestedItem = versions.value.find(
+    (item) => item.version === requested || routeVersionLabel(item.version) === requested,
+  );
+  if (requestedItem && requestedItem.version !== selectedVersion.value) {
+    return requestedItem.version;
   }
   const currentIndex = versions.value.findIndex((item) => item.version === selectedVersion.value);
   return versions.value[currentIndex + 1]?.version || compareBaseOptions.value[0]?.version || "";
@@ -204,6 +218,9 @@ function hasHoyoPackageFiles(summary: VersionSummary | null | undefined): boolea
 }
 const compareBaseSummary = computed(
   () => versions.value.find((item) => item.version === compareBaseVersion.value) || null,
+);
+const compareBaseDisplayVersion = computed(() =>
+  displayVersionLabel(compareBaseVersion.value, compareBaseSummary.value?.attributes),
 );
 const compareScope = computed<"artifacts" | "files">(() => {
   if (domain.value?.adapter === "perfectworld_patcher" || domain.value?.adapter === "nte" || domain.value?.adapter === "wuwa") {
@@ -586,9 +603,9 @@ const panelEyebrow = computed(() => {
   return modeLabel(domain.value, mode.value);
 });
 const panelTitle = computed(() => {
-  if (mode.value === "compare") return `${selectedVersion.value} 版本对比`;
+  if (mode.value === "compare") return `${selectedDisplayVersion.value} 版本对比`;
   if (mode.value === "manifest") return "官方清单文件";
-  if (mode.value === "archive") return `${selectedVersion.value} 归档信息`;
+  if (mode.value === "archive") return `${selectedDisplayVersion.value} 归档信息`;
   if (mode.value === "legacy") return "候选线索";
   return `${selectedDisplayVersion.value} ${modeLabel(domain.value, mode.value)}`;
 });
@@ -775,9 +792,18 @@ function legacyArchiveUrl(lead: ArchiveLead): string | undefined {
 }
 
 async function navigate(params: Record<string, string>): Promise<void> {
-  const nextParams = { ...route.params, ...params };
+  const targetVersion = String(params.version || selectedVersion.value);
+  const targetDomain = params.domainId
+    ? domains.value.find((item) => item.id === params.domainId)
+    : undefined;
+  const routeDomain = targetDomain ? domainRouteLabel(gameId.value, targetDomain) : params.domainId;
+  const nextParams = {
+    ...route.params,
+    ...params,
+    ...(routeDomain ? { domainId: routeDomain } : {}),
+    ...(params.version ? { version: routeVersionLabel(params.version) } : {}),
+  } as Record<string, string>;
   const targetMode = String(nextParams.mode || mode.value);
-  const targetVersion = String(nextParams.version || selectedVersion.value);
   const nextQuery: Record<string, string> = {};
   if (SEARCHABLE_MODES.has(targetMode) && String(route.query.q || "").trim()) {
     nextQuery.q = String(route.query.q).trim();
@@ -914,7 +940,7 @@ async function replaceQuery(name: "q" | "availability" | "from", value: string):
 }
 
 function updateCompareBase(value: string): void {
-  void replaceQuery("from", value);
+  void replaceQuery("from", routeVersionLabel(value));
 }
 function onCompareBaseChange(event: Event): void {
   updateCompareBase((event.target as HTMLSelectElement).value);
@@ -932,7 +958,7 @@ watch(
     if (
       loading.value &&
       registryTargetGame.value === String(route.params.gameId || "") &&
-      registryTargetDomain.value === String(route.params.domainId || "")
+      registryTargetDomain.value === domainId.value
     ) return;
     void loadRegistry();
   },
@@ -1719,13 +1745,13 @@ function chunkMatchingField(artifact: Artifact): string {
             </div>
             <div v-if="compareBaseVersion" class="compare-range-field">
               <span>对比范围</span>
-              <strong>{{ compareBaseVersion }} → {{ selectedVersion }}</strong>
+              <strong>{{ compareBaseDisplayVersion }} → {{ selectedDisplayVersion }}</strong>
             </div>
             <div v-if="compareBaseVersion" class="compare-base-field">
               <span>基准版本</span>
               <CustomSelect
                 :model-value="compareBaseVersion"
-                :options="compareBaseOptions.map((item) => ({ label: item.version, value: item.version }))"
+                :options="compareBaseOptions.map((item) => ({ label: displayVersionLabel(item.version, item.attributes), value: item.version }))"
                 size="small"
                 @change="updateCompareBase(String($event))"
               />
@@ -1759,7 +1785,7 @@ function chunkMatchingField(artifact: Artifact): string {
           <ChunkManifestView
             :domain="domain"
             :game="game"
-            :version="selectedVersion"
+            :version="selectedDisplayVersion"
             :chunk-detail="chunkDetail"
             :chunk-collection="chunkCollection"
             :artifacts="artifacts"
@@ -1788,7 +1814,7 @@ function chunkMatchingField(artifact: Artifact): string {
               <div class="chunk-summary resource-summary">
                 <div>
                   <span>资源版本</span>
-                  <strong>{{ selectedSummary.attributes.resource_version || selectedVersion }}</strong>
+                  <strong>{{ displayVersionLabel(String(selectedSummary.attributes.resource_version || selectedVersion)) }}</strong>
                 </div>
                 <div>
                   <span>文件数</span>
@@ -2317,7 +2343,7 @@ function chunkMatchingField(artifact: Artifact): string {
                 <div class="file-meta">
                   <span>{{ formatBytes(artifact.size) }}</span>
                   <span v-if="artifact.checksum_value">{{ formatChecksum(artifact) }}</span>
-                  <span v-if="artifact.attributes.route_from && (artifact.attributes.route_to || selectedVersion)">{{ artifact.attributes.route_from }} -> {{ artifact.attributes.route_to || selectedVersion }}</span>
+                  <span v-if="artifact.attributes.route_from && (artifact.attributes.route_to || selectedVersion)">{{ displayVersionLabel(String(artifact.attributes.route_from)) }} -> {{ displayVersionLabel(String(artifact.attributes.route_to || selectedVersion)) }}</span>
                   <span v-if="artifact.attributes.language">{{ hoyoLanguageLabel(artifact.attributes.language) }}</span>
                 </div>
               </div>

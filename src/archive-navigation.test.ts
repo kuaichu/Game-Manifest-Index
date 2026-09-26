@@ -201,7 +201,7 @@ describe("archive cross-game navigation", () => {
     await flushUpdates();
     await flushUpdates();
 
-    expect(router.currentRoute.value.fullPath).toBe("/games/hkrpg/hkrpg-pc/4.4.0/packages");
+    expect(router.currentRoute.value.fullPath).toBe("/games/hkrpg/pc/4.4.0/packages");
     expect(artifacts.mock.calls.some(([domainId, version]) => domainId === "hkrpg-pc" && version === "4.4.0")).toBe(true);
     app.unmount();
   });
@@ -334,7 +334,7 @@ describe("archive cross-game navigation", () => {
     await flushUpdates();
     await flushUpdates();
     expect(router.currentRoute.value.params).toMatchObject({
-      gameId: "endfield", domainId: "endfield-pc", version: "1.3.3", mode: "packages",
+      gameId: "endfield", domainId: "pc", version: "1.3.3", mode: "packages",
     });
     app.unmount();
   });
@@ -595,7 +595,7 @@ describe("archive cross-game navigation", () => {
       fromVersion: "5.4.0", toVersion: "5.5.0", compareScope: "artifacts",
     }), expect.any(AbortSignal));
     expect(router.currentRoute.value.params).toMatchObject({
-      gameId: "hk4e", domainId: "hk4e-android", version: "5.5.0", mode: "compare",
+      gameId: "hk4e", domainId: "android", version: "5.5.0", mode: "compare",
     });
 
     // Top "版本对比" tab remains active
@@ -747,7 +747,7 @@ describe("archive cross-game navigation", () => {
     await flushUpdates();
     await flushUpdates();
 
-    expect(router.currentRoute.value.fullPath).toBe("/games/hk4e/hk4e-android/5.5.0/compare?from=5.3.0");
+    expect(router.currentRoute.value.fullPath).toBe("/games/hk4e/android/5.5.0/compare?from=5.3.0");
     expect(compare).toHaveBeenCalledWith("hk4e-android", expect.objectContaining({
       fromVersion: "5.3.0", toVersion: "5.5.0",
     }), expect.any(AbortSignal));
@@ -808,7 +808,7 @@ describe("archive cross-game navigation", () => {
     await flushUpdates();
     await flushUpdates();
 
-    expect(router.currentRoute.value.fullPath).toBe("/games/hk4e/hk4e-android/5.5.0/compare?from=5.2.0");
+    expect(router.currentRoute.value.fullPath).toBe("/games/hk4e/android/5.5.0/compare?from=5.2.0");
     expect(compare).toHaveBeenCalledWith("hk4e-android", expect.objectContaining({
       fromVersion: "5.2.0", toVersion: "5.5.0",
     }), expect.any(AbortSignal));
@@ -1001,13 +1001,13 @@ describe("archive cross-game navigation", () => {
     pendingGames[1](structuredClone(games));
     await flushUpdates();
     await flushUpdates();
-    expect(router.currentRoute.value.fullPath).toBe("/games/endfield/endfield-pc/1.3.3/packages");
+    expect(router.currentRoute.value.fullPath).toBe("/games/endfield/pc/1.3.3/packages");
 
     // The superseded refresh returns late and must change nothing.
     pendingGames[0](structuredClone(games));
     await flushUpdates();
     await flushUpdates();
-    expect(router.currentRoute.value.fullPath).toBe("/games/endfield/endfield-pc/1.3.3/packages");
+    expect(router.currentRoute.value.fullPath).toBe("/games/endfield/pc/1.3.3/packages");
     expect(versions).toHaveBeenCalledTimes(2);
     expect(versions).toHaveBeenLastCalledWith("endfield-pc", expect.anything());
     expect(artifacts).toHaveBeenLastCalledWith("endfield-pc", "1.3.3", expect.anything(), expect.anything());
@@ -1083,7 +1083,7 @@ describe("archive cross-game navigation", () => {
     resolveOldArtifacts({ items: [packageArtifact(3, "late-old-nte.zip")], next_cursor: null });
     await flushUpdates();
     await flushUpdates();
-    expect(router.currentRoute.value.fullPath).toBe("/games/endfield/endfield-pc/1.3.3/packages");
+    expect(router.currentRoute.value.fullPath).toBe("/games/endfield/pc/1.3.3/packages");
     expect(root.textContent).toContain("current-endfield.zip");
     expect(root.textContent).not.toContain("late-old-nte.zip");
 
@@ -1220,13 +1220,13 @@ describe("archive cross-game navigation", () => {
     await router.push("/games/endfield");
     await flushUpdates();
     await flushUpdates();
-    expect(router.currentRoute.value.params).toMatchObject({ gameId: "endfield", domainId: "endfield-pc" });
+    expect(router.currentRoute.value.params).toMatchObject({ gameId: "endfield", domainId: "pc" });
 
     versions.mockClear();
     await router.back();
     await flushUpdates();
     await flushUpdates();
-    expect(router.currentRoute.value.fullPath).toBe("/games/nte/nte-pc/1.2.15/files");
+    expect(router.currentRoute.value.fullPath).toBe("/games/nte/pc/1.2.15/files");
     expect(versions).toHaveBeenCalledWith("nte-pc", expect.anything());
 
     app.unmount();
