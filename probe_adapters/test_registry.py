@@ -81,6 +81,15 @@ class ProbeRegistryTests(unittest.TestCase):
         )
         self.assertEqual(adapter.NAME, "mihoyo_autopatch")
 
+    def test_endfield_android_vendor_oss_url_uses_the_specific_adapter(self) -> None:
+        adapter = adapter_for(
+            "hypergryph",
+            "endfield",
+            "https://beyond-prod.oss-cn-shanghai.aliyuncs.com/6LL0KJuqHBVz33WK/1.4/package/1/1/Android/1.4.3_N3kXcstgi31V2hpt/endfield-hg-1-1.4.3.apk",
+            platform="android",
+        )
+        self.assertEqual(adapter.NAME, "hypergryph_endfield_hycdn")
+
 
 if __name__ == "__main__":
     unittest.main()
