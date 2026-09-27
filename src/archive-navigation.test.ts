@@ -19,6 +19,53 @@ describe("archive cross-game navigation", () => {
     document.body.innerHTML = "";
   });
 
+  it("browses a manifest-only PC game without a full-package or availability claim", async () => {
+    const game = { id: "abc", name: "崩坏：因缘精灵", sub_name: "Honkai: Nexus Anima", icon_source: "", sort_order: 12 };
+    const domain = {
+      id: "abc-pc", game_id: "abc", kind: "files", platform: "windows",
+      capabilities: ["files"], adapter: "generic", version_count: 1,
+      latest_version: "0.60.2", sort_order: 0, capability_contract: { availability_source_kinds: [], live_probe: false },
+    };
+    const version = {
+      version: "0.60.2", current_revision_id: 1, revision_count: 1,
+      observed_at: null, packed_size: 24374639429, unpacked_size: 24374639429,
+      artifact_count: 1,
+      artifact_kinds: { package: { count: 1, size: 24374639429, availability_states: { unknown: 1 } } },
+      availability_states: { unknown: 1 }, attributes: {}, provenance: { source_kind: "manual" },
+    };
+    vi.spyOn(api, "games").mockResolvedValue([game] as never);
+    vi.spyOn(api, "domains").mockResolvedValue([domain] as never);
+    vi.spyOn(api, "versions").mockResolvedValue([version] as never);
+    const artifacts = vi.spyOn(api, "artifacts").mockResolvedValue(emptyPage as never);
+    const files = vi.spyOn(api, "versionFiles").mockResolvedValue({
+      source: "package", fetch_mode: "checked_in_manifest", identity: "game", path: "", q: null,
+      items: [{ type: "file", name: "NexusAnima.exe", path: "NexusAnima.exe", size: 680224, md5: "a".repeat(32) }],
+      total: 1, next_cursor: null, totals: { files: 1, directories: 0, size: 680224 },
+    } as never);
+
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: "/games/:gameId/:domainId?/:version?/:mode?", name: "archive", component: ArchiveView }],
+    });
+    await router.push("/games/abc/abc-pc/0.60.2/files");
+    await router.isReady();
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const app = createApp(ArchiveView);
+    app.use(router);
+    app.mount(root);
+    await flushUpdates();
+    await flushUpdates();
+
+    expect(files).toHaveBeenCalledWith("abc-pc", "0.60.2", expect.objectContaining({ source: "package" }), expect.any(AbortSignal));
+    expect(artifacts).not.toHaveBeenCalled();
+    expect(root.textContent).toContain("NexusAnima.exe");
+    expect(root.textContent).toContain("文件清单");
+    expect(root.textContent).not.toContain("完整包");
+    expect(root.textContent).not.toContain("未判定");
+    app.unmount();
+  });
+
   it("loads the bounded NTE version on demand and keeps unverified/helper actions hidden", async () => {
     const game = { id: "nte", name: "异环", sub_name: "Neverness to Everness", icon_source: "", sort_order: 0 };
     const domain = {
