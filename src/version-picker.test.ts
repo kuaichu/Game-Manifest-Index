@@ -22,6 +22,36 @@ describe("version family labels", () => {
 describe("full-history version picker", () => {
   afterEach(() => { document.body.innerHTML = ""; });
 
+  it("displays two-segment versions with a patch suffix but emits the raw version", async () => {
+    const version: VersionSummary = {
+      version: "3.2", current_revision_id: 1, revision_count: 1,
+      observed_at: "2026-08-15T04:00:00Z", packed_size: 1, unpacked_size: 1,
+      artifact_count: 1, artifact_kinds: { apk: { count: 1, size: 1 } },
+      availability_states: {}, attributes: {}, provenance: {},
+    };
+    const domain: ArchiveDomain = {
+      id: "nap-android", game_id: "nap", platform: "android", kind: "apk",
+      adapter: "android", capabilities: ["apk"], version_count: 1, latest_version: "3.2",
+    };
+    let selected = "";
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const app = createApp({
+      render: () => h(VersionPicker, {
+        versions: [version], modelValue: version.version, domain,
+        onSelect: (value: string) => { selected = value; },
+      }),
+    });
+    app.mount(root);
+    expect(root.querySelector(".select-button")?.textContent).toContain("3.2.0");
+    (root.querySelector(".select-button") as HTMLButtonElement).click();
+    await nextTick();
+    expect(root.querySelector(".version-row")?.textContent).toContain("3.2.0");
+    (root.querySelector(".version-row") as HTMLButtonElement).click();
+    expect(selected).toBe("3.2");
+    app.unmount();
+  });
+
   it.each([
     ["上游拒绝访问（HTTP 403）", "访问受限"],
     ["没有可探活的下载 URL", "无探活链接"],

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ArchiveDomain, Artifact, AvailabilityCurrent, VersionSummary } from "./types";
-import { artifactActionLabel, archiveSourceLabel, artifactKindForMode, artifactUrlStateCounts, availabilityStatesForMode, availableArchiveModes, availabilityLabel, buildArchiveOverview, buildSyncStatusPresentation, buildVersionBadges, distributionProfile, domainActionSupport, domainFeatureSupport, domainFieldSupport, domainModeLabel, fileTimestampEvidence, hoyoArtifactCardPresentation, isAvailabilityActionable, preferredArtifactAction, preferredDomainArtifactAction, repairMojibake, displayVersionLabel, versionSupportsMode } from "./domain-presentation";
+import { artifactActionLabel, archiveSourceLabel, artifactKindForMode, artifactUrlStateCounts, availabilityStatesForMode, availableArchiveModes, availabilityLabel, buildArchiveOverview, buildSyncStatusPresentation, buildVersionBadges, distributionProfile, domainActionSupport, domainFeatureSupport, domainFieldSupport, domainModeLabel, fileTimestampEvidence, hoyoArtifactCardPresentation, isAvailabilityActionable, preferredArtifactAction, preferredDomainArtifactAction, repairMojibake, displayVersionLabel, routeVersionLabel, versionSupportsMode } from "./domain-presentation";
 
 describe("WuWa historical provenance presentation", () => {
   it("labels the real 3.5.3 migration summary as archived community data", () => {
@@ -623,6 +623,12 @@ describe("displayVersionLabel", () => {
     expect(displayVersionLabel("4.4.0")).toBe("4.4.0");
   });
 
+  it("pads two-segment numeric versions for a consistent public label", () => {
+    expect(displayVersionLabel("4.8")).toBe("4.8.0");
+    expect(displayVersionLabel("3.2@mihoyo")).toBe("3.2.0");
+    expect(displayVersionLabel("3.2", { display_version: "3.2" })).toBe("3.2.0");
+  });
+
   it("prefers the backend display_version attribute", () => {
     expect(displayVersionLabel("1.2.0@mihoyo", { display_version: "1.2.0", channel: "mihoyo" })).toBe("1.2.0");
   });
@@ -630,6 +636,16 @@ describe("displayVersionLabel", () => {
   it("keeps plain versions untouched", () => {
     expect(displayVersionLabel("2.7.6.1", null)).toBe("2.7.6.1");
     expect(displayVersionLabel("1.6.0", { channel: "gw" })).toBe("1.6.0");
+    expect(displayVersionLabel("4.8-beta", null)).toBe("4.8-beta");
+  });
+});
+
+describe("routeVersionLabel", () => {
+  it("normalizes public route labels while preserving channel suffixes", () => {
+    expect(routeVersionLabel("4.8")).toBe("4.8.0");
+    expect(routeVersionLabel("3.2@mihoyo")).toBe("3.2.0@mihoyo");
+    expect(routeVersionLabel("4.8.0")).toBe("4.8.0");
+    expect(routeVersionLabel("2.7.6.1")).toBe("2.7.6.1");
   });
 });
 

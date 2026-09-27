@@ -81,7 +81,7 @@ describe("archive route state", () => {
     (root.querySelector(".select-button") as HTMLButtonElement).click();
     await nextTick();
     const older = Array.from(root.querySelectorAll<HTMLButtonElement>(".version-row")).find(
-      (row) => row.querySelector(".version-number")?.textContent === "1.0",
+      (row) => row.querySelector(".version-number")?.textContent === "1.0.0",
     );
     older?.click();
     await flushUpdates(); await flushUpdates();
@@ -159,7 +159,7 @@ describe("archive route state", () => {
     const root = document.createElement("div"); document.body.appendChild(root);
     const app = createApp(ArchiveView); app.use(router); app.mount(root);
     await flushUpdates(); await flushUpdates();
-    expect(router.currentRoute.value.query).toEqual({ from: "1.0" });
+    expect(router.currentRoute.value.query).toEqual({ from: "1.0.0" });
     expect(root.querySelector(".search-box")).toBeNull();
     expect(api.compare).toHaveBeenCalledWith("demo-pc", expect.objectContaining({ fromVersion: "1.0", toVersion: "2.0" }), expect.any(AbortSignal));
     app.unmount();

@@ -4,16 +4,19 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import re
 import stat
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from copy import deepcopy
+from datetime import datetime, timezone
 from pathlib import Path
 from threading import RLock
 from typing import Any, Callable, Iterable
 from urllib.parse import urlsplit, urlunsplit
 
+from backend.activity_store import ActivityStore
 from backend.catalog_admin import configured_nondefault_pc_domains, is_configured_nondefault_pc_domain
 from backend.domain_registry import is_nondefault_pc_domain, nondefault_pc_domains
 from backend.indexes import rebuild_index
@@ -29,6 +32,7 @@ ProbeCallable = Callable[..., dict[str, Any]]
 ApplyCallable = Callable[[dict[str, Any], dict[str, Any]], dict[str, Any]]
 CandidateFilter = Callable[[dict[str, Any], int, int, dict[str, Any], dict[str, Any]], bool]
 ADMIN_PROBE_LOCK = RLock()
+LOGGER = logging.getLogger(__name__)
 
 
 class AdminProbeDataError(Exception):
@@ -257,7 +261,60 @@ def _domain(record: dict[str, Any]) -> tuple[str, str, str, str]:
     )
 
 
-def _apply_and_persist(root: Path, path: Path, result: dict[str, Any], apply_fn: ApplyCallable) -> dict[str, Any]:
+def _verified_current_state(candidate: dict[str, Any], state: str, now: datetime) -> bool:
+    # api_contract imports this module for scheduled candidates, so load its
+    # evidence parser only when a completed probe is being persisted.
+    from backend.api_contract import PROBE_EVIDENCE_TTL, _probe_checked_at
+
+    current = candidate.get("current")
+    if not isinstance(current, dict) or current.get("state") != state:
+        return False
+    checked = _probe_checked_at(current)
+    return checked is not None and checked[1] <= now and now - checked[1] < PROBE_EVIDENCE_TTL
+
+
+def _has_url_state(record: dict[str, Any], state: str, now: datetime, *, every: bool) -> bool:
+    artifacts = record.get("artifacts")
+    if not isinstance(artifacts, list) or not artifacts:
+        return False
+    found = False
+    for artifact in artifacts:
+        urls = artifact.get("urls") if isinstance(artifact, dict) else None
+        if not isinstance(urls, list) or not urls:
+            if every:
+                return False
+            continue
+        for candidate in urls:
+            if not isinstance(candidate, dict) or not isinstance(candidate.get("url"), str) or not candidate["url"]:
+                if every:
+                    return False
+                continue
+            found = True
+            matches = _verified_current_state(candidate, state, now)
+            if every and not matches:
+                return False
+            if not every and matches:
+                return True
+    return found if every else False
+
+
+def _record_unavailable_transition(before: dict[str, Any], after: dict[str, Any], activity_store: ActivityStore) -> None:
+    now = datetime.now(timezone.utc)
+    if not _has_url_state(after, "unavailable", now, every=True):
+        return
+    if not _has_url_state(before, "available", now, every=False):
+        return
+    activity_store.append(
+        game_id=after["game_id"], domain_id=after["domain_id"],
+        platform=after["platform"], version=after["version"],
+        event_type="version_unavailable",
+    )
+
+
+def _apply_and_persist(
+    root: Path, path: Path, result: dict[str, Any], apply_fn: ApplyCallable,
+    *, activity_store: ActivityStore | None = None,
+) -> dict[str, Any]:
     # All admin mutations share one process boundary; VersionStore supplies
     # the cross-process lock and preserves the existing is_visible field.
     with ADMIN_PROBE_LOCK, DATA_LOCK:
@@ -265,6 +322,11 @@ def _apply_and_persist(root: Path, path: Path, result: dict[str, Any], apply_fn:
         validate_v2_record(latest)
         updated = apply_fn(latest, result)
         persist_v2_record(updated, root)
+        if activity_store is not None:
+            try:
+                _record_unavailable_transition(latest, updated, activity_store)
+            except Exception:  # activity history cannot fail a completed probe
+                LOGGER.warning("Could not persist version-unavailable activity", exc_info=True)
         return updated
 
 
@@ -292,13 +354,13 @@ def probe_direct(url: str, timeout: int, *, probe_fn: ProbeCallable = default_pr
     return _public_result(url, result, None, persisted=False)
 
 
-def probe_public_url(root: Path, url: str, artifact_url_id: int, timeout: int, *, probe_fn: ProbeCallable = default_probe, apply_fn: ApplyCallable = default_apply_result) -> dict[str, Any]:
+def probe_public_url(root: Path, url: str, artifact_url_id: int, timeout: int, *, probe_fn: ProbeCallable = default_probe, apply_fn: ApplyCallable = default_apply_result, activity_store: ActivityStore | None = None) -> dict[str, Any]:
     path, record, ai, ui, artifact, target = locate_public_url(root, artifact_url_id)
     if target != url:
         raise ValueError("artifact_url_id does not identify the supplied URL")
     try:
         result = _run_probe(record, ai, ui, artifact, target, timeout, probe_fn)
-        _apply_and_persist(root, path, result, apply_fn)
+        _apply_and_persist(root, path, result, apply_fn, activity_store=activity_store)
         with ADMIN_PROBE_LOCK:
             rebuild_index(root, *_domain(record))
     except (ProbeError, OSError, TypeError, ValueError) as error:
@@ -313,7 +375,7 @@ def _filtered_candidates(record: dict[str, Any], candidate_filter: CandidateFilt
     return [item for item in values if candidate_filter(record, *item)]
 
 
-def _probe_record(root: Path, path: Path, record: dict[str, Any], timeout: int, probe_fn: ProbeCallable, apply_fn: ApplyCallable, cancelled: Callable[[], bool], candidate_filter: CandidateFilter | None = None) -> list[dict[str, Any]]:
+def _probe_record(root: Path, path: Path, record: dict[str, Any], timeout: int, probe_fn: ProbeCallable, apply_fn: ApplyCallable, cancelled: Callable[[], bool], candidate_filter: CandidateFilter | None = None, activity_store: ActivityStore | None = None) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
     current = deepcopy(record)
     for ai, ui, artifact, candidate in _filtered_candidates(record, candidate_filter):
@@ -322,7 +384,7 @@ def _probe_record(root: Path, path: Path, record: dict[str, Any], timeout: int, 
         url = candidate["url"]
         try:
             result = _run_probe(current, ai, ui, artifact, url, timeout, probe_fn)
-            current = _apply_and_persist(root, path, result, apply_fn)
+            current = _apply_and_persist(root, path, result, apply_fn, activity_store=activity_store)
             item = _public_result(url, result, None, persisted=True)
         except (ProbeError, OSError, TypeError, ValueError) as error:
             item = _public_result(url, None, error, persisted=False)
@@ -352,14 +414,14 @@ def selected_records(root: Path, game_ids: list[str], scope: str, *, domain_id: 
     return result
 
 
-def probe_records(root: Path, records: list[tuple[Path, dict[str, Any]]], timeout: int, workers: int, *, probe_fn: ProbeCallable = default_probe, apply_fn: ApplyCallable = default_apply_result, progress: Callable[[dict[str, Any], int, int], None] | None = None, cancelled: Callable[[], bool] | None = None, candidate_filter: CandidateFilter | None = None) -> dict[str, Any]:
+def probe_records(root: Path, records: list[tuple[Path, dict[str, Any]]], timeout: int, workers: int, *, probe_fn: ProbeCallable = default_probe, apply_fn: ApplyCallable = default_apply_result, progress: Callable[[dict[str, Any], int, int], None] | None = None, cancelled: Callable[[], bool] | None = None, candidate_filter: CandidateFilter | None = None, activity_store: ActivityStore | None = None) -> dict[str, Any]:
     is_cancelled = cancelled or (lambda: False)
     total = sum(len(_filtered_candidates(record, candidate_filter)) for _, record in records)
     items: list[dict[str, Any]] = []
     affected: set[tuple[str, str, str, str]] = set()
     with ThreadPoolExecutor(max_workers=max(1, min(workers, len(records) or 1))) as pool:
         futures = {
-            pool.submit(_probe_record, root, path, record, timeout, probe_fn, apply_fn, is_cancelled, candidate_filter): record
+            pool.submit(_probe_record, root, path, record, timeout, probe_fn, apply_fn, is_cancelled, candidate_filter, activity_store): record
             for path, record in records if not is_cancelled()
         }
         for future in as_completed(futures):

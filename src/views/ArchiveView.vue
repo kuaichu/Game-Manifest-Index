@@ -31,12 +31,15 @@ import {
   preferredArtifactAction,
   preferredDomainArtifactAction,
   displayVersionLabel,
+  routeVersionLabel,
   versionSupportsMode,
 } from "../domain-presentation";
 import { gameIcons } from "../game-icons";
+import { gameActivityTime, gameActivityTitle } from "../game-activity";
 import { publisherGroups } from "../game-meta";
 import SourceProvenanceModal from "../components/SourceProvenanceModal.vue";
-import { useArchiveLoader } from "../composables/useArchiveLoader";
+import SiteChangelogModal from "../components/SiteChangelogModal.vue";
+import { domainRouteLabel, resolveRouteDomain, useArchiveLoader } from "../composables/useArchiveLoader";
 import { useArchiveArtifactsLoader, type ArchiveArtifactsLoaderState, type ArchiveArtifactLoadContext } from "../composables/useArchiveArtifactsLoader";
 import type {
   ArchiveDomain,
@@ -45,6 +48,7 @@ import type {
   ChunkManifestDetail,
   ChunkManifestSummaryItem,
   Game,
+  GameActivityEvent,
   VersionSummary,
 } from "../types";
 
@@ -52,6 +56,20 @@ const route = useRoute();
 const router = useRouter();
 const showProvenanceModal = ref(false);
 const provenanceOrigin = ref<{ x: number; y: number } | null>(null);
+const showSiteChangelog = ref(false);
+const siteChangelogOrigin = ref<{ x: number; y: number } | null>(null);
+const siteChangelogInitialTab = ref<"system" | "data">("system");
+const gameActivity = ref<GameActivityEvent[]>([]);
+let gameActivityController: AbortController | null = null;
+
+function openSiteChangelog(event: MouseEvent, tab: "system" | "data" = "system"): void {
+  const button = event.currentTarget as HTMLButtonElement;
+  const rect = button.getBoundingClientRect();
+  button.focus();
+  siteChangelogOrigin.value = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  siteChangelogInitialTab.value = tab;
+  showSiteChangelog.value = true;
+}
 
 function openProvenanceModal(event?: MouseEvent): void {
   if (event?.currentTarget) {
@@ -119,12 +137,44 @@ const {
 });
 
 const gameId = computed(() => String(route.params.gameId || ""));
-const domainId = computed(() => String(route.params.domainId || domains.value[0]?.id || ""));
-const selectedVersion = computed(() => String(route.params.version || versions.value[0]?.version || ""));
+async function loadGameActivity(): Promise<void> {
+  gameActivityController?.abort();
+  gameActivity.value = [];
+  if (!gameId.value || gameId.value === "abc") return;
+  const controller = new AbortController();
+  gameActivityController = controller;
+  try {
+    const response = await api.gameActivity(gameId.value, controller.signal);
+    if (!controller.signal.aborted) gameActivity.value = response.items;
+  } catch (error) {
+    if (!controller.signal.aborted && !isAbortError(error)) gameActivity.value = [];
+  }
+}
+
+watch(gameId, () => void loadGameActivity(), { immediate: true });
+watch(showSiteChangelog, (open) => {
+  if (open) void loadGameActivity();
+});
+const domainId = computed(() => {
+  const requested = String(route.params.domainId || "");
+  const matched = resolveRouteDomain(gameId.value, requested, domains.value);
+  return matched?.id || requested || domains.value[0]?.id || "";
+});
+const selectedVersion = computed(() => {
+  const requested = String(route.params.version || "");
+  const matched = versions.value.find(
+    (item) => item.version === requested || routeVersionLabel(item.version) === requested,
+  );
+  return matched?.version || requested || versions.value[0]?.version || "";
+});
 const mode = computed(() =>
   String(route.params.mode || domains.value.find((item) => item.id === domainId.value)?.capabilities[0] || ""),
 );
 const game = computed(() => games.value.find((item) => item.id === gameId.value) || null);
+const gameNames = computed(() => Object.fromEntries(games.value.map((item) => [
+  item.id,
+  /[\u3400-\u9fff]/.test(item.name) ? item.name : item.sub_name || item.name,
+])));
 const domain = computed(() => domains.value.find((item) => item.id === domainId.value) || null);
 const railGroups = computed(() => publisherGroups(games.value));
 const sidebarGameSearch = ref("");
@@ -193,8 +243,11 @@ async function switchCompareDomain(targetDomain: ArchiveDomain): Promise<void> {
 }
 const compareBaseVersion = computed(() => {
   const requested = String(route.query.from || "");
-  if (requested && requested !== selectedVersion.value && versions.value.some((item) => item.version === requested)) {
-    return requested;
+  const requestedItem = versions.value.find(
+    (item) => item.version === requested || routeVersionLabel(item.version) === requested,
+  );
+  if (requestedItem && requestedItem.version !== selectedVersion.value) {
+    return requestedItem.version;
   }
   const currentIndex = versions.value.findIndex((item) => item.version === selectedVersion.value);
   return versions.value[currentIndex + 1]?.version || compareBaseOptions.value[0]?.version || "";
@@ -204,6 +257,9 @@ function hasHoyoPackageFiles(summary: VersionSummary | null | undefined): boolea
 }
 const compareBaseSummary = computed(
   () => versions.value.find((item) => item.version === compareBaseVersion.value) || null,
+);
+const compareBaseDisplayVersion = computed(() =>
+  displayVersionLabel(compareBaseVersion.value, compareBaseSummary.value?.attributes),
 );
 const compareScope = computed<"artifacts" | "files">(() => {
   if (domain.value?.adapter === "perfectworld_patcher" || domain.value?.adapter === "nte" || domain.value?.adapter === "wuwa") {
@@ -215,10 +271,15 @@ const compareScope = computed<"artifacts" | "files">(() => {
   return "artifacts";
 });
 const searchableMode = computed(() => SEARCHABLE_MODES.has(mode.value));
+const isGenericFileManifestDomain = computed(() =>
+  domain.value?.kind === "files"
+  && domain.value?.adapter === "generic"
+  && Number(selectedSummary.value?.artifact_kinds?.package?.count || 0) > 0,
+);
 const isFileTreeMode = computed(
   () => mode.value === "files" && (
     ["patchersdk", "perfectworld_patcher", "wuwa", "hoyo"].includes(domain.value?.adapter || "")
-    || (domain.value?.kind === "files" && domain.value?.adapter === "generic" && domain.value.capabilities.includes("packages"))
+    || isGenericFileManifestDomain.value
   ),
 );
 const usesArtifactTree = computed(() => isFileTreeMode.value && Boolean(query.value.trim()));
@@ -293,7 +354,7 @@ const loadedArchiveArtifacts = useArchiveArtifactsLoader({
     artifactPageSize: artifactPageSize.value,
     domainGameId: domain.value?.game_id,
     domainKind: domain.value?.kind,
-    domainHasPackageManifest: domain.value?.capabilities.includes("packages"),
+    domainHasPackageManifest: isGenericFileManifestDomain.value,
     domainAdapter: domain.value?.adapter,
     versionsDomainId: versionsDomainId.value,
     hasSelectedVersion: versions.value.some((item) => item.version === selectedVersion.value),
@@ -555,7 +616,7 @@ function chunkArtifactMatchesFilter(artifact: Artifact): boolean {
 
 const footerProbeArtifacts = computed(() => {
   if (mode.value === "chunks") return artifacts.value.filter(chunkArtifactMatchesFilter);
-  if (usesRemoteTree.value || (mode.value === "files" && domain.value?.adapter === "hoyo")) return [];
+  if (usesRemoteTree.value || (mode.value === "files" && (domain.value?.adapter === "hoyo" || isGenericFileManifestDomain.value))) return [];
   if (usesArtifactTree.value) return artifacts.value;
   if (["packages", "patches"].includes(mode.value) && usesPreferredUrlPresentation.value && domain.value?.adapter !== "wuwa") {
     return artifacts.value;
@@ -586,9 +647,9 @@ const panelEyebrow = computed(() => {
   return modeLabel(domain.value, mode.value);
 });
 const panelTitle = computed(() => {
-  if (mode.value === "compare") return `${selectedVersion.value} 版本对比`;
+  if (mode.value === "compare") return `${selectedDisplayVersion.value} 版本对比`;
   if (mode.value === "manifest") return "官方清单文件";
-  if (mode.value === "archive") return `${selectedVersion.value} 归档信息`;
+  if (mode.value === "archive") return `${selectedDisplayVersion.value} 归档信息`;
   if (mode.value === "legacy") return "候选线索";
   return `${selectedDisplayVersion.value} ${modeLabel(domain.value, mode.value)}`;
 });
@@ -736,13 +797,19 @@ const currentVersionApiUrl = computed(() => {
   if (mode.value === "chunks") {
     return apiUrl(`/domains/${encodeURIComponent(domainId.value)}/versions/${encodeURIComponent(selectedVersion.value)}/chunk-manifests`);
   }
-  if (mode.value === "files" && ["hoyo", "perfectworld_patcher", "generic"].includes(domain.value?.adapter || "")) {
+  if (mode.value === "files" && (["hoyo", "perfectworld_patcher"].includes(domain.value?.adapter || "") || isGenericFileManifestDomain.value)) {
     return apiUrl(`/domains/${encodeURIComponent(domainId.value)}/versions/${encodeURIComponent(selectedVersion.value)}/files`);
   }
   return apiUrl(`/domains/${encodeURIComponent(domainId.value)}/versions/${encodeURIComponent(selectedVersion.value)}`);
 });
 
 const provenanceSource = computed(() => {
+  if (gameId.value === "abc") {
+    const sourceUrl = selectedSummary.value?.provenance?.source_url;
+    if (typeof sourceUrl === "string" && sourceUrl.startsWith("https://autopatchcn-beta.bhyyjl.com/")) {
+      return { label: "米哈游官方 Sophon Manifest", href: sourceUrl };
+    }
+  }
   if (domain.value?.adapter === "hoyo") {
     return { label: "hoyo-files.amarea.cn", href: "https://hoyo-files.amarea.cn/" };
   }
@@ -775,9 +842,18 @@ function legacyArchiveUrl(lead: ArchiveLead): string | undefined {
 }
 
 async function navigate(params: Record<string, string>): Promise<void> {
-  const nextParams = { ...route.params, ...params };
+  const targetVersion = String(params.version || selectedVersion.value);
+  const targetDomain = params.domainId
+    ? domains.value.find((item) => item.id === params.domainId)
+    : undefined;
+  const routeDomain = targetDomain ? domainRouteLabel(gameId.value, targetDomain) : params.domainId;
+  const nextParams = {
+    ...route.params,
+    ...params,
+    ...(routeDomain ? { domainId: routeDomain } : {}),
+    ...(params.version ? { version: routeVersionLabel(params.version) } : {}),
+  } as Record<string, string>;
   const targetMode = String(nextParams.mode || mode.value);
-  const targetVersion = String(nextParams.version || selectedVersion.value);
   const nextQuery: Record<string, string> = {};
   if (SEARCHABLE_MODES.has(targetMode) && String(route.query.q || "").trim()) {
     nextQuery.q = String(route.query.q).trim();
@@ -914,7 +990,7 @@ async function replaceQuery(name: "q" | "availability" | "from", value: string):
 }
 
 function updateCompareBase(value: string): void {
-  void replaceQuery("from", value);
+  void replaceQuery("from", routeVersionLabel(value));
 }
 function onCompareBaseChange(event: Event): void {
   updateCompareBase((event.target as HTMLSelectElement).value);
@@ -932,7 +1008,7 @@ watch(
     if (
       loading.value &&
       registryTargetGame.value === String(route.params.gameId || "") &&
-      registryTargetDomain.value === String(route.params.domainId || "")
+      registryTargetDomain.value === domainId.value
     ) return;
     void loadRegistry();
   },
@@ -1025,6 +1101,7 @@ onMounted(() => {
   window.addEventListener("storage", onAvailabilityStorageInvalidated);
 });
 onBeforeUnmount(() => {
+  gameActivityController?.abort();
   disposeArchiveLoader();
   if (searchTimer !== null) window.clearTimeout(searchTimer);
   window.removeEventListener("click", onWindowRawIndexClick);
@@ -1333,7 +1410,7 @@ function chunkMatchingField(artifact: Artifact): string {
     <aside class="game-sidebar" aria-label="游戏导航">
       <div class="sidebar-header">
         <div class="sidebar-brand">
-          <div class="brand-badge">GMI</div>
+          <img class="brand-badge" src="/project-icon.svg" alt="GMI" />
           <div class="brand-info">
             <strong>游戏资源索引</strong>
             <span>Game Manifest Index</span>
@@ -1395,23 +1472,29 @@ function chunkMatchingField(artifact: Artifact): string {
       <header id="home" class="topbar">
         <div>
           <p class="kicker">Unofficial URL Archive</p>
-          <h1>{{ displayGameName || '游戏' }}官方 CDN 文件索引</h1>
+          <h1>{{ displayGameName || '游戏' }}官方文件索引</h1>
         </div>
-        <button
-          class="topbar-source-card"
-          type="button"
-          @click="openProvenanceModal($event)"
-          title="查看全量游戏数据来源与官方直链申明"
-        >
-          <span class="source-card-dot"></span>
-          <span class="source-card-val">数据与资源来源</span>
-          <svg class="source-card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="16" x2="12" y2="12" />
-            <line x1="12" y1="8" x2="12.01" y2="8" />
+        <button class="topbar-changelog" type="button" @click="openSiteChangelog($event)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <rect x="3" y="5" width="18" height="16" rx="2" />
+            <path d="M7 3v4M17 3v4M3 10h18M7 14h5" />
           </svg>
+          <span>更新日志</span>
+          <span class="topbar-changelog-arrow" aria-hidden="true">↗</span>
         </button>
       </header>
+      <section v-if="gameActivity.length" class="recent-activity" aria-label="最近资源变动">
+        <div class="recent-activity-heading">
+          <strong>最近资源变动</strong>
+          <button type="button" @click="openSiteChangelog($event, 'data')">查看全部</button>
+        </div>
+        <ol>
+          <li v-for="event in gameActivity.slice(0, 3)" :key="event.id">
+            <time :datetime="event.occurred_at">{{ gameActivityTime(event.occurred_at) }}</time>
+            <span>{{ gameActivityTitle(event, displayGameName) }}</span>
+          </li>
+        </ol>
+      </section>
       <section class="control-strip">
         <VersionPicker
           :versions="versions"
@@ -1719,13 +1802,13 @@ function chunkMatchingField(artifact: Artifact): string {
             </div>
             <div v-if="compareBaseVersion" class="compare-range-field">
               <span>对比范围</span>
-              <strong>{{ compareBaseVersion }} → {{ selectedVersion }}</strong>
+              <strong>{{ compareBaseDisplayVersion }} → {{ selectedDisplayVersion }}</strong>
             </div>
             <div v-if="compareBaseVersion" class="compare-base-field">
               <span>基准版本</span>
               <CustomSelect
                 :model-value="compareBaseVersion"
-                :options="compareBaseOptions.map((item) => ({ label: item.version, value: item.version }))"
+                :options="compareBaseOptions.map((item) => ({ label: displayVersionLabel(item.version, item.attributes), value: item.version }))"
                 size="small"
                 @change="updateCompareBase(String($event))"
               />
@@ -1759,7 +1842,7 @@ function chunkMatchingField(artifact: Artifact): string {
           <ChunkManifestView
             :domain="domain"
             :game="game"
-            :version="selectedVersion"
+            :version="selectedDisplayVersion"
             :chunk-detail="chunkDetail"
             :chunk-collection="chunkCollection"
             :artifacts="artifacts"
@@ -1770,7 +1853,7 @@ function chunkMatchingField(artifact: Artifact): string {
             @copy-url="onCopyChunkUrl"
           />
         </div>
-        <div v-else-if="mode === 'files' && (domain?.adapter === 'hoyo' || (domain?.kind === 'files' && domain?.adapter === 'generic' && domain?.capabilities.includes('packages')))" class="chunk-file-browser-wrapper">
+        <div v-else-if="mode === 'files' && (domain?.adapter === 'hoyo' || isGenericFileManifestDomain)" class="chunk-file-browser-wrapper">
           <ChunkFileBrowser
             :domain="domain"
             :game="game"
@@ -1782,13 +1865,13 @@ function chunkMatchingField(artifact: Artifact): string {
             :search-query="query"
           />
         </div>
-        <template v-if="!loading && !error && !['legacy', 'archive', 'compare', 'manifest', 'chunks'].includes(mode) && !(mode === 'files' && (domain?.adapter === 'hoyo' || (domain?.kind === 'files' && domain?.adapter === 'generic'))) ">
+        <template v-if="!loading && !error && !['legacy', 'archive', 'compare', 'manifest', 'chunks'].includes(mode) && !(mode === 'files' && (domain?.adapter === 'hoyo' || isGenericFileManifestDomain))">
           <div v-if="usesRemoteTree && domain" class="remote-workspace">
             <template v-if="mode === 'resources' && selectedSummary">
               <div class="chunk-summary resource-summary">
                 <div>
                   <span>资源版本</span>
-                  <strong>{{ selectedSummary.attributes.resource_version || selectedVersion }}</strong>
+                  <strong>{{ displayVersionLabel(String(selectedSummary.attributes.resource_version || selectedVersion)) }}</strong>
                 </div>
                 <div>
                   <span>文件数</span>
@@ -2317,7 +2400,7 @@ function chunkMatchingField(artifact: Artifact): string {
                 <div class="file-meta">
                   <span>{{ formatBytes(artifact.size) }}</span>
                   <span v-if="artifact.checksum_value">{{ formatChecksum(artifact) }}</span>
-                  <span v-if="artifact.attributes.route_from && (artifact.attributes.route_to || selectedVersion)">{{ artifact.attributes.route_from }} -> {{ artifact.attributes.route_to || selectedVersion }}</span>
+                  <span v-if="artifact.attributes.route_from && (artifact.attributes.route_to || selectedVersion)">{{ displayVersionLabel(String(artifact.attributes.route_from)) }} -> {{ displayVersionLabel(String(artifact.attributes.route_to || selectedVersion)) }}</span>
                   <span v-if="artifact.attributes.language">{{ hoyoLanguageLabel(artifact.attributes.language) }}</span>
                 </div>
               </div>
@@ -2490,6 +2573,13 @@ function chunkMatchingField(artifact: Artifact): string {
       :origin-pos="provenanceOrigin"
       :active-game-id="gameId"
       @close="showProvenanceModal = false"
+    />
+    <SiteChangelogModal
+      :open="showSiteChangelog"
+      :origin-pos="siteChangelogOrigin"
+      :initial-tab="siteChangelogInitialTab"
+      :game-names="gameNames"
+      @close="showSiteChangelog = false"
     />
   </div>
 </template>

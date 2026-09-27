@@ -19,6 +19,53 @@ describe("archive cross-game navigation", () => {
     document.body.innerHTML = "";
   });
 
+  it("browses a manifest-only PC game without a full-package or availability claim", async () => {
+    const game = { id: "abc", name: "崩坏：因缘精灵", sub_name: "Honkai: Nexus Anima", icon_source: "", sort_order: 12 };
+    const domain = {
+      id: "abc-pc", game_id: "abc", kind: "files", platform: "windows",
+      capabilities: ["files"], adapter: "generic", version_count: 1,
+      latest_version: "0.60.2", sort_order: 0, capability_contract: { availability_source_kinds: [], live_probe: false },
+    };
+    const version = {
+      version: "0.60.2", current_revision_id: 1, revision_count: 1,
+      observed_at: null, packed_size: 24374639429, unpacked_size: 24374639429,
+      artifact_count: 1,
+      artifact_kinds: { package: { count: 1, size: 24374639429, availability_states: { unknown: 1 } } },
+      availability_states: { unknown: 1 }, attributes: {}, provenance: { source_kind: "manual" },
+    };
+    vi.spyOn(api, "games").mockResolvedValue([game] as never);
+    vi.spyOn(api, "domains").mockResolvedValue([domain] as never);
+    vi.spyOn(api, "versions").mockResolvedValue([version] as never);
+    const artifacts = vi.spyOn(api, "artifacts").mockResolvedValue(emptyPage as never);
+    const files = vi.spyOn(api, "versionFiles").mockResolvedValue({
+      source: "package", fetch_mode: "checked_in_manifest", identity: "game", path: "", q: null,
+      items: [{ type: "file", name: "NexusAnima.exe", path: "NexusAnima.exe", size: 680224, md5: "a".repeat(32) }],
+      total: 1, next_cursor: null, totals: { files: 1, directories: 0, size: 680224 },
+    } as never);
+
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: "/games/:gameId/:domainId?/:version?/:mode?", name: "archive", component: ArchiveView }],
+    });
+    await router.push("/games/abc/abc-pc/0.60.2/files");
+    await router.isReady();
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const app = createApp(ArchiveView);
+    app.use(router);
+    app.mount(root);
+    await flushUpdates();
+    await flushUpdates();
+
+    expect(files).toHaveBeenCalledWith("abc-pc", "0.60.2", expect.objectContaining({ source: "package" }), expect.any(AbortSignal));
+    expect(artifacts).not.toHaveBeenCalled();
+    expect(root.textContent).toContain("NexusAnima.exe");
+    expect(root.textContent).toContain("文件清单");
+    expect(root.textContent).not.toContain("完整包");
+    expect(root.textContent).not.toContain("未判定");
+    app.unmount();
+  });
+
   it("loads the bounded NTE version on demand and keeps unverified/helper actions hidden", async () => {
     const game = { id: "nte", name: "异环", sub_name: "Neverness to Everness", icon_source: "", sort_order: 0 };
     const domain = {
@@ -201,7 +248,7 @@ describe("archive cross-game navigation", () => {
     await flushUpdates();
     await flushUpdates();
 
-    expect(router.currentRoute.value.fullPath).toBe("/games/hkrpg/hkrpg-pc/4.4.0/packages");
+    expect(router.currentRoute.value.fullPath).toBe("/games/hkrpg/pc/4.4.0/packages");
     expect(artifacts.mock.calls.some(([domainId, version]) => domainId === "hkrpg-pc" && version === "4.4.0")).toBe(true);
     app.unmount();
   });
@@ -334,7 +381,7 @@ describe("archive cross-game navigation", () => {
     await flushUpdates();
     await flushUpdates();
     expect(router.currentRoute.value.params).toMatchObject({
-      gameId: "endfield", domainId: "endfield-pc", version: "1.3.3", mode: "packages",
+      gameId: "endfield", domainId: "pc", version: "1.3.3", mode: "packages",
     });
     app.unmount();
   });
@@ -595,7 +642,7 @@ describe("archive cross-game navigation", () => {
       fromVersion: "5.4.0", toVersion: "5.5.0", compareScope: "artifacts",
     }), expect.any(AbortSignal));
     expect(router.currentRoute.value.params).toMatchObject({
-      gameId: "hk4e", domainId: "hk4e-android", version: "5.5.0", mode: "compare",
+      gameId: "hk4e", domainId: "android", version: "5.5.0", mode: "compare",
     });
 
     // Top "版本对比" tab remains active
@@ -747,7 +794,7 @@ describe("archive cross-game navigation", () => {
     await flushUpdates();
     await flushUpdates();
 
-    expect(router.currentRoute.value.fullPath).toBe("/games/hk4e/hk4e-android/5.5.0/compare?from=5.3.0");
+    expect(router.currentRoute.value.fullPath).toBe("/games/hk4e/android/5.5.0/compare?from=5.3.0");
     expect(compare).toHaveBeenCalledWith("hk4e-android", expect.objectContaining({
       fromVersion: "5.3.0", toVersion: "5.5.0",
     }), expect.any(AbortSignal));
@@ -808,7 +855,7 @@ describe("archive cross-game navigation", () => {
     await flushUpdates();
     await flushUpdates();
 
-    expect(router.currentRoute.value.fullPath).toBe("/games/hk4e/hk4e-android/5.5.0/compare?from=5.2.0");
+    expect(router.currentRoute.value.fullPath).toBe("/games/hk4e/android/5.5.0/compare?from=5.2.0");
     expect(compare).toHaveBeenCalledWith("hk4e-android", expect.objectContaining({
       fromVersion: "5.2.0", toVersion: "5.5.0",
     }), expect.any(AbortSignal));
@@ -1001,13 +1048,13 @@ describe("archive cross-game navigation", () => {
     pendingGames[1](structuredClone(games));
     await flushUpdates();
     await flushUpdates();
-    expect(router.currentRoute.value.fullPath).toBe("/games/endfield/endfield-pc/1.3.3/packages");
+    expect(router.currentRoute.value.fullPath).toBe("/games/endfield/pc/1.3.3/packages");
 
     // The superseded refresh returns late and must change nothing.
     pendingGames[0](structuredClone(games));
     await flushUpdates();
     await flushUpdates();
-    expect(router.currentRoute.value.fullPath).toBe("/games/endfield/endfield-pc/1.3.3/packages");
+    expect(router.currentRoute.value.fullPath).toBe("/games/endfield/pc/1.3.3/packages");
     expect(versions).toHaveBeenCalledTimes(2);
     expect(versions).toHaveBeenLastCalledWith("endfield-pc", expect.anything());
     expect(artifacts).toHaveBeenLastCalledWith("endfield-pc", "1.3.3", expect.anything(), expect.anything());
@@ -1083,7 +1130,7 @@ describe("archive cross-game navigation", () => {
     resolveOldArtifacts({ items: [packageArtifact(3, "late-old-nte.zip")], next_cursor: null });
     await flushUpdates();
     await flushUpdates();
-    expect(router.currentRoute.value.fullPath).toBe("/games/endfield/endfield-pc/1.3.3/packages");
+    expect(router.currentRoute.value.fullPath).toBe("/games/endfield/pc/1.3.3/packages");
     expect(root.textContent).toContain("current-endfield.zip");
     expect(root.textContent).not.toContain("late-old-nte.zip");
 
@@ -1220,13 +1267,13 @@ describe("archive cross-game navigation", () => {
     await router.push("/games/endfield");
     await flushUpdates();
     await flushUpdates();
-    expect(router.currentRoute.value.params).toMatchObject({ gameId: "endfield", domainId: "endfield-pc" });
+    expect(router.currentRoute.value.params).toMatchObject({ gameId: "endfield", domainId: "pc" });
 
     versions.mockClear();
     await router.back();
     await flushUpdates();
     await flushUpdates();
-    expect(router.currentRoute.value.fullPath).toBe("/games/nte/nte-pc/1.2.15/files");
+    expect(router.currentRoute.value.fullPath).toBe("/games/nte/pc/1.2.15/files");
     expect(versions).toHaveBeenCalledWith("nte-pc", expect.anything());
 
     app.unmount();

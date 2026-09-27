@@ -24,6 +24,7 @@ from fastapi.responses import JSONResponse, Response
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from backend import catalog_admin
+from backend.activity_store import ActivityStore
 from backend.admin_probe import candidates as scheduled_probe_candidates
 from backend.catalog_admin import CatalogConfigError
 from backend.indexes import IndexReadError, _entry as index_entry, read_index
@@ -217,6 +218,7 @@ class ApiContract:
             if state_root is not None
             else Path(os.environ.get("GMI_STATE_ROOT") or Path(__file__).resolve().parents[1] / ".cache")
         )
+        self.activity_store = ActivityStore(self.state_root)
 
     def _catalog_games(self) -> list[dict[str, Any]]:
         try:
@@ -1153,6 +1155,22 @@ def create_api_app(data_root: Path, upstream: Any | None = None, *, state_root: 
     def health() -> dict[str, str]:
         return {"status": "ok"}
 
+    @app.get("/api/v1/activity")
+    def activity(limit: int = Query(default=20, ge=1, le=100)) -> dict[str, Any]:
+        enabled_games = tuple(
+            game["id"] for game in service()._catalog_games()
+            if game.get("is_enabled") is not False
+        )
+        visible_versions = {
+            (domain.game_id, domain.domain_id, record["version"])
+            for domain in service().inventory().values()
+            if domain.game_id in enabled_games
+            for record in domain.records
+        }
+        return {"items": service().activity_store.list_recent(
+            limit, game_ids=enabled_games, visible_versions=visible_versions,
+        )}
+
     @app.get("/api/v1/games")
     def games() -> list[dict[str, Any]]:
         inventory = service().inventory()
@@ -1167,6 +1185,27 @@ def create_api_app(data_root: Path, upstream: Any | None = None, *, state_root: 
                 result.append({"id": game_id, "name": game["name"], "sub_name": game["sub_name"], "platform": "multi" if len(domains) > 1 else domains[0].platform, "icon_source": game["icon_source"], "version_count": len(versions), "latest_version": max(versions, key=_version_key), "is_enabled": True, "sort_order": game["sort_order"]})
         result.sort(key=lambda item: (item.get("sort_order", 0), item["id"]))
         return result
+
+    @app.get("/api/v1/games/{game_id}/activity")
+    def game_activity(game_id: str, limit: int = Query(default=20, ge=1, le=100)) -> dict[str, Any]:
+        game = next(
+            (
+                item for item in service()._catalog_games()
+                if item["id"] == game_id and item.get("is_enabled") is not False
+            ),
+            None,
+        )
+        if game is None:
+            fail(404, "game_not_found", "游戏不存在")
+        visible_versions = {
+            (game_id, domain.domain_id, record["version"])
+            for domain in service().inventory().values()
+            if domain.game_id == game_id
+            for record in domain.records
+        }
+        return {"items": service().activity_store.list_for_game(
+            game_id, limit, visible_versions=visible_versions,
+        )}
 
     @app.get("/api/v1/games/{game_id}/domains")
     def game_domains(game_id: str) -> list[dict[str, Any]]:

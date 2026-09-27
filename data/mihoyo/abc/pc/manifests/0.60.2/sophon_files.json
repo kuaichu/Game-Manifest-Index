@@ -1,0 +1,2843 @@
+{
+  "schema_version": 1,
+  "vendor": "mihoyo",
+  "game_id": "abc",
+  "domain_id": "abc-pc",
+  "platform": "windows",
+  "version": "0.60.2",
+  "build_id": "U3kfso6oSon3",
+  "manifest_id": "manifest_22e0c2f4ec8d4ce2_f313c6038abb22e0ac5d9532dfc5c63b",
+  "manifest_url": "https://autopatchcn-beta.bhyyjl.com/sophon/signed/manifests/eigu4upkeyv4/20260706/0.60.2/U3kfso6oSon3/manifest_22e0c2f4ec8d4ce2_f313c6038abb22e0ac5d9532dfc5c63b",
+  "resource": [
+    {
+      "dest": "D3D12/D3D12Core.dll",
+      "md5": "bdc1a7301baf5bd1ab6d995b2d6b7dd5",
+      "size": 5247408
+    },
+    {
+      "dest": "GameAssembly.dll",
+      "md5": "6e255e4d4e3f6e79e94b69fa6ebbaf46",
+      "size": 129427232
+    },
+    {
+      "dest": "HoYoKProtect.sys",
+      "md5": "7e4ef2371dd66077bef24b5ffea31b42",
+      "size": 4086976
+    },
+    {
+      "dest": "NexusAnima.exe",
+      "md5": "c1f1b0b11ee4a852636f74120e361466",
+      "size": 680224
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/ABCSDK.dll",
+      "md5": "393650d9b8b1ca967cdf435091621feb",
+      "size": 118048
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/APM4webCrashH.dll",
+      "md5": "1385bdedb6d5655ac376ac07aae31ef7",
+      "size": 2446112
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/APM4webCrashR.exe",
+      "md5": "4aa6c18d783abd5462dcc55d78b656d2",
+      "size": 1842464
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/AccountPlatNative.dll",
+      "md5": "553fe5e8d95d262e19d8ce06ec434625",
+      "size": 9296160
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/AkSoundEngine.dll",
+      "md5": "e46ed524d0c576a826497f08bd1288da",
+      "size": 3064608
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/Astrolabe.dll",
+      "md5": "bde5cae72f737ad20abbd3f743a9ea0f",
+      "size": 2610464
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/HYPass.dll",
+      "md5": "cdb5e18c27d3d797c031f3065a13a539",
+      "size": 5839648
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/HoYoNetworkSDK.dll",
+      "md5": "9aa1d05cc6807faa8b8431de296e0c69",
+      "size": 647968
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/HoYoSDKNetworkFallback.dll",
+      "md5": "d0456a9bc04aeccdc95e073be694c323",
+      "size": 2776352
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/MiHoYoMTRSDK.dll",
+      "md5": "752e6c096deda4297824deabf1e8309e",
+      "size": 838944
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/MiHoYoSDKUploader.dll",
+      "md5": "8f9fb492d3d5fe865ffee094d495e86f",
+      "size": 4440864
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/NamedPipeClient.dll",
+      "md5": "bdee07b1ef5735b920bec2dcb29b3b8a",
+      "size": 283936
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/NativeCore.dll",
+      "md5": "95f6440aa175bd05f9c3f67c57bdfd2e",
+      "size": 129824
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/NativeProjectModule.dll",
+      "md5": "987311752aa1132e1c7c65969dbf2d4f",
+      "size": 119584
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/RFLib_CNative_2018.dll",
+      "md5": "a75b612ff39597eafec9a6814bdd8262",
+      "size": 1778464
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/ThirdPartyNotices.txt",
+      "md5": "b2ae117fbd214995b18219a477a3fd88",
+      "size": 841033
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/ZFEmbedWeb.dll",
+      "md5": "e03f5a4a0882d60f662865efc9b468e3",
+      "size": 777504
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/ZFGameBrowser.exe",
+      "md5": "3d580b1c31eab2e1ae653fd5a80a2202",
+      "size": 895776
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/ZFProxyWeb.dll",
+      "md5": "c464ef185673eaf0d96edd07b42e85d3",
+      "size": 451360
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/abci.dll",
+      "md5": "acb3bb514b6fe066d7ab9baf0cd57e66",
+      "size": 1525536
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/chrome_100_percent.pak",
+      "md5": "14ebcc3842d929b48b8c61fa5c8dc74e",
+      "size": 641865
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/chrome_200_percent.pak",
+      "md5": "18f9caad88ed26f5c522b97afeff5878",
+      "size": 967924
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/chrome_elf.dll",
+      "md5": "f93fe41d37f2998459c08cf213a648e0",
+      "size": 1189664
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/crashreport.exe",
+      "md5": "2d0f8625cfd6d6982a4a823150a749eb",
+      "size": 2044192
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/cri_ware_unity.dll",
+      "md5": "fe68ff1f9bcecf07eac57a503944be38",
+      "size": 2080544
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/d3dcompiler_47.dll",
+      "md5": "abe034c17e745bb9067ba38c18568880",
+      "size": 4891080
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/icudt71l.dat",
+      "md5": "76bef9b8bb32e1e54fe1054c97b84a10",
+      "size": 10462432
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/icudtl.dat",
+      "md5": "d866d68e4a3eae8cdbfd5fc7a9967d20",
+      "size": 10284336
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/kcp.dll",
+      "md5": "07b25e9543e0afd22a101a8c89255434",
+      "size": 164128
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/libEGL.dll",
+      "md5": "50ab3a5889e2877e1121556850d9a05e",
+      "size": 428320
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/libGLESv2.dll",
+      "md5": "a3c484aa32fb683eb016cb8aa5db9009",
+      "size": 6316832
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/af.pak",
+      "md5": "97abcdb8f44dc3c3e4d489ad592ba528",
+      "size": 447013
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/am.pak",
+      "md5": "f4644bf2d7f1c81b2aa4aae7f266532e",
+      "size": 545389
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/ar-XB.pak",
+      "md5": "eff1b53144154c916d227894df1624bc",
+      "size": 556558
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/ar.pak",
+      "md5": "fbfeac95e8659b852ea517cc0b9e63a9",
+      "size": 580035
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/bg.pak",
+      "md5": "2cb1e2820393e7fe862a6bf400b06a91",
+      "size": 625224
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/bn.pak",
+      "md5": "86d4f143f2840e91b78d156bb8036ca2",
+      "size": 797855
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/ca.pak",
+      "md5": "b12514483a5c54adabdaa9b174ac953d",
+      "size": 384961
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/cs.pak",
+      "md5": "4f4d466edd5fcf7c92ed53d377e187f1",
+      "size": 393222
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/da.pak",
+      "md5": "3cfe8c9d82dd2ca67f21c5a72c185a3d",
+      "size": 357164
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/de.pak",
+      "md5": "a01ee98545e418fff65a88bc87033b36",
+      "size": 389269
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/el.pak",
+      "md5": "0947e2cc18aeb36cc12d9f3c04101497",
+      "size": 679763
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/en-GB.pak",
+      "md5": "b43d5ff379f03aa3ae0733964fd573d0",
+      "size": 315818
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/en-US.pak",
+      "md5": "75d3c4870f07fb4bb4d2a6450cad4746",
+      "size": 320048
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/en-XA.pak",
+      "md5": "4b9b2617d975320ce569d90c720f70f1",
+      "size": 695822
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/es-419.pak",
+      "md5": "b0e9e4fe7bbf7c1f90c395d2a369d952",
+      "size": 382061
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/es.pak",
+      "md5": "bc4e49e8537db143e7ceb525fbf4bdc7",
+      "size": 382138
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/et.pak",
+      "md5": "8a9e3dee680e84f4beb503c0cd6bf25d",
+      "size": 346198
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/fa.pak",
+      "md5": "91e9095664f6e67dc01dbf7ee69be6be",
+      "size": 551391
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/fi.pak",
+      "md5": "1d57c52b0cd46e3409d70920f369e570",
+      "size": 352473
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/fil.pak",
+      "md5": "2430f93016c2016b167674831803bdf6",
+      "size": 394209
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/fr.pak",
+      "md5": "2e8cf6dcbbc12a0834d26778abec4780",
+      "size": 413623
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/gu.pak",
+      "md5": "369a728eaa59b95000f52b4dd48d380f",
+      "size": 771313
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/he.pak",
+      "md5": "47032588bb24e59d4ba9dc1301999128",
+      "size": 481639
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/hi.pak",
+      "md5": "c26af90aa34f93f22343a3d16436aff2",
+      "size": 800063
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/hr.pak",
+      "md5": "c9cc29f868136a88110c3054f1ae2612",
+      "size": 379547
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/hu.pak",
+      "md5": "9d43ddf47241c2d8c723825f22faa36e",
+      "size": 409062
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/id.pak",
+      "md5": "eab4d709b89851682872c6493faf0b4e",
+      "size": 338446
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/it.pak",
+      "md5": "61d14953f36c56cbbe81e7d86b67d85c",
+      "size": 375263
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/ja.pak",
+      "md5": "a793e27debc0a5861ac19b1ff0eecdc6",
+      "size": 459070
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/kn.pak",
+      "md5": "d9742b3b3855140b3f1e8c0e1a3ec72c",
+      "size": 890018
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/ko.pak",
+      "md5": "375ef0e31c63e44f70ea5855b9c9ebdf",
+      "size": 386611
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/lt.pak",
+      "md5": "7613d3dc122ef7f5154ab3a2c3b52ad1",
+      "size": 408683
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/lv.pak",
+      "md5": "3c857b2903f7d9ce357547767a704b3d",
+      "size": 408901
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/ml.pak",
+      "md5": "bea9d7dfd8805c82d5346bf7852e80f2",
+      "size": 934143
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/mr.pak",
+      "md5": "6d30ba18dbb20b490912ee84a886fa5d",
+      "size": 759161
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/ms.pak",
+      "md5": "c5291bbd2043a2d989bbdd8fb9919280",
+      "size": 354173
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/nb.pak",
+      "md5": "eb0fec9cf0f91f35d58aa845b2755720",
+      "size": 350020
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/nl.pak",
+      "md5": "45ad0f35b6ee789b05b208afdbaf95a9",
+      "size": 358581
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/pl.pak",
+      "md5": "561a904ebe85ed36253f120f315eb601",
+      "size": 395843
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/pt-BR.pak",
+      "md5": "ac45933d9770782d34887a6cccd117cd",
+      "size": 374374
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/pt-PT.pak",
+      "md5": "04932600a523a256b8a9e946292c1beb",
+      "size": 378717
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/ro.pak",
+      "md5": "25b19688ee3f037e8bfd85fc80a7a59c",
+      "size": 387147
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/ru.pak",
+      "md5": "90a27f1431293548aad8a844ae85fafe",
+      "size": 617806
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/sk.pak",
+      "md5": "a56d6bcb8a6fbd36ef92ce57407fe91e",
+      "size": 399388
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/sl.pak",
+      "md5": "b9f17adce1c24ce0d2be14e2c8ce4d1a",
+      "size": 381589
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/sr.pak",
+      "md5": "8401d2ee65d9c351b62c24f91feba908",
+      "size": 586186
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/sv.pak",
+      "md5": "fbd606df37784fd68d2b6cdfd534d250",
+      "size": 349610
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/sw.pak",
+      "md5": "2932a6edd5e548c4d2eaca22e045d7fb",
+      "size": 362680
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/ta.pak",
+      "md5": "72f5d60eb8cf01b5b1a996e9ee4c3205",
+      "size": 916497
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/te.pak",
+      "md5": "9adff629db9e6942d39742d314420da1",
+      "size": 854767
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/th.pak",
+      "md5": "122908516493852e3080c8b7683be0c6",
+      "size": 717751
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/tr.pak",
+      "md5": "d90c596207fae1f6a75748eabe38fdd4",
+      "size": 371546
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/uk.pak",
+      "md5": "b89747dc8219c8fb02b1538621dafe4c",
+      "size": 618241
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/ur.pak",
+      "md5": "2eb334ab78814abb843a1f0039975218",
+      "size": 720829
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/vi.pak",
+      "md5": "fe276e03ac66d3200da31c85fc7eef06",
+      "size": 439761
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/zh-CN.pak",
+      "md5": "ffcdc5d50ef47ed70c0d769b976bd6cd",
+      "size": 324298
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/locales/zh-TW.pak",
+      "md5": "2cdae7252eea5f63710f12d1d55eb421",
+      "size": 320170
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/mailbox.dll",
+      "md5": "d85f1fa2975d731a2c4f1ce7a9dc1937",
+      "size": 22816
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/resources.pak",
+      "md5": "f696166098b396f21f0c91d152f5c7ae",
+      "size": 7237046
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/snapshot_blob.bin",
+      "md5": "ae411cb7bd94a5d2e6ddeed0292ca6ff",
+      "size": 405448
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/telemetry.dll",
+      "md5": "d6b65391d2143cccf73426b5c90178dd",
+      "size": 9647904
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/v8_context_snapshot.bin",
+      "md5": "50bc7e207133d8529714098ba5131d19",
+      "size": 726288
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/vk_swiftshader.dll",
+      "md5": "dcc6cd847bb0fa9e17828f906cee6f45",
+      "size": 3999520
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/vk_swiftshader_icd.json",
+      "md5": "8642dd3a87e2de6e991fae08458e302b",
+      "size": 106
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/vulkan-1.dll",
+      "md5": "022e04741e0fbbe0f243bfabeb7ca9db",
+      "size": 823072
+    },
+    {
+      "dest": "NexusAnima_Data/Plugins/x86_64/zf_cef.dll",
+      "md5": "15b549f6ef46fa7d77d1992a486e0471",
+      "size": 168621344
+    },
+    {
+      "dest": "NexusAnima_Data/Resources/browser_assets",
+      "md5": "6dbc62ca7bf8372c770e1211817b3614",
+      "size": 14
+    },
+    {
+      "dest": "NexusAnima_Data/Resources/unity default resources",
+      "md5": "66a8b3ccb1a3b0f6ea1bdd6f313efe21",
+      "size": 15551496
+    },
+    {
+      "dest": "NexusAnima_Data/Resources/unity_builtin_extra",
+      "md5": "5c8874c0720b5b211cf59ecd9d1cefed",
+      "size": 474920
+    },
+    {
+      "dest": "NexusAnima_Data/Resources/unity_builtin_extra.schema.json",
+      "md5": "ad1e5816a99dd18659d293bf5c8af314",
+      "size": 204
+    },
+    {
+      "dest": "NexusAnima_Data/RuntimeInitializeOnLoads.json",
+      "md5": "3570edacdfdb8a2a3ad592d02208f908",
+      "size": 9842
+    },
+    {
+      "dest": "NexusAnima_Data/ScriptingAssemblies.json",
+      "md5": "0d5a5c4806ae59670b14140393968c34",
+      "size": 5321
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/Audio/Pck/AudioManifest.json",
+      "md5": "c4695198d8def5df51ccf22dcb09415f",
+      "size": 861
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/Audio/Pck/AudioVerify.txt",
+      "md5": "3926341b7511e7056b4877aaa8dd17da",
+      "size": 4
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/Audio/Pck/Chinese(ZH)_67cd263fb3920794.pck",
+      "md5": "25a378eac208b00acc94ac1c10cb4c9e",
+      "size": 74945637
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/Audio/Pck/Chinese(ZH)_ES_6a41f9c6a52b8e12.pck",
+      "md5": "24dd50eb24c08c4d060d2f1e107ecd94",
+      "size": 317910577
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/Audio/Pck/Default_8d74906c077c2cfb.pck",
+      "md5": "b4ae873fda7bf19ea8c11788a17ac455",
+      "size": 997700628
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/Audio/Pck/English(US)_76b7d6ec92f28d88.pck",
+      "md5": "93dcf5b24c6e17105dfd401ffc867f49",
+      "size": 89873960
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/Audio/Pck/English(US)_ES_e15590f174e7a102.pck",
+      "md5": "9cc6e016e9903476d8effe02059ed859",
+      "size": 386797199
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/Audio/Pck/EventLT_c98ded9804c7a187.bin",
+      "md5": "275420367f9be69d023ea1d203f2fad1",
+      "size": 41061
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/Audio/Pck/Japanese(JA)_1b43f147c39fddc7.pck",
+      "md5": "ead58faf0cef38bcc0ebffb6e797096d",
+      "size": 109777010
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/Audio/Pck/Japanese(JA)_ES_4118a490d9aeb5f4.pck",
+      "md5": "0ce7eb109bde67e458e65a6e050779c5",
+      "size": 450186653
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/Audio/Pck/Korean(KR)_9203fdaee743c9f0.pck",
+      "md5": "4c737da95ac31d8e815baf93e692902a",
+      "size": 100324040
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/Audio/Pck/Korean(KR)_ES_8bb237a1237a9775.pck",
+      "md5": "d70467b97ca03465ea06db9317dd9667",
+      "size": 402643187
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/Audio/Pck/Stream_0_972c66b8ec7973a6.pck",
+      "md5": "7a1601640cbcd47dcf08430259b34223",
+      "size": 1187395904
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/Audio/Pck/Stream_1_02565b6a0964e12b.pck",
+      "md5": "b03d97262b334449e63d14d9cea86a95",
+      "size": 1096195630
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/Bin/ConfigDownloadManifest.bin",
+      "md5": "472bfbc43f6de746e5b4cad61cf84d23",
+      "size": 224
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/Bin/ConfigLoadManifest.bin",
+      "md5": "7b0b031c86fa4739658b0eff5c0211fb",
+      "size": 1379072
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/Bin/f61a081ce0d48b051988e7df870d97da.bin",
+      "md5": "070c4b9c498aed45e2106001de7c0a5a",
+      "size": 3060904
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/Configs/AppCrashInfo.bin",
+      "md5": "75819e1b9720bf8797318f7a487f744d",
+      "size": 187
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/Configs/AppInfo.bin",
+      "md5": "b431215e0b04ef93aa422a9b49d6d765",
+      "size": 417
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/Configs/BaseDeviceProfile.bin",
+      "md5": "15a2b75f817a873fccb4c920c70ac92a",
+      "size": 563
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/Configs/BaseSettings.bin",
+      "md5": "5c5c09d2230ae6bde05e97ae59c14e1a",
+      "size": 103
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/Configs/DefaultDeviceProfile.bin",
+      "md5": "08866316e9adf4282302071ea7b38441",
+      "size": 64
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/Configs/DefaultSettings.bin",
+      "md5": "5bee294a9aedd9b7c727e6bb0bd5b71b",
+      "size": 336
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/Configs/Windows/BaseDeviceProfile.bin",
+      "md5": "e994c21ebbef1952dd38332cfa58125f",
+      "size": 2730
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/Configs/Windows/DefaultDeviceProfile.bin",
+      "md5": "52cba88e86d800cd4cf0107dc698dd43",
+      "size": 10112
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/10C1D9EF8E077697.wmv",
+      "md5": "1e594c960008fd75d222cd209cfa1b36",
+      "size": 38660235
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/10D93CECC7423C10.wmv",
+      "md5": "b1eb08606b8edf92b34e74afa8d0b51f",
+      "size": 48776960
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/11155425EC30EDAA.wmv",
+      "md5": "166ba6cf88bf03954842f4575b9f1a70",
+      "size": 47283417
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/11E81A94665182A6.wmv",
+      "md5": "bff772a75c7b71783d3e6db60390d51a",
+      "size": 35423736
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/1259739373031BAD.wmv",
+      "md5": "ea6d2acbdec8f7447477034082f20ef4",
+      "size": 47563075
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/12D6AF72B9636D0D.wmv",
+      "md5": "ecbaf8cbf37c2f0289f35f965813e98e",
+      "size": 44748530
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/13506592068CC055.wmv",
+      "md5": "3e90cc985d1b71db554dda11a56798ff",
+      "size": 51846485
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/145D2F62FD1E80D.wmv",
+      "md5": "9c6f1d34f1dc19aeecc09cf3c42a8d85",
+      "size": 37104070
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/155ABD48B849FC.wmv",
+      "md5": "5de7793759e1a5559390eca1ba962f49",
+      "size": 43549699
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/15B8D70C502199F2.wmv",
+      "md5": "936e3f09abcebe034b820b2c98c5103a",
+      "size": 54686829
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/16C9286BF3A22CC2.wmv",
+      "md5": "af58e00952edb1b2055b90131d55b8c1",
+      "size": 48235811
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/1742C6B0FAF97A11.wmv",
+      "md5": "51552cda881f44597ef87e5b93a87b88",
+      "size": 43506373
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/17B41D361ABCBB73.wmv",
+      "md5": "0faa25cc7db9fc1baae5ae41a9374516",
+      "size": 39115597
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/1882C6604279CA6F.wmv",
+      "md5": "f5f5d2cbf2c58fd19fed4c28b9840a01",
+      "size": 44197288
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/194C80E13D23DBC8.wmv",
+      "md5": "95f632da264ca5b723ce96f32da36373",
+      "size": 45905225
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/1ADC9BC7C7368AD4.wmv",
+      "md5": "344d7bfc6195a192aa78fb749f5426c1",
+      "size": 49366551
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/1B57725A8F5C60C9.wmv",
+      "md5": "bab6c4ad460224078c8d1cb8e5c3e243",
+      "size": 47555943
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/1B89C07752B9982B.wmv",
+      "md5": "12dfc628a844554228c1d7f9a3e318ae",
+      "size": 54702918
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/1C9C2FF95F01280B.wmv",
+      "md5": "5a6c0f45bb9711d2e4bd046d757dd4e1",
+      "size": 51461489
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/1DEC3538235CFAAF.wmv",
+      "md5": "0d849efd8820e27c6406ccc62432e764",
+      "size": 36342084
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/1DF78CDB5781FF24.wmv",
+      "md5": "a3401ef658f5512c28e026e5b5c2caeb",
+      "size": 42984978
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/1E0C43644A2B2D5E.wmv",
+      "md5": "9431df42b8d62d3bdbe940a75aa29e89",
+      "size": 53876639
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/1E8F9EED69865A5D.wmv",
+      "md5": "9e26eb1594eddfda5f9b2857caae7bc3",
+      "size": 43328025
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/1EC6D09E69F81DD2.wmv",
+      "md5": "0c80c2a31483118b630df71ae9ab9786",
+      "size": 46362427
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/1EE5D0674D00C11A.wmv",
+      "md5": "310aa14653f6d3ba8d1fff7e4cdb429b",
+      "size": 32854869
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/1F00E99646497192.wmv",
+      "md5": "546fe4910ae6d7704010815aad3e50b3",
+      "size": 44977486
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/1FCCCB128163CAAE.wmv",
+      "md5": "54acdd68e5560a1a998b13f749423ddf",
+      "size": 43542265
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/1FE67CBEAAE39D13.wmv",
+      "md5": "8ef4a2375505ca339b751f2386496730",
+      "size": 46169175
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/2052CEDBC1D3CFAF.wmv",
+      "md5": "34d4f1b712bf698531e68abd502144e9",
+      "size": 54894042
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/207F7174A9E501C2.wmv",
+      "md5": "f59f58cfa771fa0a340ff1080712273d",
+      "size": 45664129
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/211AD69473DD1650.wmv",
+      "md5": "8dc144e6e2493781ee94ae95069f19a4",
+      "size": 43820927
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/21376F162E404AC7.wmv",
+      "md5": "1b80018078199a834c18c80761b50065",
+      "size": 52592191
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/21B76BAE43D517E9.wmv",
+      "md5": "6be7a324f5bc7dc236ce3dc773a233d1",
+      "size": 47051410
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/2279EC931FC288CC.wmv",
+      "md5": "f05a6e9d29b064dd03207040a5f5e3dc",
+      "size": 50515486
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/24701F0A16387204.wmv",
+      "md5": "02073bb5e358c3d06a1009352c724ac6",
+      "size": 38929009
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/2512AD4846782035.wmv",
+      "md5": "f6bfdc38c06dc2bcfc94fe0e51bde46e",
+      "size": 54624559
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/2531F2BB6222A814.wmv",
+      "md5": "93f0f5fe2395709442307d085bc0dafa",
+      "size": 203874952
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/259FF7F308041DB3.wmv",
+      "md5": "5dd042113750474e3ceb4da55c77bcda",
+      "size": 39833717
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/2603F489AA90976D.wmv",
+      "md5": "ff02890b2cfa4796a1c2251a2448e466",
+      "size": 671713
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/26CB520DFE774009.wmv",
+      "md5": "78983411624bc608bb3a9f7c08d3b929",
+      "size": 46302121
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/26D3FBC819776C6A.wmv",
+      "md5": "730a3902a2766c0ed24c3ed6bbbf6403",
+      "size": 50243286
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/289A9C287B9B5CCC.wmv",
+      "md5": "f9bb36a34f4998dddebbfb5b871c9e33",
+      "size": 47158698
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/2903489C935CE422.wmv",
+      "md5": "640b2f625c678c28f0b9da3ad896ccbd",
+      "size": 42539369
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/2999B69EC9D556FD.wmv",
+      "md5": "05d00c84677051c31d36cdbf6fb92d13",
+      "size": 36459830
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/2AC52481BA91C17C.wmv",
+      "md5": "8d1fce7e285edba35a74d428e8f771bd",
+      "size": 44433509
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/2AE763A5D2178605.wmv",
+      "md5": "9a6e1e7f224337b53737a93d857e073c",
+      "size": 41187323
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/2B1FCA2E4089B65E.wmv",
+      "md5": "3cbaf4286286f3a78e86ade491f2da74",
+      "size": 46038712
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/2B3D2FA4B1236238.wmv",
+      "md5": "3451d86e23301663275192d4b5a5b1df",
+      "size": 41441399
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/2C20C3D3F69A66D9.wmv",
+      "md5": "f7efa5ef94c59e55f39f158f98fb8427",
+      "size": 44561524
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/2C4E3FF172046CAF.wmv",
+      "md5": "6e6555c5ff1e7f2006a1cfdb040ab904",
+      "size": 46998331
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/2D1C66F22D0DC024.wmv",
+      "md5": "babc3ecd198e893a5f93f25acc284888",
+      "size": 52900609
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/2E6E5B4C61DE3CD6.wmv",
+      "md5": "480e8568c61743028d67a8f3fe793129",
+      "size": 40310910
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/2F66C97574F7961B.wmv",
+      "md5": "d38ca60edb463f54e7f50f63b49e1539",
+      "size": 48144827
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/2FE5588E455126D8.wmv",
+      "md5": "22d924d889b00d0a9661807eb6a26a3a",
+      "size": 44350346
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/302662DDBA822BB1.wmv",
+      "md5": "4752a6505eaf3e587946ea3bd62f2949",
+      "size": 36363731
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/30574F44CC31BF22.wmv",
+      "md5": "329af5f034561b6ec5d04cce56931f92",
+      "size": 53533643
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/3118B39A8C822F06.wmv",
+      "md5": "9b0b7e4d28034bb0a16ac6d0698389dd",
+      "size": 42427313
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/3151E9982DBB1F4C.wmv",
+      "md5": "b3e9902af96eed557e7d8382821aa22a",
+      "size": 55618064
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/31FE612AC352D93.wmv",
+      "md5": "791962c35f2be260b9fa79b57582d1b4",
+      "size": 44901921
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/3201939AAE00A075.wmv",
+      "md5": "57a39a2dc8fc56598ba019dbfd02dac1",
+      "size": 40324571
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/32A1975D78CAAA92.wmv",
+      "md5": "5763ec43093f45ae0aeaaf6b66462196",
+      "size": 50610906
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/33B462CCF617B5AE.wmv",
+      "md5": "ec07e954a78bc14aa7dc67140f698f4a",
+      "size": 49067748
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/33BDC879142DF941.wmv",
+      "md5": "a7a11264d6632dc1d6a3dd646b0996d6",
+      "size": 58253954
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/33F0636C94E2CECB.wmv",
+      "md5": "e8dada2fd7cd34b7682f4af1ec9ccd0d",
+      "size": 56368248
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/342C95BE48497E74.wmv",
+      "md5": "d6c33010cd50f8f5e5eabede178e9fb1",
+      "size": 47311081
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/348248EC5E461473.wmv",
+      "md5": "415b28896eb8bde1933afa1c89f8693f",
+      "size": 50049426
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/34A20249410B330F.wmv",
+      "md5": "57c0061aa23c4972232d8ced3d52ad3e",
+      "size": 42078543
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/35895FF8A5E0C1A4.wmv",
+      "md5": "9c4ee207a2aa503c48444ed73f3bd3f4",
+      "size": 48493512
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/35A5403C212009F7.wmv",
+      "md5": "6a0b28978ce16172457c09d1a32423f9",
+      "size": 43124344
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/361468375786087B.wmv",
+      "md5": "6f178cddbc0e4692634d294392e9ec7b",
+      "size": 49205472
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/364FF5E32A568ABE.wmv",
+      "md5": "fee9fa8f31ce982d077eebaf3af27922",
+      "size": 39749952
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/3781A576B3FFDD4A.wmv",
+      "md5": "020a02cd5411d8b88b282948350ab70c",
+      "size": 48239888
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/37C721CE48EA52E7.wmv",
+      "md5": "e25f85b6244662138e9c74bcac4dedb4",
+      "size": 55851594
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/37F1E580674A842B.wmv",
+      "md5": "cc9a5b356d50d95653c372b3d551d824",
+      "size": 50801706
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/3826EFF88F3A26CA.wmv",
+      "md5": "06abf143f760f1d6bf18f61574bcd81e",
+      "size": 49966309
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/38BD15FA9AF16CA7.wmv",
+      "md5": "8575f28098eab5f057609955748e1598",
+      "size": 48614320
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/3903FAEEE3CA708D.wmv",
+      "md5": "826f3d8a3a6de40caafb3c801acbaa79",
+      "size": 40488141
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/39111A0204E4EBD.wmv",
+      "md5": "bf13d9bced8e627feba1caa924bc6f62",
+      "size": 41078107
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/3B4F6C5C21FF682C.wmv",
+      "md5": "05e7b4ff49d54a6a5b9bd482bac465a0",
+      "size": 48548261
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/3B68BFC988FCAD65.wmv",
+      "md5": "8f61152a742d6ef8c28eb5b19f4ffd8d",
+      "size": 44868846
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/3BB121BB9C236BCC.wmv",
+      "md5": "5d8f8dc388b35153e05cebc40f24ef96",
+      "size": 46693397
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/3DDA8B9CA8671260.wmv",
+      "md5": "4c4cc7c23c13f3389a8b351dca909707",
+      "size": 49290531
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/3F605E74452718D4.wmv",
+      "md5": "dad9fec7d5966c407068232ae605a562",
+      "size": 37320900
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/3FB934D4039B4268.wmv",
+      "md5": "a88ccfb15f0ed42254d393a55e0d8235",
+      "size": 50328966
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/3FF6D42D1CCD2CE7.wmv",
+      "md5": "4238ab502c515aca43b3bd6c20ea9bfe",
+      "size": 43181331
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/411C282D4E16F24A.wmv",
+      "md5": "06bf6dbc02b5ebdaea2824ed2656fe93",
+      "size": 43587055
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/42550EC811F67A84.wmv",
+      "md5": "53e09b9a4bbf23bc2e8c41d7a155c1bc",
+      "size": 40522911
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/4444F83150276991.wmv",
+      "md5": "b6ac257859eccba53cd193707b1f3cc6",
+      "size": 51929421
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/45431D3ADEA6F622.wmv",
+      "md5": "5eecf3b2009189f8219647f6c944fe58",
+      "size": 39043412
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/45C77D2B1105483E.wmv",
+      "md5": "26a3894f7ae9106436f3c606a98826ce",
+      "size": 40463351
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/46F9D69F956767D3.wmv",
+      "md5": "d2d23f218c77bace44c41c5ce0ed376f",
+      "size": 47600026
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/474F1B94CF1A4A0C.wmv",
+      "md5": "89a15a72e2dd436cab06d68f78f6e4ea",
+      "size": 27702943
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/47F9BA3D0DD90931.wmv",
+      "md5": "4771b0a956be9885ebd41c9e4dce08a6",
+      "size": 37054995
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/480106F0C4E34AC6.wmv",
+      "md5": "8ea4bf7fe338ee679055cc8f0495c323",
+      "size": 44420022
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/48171463F48495E6.wmv",
+      "md5": "1868d4f80b86d0eda78cf3019747ff39",
+      "size": 46087549
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/48B705B05B7D3D63.wmv",
+      "md5": "70046bdbd31cffe2b26bc3de827fd73c",
+      "size": 55933304
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/49CD7135F64CAAFF.wmv",
+      "md5": "e761d52d4f5e00a897a978882df1c5ce",
+      "size": 42643983
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/4A7791736C5D94E7.wmv",
+      "md5": "d58a3ac08cf256a462979432e05f3c08",
+      "size": 41539159
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/4B9024F6D81EAC1C.wmv",
+      "md5": "6f038c8fa75556272d755d8a337d8c48",
+      "size": 7477120
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/4C0A9672EBB7D071.wmv",
+      "md5": "ad40c4847cfa8460d9858f0f4c279778",
+      "size": 41894556
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/4D2674A2C8C6CAFE.wmv",
+      "md5": "1e8eadb757646da6fac6941913dfca91",
+      "size": 52499956
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/4E4A1688F8BA1439.wmv",
+      "md5": "8b3f5471e5cff0558710bccf547d0f59",
+      "size": 39983030
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/4F942B54D8A7BC1E.wmv",
+      "md5": "6b1ae776bcae502415faf80da37823da",
+      "size": 37248189
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/4FB3C3E25C4FBC69.wmv",
+      "md5": "a61719a627f3292e6b537a16dd2b78b1",
+      "size": 39204585
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/4FF056D3846103A6.wmv",
+      "md5": "d91e2a7f86c9be204846f7401214dca7",
+      "size": 44165585
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/503F966A64BDC19B.wmv",
+      "md5": "d3efd692ecb4f472ed49a749100779ee",
+      "size": 48702687
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/507BDDC5A8E95F2E.wmv",
+      "md5": "c17abfbcebbe1033327e82b6c72a3384",
+      "size": 39905608
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/508AE39E4B7B18FF.wmv",
+      "md5": "f9271027173efd8fd6e069434e214214",
+      "size": 47052524
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/50BD0EBCDB090A97.wmv",
+      "md5": "a435171aed2c9edae65b5792ea8f534a",
+      "size": 37808321
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/50DA4CFCEFC251B1.wmv",
+      "md5": "764bc25cecfe0690c27775654bf47b75",
+      "size": 24795363
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/50F0B68AE444EC81.wmv",
+      "md5": "560dd814fcad06a0d9a467ee6ac740c5",
+      "size": 51711847
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/51212F04DA32E9AF.wmv",
+      "md5": "4d2e2f71c2997e9a9f868f56a3f7b1b9",
+      "size": 50758416
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/51278DF0AC2CA04F.wmv",
+      "md5": "aec02fd2cb2c64bf92cd377d4d219acc",
+      "size": 47407948
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/542F765A51725B91.wmv",
+      "md5": "05bd9b54fac5626e48aa8f5d37e4e591",
+      "size": 38291081
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/54812C3E9683B958.wmv",
+      "md5": "968c3625f72b568cbf3a8a1a732c3702",
+      "size": 56063636
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/562ABC404278E916.wmv",
+      "md5": "77e9cd8e10fe331d59d29ed46dd01e46",
+      "size": 47953398
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/56DDD4F9D8A96A38.wmv",
+      "md5": "6c8385e4a65bb2e8eac8af6b44dc5acc",
+      "size": 32323391
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/57DF3F867DCA35E8.wmv",
+      "md5": "6b9a2038d9ab6b824e8140124c2f933d",
+      "size": 34681986
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/581B62EBCC9B42D9.wmv",
+      "md5": "945f64d23f396b06c7ac2939f7bc44ef",
+      "size": 41570304
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/587A17F9CD0C0180.wmv",
+      "md5": "b5d5d0e3d44181f20ed184d63fdbd6ce",
+      "size": 51997343
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/59A8E5352DC1311D.wmv",
+      "md5": "a34730ca582fc8f913f59717d3b47f15",
+      "size": 51842550
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/5A2C4949181292B3.wmv",
+      "md5": "ac3c2101f32ce7c0aa1655d824f0e568",
+      "size": 3572616
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/5A517DCBD8775A78.wmv",
+      "md5": "0b16805143bf96d7ee3b3c7d4ee124ad",
+      "size": 52755372
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/5A8F0C6662EF4A37.wmv",
+      "md5": "cf0656fb6591c3f12945744b9cbf6cbd",
+      "size": 44798473
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/5B2D6D87234A6D3.wmv",
+      "md5": "d795f93c08fc8b654d28bb001fdeb250",
+      "size": 35950564
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/5CBFA796D4846310.wmv",
+      "md5": "b701e8002788ce3c1453c13d26d125d7",
+      "size": 42651637
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/5D355610C87E0713.wmv",
+      "md5": "261467bd78ccd04ce62c89d5a800b5b4",
+      "size": 36625273
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/5E367CA3EA2A22.wmv",
+      "md5": "9799bd8d5a1103af4d1f18234f6efd2b",
+      "size": 48638722
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/5F00AE03041F9C.wmv",
+      "md5": "0634834b031d84f9f3a05ec78992136d",
+      "size": 42750924
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/5F47451E53B08798.wmv",
+      "md5": "159c69b51706f7fee17648324b87449a",
+      "size": 45385152
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/5FC86D1DD808DCB7.wmv",
+      "md5": "8175a6a824647f79c5d3d63845e0f04e",
+      "size": 49829290
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/60CAB06A40B089DF.wmv",
+      "md5": "7fdfe4e4f0d1e2f4b58fd534ae9c51ef",
+      "size": 45735769
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/60DC7B774AED9DBD.wmv",
+      "md5": "e9119b63caad40ae8d8c0838ee0b8c75",
+      "size": 61057840
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/6244FC3DB1E27BBE.wmv",
+      "md5": "18a2f1ec99bc07c5e10f201758cf5d37",
+      "size": 51722918
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/62CE195116F61819.wmv",
+      "md5": "e3b6eb87382167767b9b04fdc4299671",
+      "size": 40080957
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/6383113BC038CECA.wmv",
+      "md5": "4a3ba8c19e307860f597376161d44744",
+      "size": 47983490
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/64FAC8F2B5505346.wmv",
+      "md5": "f929ff80f0b88b263355a2ea3cf1921a",
+      "size": 52785051
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/652FC55C9D638EAE.wmv",
+      "md5": "592cad46ea6f9d701d3933741bdf8607",
+      "size": 45104435
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/6563B442FC0DD25A.wmv",
+      "md5": "4d7530eb6612f104c2ded0ea80028893",
+      "size": 46304258
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/65AB362AB86B66A4.wmv",
+      "md5": "3fba68f8da815a0ad73597fbdcffe677",
+      "size": 48979735
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/662DE3C87CED12E.wmv",
+      "md5": "ab8c475395f9679bd818e7d1eac756fc",
+      "size": 38141431
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/663972D30B94475B.wmv",
+      "md5": "5e5ba72baeb7aad8dbbbb55f66a1756e",
+      "size": 43827912
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/679C1E953A3A8AF5.wmv",
+      "md5": "ae6b8cdedff51442567faf9851e44ffc",
+      "size": 42564717
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/67B21B0E7CEB6C70.wmv",
+      "md5": "a6efea34e2300069a682e2822eb862bb",
+      "size": 47581503
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/67CAA0C4502DB5B.wmv",
+      "md5": "2af6eb528c8601d8d0572674ab47b5dd",
+      "size": 48801003
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/67DC03D94A4EB88D.wmv",
+      "md5": "6d5b1d962fbd5df4b542a218987e1613",
+      "size": 39585885
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/6806108FB623763A.wmv",
+      "md5": "c55177b24c821982bc403604584e900e",
+      "size": 43856772
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/684A8B67A571A2CC.wmv",
+      "md5": "7101f7e6156d9a88c112f54ef20766d8",
+      "size": 37097902
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/68D6E8E967792E53.wmv",
+      "md5": "63554b40a581109733ef9abc16de521a",
+      "size": 50197116
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/6920E14934A03D08.wmv",
+      "md5": "74c6d1426acd7b162472bb3feb5b6b06",
+      "size": 48973855
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/6A3AF035865876AE.wmv",
+      "md5": "c8e2d946468988139131a05c1e14d88b",
+      "size": 48006695
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/6A6217F136C064A0.wmv",
+      "md5": "74cc8373d9f05a66dff2b8238432eb43",
+      "size": 49815584
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/6AF4C4176705C076.wmv",
+      "md5": "2ccc95b5481795116acb278f1579f992",
+      "size": 39637965
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/6C59DA0DC2BD2940.wmv",
+      "md5": "7bd8eff7ef856dce75defbc155df2fd1",
+      "size": 45736518
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/6CFEDCCC179CBD7F.wmv",
+      "md5": "b2b33bf35e5f7fd88781f41d9e6d2588",
+      "size": 35612306
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/6DBBE8FA4B429B1B.wmv",
+      "md5": "3981c01e19f9b2c89278ac863da068aa",
+      "size": 41632528
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/6F2F124242353435.wmv",
+      "md5": "d643b974d51f318dbbf15f88ff842e39",
+      "size": 51504537
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/6F5C07687AA230A6.wmv",
+      "md5": "aff1ec6429008036821622588fc1cd82",
+      "size": 44436211
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/7092F10AEB49AF2C.wmv",
+      "md5": "02ad5f656d21943cfbe6d9e66c4e081c",
+      "size": 46121482
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/717ACA06B5C40C55.wmv",
+      "md5": "beb0371740953a89dc69376384dc4436",
+      "size": 44304896
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/72AC04C5B5097283.wmv",
+      "md5": "45827eccf5755b9cff8e35760469a181",
+      "size": 37879075
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/72D4BA188C261E5B.wmv",
+      "md5": "0d01880a8b19ca4a370baa36a90aa8e4",
+      "size": 53208786
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/745814D3389FBEB8.wmv",
+      "md5": "3b164c0078f5220869f1e61bc9b1e653",
+      "size": 50571971
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/74E6D71BF426DFDA.wmv",
+      "md5": "fbf16b5d3e0e3d43b46aec5442bbce86",
+      "size": 43526009
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/751408DC420426A3.wmv",
+      "md5": "2762993a734e68d66111f6f3a8c265cc",
+      "size": 44146053
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/75F98CC8C6F11078.wmv",
+      "md5": "f0bc2958cbcd71cb1814844eded32c83",
+      "size": 47413331
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/76D1F7BCBF7562D2.wmv",
+      "md5": "5c9f24f9af37088656c2fa34df14d031",
+      "size": 45698229
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/77FE40DA5735E05B.wmv",
+      "md5": "551b0d14877b59cd961abd9e13eca084",
+      "size": 47060414
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/78172900DA31BCB3.wmv",
+      "md5": "639d8dfd3b4a4cffd1504f59b237c07d",
+      "size": 55515710
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/781DEA95E7C92585.wmv",
+      "md5": "e89997d80bc69ae07c36849c89443cfc",
+      "size": 42623222
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/791554ED40A97983.wmv",
+      "md5": "7eb812e00c3b8edc76b18e79477e5492",
+      "size": 52015352
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/794B057E94D1D174.wmv",
+      "md5": "6f2ea9e74a10a7fd6ee9930a181d53fb",
+      "size": 52242195
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/7A347885ED40D6E0.wmv",
+      "md5": "30c2f3be3ec48dd9a657035f6ab64aa5",
+      "size": 50454258
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/7B8C85D7E3216C58.wmv",
+      "md5": "23154051c154d333385b552d41923e86",
+      "size": 44128113
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/7BA36112453D2581.wmv",
+      "md5": "413abe85e8595088c8f51138025352df",
+      "size": 36715302
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/7C8001565F3523C1.wmv",
+      "md5": "71b4ed0099d05f906897ef376877a5cb",
+      "size": 48457417
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/7CA6A6B21E23B5C6.wmv",
+      "md5": "ac2fbbff4f960690a7e6fd6898130c23",
+      "size": 48014873
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/7CD266BB476077FB.wmv",
+      "md5": "ac61aa0d3b8241f4fb377ab9c5b24a34",
+      "size": 40697576
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/7E13DE8E6DD71EE.wmv",
+      "md5": "c2c85922c5924096b4fe77010d8aacb9",
+      "size": 45822731
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/7E31DCEB331ECB77.wmv",
+      "md5": "f303a01d81c3c7fe27c243b26b7fa543",
+      "size": 46695755
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/7E461E085684A391.wmv",
+      "md5": "696fbe49f2ff44767bd84ba873ea77d9",
+      "size": 57001208
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/7FB55A12E5A75337.wmv",
+      "md5": "68b32e5036112b2d76960fa27e6180f4",
+      "size": 48932088
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/7FEC3793B501B6E1.wmv",
+      "md5": "97751c35d0eb6fc48ecd86336fd2adda",
+      "size": 55351958
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/805B9500CE24FB59.wmv",
+      "md5": "1d71ca611608b21bff06f05b9042d7e4",
+      "size": 43483440
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/810F824A2EC43BA.wmv",
+      "md5": "52c19deeacf6ecdf972d1b3c605311a7",
+      "size": 57242230
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/81BE9D2F2A621CB1.wmv",
+      "md5": "33ba6dd0394894a1964f1e8d2f98de52",
+      "size": 42524390
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/81E3BBF439997AE0.wmv",
+      "md5": "1a63f5232bf20bb0af4000f656ddfeb1",
+      "size": 59535411
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/820C77432150561.wmv",
+      "md5": "1e4e48fd229723b4d22599b9393d1001",
+      "size": 36382517
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/82119C571B7B729.wmv",
+      "md5": "222d4f3e8f2ef6584371d132330f4e80",
+      "size": 47737988
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/82B9912B5A26A1E.wmv",
+      "md5": "28d16560662836ef697ffe28e5d3c9ad",
+      "size": 52346649
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/840FE9C24ABD2F65.wmv",
+      "md5": "2b14c916e4f5d88d4e8156f5be72dda0",
+      "size": 55665231
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/867E9F6F6E0BAD5.wmv",
+      "md5": "3690f540ef0e7ac96fd046944be75417",
+      "size": 51053734
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/87903CD655FA814C.wmv",
+      "md5": "4acb12fa334d1e66d818c532edfdc032",
+      "size": 43426264
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/879587776B7C5536.wmv",
+      "md5": "9314c2e976670e970d524079e8d69eea",
+      "size": 57951924
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/88001CFD9AA53690.wmv",
+      "md5": "c1bfe78e76e8e3087836c2b3d15cc498",
+      "size": 51899589
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/883A2EED563DAB2C.wmv",
+      "md5": "66a35bd628cfa6263e48419daa7c5971",
+      "size": 53730272
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/886C141EE87E9F99.wmv",
+      "md5": "8733f12403a1e24766d995648ffeca54",
+      "size": 42271797
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/8892A58F24B07A2B.wmv",
+      "md5": "c8d902c17f3da6efc4134f20e85eb56c",
+      "size": 42226455
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/88E0968EB4D954C8.wmv",
+      "md5": "b72944df4378eac986f06744e80f296d",
+      "size": 39028565
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/890946AC46E6A8B8.wmv",
+      "md5": "9af2aeba2436e28abf3ac9c5fd87913a",
+      "size": 42538131
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/890BEC7FDFAAE4D2.wmv",
+      "md5": "f3a87be0e37dfecbc94623cb4d9d5cb8",
+      "size": 39747848
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/89A98C7337C73335.wmv",
+      "md5": "c9fbcadd41c47508c77d641eecc05d99",
+      "size": 42840198
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/8A1BFBCCB2106856.wmv",
+      "md5": "eeec92464beef776f756f5408d986627",
+      "size": 49560439
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/8A1EF5CEA0CD2B35.wmv",
+      "md5": "6786ae9afe77eeb357a701fe2af1d4cd",
+      "size": 49864573
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/8AB77E606A373BFA.wmv",
+      "md5": "3b3b11c9ad3175eb4efdccfddfbcb5df",
+      "size": 47430763
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/8C45C9EB07EE5984.wmv",
+      "md5": "804dafba13a7cd622b692cd2f7442774",
+      "size": 45674049
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/8CB27DA5A62F04D6.wmv",
+      "md5": "7dbbc3318ea0bd35cf5ad79e6ade60f0",
+      "size": 44801491
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/8CC055FA0377A380.wmv",
+      "md5": "40d0620fc1d0156ffe3e77be41270b18",
+      "size": 39632883
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/8D4D9619213FF324.wmv",
+      "md5": "9af03efc742d1f3b4b6a717878eeeb92",
+      "size": 55851252
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/8D94CF61472D65E5.wmv",
+      "md5": "c9dbe290ae2373bf4e605df4386018b7",
+      "size": 35979331
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/8DEA990FD5ECFBE8.wmv",
+      "md5": "7c50ec5b5b8ba55900f73eaa50cc5102",
+      "size": 36613647
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/8F0FADC40ABF4D9B.wmv",
+      "md5": "4b277d17c060f4ef98c7c8a141c23781",
+      "size": 54651346
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/8F300FB2613D363F.wmv",
+      "md5": "15ad26bceb45318833da1ab7ec108d73",
+      "size": 47053567
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/8F80650C061D8E54.wmv",
+      "md5": "1afef6fc0e3609659e2b5801870dfe99",
+      "size": 45608826
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/9174C62DB1C746A1.wmv",
+      "md5": "a3ac11dd0ed2edf9538c81152ff719d3",
+      "size": 52161143
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/923AC03B145D373F.wmv",
+      "md5": "cd3addd3654d6445a634838ee7b3c4b2",
+      "size": 44765969
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/926CE38F9BC15724.wmv",
+      "md5": "b45eb2b145deb58e531ac744f9f3f111",
+      "size": 48109209
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/933C405604C46D5A.wmv",
+      "md5": "7d38008f52f859042d800d696d125fd9",
+      "size": 34387709
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/9357813C916FC06E.wmv",
+      "md5": "03d12af73184fb5643b83fc249f3777d",
+      "size": 46019552
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/94B4A345D8F3549E.wmv",
+      "md5": "c8d0c903cbc1ad562bcc1e286a1ff54c",
+      "size": 39776778
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/9567114537C12461.wmv",
+      "md5": "9ff4c5d91b9733cadbc20bf5dfd78383",
+      "size": 31328337
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/95C25AE3D6E9D6C5.wmv",
+      "md5": "f78a86ad1e70e25b8e901c7114176b67",
+      "size": 12941950
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/964D04C6EEB4091E.wmv",
+      "md5": "479308ea261175747956ecb473ccd2e6",
+      "size": 42507884
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/96E353853AD73C9F.wmv",
+      "md5": "a1cb53f3a814abea0732534f438b7143",
+      "size": 47791742
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/96FF67BDB8F642C8.wmv",
+      "md5": "2b4f8d6692303dd1675f82267ceeec6f",
+      "size": 39474502
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/970F7EC362C1AF7D.wmv",
+      "md5": "afca000bb41cf5201d8cd515e29151ad",
+      "size": 46924915
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/9AAC4C5364B577C1.wmv",
+      "md5": "cedc4ad70f74eab479d71433ccd1318e",
+      "size": 40954107
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/9B7FDEADFD2B33F1.wmv",
+      "md5": "81f52d778f3ce77ee6ae4f8624bf29d7",
+      "size": 42807630
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/9BABA696AE81D23B.wmv",
+      "md5": "b299d3674e362f35d87fd09a4a22a574",
+      "size": 49925152
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/9C8BD12A21BC04E6.wmv",
+      "md5": "faaeeebeb664064333e6ef64edcfd005",
+      "size": 46505881
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/9C9BED9541113BC2.wmv",
+      "md5": "78bac35d685ee71e283db6dc5ff94f35",
+      "size": 40299797
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/9CBBA78CEC98DB2A.wmv",
+      "md5": "3a1fb6c78825cbf2db2e5cf4a77d3530",
+      "size": 44088709
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/9D7B0BF77C9D80A9.wmv",
+      "md5": "39ba7e634f506fa666987a937eb57ce5",
+      "size": 37149090
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/9E2044C3B68924CB.wmv",
+      "md5": "4205d7a755cb28c705d715150824e2d8",
+      "size": 39214310
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/9E5D18FCE5F9B98D.wmv",
+      "md5": "05d82b2e6e7e373134ea978c90c77336",
+      "size": 44354713
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/9E936BFD66526A44.wmv",
+      "md5": "ca15958c148e8232d6dd39dd41982537",
+      "size": 46218996
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/9EA72C5CE6D249.wmv",
+      "md5": "a8d2e139eb40655ec27fda48c3d950a6",
+      "size": 40353889
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/9ECDF45452BE03FD.wmv",
+      "md5": "0acdb85a9fe44a643b3e005d9c6383e7",
+      "size": 44931760
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/9FF32E28DBD0EB02.wmv",
+      "md5": "bcf7f93a12f56b545ff51387dd995692",
+      "size": 49594595
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/A04A50EFF99E3F82.wmv",
+      "md5": "2b0df91515f3e9e61ca7a510c9cedb2c",
+      "size": 43057160
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/A2B177010A24C719.wmv",
+      "md5": "2a6b369aa4350a2aa79fb01b654042aa",
+      "size": 43358991
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/A2CE4FF7B23F4FFD.wmv",
+      "md5": "2211b119c2c7d0c328d62a8c95f56fc6",
+      "size": 40563567
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/A38CD57E7B989935.wmv",
+      "md5": "838d1fe8cf37e3073950305a6a2f3fe9",
+      "size": 40140985
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/A3AF87ED918EDB6C.wmv",
+      "md5": "4dcfb6b7bf7082c512cbcadc808fb1b5",
+      "size": 48889753
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/A3DBF042C0468858.wmv",
+      "md5": "42d1f56eefdbf79c330b68bd6094ba5e",
+      "size": 51123999
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/A419CD680866945B.wmv",
+      "md5": "6b21e3082b2e02f59baa5dacda1b9d73",
+      "size": 47314285
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/A4F8DCC05F5042A.wmv",
+      "md5": "4719a7282f890b8fd6b248f627cee928",
+      "size": 47503126
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/A612074E5984E2B0.wmv",
+      "md5": "82b513f924597dde91788e9217f99273",
+      "size": 43418219
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/A689FBF89C01D814.wmv",
+      "md5": "b440b5de25faee89414cb9560134e8a0",
+      "size": 46267615
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/A70059F566933134.wmv",
+      "md5": "09492f2f7e3d1f5d99e6dfec87bee878",
+      "size": 53085972
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/A7CD50CA257CA67F.wmv",
+      "md5": "2a1af3f9b257149bb104d5300588c959",
+      "size": 47519614
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/A81004D371194BEE.wmv",
+      "md5": "c9448ed6cf45e12713788943556b190f",
+      "size": 49948813
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/A8D76AFDF0EC730D.wmv",
+      "md5": "c81645fa03752b81ec6efb204f4b03a7",
+      "size": 52949396
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/A92B30F7F9A80F00.wmv",
+      "md5": "e8495901d7f154826ac17b0ce97fe594",
+      "size": 50213183
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/A9F79A81FE166236.wmv",
+      "md5": "baced207ca506c9d813ae4e31e09c1d6",
+      "size": 42316909
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/AA23A1A423666CB0.wmv",
+      "md5": "cc54f040a5e3f2b82f95a98790075bab",
+      "size": 51698262
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/AA299FD502511EA0.wmv",
+      "md5": "c77c483a497a8b7a4af11850907b1129",
+      "size": 42777230
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/AAA0E49A30D0F9C2.wmv",
+      "md5": "f878fb7d89fa96c80c66bafd8c81a5e8",
+      "size": 51446051
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/AC915538FE8BC406.wmv",
+      "md5": "6d4fd3f7ac1319f876c434e1456a9305",
+      "size": 46179335
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/ACEBC17757E5F906.wmv",
+      "md5": "bed708e841880769406ab20ed86e1ac8",
+      "size": 145124328
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/B0B254CD7440A14D.wmv",
+      "md5": "ae7db9a3b7dc0b2546995fb0c7257bd7",
+      "size": 37807637
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/B0D4A3488FF8E349.wmv",
+      "md5": "c5279b1421e1ba32324da9a1ae081d4e",
+      "size": 49639501
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/B147294D816EA994.wmv",
+      "md5": "7fc72748afed475a5078b0e976e30679",
+      "size": 43618160
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/B1C9E96370C51139.wmv",
+      "md5": "5c855fe89ebb3f491ef623e2f4effb7c",
+      "size": 49307900
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/B1E52692F8408614.wmv",
+      "md5": "74eb0d7b052e38f826589097a0c9e22d",
+      "size": 46948881
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/B28525F5A04A27EA.wmv",
+      "md5": "4f4f8ded1ea29820d5a5e4a6d07bc9d5",
+      "size": 35941643
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/B2A2A47F05A0E77F.wmv",
+      "md5": "cc820a6e528d1b8c1d76e7962a2ab23e",
+      "size": 51750382
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/B2A7CC34D1A21DCE.wmv",
+      "md5": "da560873a4c8a1f025cf435edd8358d4",
+      "size": 44046883
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/B3578D59D39FD6BB.wmv",
+      "md5": "a11a602da6caa6c3df1a0975324db7f3",
+      "size": 52133908
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/B358D23D6E7F0F26.wmv",
+      "md5": "5919581e3cb6933dd9048e6b7da61ee0",
+      "size": 46558537
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/B4549AECF374367.wmv",
+      "md5": "267e78061e6203b2129a49bf138ffc6d",
+      "size": 57139207
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/B4D242743985DB68.wmv",
+      "md5": "65b793fbcdcbb6467370a2e007c8f49d",
+      "size": 45475313
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/B506C4CC87924EEC.wmv",
+      "md5": "f3878322ad46626498f4fea94b144b5b",
+      "size": 50472736
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/B5B0E75D6CF0139C.wmv",
+      "md5": "78afb221ecfac91818747cae3ba74c48",
+      "size": 52247370
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/B61649E4D2C6551A.wmv",
+      "md5": "7c32c44bd03688b5d38881fb574e21dd",
+      "size": 55521366
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/B8038FEF93D409A6.wmv",
+      "md5": "4a7a6bf7f5bfdd54db3b0ede72e72673",
+      "size": 43347841
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/B881D51DB919D0AD.wmv",
+      "md5": "c547232f5142f87d2e4f4c510b8e19ef",
+      "size": 50259140
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/B8CA6A1D443C71EC.wmv",
+      "md5": "66221ce5e9afcaa376429cbee01dc68c",
+      "size": 42137267
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/B9DD1923FB6F7614.wmv",
+      "md5": "36dfd448c3923f901cff9888989a7fd7",
+      "size": 45862348
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/BB7275BF0A71D60.wmv",
+      "md5": "c63d54283780b05a15b49b9a1494fcc0",
+      "size": 46524676
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/BBF7A1D543D45693.wmv",
+      "md5": "dade1545a81095752889617a51411ce5",
+      "size": 48045359
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/BC548F4C16C50CA2.wmv",
+      "md5": "a4f06d58f5800b58ccbe4ab24a213c30",
+      "size": 41795338
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/BC7E5798AE4FA6D0.wmv",
+      "md5": "6dca68a3ca00c32d6bc151545854c9a1",
+      "size": 46403128
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/BD15641CB0909540.wmv",
+      "md5": "dbb00067bed8bfa781dd3d26d39f2de8",
+      "size": 44860639
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/BE4AE5D3721D133B.wmv",
+      "md5": "e5298bd2a2b224608168ee5ee0983fe7",
+      "size": 48170031
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/BE653AE5F634A687.wmv",
+      "md5": "2e513d072e0574b43e3452636b509bea",
+      "size": 43971706
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/BE7202AFD107FE7F.wmv",
+      "md5": "2de6df79c920c9be55d46d63cf0f180d",
+      "size": 146496890
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/BEB6A76CEED06D44.wmv",
+      "md5": "48fdd0b12d96497d53a996fcc9bb7717",
+      "size": 40550633
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/BF20CA966C301695.wmv",
+      "md5": "6c849b8e3d580850feb79b0331a95de2",
+      "size": 49936669
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/BFD3C8B47D5D04B7.wmv",
+      "md5": "a92cf8a79ff35c238efa9c4e33214dde",
+      "size": 46687782
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/C147AA8FD3FC8C6A.wmv",
+      "md5": "9b9688ec01c7625de571e45dfcb188cf",
+      "size": 41938366
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/C16B3A244319DD1.wmv",
+      "md5": "fa36362624bf9dc3edcfaa41cfd7a07c",
+      "size": 53510680
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/C1943CAA3048E946.wmv",
+      "md5": "1faa1ced681fa61c9bf1c63111d38e1f",
+      "size": 45824870
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/C2643E3A47319BBD.wmv",
+      "md5": "4bc40ba9648e69a9f1c51ba498cf3826",
+      "size": 58311022
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/C32FE12A9699BE5F.wmv",
+      "md5": "6d33059743d47dbe02bbe54a19c28649",
+      "size": 54322837
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/C3B6F024961B67FB.wmv",
+      "md5": "303acb3523ab3d7fef1374b6409c5290",
+      "size": 44291207
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/C41E34DA79275A82.wmv",
+      "md5": "1d944be5021f16061e8cde54c8afad58",
+      "size": 51097448
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/C49B069E15EFF055.wmv",
+      "md5": "5d0fec114b76a828f48d582827e6f05f",
+      "size": 50960522
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/C4F03B130E598E5D.wmv",
+      "md5": "581765d5edd8ef3ed1a44c1002d21663",
+      "size": 47748009
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/C58B9C0743180831.wmv",
+      "md5": "2a99f41c3eb58820a72783fa3871d07b",
+      "size": 49816588
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/C72965C8797C1B91.wmv",
+      "md5": "1f6c97fa0a548e47913b3b69857141b8",
+      "size": 44531212
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/C79C1F3037B9791C.wmv",
+      "md5": "aa51faa664105c47c9efd5dfbdda8961",
+      "size": 49877296
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/C7BE450873550010.wmv",
+      "md5": "78d82a805b27eee760883029e0414f41",
+      "size": 39128052
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/C91A025D0DD2981F.wmv",
+      "md5": "a3c3baf8dfb6df685d81e45ab2bd9874",
+      "size": 37839295
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/C9D022B3EEF1C277.wmv",
+      "md5": "f20591e797bb354b12543d079d22ea67",
+      "size": 43417586
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/C9EE7DB49A9AACB0.wmv",
+      "md5": "c97c30aaf94fd829efef84a44f18d2c4",
+      "size": 48099557
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/CA4D7F412304C88F.wmv",
+      "md5": "bf3b751ff1b483c787aab02dedab8df3",
+      "size": 53245577
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/CA996E882726C95E.wmv",
+      "md5": "4e4771316f17b4fdfef98a92d2095062",
+      "size": 42747430
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/CAA5EB1485E76A0A.wmv",
+      "md5": "265c5d8dffb11cf5a23738a513f72d4d",
+      "size": 50405391
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/CB19AF609E84DCA4.wmv",
+      "md5": "e186d3bbe3f9f54886d8b88e0ba2543b",
+      "size": 52523758
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/CBA7E84D80796490.wmv",
+      "md5": "c6ea8b55a19457c0ba977e0f230de3ab",
+      "size": 27534761
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/CD85F0F9FF4CCADA.wmv",
+      "md5": "65284a46e7633474ef149aee8ca7f93e",
+      "size": 51625424
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/CDACF4F3A110051D.wmv",
+      "md5": "2ce03c535ee65ca0839604f91bfe4b54",
+      "size": 47538939
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/CEAFE5CD67F62964.wmv",
+      "md5": "60992c85dce0c46a808d00c4be3959df",
+      "size": 41801035
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/CF03A2A8380B6664.wmv",
+      "md5": "51d15046aec4e730098211970c22d8a1",
+      "size": 52740615
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/CF48AC4A758B3A9A.wmv",
+      "md5": "09eff350e79ef543f5889cd48086216c",
+      "size": 47264913
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/CF9CFC6ED7DBD707.wmv",
+      "md5": "bad57363594e03c675ce5d85ec1a77d2",
+      "size": 47693418
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/ContentLoadConfig_0_60.bin",
+      "md5": "369dad8f1814179e8ba701b46131b518",
+      "size": 5957267
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/D04202699812022D.wmv",
+      "md5": "9e37107c677f2606d6570bcaaff292a5",
+      "size": 53276334
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/D0934EFF97BFA205.wmv",
+      "md5": "2614e1d12abcb22d694242c8e52aca43",
+      "size": 49861187
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/D0B2F6B425A62C34.wmv",
+      "md5": "e16c780aab086cdb0a13c7adf5185013",
+      "size": 49594883
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/D0CA1633E265F487.wmv",
+      "md5": "988f719fbe6e3553c4783b2a8e19b486",
+      "size": 41733461
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/D164C351C27752C9.wmv",
+      "md5": "dbe411a80207ae3bc17da74c16e69b57",
+      "size": 46131361
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/D1B50E4CCB9B0F9A.wmv",
+      "md5": "7bc1dea54e0a0118b91e1b0168ef976e",
+      "size": 35895730
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/D1BA1381CE8E154.wmv",
+      "md5": "a00347e2cdf67cd5f760114f30967f38",
+      "size": 47039474
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/D31216489CEC3CDF.wmv",
+      "md5": "3f51d4d7b794bd126d462e203cab725c",
+      "size": 53447854
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/D33AC1E2EF92989F.wmv",
+      "md5": "4dd9601182c6e372d9725a448de2d55e",
+      "size": 50388376
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/D35F36A23A642B8A.wmv",
+      "md5": "2a0d074536b7421793ce218683b80502",
+      "size": 55024959
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/D3994C6AC1CC0F2E.wmv",
+      "md5": "2d7f9a598279ebc031008ed786efec3d",
+      "size": 37640310
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/D4439907D940690A.wmv",
+      "md5": "a0106d7c3334c70747a88c565b8afabb",
+      "size": 49608809
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/D4BC8552D2620AC6.wmv",
+      "md5": "d971f3fef3192788768895686d6d04f6",
+      "size": 50089875
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/D4BD21376CA3A6C8.wmv",
+      "md5": "75752949674173cf5daccf378e91d441",
+      "size": 35611902
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/D4DAE86EA6A576BF.wmv",
+      "md5": "1c01430ab3e5056c5a09c5ee9321a501",
+      "size": 44603712
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/D595B7072481C463.wmv",
+      "md5": "f7edcf9116bd2531d9888e00de3f8f75",
+      "size": 41090734
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/D62C8D038B7ED9A3.wmv",
+      "md5": "99b82323b270cd3ab49acadc7e4a7431",
+      "size": 48119421
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/D91D24976D29EB5A.wmv",
+      "md5": "1279102ba6c5ab32f5432c835f13a237",
+      "size": 46263207
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/DA711916E4E93B1A.wmv",
+      "md5": "b870c0ac64c1672e374f122040d4cae9",
+      "size": 46991533
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/DA8C0DA3C8FA3466.wmv",
+      "md5": "a5347c67e1e6155d09dc39559e2f2bf0",
+      "size": 48194253
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/DB353B00862799E9.wmv",
+      "md5": "f8467a1169c01eafec8ea135b2c9274a",
+      "size": 46341994
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/DB6DE66EFE00504D.wmv",
+      "md5": "474a0986caee51c07a474979e476169c",
+      "size": 50411777
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/DB8AE7CB23925682.wmv",
+      "md5": "6c4f1b1f4ae3d91f5d18983ca9fe6ddf",
+      "size": 54720544
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/DC162281C0C4F278.wmv",
+      "md5": "4191657f16497c60a87fdf5a8f7d331d",
+      "size": 57221554
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/DCB0CF8982E722DE.wmv",
+      "md5": "654bf0799dfb3cbc20569d403d1f8f9a",
+      "size": 38926207
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/DCEE0CD91F03C2E8.wmv",
+      "md5": "298fe98984b4a700b0ee1c8d21528659",
+      "size": 42699853
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/DE1AA78D82C664FC.wmv",
+      "md5": "3b7e892c70681839dfb6e6e81a67be53",
+      "size": 47229134
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/DE289F1CE8F1BCE6.wmv",
+      "md5": "9cde705902515c01aa48fc41b6d285fc",
+      "size": 46379389
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/DE9636D26E9DD78.wmv",
+      "md5": "000260537c5b38c842b250d0b0854cb2",
+      "size": 44766283
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/DF2ACCE20471AEAA.wmv",
+      "md5": "4dc76fc36c82c5eef1365f5e83f7b44c",
+      "size": 51998611
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/E06EC804AFCA670.wmv",
+      "md5": "c559fa40ac5d267d18752560b44050d0",
+      "size": 39360100
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/E2397E218ACBA539.wmv",
+      "md5": "156d0ab7876abc2bdec95a64d4e9b015",
+      "size": 43734752
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/E3BA799463299245.wmv",
+      "md5": "f515e806fc4333da4e7a60aa978d1b26",
+      "size": 49433654
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/E3FE99A4966192D5.wmv",
+      "md5": "fc0583e24975feeb67c28c146c7f1586",
+      "size": 47259269
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/E507717497F62D35.wmv",
+      "md5": "48ff546968a9750144132c91b5867a74",
+      "size": 33391927
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/E5084172A16C6C1E.wmv",
+      "md5": "4a599f4e8eb413b21a6ee8490885f022",
+      "size": 48167719
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/E79D4FD79C235658.wmv",
+      "md5": "818e88ab092296c14117bb8572999f54",
+      "size": 55141251
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/E83C344A7C7A5D03.wmv",
+      "md5": "a2eac454415585ca1eaf034157f20427",
+      "size": 54519111
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/E84CE55C040E8473.wmv",
+      "md5": "971b342c4d8543e559915953952babf3",
+      "size": 44746140
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/E8CD6D23FC8D1ECE.wmv",
+      "md5": "69ea8c1d51dcc9da44a53a6096aa6bca",
+      "size": 47031712
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/EA5C83097A0BDEC5.wmv",
+      "md5": "5fac6a7bda88d7826f5db36d410add25",
+      "size": 44869502
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/EACE183260CBAA0D.wmv",
+      "md5": "6c9ce8eefa6c1f9083c3a3e9cc1b6e69",
+      "size": 41558271
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/EB8DE21D14EC9F34.wmv",
+      "md5": "38e8334377869391d9adf3a652e1a05e",
+      "size": 49342291
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/EBB09DD0864AB42A.wmv",
+      "md5": "cfdd8dac774ee1a281c845dfbace66d1",
+      "size": 45458941
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/EBC9F5074B867C30.wmv",
+      "md5": "f66131c0a61b64c23e69eb1f6f86cadc",
+      "size": 52795775
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/EBF630A3732F8EC2.wmv",
+      "md5": "e35fab1c4f76eebc4cb4e9349af87c33",
+      "size": 48622729
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/EC40E3D3818F9D7A.wmv",
+      "md5": "bdd8b71bce2da6c55101fe0ae7ecea1c",
+      "size": 43726011
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/EC59AEE2B1607888.wmv",
+      "md5": "01a42b147aaeda44abac461f664a9545",
+      "size": 50856914
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/EDBB4A75BE47EE8D.wmv",
+      "md5": "f59afab54f72c7600afbe9fa43c1c15d",
+      "size": 42666479
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/EE2334E08DDD87B3.wmv",
+      "md5": "7bf0717f439765827098f8706df91d41",
+      "size": 47424023
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/EECAFFDF97158869.wmv",
+      "md5": "82e30f552a0ddf14f575baf5629f3dd9",
+      "size": 46088529
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/EF446003B9994C2E.wmv",
+      "md5": "0763ca21b3f52fb320b729d639894002",
+      "size": 3569324
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/EF9E311C424BD250.wmv",
+      "md5": "e5ce85bb4015a44111e7bf9d55cac51e",
+      "size": 48305624
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/F02C42651D669F05.wmv",
+      "md5": "345e87fdc9fdab534bd17635504974be",
+      "size": 50184523
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/F06A37A7DD085BDD.wmv",
+      "md5": "603ddc08900a2248370fe7907ebeac0a",
+      "size": 60903169
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/F0B2D82B01C4F645.wmv",
+      "md5": "c3bea6db638c74c5bfa88ce6867b3d6c",
+      "size": 40424307
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/F0B8A3008B2CB460.wmv",
+      "md5": "c8941800c7fbfcb9039f677867c6850d",
+      "size": 205628941
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/F2A6D8D3F288448E.wmv",
+      "md5": "e754dbcad4eee9b1834cb6878142f526",
+      "size": 35999654
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/F41A2C7E0F965BA4.wmv",
+      "md5": "ae711c6c71e1275dbd1783705c32a1e0",
+      "size": 46049864
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/F4E1722AD04DB6B.wmv",
+      "md5": "b51a85d0ed35dcfbe640617d0bd9ea38",
+      "size": 51679647
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/F4E32FC752B4DED2.wmv",
+      "md5": "dac2dd04ed6947b6f25f67977e36ccd9",
+      "size": 38716640
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/F58DB733FF5F580B.wmv",
+      "md5": "2daac55d3e65fbeb04375ee5cb89c878",
+      "size": 43049809
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/F5F3E6D84DE4766D.wmv",
+      "md5": "39ef75c8562adbc21cc29c7f26be7182",
+      "size": 50333775
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/F6368C652B255C9D.wmv",
+      "md5": "1617cad890940a585c03ae96628204c4",
+      "size": 44401790
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/F6530218F30DF58C.wmv",
+      "md5": "88dce3f22177643cb83228967da5e5b0",
+      "size": 48410270
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/F6E0CB660763AF94.wmv",
+      "md5": "cf08cfcd2695435b7fba13c280f82e45",
+      "size": 40395060
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/F6F70AEC1D4ECB65.wmv",
+      "md5": "b8d7ffb8fe2b3bf9aeb27793266a03be",
+      "size": 49312301
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/F70AFC510E14CA4C.wmv",
+      "md5": "f2716396834180a609ce38880b30f854",
+      "size": 37590466
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/F90E160CE4D6262F.wmv",
+      "md5": "77dc001315cdc6c6fa5bb1aaf7a9b8a5",
+      "size": 50032048
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/F987709EC5EA19CB.wmv",
+      "md5": "3f991268cdf16aa4ef3d653a798b1efe",
+      "size": 26073879
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/F9EEF51E2D784445.wmv",
+      "md5": "d8f348733d82b76c86c6e88d491b79f0",
+      "size": 42075203
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/FA4A7E82953753A5.wmv",
+      "md5": "bd05792d35dc890cefbd5f6b98966bab",
+      "size": 45994899
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/FB365BD3E3909D8C.wmv",
+      "md5": "375e5d136ac16865548fcc7382ea0586",
+      "size": 40659099
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/FBDC27CC94778CB5.wmv",
+      "md5": "e8f48982d99238f29bab7489a5572c32",
+      "size": 47122207
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/FC6CFBF42B084832.wmv",
+      "md5": "52ec771e5a3db3628f89a571571f9893",
+      "size": 53679048
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/FD92D91F3D50B288.wmv",
+      "md5": "7633557c0cf78ec8fa1b3be3466e7cb5",
+      "size": 42438919
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/FE88A2407B87029C.wmv",
+      "md5": "40aac984fe7e578773685ad6c04a1558",
+      "size": 46586420
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/ContentBuild/Windows/FFDB0DB4EF473B4E.wmv",
+      "md5": "5de70cb645593429ed8c711b453fadae",
+      "size": 43279570
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/MiHoYoSDKRes/HttpServerResources/audio/sfx_ui_click_global_common_cancel.mp3",
+      "md5": "df9c80e7e31c745ad04bd979a5ebd4d8",
+      "size": 11493
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/MiHoYoSDKRes/HttpServerResources/audio/sfx_ui_click_global_common_click.mp3",
+      "md5": "8384e65e38c7936cc56436a19636383f",
+      "size": 6268
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/MiHoYoSDKRes/HttpServerResources/font/en-us.ttf",
+      "md5": "c80454253cc2d604d6854c1c9630ed67",
+      "size": 164116
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/MiHoYoSDKRes/HttpServerResources/font/ja-jp.ttf",
+      "md5": "98ca5d24638e4620dac5e0911f8e935c",
+      "size": 3951944
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/MiHoYoSDKRes/HttpServerResources/font/ko-kr.ttf",
+      "md5": "b38c8407763b2d901972603e7572fb94",
+      "size": 1261216
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/MiHoYoSDKRes/HttpServerResources/font/zh-cn.ttf",
+      "md5": "a9801f19fc1e35ec8a6a8d647926358f",
+      "size": 15022284
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/MiHoYoSDKRes/HttpServerResources/font/zh-tw.ttf",
+      "md5": "2bf8777de27817d2081464f98096a12d",
+      "size": 9311600
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/MiHoYoSDKRes/HttpServerResources/webview_cursor_default.png",
+      "md5": "c06585f9c2c4ea23cfc75e1d0c2d3016",
+      "size": 5219
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/MiHoYoSDKRes/PC/PC",
+      "md5": "88b839c5a8bfa3db413511d8085218ab",
+      "size": 1540
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/MiHoYoSDKRes/PC/PC.manifest",
+      "md5": "8f9ae07b3580d6a9291bc300fd9c4a6d",
+      "size": 142
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/MiHoYoSDKRes/PC/mihoyo_sdk_res",
+      "md5": "af3eef0b28461b1a97976e6d82194519",
+      "size": 25634648
+    },
+    {
+      "dest": "NexusAnima_Data/StreamingAssets/MiHoYoSDKRes/PC/mihoyo_sdk_res.manifest",
+      "md5": "2c8148c2a6655936467a0b0323a79bc4",
+      "size": 43745
+    },
+    {
+      "dest": "NexusAnima_Data/app.info",
+      "md5": "e410806a1806d0260410e9a06d32040f",
+      "size": 10
+    },
+    {
+      "dest": "NexusAnima_Data/boot.config",
+      "md5": "d40a05a95b7ae01aa89858478320b0c8",
+      "size": 93
+    },
+    {
+      "dest": "NexusAnima_Data/globalgamemanagers",
+      "md5": "0e18ffb8d5d3bc663eebf39cf6e1d4c2",
+      "size": 524032
+    },
+    {
+      "dest": "NexusAnima_Data/globalgamemanagers.assets",
+      "md5": "9d241b42c604d8eaef96e513b4ad8499",
+      "size": 1731508
+    },
+    {
+      "dest": "NexusAnima_Data/globalgamemanagers.assets.schema.json",
+      "md5": "10bd2884af0c278360d80d4eee432fdc",
+      "size": 864
+    },
+    {
+      "dest": "NexusAnima_Data/globalgamemanagers.schema.json",
+      "md5": "c79f18a3adf64b1d4f1d4f3cc36e15ad",
+      "size": 2117
+    },
+    {
+      "dest": "NexusAnima_Data/il2cpp_data/Metadata/global-metadata.dat",
+      "md5": "46a7f850e51ab8dbb529e298387f05d9",
+      "size": 21698792
+    },
+    {
+      "dest": "NexusAnima_Data/il2cpp_data/Resources/System.Collections.Immutable.dll-resources.dat",
+      "md5": "262003ff2013cf79d79518448d59f2b0",
+      "size": 1636
+    },
+    {
+      "dest": "NexusAnima_Data/il2cpp_data/Resources/mscorlib.dll-resources.dat",
+      "md5": "21d06dbc8af6432b2b49536ed30609af",
+      "size": 337563
+    },
+    {
+      "dest": "NexusAnima_Data/level0",
+      "md5": "279c6df0e50377ebbe9bfec9e9858017",
+      "size": 61360
+    },
+    {
+      "dest": "NexusAnima_Data/level0.schema.json",
+      "md5": "30640859ec290212a90c6de53ddde8c4",
+      "size": 4580
+    },
+    {
+      "dest": "NexusAnima_Data/resources.assets",
+      "md5": "fe20523d678d494fcadecb75ab287aca",
+      "size": 1220484
+    },
+    {
+      "dest": "NexusAnima_Data/resources.assets.resS",
+      "md5": "6bc992ac2ae96df8e1e2020b51ca57a2",
+      "size": 6815312
+    },
+    {
+      "dest": "NexusAnima_Data/resources.assets.schema.json",
+      "md5": "fbfbaadc2ef50b35c36484b9d1f1b4bb",
+      "size": 7223
+    },
+    {
+      "dest": "NexusAnima_Data/schema-digest-manifest.json",
+      "md5": "203ae0b5110d766b7d7f9fc3407b7baf",
+      "size": 20805
+    },
+    {
+      "dest": "NexusAnima_Data/sharedassets0.assets",
+      "md5": "bb7483b5b99142fec0ddb4441bc8610b",
+      "size": 273340
+    },
+    {
+      "dest": "NexusAnima_Data/sharedassets0.assets.resS",
+      "md5": "55ece14b84f3409bcaccecdf6f90373a",
+      "size": 425136
+    },
+    {
+      "dest": "NexusAnima_Data/sharedassets0.assets.schema.json",
+      "md5": "a4920f41c7e35c583706412656fca1b3",
+      "size": 4041
+    },
+    {
+      "dest": "UnityCrashHandler64.exe",
+      "md5": "db1aa0c14276c290de2d881148ed3d70",
+      "size": 1035040
+    },
+    {
+      "dest": "UnityPlayer.dll",
+      "md5": "643579b77ecc93ca460c1c85a7ca0456",
+      "size": 41206048
+    },
+    {
+      "dest": "amd_fidelityfx_loader_dx12.dll",
+      "md5": "de951ea18cec773f8e823486267db4f1",
+      "size": 25864
+    },
+    {
+      "dest": "amd_fidelityfx_upscaler_dx12.dll",
+      "md5": "7bbb594b68fb94f39412ffe14d222bb2",
+      "size": 15605520
+    },
+    {
+      "dest": "baselib.dll",
+      "md5": "87e7549c175f82ab8e34c00924085f44",
+      "size": 253216
+    },
+    {
+      "dest": "mhypbase.dll",
+      "md5": "c8811487ebf3f9fc82c935ee1fcbaf23",
+      "size": 26871240
+    },
+    {
+      "dest": "nvngx_dlss.dll",
+      "md5": "3ed5c39218c723df884504bee6d9f93d",
+      "size": 49012256
+    },
+    {
+      "dest": "pkg_version",
+      "md5": "e8d172348b141e0f62204f5caf50e2b9",
+      "size": 84352
+    }
+  ]
+}

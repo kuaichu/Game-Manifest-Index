@@ -9,6 +9,16 @@
       "is_enabled": true,
       "sort_order": 12,
       "vendor": "manjuu"
+    },
+    "abc": {
+      "id": "abc",
+      "name": "崩坏：因缘精灵",
+      "sub_name": "Honkai: Nexus Anima",
+      "platform": "windows",
+      "icon_source": "https://img-tc.tapimg.com/market/images/2b1b7439386c604482bd60353508f081.jpg",
+      "is_enabled": true,
+      "sort_order": 12,
+      "vendor": "mihoyo"
     }
   },
   "domains": {
@@ -26,6 +36,19 @@
       "is_enabled": true,
       "sort_order": 0,
       "vendor": "manjuu"
+    },
+    "abc-pc": {
+      "id": "abc-pc",
+      "game_id": "abc",
+      "kind": "files",
+      "platform": "windows",
+      "capabilities": [
+        "files"
+      ],
+      "adapter": "generic",
+      "is_enabled": true,
+      "sort_order": 0,
+      "vendor": "mihoyo"
     }
   }
 }

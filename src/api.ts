@@ -17,6 +17,7 @@ import type {
   ArtifactTreePage,
   ComparePage,
   Game,
+  GameActivityEvent,
   ManualArtifactPayload,
   ManualVersionPayload,
   ProbeSchedule,
@@ -155,6 +156,10 @@ function versionIndexSummary(item: VersionIndexItem, index: number): VersionSumm
 
 export const api = {
   games: (signal?: AbortSignal) => requestJson<Game[]>("/games", signal),
+  activity: (signal?: AbortSignal) =>
+    requestJson<{ items: GameActivityEvent[] }>("/activity?limit=20", signal),
+  gameActivity: (gameId: string, signal?: AbortSignal) =>
+    requestJson<{ items: GameActivityEvent[] }>(`/games/${encodeURIComponent(gameId)}/activity?limit=20`, signal),
   domains: (gameId: string, signal?: AbortSignal) =>
     requestJson<ArchiveDomain[]>(`/games/${encodeURIComponent(gameId)}/domains`, signal),
   versions: async (domainId: string, signal?: AbortSignal) => {

@@ -803,16 +803,16 @@ class CheckedInContractTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.client = TestClient(app)
 
-    def test_checked_in_inventory_is_13_games_and_24_domains(self):
+    def test_checked_in_inventory_is_14_games_and_26_domains(self):
         games = self.client.get("/api/v1/games").json()
-        self.assertEqual(len(games), 13)
+        self.assertEqual(len(games), 14)
         domains = [domain for game in games for domain in self.client.get(f"/api/v1/games/{game['id']}/domains").json()]
-        self.assertEqual(len(domains), 24)
+        self.assertEqual(len(domains), 26)
 
     def test_manjuu_catalog_packages_and_local_files(self):
         games = self.client.get("/api/v1/games").json()
         game = next(item for item in games if item["id"] == "azurpromilia")
-        self.assertEqual((game["name"], game["platform"]), ("蓝色星原：旅谣", "windows"))
+        self.assertEqual((game["name"], game["platform"]), ("蓝色星原：旅谣", "multi"))
         response = self.client.get("/api/v1/games/azurpromilia/domains")
         self.assertEqual(response.status_code, 200, response.text)
         domain = response.json()[0]

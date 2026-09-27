@@ -16,6 +16,16 @@ export interface Game {
   sort_order?: number;
 }
 
+export interface GameActivityEvent {
+  id: number;
+  game_id: string;
+  domain_id: string;
+  platform: string;
+  version: string;
+  type: "version_update" | "version_unavailable";
+  occurred_at: string;
+}
+
 export interface ArchiveDomain {
   id: string;
   game_id: string;

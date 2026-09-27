@@ -1,0 +1,14 @@
+{
+  "vendor": "mihoyo",
+  "game_id": "abc",
+  "platform": "windows",
+  "versions": [
+    {
+      "version": "0.60.2",
+      "updated_at": null,
+      "available": null,
+      "size": 24374639429
+    }
+  ],
+  "domain_id": "abc-pc"
+}

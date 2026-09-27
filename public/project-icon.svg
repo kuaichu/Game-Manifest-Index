@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <!-- 背景极深工业冷灰渐变 -->
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#14161B"/>
+      <stop offset="100%" stop-color="#08090B"/>
+    </linearGradient>
+
+    <!-- 高饱和机能电光青 -->
+    <linearGradient id="cyanAccent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00F2FF"/>
+      <stop offset="100%" stop-color="#0088FF"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 满幅贴边容器 (0 留白吃满画布，标准工业圆角) -->
+  <rect x="0" y="0" width="512" height="512" rx="108" fill="url(#bg)" stroke="#262A34" stroke-width="4"/>
+
+  <!-- 背景工业技术网格线 -->
+  <path d="M 36 130 L 476 130 M 36 382 L 476 382 M 130 36 L 130 476 M 382 36 L 382 476" stroke="#181B22" stroke-width="2" stroke-dasharray="6 6"/>
+
+  <!-- 顶部状态指示带 -->
+  <text x="40" y="72" font-family="'JetBrains Mono', 'Roboto Mono', 'DIN', monospace" font-size="16" font-weight="700" fill="#5F677A" letter-spacing="3">// GMI-MANIFEST</text>
+
+  <rect x="404" y="58" width="4" height="16" fill="#3D4452"/>
+  <rect x="412" y="58" width="10" height="16" fill="#3D4452"/>
+  <rect x="426" y="58" width="6" height="16" fill="url(#cyanAccent)"/>
+  <rect x="436" y="58" width="36" height="16" fill="#3D4452"/>
+
+  <!-- 核心主体：适度放大 1.25 倍的机能「G」字 (重心稳固，比例最舒适) -->
+  <g transform="translate(100, 110)">
+    <!-- 拓扑切角中型 G 主体 -->
+    <path d="M 276 38
+             L 90 38
+             L 28 100
+             L 28 205
+             L 90 268
+             L 264 268
+             L 312 220
+             L 312 138
+             L 155 138
+             L 155 178
+             L 255 178
+             L 255 196
+             L 232 219
+             L 104 219
+             L 74 189
+             L 74 116
+             L 104 86
+             L 276 86 Z"
+          fill="#F2F4F7"/>
+
+    <!-- 数据插入槽与探活指示块 -->
+    <rect x="288" y="52" width="18" height="18" fill="url(#cyanAccent)"/>
+    <path d="M 278 12 L 314 12 L 314 44" fill="none" stroke="url(#cyanAccent)" stroke-width="4"/>
+
+    <!-- 内部 Chunk 架构刻度 -->
+    <rect x="110" y="112" width="26" height="5" fill="#3A404F"/>
+    <rect x="110" y="124" width="16" height="5" fill="#3A404F"/>
+    <rect x="110" y="136" width="20" height="5" fill="#3A404F"/>
+  </g>
+
+  <!-- 底部工业标识区 -->
+  <line x1="40" y1="438" x2="472" y2="438" stroke="#222630" stroke-width="2"/>
+  <text x="40" y="464" font-family="'JetBrains Mono', 'Roboto Mono', 'DIN', monospace" font-size="14" font-weight="700" fill="#4B5264" letter-spacing="2">ARCHIVE_SYS: [CHUNK]</text>
+  <text x="376" y="464" font-family="'JetBrains Mono', 'Roboto Mono', 'DIN', monospace" font-size="14" font-weight="800" fill="url(#cyanAccent)" letter-spacing="2">LIVE.OK</text>
+</svg>

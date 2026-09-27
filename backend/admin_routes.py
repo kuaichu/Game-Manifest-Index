@@ -160,7 +160,11 @@ def create_admin_router(
     clock=None,
 ) -> tuple[APIRouter, OperationManager, AdminStateStore]:
     store = AdminStateStore(state_root)
-    manager_kwargs = {"discovery": discovery, "probe_fn": probe_fn, "apply_fn": apply_fn}
+    activity_store = contract.activity_store
+    manager_kwargs = {
+        "discovery": discovery, "probe_fn": probe_fn, "apply_fn": apply_fn,
+        "activity_store": activity_store,
+    }
     if clock is not None:
         manager_kwargs["clock"] = clock
     operations = OperationManager(store, data_root, **manager_kwargs)
@@ -238,7 +242,10 @@ def create_admin_router(
         if payload.artifact_url_id is None:
             return probe_direct(payload.url, value_timeout, probe_fn=probe_fn)
         try:
-            return probe_public_url(data_root, payload.url, payload.artifact_url_id, value_timeout, probe_fn=probe_fn, apply_fn=apply_fn)
+            return probe_public_url(
+                data_root, payload.url, payload.artifact_url_id, value_timeout,
+                probe_fn=probe_fn, apply_fn=apply_fn, activity_store=activity_store,
+            )
         except KeyError:
             fail(404, "artifact_url_not_found", "artifact_url_id 不存在")
         except LookupError:
@@ -283,7 +290,10 @@ def create_admin_router(
             fail(404, "version_not_found", "版本不存在")
         manual_start(domain_id)
         try:
-            summary = probe_records(data_root, records, 10, 1, probe_fn=probe_fn, apply_fn=apply_fn)
+            summary = probe_records(
+                data_root, records, 10, 1, probe_fn=probe_fn, apply_fn=apply_fn,
+                activity_store=activity_store,
+            )
             return {"domain_id": domain_id, "version": version, "summary": summary}
         finally:
             manual_finish()

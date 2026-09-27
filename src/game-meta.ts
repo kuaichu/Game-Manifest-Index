@@ -16,6 +16,7 @@ export interface GameMeta {
 export const gameMeta: Record<string, GameMeta> = {
   bh2: { publisher: "米哈游", releaseDate: "2014-01-26" },
   bh3: { publisher: "米哈游", releaseDate: "2016-10-14" },
+  abc: { publisher: "米哈游", releaseDate: "9999-12-31" },
   hk4e: { publisher: "米哈游", releaseDate: "2020-09-28" },
   hkrpg: { publisher: "米哈游", releaseDate: "2023-04-26" },
   nap: { publisher: "米哈游", releaseDate: "2024-07-04" },
