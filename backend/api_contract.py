@@ -1165,7 +1165,7 @@ def create_api_app(data_root: Path, upstream: Any | None = None, *, state_root: 
                     if not isinstance(artifact, dict):
                         continue
                     for candidate in artifact.get("urls", []):
-                        if not isinstance(candidate, dict) or candidate.get("source_kind") != "live_probe":
+                        if not isinstance(candidate, dict):
                             continue
                         current = candidate.get("current")
                         if not isinstance(current, dict):
