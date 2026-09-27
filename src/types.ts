@@ -26,6 +26,10 @@ export interface GameActivityEvent {
   occurred_at: string;
 }
 
+export interface LatestProbeTime {
+  last_checked_at: string | null;
+}
+
 export interface ArchiveDomain {
   id: string;
   game_id: string;

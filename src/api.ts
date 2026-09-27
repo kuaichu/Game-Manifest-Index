@@ -18,6 +18,7 @@ import type {
   ComparePage,
   Game,
   GameActivityEvent,
+  LatestProbeTime,
   ManualArtifactPayload,
   ManualVersionPayload,
   ProbeSchedule,
@@ -156,6 +157,7 @@ function versionIndexSummary(item: VersionIndexItem, index: number): VersionSumm
 
 export const api = {
   games: (signal?: AbortSignal) => requestJson<Game[]>("/games", signal),
+  latestProbeTime: (signal?: AbortSignal) => requestJson<LatestProbeTime>("/probe/latest", signal),
   activity: (signal?: AbortSignal) =>
     requestJson<{ items: GameActivityEvent[] }>("/activity?limit=20", signal),
   gameActivity: (gameId: string, signal?: AbortSignal) =>

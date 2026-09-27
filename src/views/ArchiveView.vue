@@ -88,6 +88,9 @@ function openProvenanceModal(event?: MouseEvent): void {
 }
 
 const remoteTreeProbeTime = ref<string | null>(null);
+const globalProbeTime = ref<string | null>(null);
+const globalProbeLoaded = ref(false);
+let globalProbeController: AbortController | null = null;
 const chunkCollection = ref<ChunkManifestSummaryItem[]>([]);
 const chunkDetail = ref<ChunkManifestDetail | null>(null);
 const chunkLoading = ref(false);
@@ -786,7 +789,9 @@ const versionMetaSummary = computed(() => {
 });
 
 const syncTimeText = computed(() => {
-  const time = latestLiveProbeTime(footerProbeArtifacts.value) || remoteTreeProbeTime.value;
+  const time = globalProbeLoaded.value
+    ? globalProbeTime.value
+    : latestLiveProbeTime(footerProbeArtifacts.value) || remoteTreeProbeTime.value;
   if (!time) return "";
   const formatted = formatObservedDate(time);
   const rel = formatRelativeTime(time);
@@ -1088,12 +1093,31 @@ watch(
 );
 function onAvailabilityInvalidated(): void {
   void loadRegistry();
+  void loadGlobalProbeTime();
+}
+
+async function loadGlobalProbeTime(): Promise<void> {
+  globalProbeController?.abort();
+  const controller = new AbortController();
+  globalProbeController = controller;
+  try {
+    const result = await api.latestProbeTime(controller.signal);
+    if (!controller.signal.aborted) {
+      globalProbeTime.value = result.last_checked_at;
+      globalProbeLoaded.value = true;
+    }
+  } catch (error) {
+    // Keep the page-local timestamp as a compatibility fallback when an older
+    // API has not deployed the global probe endpoint yet.
+    if (!controller.signal.aborted && !isAbortError(error)) globalProbeLoaded.value = false;
+  }
 }
 function onAvailabilityStorageInvalidated(event: StorageEvent): void {
   if (event.key === "gmi-availability-invalidated-at" && event.newValue) onAvailabilityInvalidated();
 }
 onMounted(() => {
   loadRegistry();
+  void loadGlobalProbeTime();
   window.addEventListener("click", onWindowRawIndexClick);
   window.addEventListener("keydown", onWindowKeyDown);
   window.addEventListener("gmi-close-raw-index", onCloseRawIndex);
@@ -1102,6 +1126,7 @@ onMounted(() => {
 });
 onBeforeUnmount(() => {
   gameActivityController?.abort();
+  globalProbeController?.abort();
   disposeArchiveLoader();
   if (searchTimer !== null) window.clearTimeout(searchTimer);
   window.removeEventListener("click", onWindowRawIndexClick);

@@ -809,6 +809,14 @@ class CheckedInContractTests(unittest.TestCase):
         domains = [domain for game in games for domain in self.client.get(f"/api/v1/games/{game['id']}/domains").json()]
         self.assertEqual(len(domains), 26)
 
+    def test_latest_probe_time_is_a_single_public_snapshot(self):
+        response = self.client.get("/api/v1/probe/latest")
+        self.assertEqual(response.status_code, 200, response.text)
+        body = response.json()
+        self.assertEqual(set(body), {"last_checked_at"})
+        value = body["last_checked_at"]
+        self.assertTrue(value is None or value.endswith("Z"))
+
     def test_manjuu_catalog_packages_and_local_files(self):
         games = self.client.get("/api/v1/games").json()
         game = next(item for item in games if item["id"] == "azurpromilia")

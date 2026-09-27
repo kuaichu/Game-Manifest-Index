@@ -1155,6 +1155,28 @@ def create_api_app(data_root: Path, upstream: Any | None = None, *, state_root: 
     def health() -> dict[str, str]:
         return {"status": "ok"}
 
+    @app.get("/api/v1/probe/latest")
+    def latest_probe() -> dict[str, str | None]:
+        """Return one consistent timestamp for the latest completed live probe."""
+        latest: tuple[datetime, str] | None = None
+        for domain in service().inventory().values():
+            for record in domain.records:
+                for artifact in record.get("artifacts", []):
+                    if not isinstance(artifact, dict):
+                        continue
+                    for candidate in artifact.get("urls", []):
+                        if not isinstance(candidate, dict) or candidate.get("source_kind") != "live_probe":
+                            continue
+                        current = candidate.get("current")
+                        if not isinstance(current, dict):
+                            continue
+                        checked = _probe_checked_at(current)
+                        if checked is None:
+                            continue
+                        if latest is None or checked[1] > latest[0]:
+                            latest = (checked[1], checked[0])
+        return {"last_checked_at": latest[1] if latest else None}
+
     @app.get("/api/v1/activity")
     def activity(limit: int = Query(default=20, ge=1, le=100)) -> dict[str, Any]:
         enabled_games = tuple(
