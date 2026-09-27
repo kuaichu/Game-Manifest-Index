@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+import re
 from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
@@ -9,7 +11,8 @@ from threading import Event, RLock, Thread
 from typing import Any, Callable
 from uuid import uuid4
 
-from backend.admin_probe import ADMIN_PROBE_LOCK, CandidateFilter, candidates, probe_records, selected_records
+from backend.activity_store import ActivityStore
+from backend.admin_probe import ADMIN_PROBE_LOCK, AdminProbeDataError, CandidateFilter, candidates, probe_records, selected_records
 from backend.api_contract import PROBE_EVIDENCE_TTL, _probe_checked_at
 from backend.admin_state import AdminStateError, AdminStateStore
 from backend.indexes import rebuild_index
@@ -17,11 +20,31 @@ from url_adapters.service import DISCOVERERS, PC_DISCOVERERS, discover_games
 
 
 Clock = Callable[[], datetime]
+LOGGER = logging.getLogger(__name__)
 JOB_FIELDS = {
     "job_id", "status", "phase", "actions", "game_ids", "scope",
     "completed", "total", "phase_completed", "phase_total", "succeeded", "failed",
     "current", "started_at", "finished_at", "result", "error", "logs",
 }
+
+
+def _version_key(value: str) -> tuple:
+    parts = re.findall(r"\d+|[A-Za-z]+", value)
+    return tuple((0, int(part)) if part.isdigit() else (1, part.lower()) for part in parts)
+
+
+def _previous_versions(root: Path, game_ids: list[str], scope: str) -> dict[tuple[str, str], str]:
+    latest: dict[tuple[str, str], str] = {}
+    for _path, record in selected_records(root, game_ids, scope):
+        game_id = record.get("game_id")
+        platform = record.get("platform")
+        version = record.get("version")
+        if not all(isinstance(value, str) and value for value in (game_id, platform, version)):
+            continue
+        key = (game_id, platform)
+        if key not in latest or _version_key(version) > _version_key(latest[key]):
+            latest[key] = version
+    return latest
 
 
 def utc_now() -> datetime:
@@ -109,9 +132,10 @@ def _valid_job_snapshot(value: dict[str, Any]) -> bool:
 
 
 class OperationManager:
-    def __init__(self, store: AdminStateStore, data_root: Path, *, discovery: Callable[..., dict[str, Any]] = discover_games, probe_fn: Callable[..., dict[str, Any]] | None = None, apply_fn: Callable[..., dict[str, Any]] | None = None, clock: Clock = utc_now) -> None:
+    def __init__(self, store: AdminStateStore, data_root: Path, *, discovery: Callable[..., dict[str, Any]] = discover_games, probe_fn: Callable[..., dict[str, Any]] | None = None, apply_fn: Callable[..., dict[str, Any]] | None = None, clock: Clock = utc_now, activity_store: ActivityStore | None = None) -> None:
         self.store = store
         self.data_root = Path(data_root)
+        self.activity_store = activity_store or ActivityStore(store.root)
         self.discovery = discovery
         self.probe_fn = probe_fn
         self.apply_fn = apply_fn
@@ -324,11 +348,86 @@ class OperationManager:
                     if item.get("game_id") == game_id and item.get("platform") == platform:
                         item.update({"ok": False, "status": "failed", "error": "index_rebuild_failed"})
 
+    def _record_discovery_events(
+        self, items: list[dict[str, Any]], game_ids: list[str], scope: str,
+        previous_versions: dict[tuple[str, str], str],
+    ) -> None:
+        try:
+            records = selected_records(self.data_root, game_ids, scope)
+        except (AdminProbeDataError, OSError, ValueError):
+            LOGGER.warning("Could not read discovered versions for activity history")
+            return
+        latest: dict[tuple[str, str], str] = {}
+        by_path: dict[Path, dict[str, Any]] = {}
+        for path, record in records:
+            key = (record.get("game_id"), record.get("platform"))
+            version = record.get("version")
+            if isinstance(key[0], str) and isinstance(key[1], str) and isinstance(version, str):
+                if key not in latest or _version_key(version) > _version_key(latest[key]):
+                    latest[key] = version
+            by_path[path.resolve()] = record
+
+        candidates_to_record: list[tuple[str, str, str, str]] = []
+        for item in items:
+            if item.get("error") == "index_rebuild_failed":
+                continue
+            game_id, platform = item.get("game_id"), item.get("platform")
+            if not isinstance(game_id, str) or platform not in {"android", "windows"}:
+                continue
+            previous = previous_versions.get((game_id, platform))
+            current_latest = latest.get((game_id, platform))
+            if previous is None or current_latest is None or _version_key(current_latest) <= _version_key(previous):
+                continue
+            paths: list[tuple[Any, Any]] = []
+            if platform == "android":
+                version = item.get("version")
+                if item.get("ok") is True and item.get("new") is True and version == current_latest:
+                    paths.append((version, item.get("path")))
+            else:
+                stages = item.get("stages")
+                if isinstance(stages, list):
+                    paths.extend(
+                        (stage.get("version"), stage.get("path"))
+                        for stage in stages
+                        if isinstance(stage, dict)
+                        and stage.get("ok") is True
+                        and stage.get("new") is True
+                        and stage.get("version") == current_latest
+                    )
+            for version, raw_path in paths:
+                if not isinstance(version, str) or not isinstance(raw_path, str):
+                    continue
+                record = by_path.get(Path(raw_path).resolve())
+                if (
+                    record is not None
+                    and record.get("game_id") == game_id
+                    and record.get("platform") == platform
+                    and record.get("version") == version
+                    and isinstance(record.get("domain_id"), str)
+                    and isinstance(record.get("provenance"), dict)
+                    and record["provenance"].get("source_kind") == "official_sync"
+                ):
+                    candidates_to_record.append((game_id, record["domain_id"], platform, version))
+
+        for game_id, domain_id, platform, version in dict.fromkeys(candidates_to_record):
+            try:
+                self.activity_store.append(
+                    game_id=game_id, domain_id=domain_id, platform=platform,
+                    version=version, event_type="version_update",
+                )
+            except Exception:  # noqa: BLE001 - history must not fail discovery
+                LOGGER.warning("Could not persist version-update activity", exc_info=True)
+
     def _run(self, job_id: str, actions: list[str], game_ids: list[str], scope: str, timeout: int, workers: int, candidate_filter: CandidateFilter | None = None) -> None:
         result = {"actions": actions, "game_ids": game_ids, "scope": scope, "discover": None, "probe": None}
         completed = failed = 0
         try:
             if "discover" in actions:
+                try:
+                    previous_versions = _previous_versions(self.data_root, game_ids, scope)
+                except (AdminProbeDataError, OSError, ValueError):
+                    LOGGER.warning("Could not read previous versions for activity history")
+                    previous_versions = {}
                 scopes = [scope] if scope != "all" else ["android", "pc"]
                 total = sum(len([game for game in game_ids if game in (DISCOVERERS if part == "android" else PC_DISCOVERERS)]) for part in scopes)
                 self._phase(job_id, "discover", completed, total)
@@ -347,6 +446,10 @@ class OperationManager:
                     raw_items.extend(summary.get("items", []))
                     offset += len(summary.get("items", []))
                 self._rebuild_discovered(raw_items)
+                try:
+                    self._record_discovery_events(raw_items, game_ids, scope, previous_versions)
+                except Exception:  # activity history must not fail discovery
+                    LOGGER.warning("Could not process version-update activity", exc_info=True)
                 safe_items = [_safe_discover_item(item) for item in raw_items]
                 result["discover"] = {"selected": total, "succeeded": sum(item["ok"] for item in safe_items), "failed": sum(not item["ok"] for item in safe_items), "new_versions": sum(item["new"] for item in safe_items), "cancelled": self._cancel.is_set(), "items": safe_items}
                 completed += len(safe_items)
@@ -369,6 +472,7 @@ class OperationManager:
                     kwargs["probe_fn"] = self.probe_fn
                 if self.apply_fn is not None:
                     kwargs["apply_fn"] = self.apply_fn
+                kwargs["activity_store"] = self.activity_store
                 result["probe"] = probe_records(self.data_root, records, timeout, workers, **kwargs)
                 for item in result["probe"].get("items", []):
                     item.pop("url", None)
