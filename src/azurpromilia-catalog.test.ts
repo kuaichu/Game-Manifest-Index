@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { api } from "./api";
 import ArchiveView from "./views/ArchiveView.vue";
 import { publisherGroups } from "./game-meta";
+import { gameIcons } from "./game-icons";
 
 async function flush(): Promise<void> {
   await Promise.resolve();
@@ -23,13 +24,13 @@ describe("Azur Promilia generic file-manifest catalog", () => {
   });
 
   it("shows the unknown game, paginates packages, and browses the file manifest", async () => {
-    const iconUrl = "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/8e/6f/71/8e6f710c-03f5-9a08-870d-ebb5f9ebc221/AppIcon-0-0-1x_U007emarketing-0-8-0-85-220.png/512x512bb.jpg";
+    const iconUrl = gameIcons.azurpromilia;
     const game = {
       id: "azurpromilia",
       name: "蓝色星原：旅谣",
       sub_name: "Azur Promilia",
       platform: "windows",
-      icon_source: iconUrl,
+      icon_source: "builtin:azurpromilia",
       version_count: 1,
       latest_version: "0.3.0.6",
       sort_order: 12,
