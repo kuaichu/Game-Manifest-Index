@@ -149,6 +149,20 @@ onUnmounted(() => {
                 <article class="changelog-entry">
                   <time datetime="2026-10-01">2026.10.1</time>
                   <div>
+                    <h3>修正鸣潮文件列表总大小</h3>
+                    <p>鸣潮文件列表总大小现按当前版本的完整文件清单计算，避免重复计入补丁。1.X 至 3.7 已收录清单的版本均可显示正确大小。</p>
+                  </div>
+                </article>
+                <article class="changelog-entry">
+                  <time datetime="2026-10-01">2026.10.1</time>
+                  <div>
+                    <h3>更多游戏文件列表显示文件时间</h3>
+                    <p>各游戏文件列表标题旁新增文件时间，显示官方清单或资源包的最后修改时间，统一以北京时间展示。切换资源或语音时同步更新；无法确认时间的历史版本暂不显示。</p>
+                  </div>
+                </article>
+                <article class="changelog-entry">
+                  <time datetime="2026-10-01">2026.10.1</time>
+                  <div>
                     <h3>异环 PC 资源更新</h3>
                     <p>异环 PC 资源现可跟随官方配置切换到当前资源分支，继续收录新版本和文件清单。</p>
                   </div>

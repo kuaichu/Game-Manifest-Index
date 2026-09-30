@@ -148,6 +148,9 @@ export interface ArtifactTreePage {
   folders: Array<{ name: string; path: string; artifact_count: number; total_size: number }>;
   items: Artifact[];
   next_cursor: string | null;
+  manifest_total_size?: number;
+  file_time?: string | null;
+  file_time_source?: "manifest" | "package";
   manifest_url?: string | null;
   manifest_urls?: string[];
   base_url?: string | null;
@@ -589,6 +592,8 @@ export interface ChunkFilesTotals {
 }
 
 export interface ChunkFilesPage {
+  file_time?: string | null;
+  file_time_source?: "manifest" | "package";
   source?: string;
   fetch_mode?: string;
   identity: string;
@@ -600,6 +605,16 @@ export interface ChunkFilesPage {
   totals?: ChunkFilesTotals;
   network_bytes?: number;
   range_bytes?: number;
+}
+
+export interface FileTimeChange {
+  domainId: string;
+  version: string;
+  source: "package" | "chunk";
+  identity?: string;
+  fileTime: string | null;
+  timeSource?: "manifest" | "package";
+  loading?: boolean;
 }
 
 export interface ChunkFileChunkItem {

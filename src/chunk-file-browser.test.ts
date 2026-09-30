@@ -5,7 +5,7 @@ import { api } from "./api";
 import ChunkFileBrowser from "./components/ChunkFileBrowser.vue";
 import * as chunkDownload from "./chunk-download";
 import * as directoryDownload from "./chunk-directory-download";
-import type { ChunkFileDetail, ChunkFilesPage, ChunkManifestDetail } from "./types";
+import type { ChunkFileDetail, ChunkFilesPage, ChunkManifestDetail, FileTimeChange } from "./types";
 
 async function flushUpdates(): Promise<void> {
   await nextTick();
@@ -123,6 +123,43 @@ function createTestRouter() {
 }
 
 describe("ChunkFileBrowser", () => {
+  it("emits source and identity dates and rejects obsolete identity and version responses", async () => {
+    const pending: Array<{ resolve: (page: ChunkFilesPage) => void }> = [];
+    vi.spyOn(api, "versionFiles").mockImplementation(() => new Promise((resolve) => pending.push({ resolve })));
+    const dates: FileTimeChange[] = [];
+    const version = ref("7.0.0");
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const router = createTestRouter();
+    await router.push("/"); await router.isReady();
+    const app = createApp({ setup: () => () => h(ChunkFileBrowser, {
+      domainId: "hk4e-pc", version: version.value, game: null, domain: null, chunkDetail: mockDetail,
+      versionSummary: { version: version.value, current_revision_id: 1, revision_count: 1, observed_at: null,
+        packed_size: 0, unpacked_size: 0, artifact_count: 3, availability_states: {}, attributes: {},
+        artifact_kinds: { package: { count: 1, size: 0 }, chunk: { count: 2, size: 0 } } },
+      onFileTimeChange: (event: FileTimeChange) => dates.push(event),
+    }) });
+    app.use(router); app.mount(host); await flushUpdates();
+    expect(dates.at(-1)).toMatchObject({ source: "package", identity: "game", fileTime: null, loading: true });
+    pending[0].resolve({ ...mockPackageFiles, file_time: "2026-09-01T00:00:00Z", file_time_source: "package" });
+    await flushUpdates();
+    expect(dates.at(-1)).toMatchObject({ source: "package", fileTime: "2026-09-01T00:00:00Z", timeSource: "package" });
+    (host.querySelectorAll<HTMLButtonElement>(".cfb-source-switch-group button")[1]).click(); await flushUpdates();
+    expect(dates.at(-1)).toMatchObject({ source: "chunk", identity: "game", fileTime: null, loading: true });
+    (host.querySelectorAll<HTMLButtonElement>(".cfb-identity-chips button")[1]).click(); await flushUpdates();
+    pending[1].resolve({ ...mockChunkFiles, file_time: "2026-09-02T00:00:00Z", file_time_source: "manifest" });
+    await flushUpdates();
+    expect(dates.at(-1)?.loading).toBe(true);
+    pending[2].resolve({ ...mockChunkFiles, identity: "zh-cn", file_time: "2026-09-03T00:00:00Z", file_time_source: "manifest" });
+    await flushUpdates();
+    expect(dates.at(-1)).toMatchObject({ source: "chunk", identity: "zh-cn", fileTime: "2026-09-03T00:00:00Z" });
+    version.value = "7.1.0"; await flushUpdates();
+    expect(dates.at(-1)).toMatchObject({ version: "7.1.0", fileTime: null, loading: true });
+    app.unmount(); host.remove();
+    pending[3].resolve({ ...mockChunkFiles, file_time: "2026-09-04T00:00:00Z", file_time_source: "manifest" });
+    await flushUpdates();
+    expect(dates.at(-1)?.loading).toBe(true);
+  });
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
