@@ -350,6 +350,36 @@ class TemporaryContractTests(unittest.TestCase):
         self.assertNotIn("source_url", item["provenance"])
         self.assertNotIn("secret", json.dumps(item))
 
+    def test_nte_file_time_uses_official_manifest_last_modified(self):
+        path = self.root / "perfectworld" / "nte" / "pc" / "1.1.0.json"
+        original = json.loads(path.read_text(encoding="utf-8"))
+        item = original["artifacts"][0]
+        item["name"] = "ResList.bin.zip"
+        url = item["urls"][0]
+        official = "https://yhcdn1.wmupd.com/clientRes/PC_140/Version/Windows/version/1.1.0/ResList.bin.zip"
+        for candidate, modified, status, expected in (
+            (official, "Tue, 29 Sep 2026 20:00:03 GMT", 200, "2026-09-29T20:00:03Z"),
+            (official, "Tue, 29 Sep 2026 16:00:03 -0400", 206, "2026-09-29T20:00:03Z"),
+            (official, "not a date", 200, None),
+            (official, None, 200, None),
+            (official, "Tue, 29 Sep 2026 20:00:03", 200, None),
+            (official, "Tue, 29 Sep 2026 20:00:03 GMT", 404, None),
+            (official.replace("yhcdn1.wmupd.com", "example.test"), "Tue, 29 Sep 2026 20:00:03 GMT", 200, None),
+        ):
+            with self.subTest(candidate=candidate, modified=modified, status=status):
+                url["url"] = candidate
+                url["current"] = {"state": "available", "http_code": status, "checked_at": "2026-10-01T00:00:00Z", **({"last_modified": modified} if modified is not None else {})}
+                value = record("perfectworld", "nte", "windows", "1.1.0", [item])
+                write_record(self.root, value)
+                rebuild_indexes(self.root)
+                versions = self.get("/api/v1/domains/nte-pc/versions").json()["items"]
+                summary = next(row for row in versions if row["version"] == "1.1.0")
+                self.assertEqual(summary["attributes"].get("manifest_modified_at"), expected)
+                self.assertEqual(summary["observed_at"], value["file_time"])
+                self.assertEqual(json.loads(path.read_text(encoding="utf-8")), value)
+        wuwa = self.get("/api/v1/domains/wuwa-pc/versions").json()["items"][0]
+        self.assertNotIn("manifest_modified_at", wuwa["attributes"])
+
     def get_probed_url(self, path: str):
         with patch("backend.api_contract._utc_now", lambda: FROZEN_NOW):
             return self.get(path).json()["items"][0]["urls"][0]

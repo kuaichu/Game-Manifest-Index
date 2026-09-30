@@ -123,6 +123,8 @@ describe("archive cross-game navigation", () => {
     expect(root.textContent).toContain("清单文件");
     expect(root.textContent).toContain("10 B");
     expect(root.textContent).toContain("1".repeat(32));
+    expect(root.querySelector(".panel-meta-inline")?.textContent).toContain("文件时间2026.04.17 10:00");
+    expect(root.querySelector(".panel-meta-inline .meta-inline-item[title]")?.getAttribute("title")).toContain("官方清单文件的最后修改时间");
     expect(root.querySelector<HTMLInputElement>(".search-box input")?.placeholder).toBe("文件名 / MD5 / URL");
     expect(root.textContent).not.toContain("未验证");
     expect(root.textContent).not.toContain("含失效");
@@ -150,6 +152,61 @@ describe("archive cross-game navigation", () => {
     for (const judgment of ["可用", "不可用", "未判定", "含失效", "链接失效", "无数据"]) {
       expect(versionMenu?.textContent || "").not.toContain(judgment);
     }
+    app.unmount();
+  });
+
+  it("uses NTE manifest time and clears the file time when switching to versions without valid evidence", async () => {
+    const game = { id: "nte", name: "异环", sub_name: "Neverness to Everness", icon_source: "", sort_order: 0 };
+    const domain = {
+      id: "nte-pc", game_id: "nte", kind: "mixed", platform: "windows",
+      capabilities: ["files", "patches", "manifest"], adapter: "nte",
+      version_count: 4, latest_version: "1.4.9", sort_order: 0,
+    };
+    const baseVersion = {
+      current_revision_id: 1, revision_count: 1, artifact_count: 0, artifact_kinds: {},
+      observed_at: "2026-07-11T03:22:58Z", imported_at: "2026-07-19T00:00:00Z",
+      source_released_at: "2026-07-18T00:00:00Z",
+    };
+    const summaries = [
+      { ...baseVersion, version: "1.4.9", source_updated_at: "2026-04-17T02:00:39Z", attributes: { manifest_modified_at: "2026-09-29T20:00:03Z" } },
+      { ...baseVersion, version: "1.4.8", source_updated_at: null, attributes: {} },
+      { ...baseVersion, version: "1.4.7", source_updated_at: "invalid", attributes: {} },
+      { ...baseVersion, version: "1.4.6", source_updated_at: "2026-04-17T02:00:39Z", attributes: { manifest_modified_at: "invalid" } },
+    ];
+    vi.spyOn(api, "games").mockResolvedValue([game] as never);
+    vi.spyOn(api, "domains").mockResolvedValue([domain] as never);
+    vi.spyOn(api, "versions").mockResolvedValue(summaries as never);
+    vi.spyOn(api, "artifacts").mockResolvedValue(emptyPage as never);
+
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: "/games/:gameId/:domainId?/:version?/:mode?", name: "archive", component: ArchiveView }],
+    });
+    await router.push("/games/nte/nte-pc/1.4.9/files");
+    await router.isReady();
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const app = createApp(ArchiveView);
+    app.use(router);
+    app.mount(root);
+    await flushUpdates();
+    await flushUpdates();
+
+    const metadata = () => root.querySelector(".panel-meta-inline");
+    expect(metadata()?.textContent).toContain("文件时间2026.09.30 04:00");
+    expect(metadata()?.textContent).not.toContain("2026.04.17");
+    expect(metadata()?.querySelector("[title]")?.getAttribute("title")).toContain("不代表清单内每个文件的修改时间");
+
+    for (const version of ["1.4.8", "1.4.7", "1.4.6"]) {
+      await router.push(`/games/nte/pc/${version}/files`);
+      await flushUpdates();
+      expect(metadata()).toBeNull();
+    }
+
+    await router.push("/games/nte/pc/1.4.9/patches");
+    await flushUpdates();
+    expect(metadata()?.textContent).toContain("发布时间2026.07.18 08:00");
+    expect(metadata()?.textContent).not.toContain("文件时间");
     app.unmount();
   });
 

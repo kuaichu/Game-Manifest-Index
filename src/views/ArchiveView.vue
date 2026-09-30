@@ -728,7 +728,7 @@ const versionMetaSummary = computed(() => {
   const dom = domain.value;
   if (!summary || !dom) return [];
 
-  const items: Array<{ label: string; value: string; isMono?: boolean }> = [];
+  const items: Array<{ label: string; value: string; isMono?: boolean; title?: string }> = [];
 
   // 1. 总大小 (仅多分卷/多文件时在顶部汇总展示，单文件不重复)
   const kind = mode.value === "apk" ? "apk" : mode.value === "packages" ? "package" : mode.value === "patches" ? "patch" : "";
@@ -747,7 +747,15 @@ const versionMetaSummary = computed(() => {
   const apkFileTime = mode.value === "apk" ? summary.observed_at : null;
   const importedTime = summary.archived_at || summary.imported_at;
 
-  if (mode.value === "chunks" && manifestTime) {
+  if (mode.value === "files" && dom.game_id === "nte" && ["pc", "windows"].includes(dom.platform.toLowerCase())) {
+    const fileTime = (typeof attrs.manifest_modified_at === "string" ? attrs.manifest_modified_at : "") || updateTime;
+    if (observedDate(fileTime)) {
+      items.push({
+        label: "文件时间", value: formatObservedDate(fileTime), isMono: true,
+        title: "官方清单文件的最后修改时间（北京时间），不代表清单内每个文件的修改时间",
+      });
+    }
+  } else if (mode.value === "chunks" && manifestTime) {
     const formatted = formatObservedDate(manifestTime);
     if (formatted && formatted !== "不支持" && formatted !== "-") {
       items.push({ label: "Manifest 更新时间", value: formatted, isMono: true });
@@ -1560,7 +1568,7 @@ function chunkMatchingField(artifact: Artifact): string {
               <div class="panel-title-row">
                 <h2>{{ panelTitle }}</h2>
                 <div v-if="versionMetaSummary.length" class="panel-meta-inline">
-                  <span v-for="(item, idx) in versionMetaSummary" :key="item.label" class="meta-inline-item">
+                  <span v-for="(item, idx) in versionMetaSummary" :key="item.label" class="meta-inline-item" :title="item.title">
                     <span v-if="idx > 0" class="meta-dot">·</span>
                     <span class="meta-label">{{ item.label }}</span>
                     <span class="meta-value" :class="{ 'text-mono': item.isMono }">{{ item.value }}</span>

@@ -147,6 +147,27 @@ onUnmounted(() => {
             <section v-if="selectedTab === 'system'" id="changelog-system-panel" role="tabpanel" aria-labelledby="changelog-system-tab">
               <div class="changelog-timeline">
                 <article class="changelog-entry">
+                  <time datetime="2026-10-01">2026.10.1</time>
+                  <div>
+                    <h3>异环 PC 资源更新</h3>
+                    <p>异环 PC 资源现可跟随官方配置切换到当前资源分支，继续收录新版本和文件清单。</p>
+                  </div>
+                </article>
+                <article class="changelog-entry">
+                  <time datetime="2026-10-01">2026.10.1</time>
+                  <div>
+                    <h3>补充异环 PC 历史版本</h3>
+                    <p>补充 1.3.14 及 1.4 系列中官方清单可获取的版本，现已收录至 1.4.9，共 70 个版本。支持浏览对应版本的文件清单。</p>
+                  </div>
+                </article>
+                <article class="changelog-entry">
+                  <time datetime="2026-10-01">2026.10.1</time>
+                  <div>
+                    <h3>异环文件列表新增文件时间</h3>
+                    <p>异环文件列表标题旁新增文件时间，显示官方清单文件的最后修改时间，统一以北京时间展示。</p>
+                  </div>
+                </article>
+                <article class="changelog-entry">
                   <time datetime="2026-09-30">2026.09.30</time>
                   <div>
                     <h3>Chunk 下载功能更新</h3>
