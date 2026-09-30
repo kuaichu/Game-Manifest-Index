@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createApp, nextTick } from "vue";
+import { createApp, h, nextTick, ref } from "vue";
 import { createMemoryHistory, createRouter } from "vue-router";
 import { api } from "./api";
 import ChunkFileBrowser from "./components/ChunkFileBrowser.vue";
+import * as chunkDownload from "./chunk-download";
+import * as directoryDownload from "./chunk-directory-download";
 import type { ChunkFileDetail, ChunkFilesPage, ChunkManifestDetail } from "./types";
 
 async function flushUpdates(): Promise<void> {
@@ -123,6 +125,7 @@ function createTestRouter() {
 describe("ChunkFileBrowser", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it("renders identities, folder rows, file rows, and breadcrumbs in chunk mode", async () => {
@@ -291,6 +294,16 @@ describe("ChunkFileBrowser", () => {
     expect(dialog?.textContent).toContain("hash_chunk_1");
     expect(dialog?.textContent).toContain("hash_chunk_2");
     expect(dialog?.textContent).toContain("复制");
+    expect(dialog?.textContent).toContain("下载完整文件");
+    const synthesis = vi.spyOn(chunkDownload, "synthesizeChunkFile").mockResolvedValue(new Blob(["restored"]));
+    const save = vi.spyOn(chunkDownload, "saveBlob").mockImplementation(() => undefined);
+    const downloadButton = [...dialog!.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.includes("下载完整文件"))!;
+    downloadButton.click();
+    await flushUpdates();
+    expect(synthesis).toHaveBeenCalledWith(expect.objectContaining({ chunk_download: mockDetail.manifests[0].chunk_download }), expect.any(AbortSignal), expect.any(Function), expect.any(Function));
+    const makeUrl = synthesis.mock.calls[0][3]!;
+    expect(makeUrl(mockFileDetail.chunks![0])).toContain("identity=game");
+    expect(save).toHaveBeenCalledWith(expect.any(Blob), "YuanShen.exe");
 
     // Close modal
     const closeBtn = dialog?.querySelector(".cfb-modal-close") as HTMLElement;
@@ -299,6 +312,99 @@ describe("ChunkFileBrowser", () => {
 
     expect(document.body.querySelector(".cfb-modal-card")).toBeNull();
 
+    app.unmount();
+    host.remove();
+  });
+
+  it("streams files larger than the Blob limit using a save picker", async () => {
+    vi.spyOn(api, "versionFiles").mockResolvedValue(mockChunkFiles);
+    vi.spyOn(api, "versionFileDetail").mockResolvedValue({ ...mockFileDetail, size: 600 * 1024 * 1024 });
+    const writable = { write: vi.fn(), close: vi.fn(), abort: vi.fn() };
+    const picker = vi.fn().mockResolvedValue({ createWritable: vi.fn().mockResolvedValue(writable) });
+    vi.stubGlobal("showSaveFilePicker", picker);
+    const stream = vi.spyOn(chunkDownload, "writeChunkFile").mockResolvedValue(undefined);
+    const synthesis = vi.spyOn(chunkDownload, "synthesizeChunkFile");
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const router = createTestRouter();
+    await router.push("/");
+    await router.isReady();
+    const app = createApp(ChunkFileBrowser, { domainId: "hk4e-pc", version: "7.0.0", game: null, domain: null, chunkDetail: mockDetail });
+    app.use(router);
+    app.mount(host);
+    await flushUpdates();
+    (host.querySelector(".row-is-file") as HTMLElement).click();
+    await flushUpdates();
+    const button = [...document.body.querySelectorAll<HTMLButtonElement>(".cfb-modal-card button")].find((item) => item.textContent?.includes("下载完整文件"))!;
+    button.click();
+    await flushUpdates();
+    expect(picker).toHaveBeenCalledWith({ suggestedName: "YuanShen.exe" });
+    expect(stream).toHaveBeenCalledWith(expect.objectContaining({ size: 600 * 1024 * 1024 }), writable, expect.any(AbortSignal), expect.any(Function), expect.any(Function));
+    expect(synthesis).not.toHaveBeenCalled();
+    app.unmount();
+    host.remove();
+  });
+
+  it("downloads selected full components independently of the current search", async () => {
+    vi.spyOn(api, "versionFiles").mockResolvedValue(mockChunkFiles);
+    const directory = { getDirectoryHandle: vi.fn(), getFileHandle: vi.fn() };
+    const picker = vi.fn().mockResolvedValue(directory);
+    vi.stubGlobal("showDirectoryPicker", picker);
+    const download = vi.spyOn(directoryDownload, "downloadChunkDirectory").mockResolvedValue({ directoryName: "hk4e-7.0.0", files: 7, bytes: 2800 });
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const router = createTestRouter();
+    await router.push("/");
+    await router.isReady();
+    const app = createApp(ChunkFileBrowser, { domainId: "hk4e-pc", version: "7.0.0", game: null, domain: null, chunkDetail: mockDetail, searchQuery: "only-one-file" });
+    app.use(router);
+    app.mount(host);
+    await flushUpdates();
+    (host.querySelector(".cfb-directory-toggle") as HTMLButtonElement).click();
+    await flushUpdates();
+    const checkboxes = host.querySelectorAll<HTMLInputElement>(".cfb-directory-components input");
+    expect([...checkboxes].map((item) => item.checked)).toEqual([true, true]);
+    checkboxes[1].click();
+    await flushUpdates();
+    (host.querySelector(".cfb-directory-actions .dl-btn") as HTMLButtonElement).click();
+    await flushUpdates();
+    expect(picker).toHaveBeenCalledWith({ mode: "readwrite" });
+    expect(download).toHaveBeenCalledWith(expect.objectContaining({ domainId: "hk4e-pc", version: "7.0.0", identities: ["game"], root: directory }));
+    expect(download.mock.calls[0][0]).not.toHaveProperty("q");
+    expect(host.textContent).toContain("已保存 7 个文件");
+    app.unmount();
+    host.remove();
+  });
+
+  it("cancels directory writes on a version change and ignores old completion", async () => {
+    vi.spyOn(api, "versionFiles").mockResolvedValue(mockChunkFiles);
+    vi.stubGlobal("showDirectoryPicker", vi.fn().mockResolvedValue({ getDirectoryHandle: vi.fn(), getFileHandle: vi.fn() }));
+    let finish!: (value: directoryDownload.ChunkDirectoryDownloadResult) => void;
+    const download = vi.spyOn(directoryDownload, "downloadChunkDirectory").mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+    const version = ref("7.0.0");
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const router = createTestRouter();
+    await router.push("/");
+    await router.isReady();
+    const app = createApp({ setup: () => () => h(ChunkFileBrowser, { domainId: "hk4e-pc", version: version.value, game: null, domain: null, chunkDetail: mockDetail }) });
+    app.use(router);
+    app.mount(host);
+    await flushUpdates();
+    (host.querySelector(".cfb-directory-toggle") as HTMLButtonElement).click();
+    await flushUpdates();
+    (host.querySelector(".cfb-directory-actions .dl-btn") as HTMLButtonElement).click();
+    await flushUpdates();
+    const oldSignal = download.mock.calls[0][0].signal;
+    version.value = "7.1.0";
+    await flushUpdates();
+    expect(oldSignal.aborted).toBe(true);
+    finish({ directoryName: "old-version", files: 7, bytes: 2800 });
+    await flushUpdates();
+    (host.querySelector(".cfb-directory-toggle") as HTMLButtonElement).click();
+    await flushUpdates();
+    expect(host.textContent).not.toContain("old-version");
+    expect(host.querySelector<HTMLButtonElement>(".cfb-directory-actions .dl-btn")?.disabled).toBe(false);
     app.unmount();
     host.remove();
   });

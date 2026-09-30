@@ -1,16 +1,22 @@
 """Read checked-in file manifests and bounded official Sophon resources.
 
-The helpers in this module never write canonical data (or a cache).  Local
+The helpers in this module never write canonical data or a disk cache.  Local
 documents have already been authenticated by ``ApiContract`` before they are
 passed here.
 """
 
 from __future__ import annotations
 
+import copy
 import hashlib
+import json
 import re
+import threading
+from collections import OrderedDict
 from collections.abc import Mapping
-from typing import Any, Protocol
+from concurrent.futures import Future
+from dataclasses import dataclass
+from typing import Any, Protocol, Sequence
 from urllib.parse import quote, urljoin, urlsplit
 
 import httpx
@@ -22,6 +28,7 @@ from google.protobuf.message import DecodeError
 MAX_MANIFEST_BYTES = 64 * 1024 * 1024
 MAX_MANIFEST_DECOMPRESSED_BYTES = 128 * 1024 * 1024
 MAX_CHUNK_BYTES = 64 * 1024 * 1024
+MAX_CHUNK_MANIFEST_CACHE_ENTRIES = 8
 OFFICIAL_SOPHON_HOSTS = frozenset(
     {
         "autopatchcn.yuanshen.com",
@@ -92,6 +99,40 @@ class HttpUpstream:
         self.timeout = timeout
         self.max_redirects = max_redirects
         self.transport = transport
+        self._chunk_manifest_cache: OrderedDict[str, _ChunkManifestData] = OrderedDict()
+        self._chunk_manifest_inflight: dict[str, Future[_ChunkManifestData]] = {}
+        self._chunk_manifest_lock = threading.Lock()
+
+    def _cached_chunk_manifest(self, key: str, loader: Any) -> _ChunkManifestData:
+        with self._chunk_manifest_lock:
+            cached = self._chunk_manifest_cache.get(key)
+            if cached is not None:
+                self._chunk_manifest_cache.move_to_end(key)
+                return cached
+            pending = self._chunk_manifest_inflight.get(key)
+            if pending is None:
+                pending = Future()
+                self._chunk_manifest_inflight[key] = pending
+                is_loader = True
+            else:
+                is_loader = False
+        if not is_loader:
+            return pending.result()
+        try:
+            value = loader()
+        except BaseException as error:
+            with self._chunk_manifest_lock:
+                self._chunk_manifest_inflight.pop(key, None)
+                pending.set_exception(error)
+            raise
+        with self._chunk_manifest_lock:
+            self._chunk_manifest_cache[key] = value
+            self._chunk_manifest_cache.move_to_end(key)
+            while len(self._chunk_manifest_cache) > MAX_CHUNK_MANIFEST_CACHE_ENTRIES:
+                self._chunk_manifest_cache.popitem(last=False)
+            self._chunk_manifest_inflight.pop(key, None)
+            pending.set_result(value)
+        return value
 
     def get_bytes(
         self,
@@ -214,7 +255,7 @@ def strict_relative_posix(value: Any, *, allow_empty: bool = False) -> str:
     return "/".join(parts)
 
 
-def _page(items: list[dict[str, Any]], limit: int, cursor: str | None) -> tuple[list[dict[str, Any]], str | None]:
+def _page(items: Sequence[dict[str, Any]], limit: int, cursor: str | None) -> tuple[list[dict[str, Any]], str | None]:
     if limit < 1 or limit > 500:
         raise ManifestBadRequest("limit 无效")
     if cursor is None:
@@ -223,7 +264,7 @@ def _page(items: list[dict[str, Any]], limit: int, cursor: str | None) -> tuple[
         raise ManifestBadRequest("cursor 无效")
     else:
         offset = int(cursor)
-    page = items[offset : offset + limit]
+    page = list(items[offset : offset + limit])
     next_cursor = str(offset + limit) if offset + limit < len(items) else None
     return page, next_cursor
 
@@ -407,6 +448,38 @@ def _recipe_url(item: Mapping[str, Any], field: str, name: str) -> str:
 
 
 def _chunk_files(item: Mapping[str, Any], upstream: Upstream) -> list[dict[str, Any]]:
+    return copy.deepcopy(list(_chunk_manifest_data(item, upstream).files))
+
+
+@dataclass(frozen=True)
+class _ChunkManifestData:
+    files: tuple[dict[str, Any], ...]
+    chunk_sizes: Mapping[str, frozenset[int]]
+    total_size: int
+
+
+def _chunk_manifest_cache_key(
+    manifest: Mapping[str, Any], manifest_id: str, recipe: Mapping[str, Any], chunk_recipe: Any, stats: Any,
+) -> str | None:
+    try:
+        material = json.dumps(
+            {
+                "manifest": dict(manifest),
+                "manifest_id": manifest_id,
+                "recipe": dict(recipe),
+                "chunk_recipe": dict(chunk_recipe) if isinstance(chunk_recipe, Mapping) else chunk_recipe,
+                "stats": dict(stats) if isinstance(stats, Mapping) else stats,
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=True,
+        ).encode("utf-8")
+    except (TypeError, ValueError):
+        return None
+    return hashlib.sha256(material).hexdigest()
+
+
+def _chunk_manifest_data(item: Mapping[str, Any], upstream: Upstream) -> _ChunkManifestData:
     manifest = item.get("manifest")
     recipe = item.get("manifest_download")
     if not isinstance(manifest, Mapping) or not isinstance(recipe, Mapping):
@@ -419,77 +492,92 @@ def _chunk_files(item: Mapping[str, Any], upstream: Upstream) -> list[dict[str, 
     expected_compressed = manifest.get("compressed_size")
     if isinstance(expected_compressed, bool) or (expected_compressed is not None and not isinstance(expected_compressed, int)):
         raise ManifestCorrupt("Chunk Manifest 数据损坏")
-    body, _ = upstream.get_bytes(
-        _recipe_url(item, "manifest_download", manifest_id),
-        allowed_hosts=OFFICIAL_SOPHON_HOSTS,
-        max_bytes=MAX_MANIFEST_BYTES,
-        expected_size=expected_compressed,
-    )
-    try:
-        raw = zstandard.ZstdDecompressor().decompress(body, max_output_size=MAX_MANIFEST_DECOMPRESSED_BYTES + 1) if recipe.get("compression", 0) == 1 else body
-    except (zstandard.ZstdError, ValueError) as error:
-        raise ManifestUpstream("Manifest 解压失败") from error
-    if len(raw) > MAX_MANIFEST_DECOMPRESSED_BYTES:
-        raise ManifestUpstream("Manifest 解压后过大")
-    checksum = manifest.get("checksum")
-    if not isinstance(checksum, str) or hashlib.md5(raw).hexdigest() != checksum.lower():
-        raise ManifestUpstream("Manifest checksum 校验失败")
-    try:
-        message = _proto_class()()
-        message.ParseFromString(raw)
-    except (DecodeError, ValueError, TypeError) as error:
-        raise ManifestUpstream("Manifest protobuf 无效") from error
-    files: list[dict[str, Any]] = []
-    seen_paths: set[str] = set()
-    for asset in message.Assets:
-        if asset.AssetType != 0:
-            continue
+    # Validate the official host and recipe before looking in the cache.
+    manifest_url = _recipe_url(item, "manifest_download", manifest_id)
+
+    def load() -> _ChunkManifestData:
+        body, _ = upstream.get_bytes(
+            manifest_url,
+            allowed_hosts=OFFICIAL_SOPHON_HOSTS,
+            max_bytes=MAX_MANIFEST_BYTES,
+            expected_size=expected_compressed,
+        )
         try:
-            path = strict_relative_posix(asset.AssetName)
-        except ManifestBadRequest as error:
-            raise ManifestUpstream("Manifest 文件路径无效") from error
-        if path in seen_paths or asset.AssetSize < 0 or not asset.AssetHashMd5:
-            raise ManifestUpstream("Manifest 文件字段无效")
-        seen_paths.add(path)
-        chunks = []
-        for chunk in asset.AssetChunks:
-            if (
-                not chunk.ChunkName
-                or "/" in chunk.ChunkName
-                or "\\" in chunk.ChunkName
-                or any(value < 0 for value in (chunk.ChunkOnFileOffset, chunk.ChunkSize, chunk.ChunkSizeDecompressed))
-            ):
-                raise ManifestUpstream("Manifest chunk 字段无效")
-            chunks.append(
+            raw = zstandard.ZstdDecompressor().decompress(body, max_output_size=MAX_MANIFEST_DECOMPRESSED_BYTES + 1) if recipe.get("compression", 0) == 1 else body
+        except (zstandard.ZstdError, ValueError) as error:
+            raise ManifestUpstream("Manifest 解压失败") from error
+        if len(raw) > MAX_MANIFEST_DECOMPRESSED_BYTES:
+            raise ManifestUpstream("Manifest 解压后过大")
+        checksum = manifest.get("checksum")
+        if not isinstance(checksum, str) or hashlib.md5(raw).hexdigest() != checksum.lower():
+            raise ManifestUpstream("Manifest checksum 校验失败")
+        try:
+            message = _proto_class()()
+            message.ParseFromString(raw)
+        except (DecodeError, ValueError, TypeError) as error:
+            raise ManifestUpstream("Manifest protobuf 无效") from error
+        files: list[dict[str, Any]] = []
+        chunk_sizes: dict[str, set[int]] = {}
+        seen_paths: set[str] = set()
+        for asset in message.Assets:
+            if asset.AssetType != 0:
+                continue
+            try:
+                path = strict_relative_posix(asset.AssetName)
+            except ManifestBadRequest as error:
+                raise ManifestUpstream("Manifest 文件路径无效") from error
+            if path in seen_paths or asset.AssetSize < 0 or not asset.AssetHashMd5:
+                raise ManifestUpstream("Manifest 文件字段无效")
+            seen_paths.add(path)
+            chunks = []
+            for chunk in asset.AssetChunks:
+                if (
+                    not chunk.ChunkName
+                    or "/" in chunk.ChunkName
+                    or "\\" in chunk.ChunkName
+                    or any(value < 0 for value in (chunk.ChunkOnFileOffset, chunk.ChunkSize, chunk.ChunkSizeDecompressed))
+                ):
+                    raise ManifestUpstream("Manifest chunk 字段无效")
+                chunks.append(
+                    {
+                        "name": chunk.ChunkName,
+                        "hash": chunk.ChunkDecompressedHashMd5,
+                        "offset": chunk.ChunkOnFileOffset,
+                        "size": chunk.ChunkSize,
+                        "size_decompressed": chunk.ChunkSizeDecompressed,
+                    }
+                )
+                chunk_sizes.setdefault(chunk.ChunkName, set()).add(chunk.ChunkSize)
+            files.append(
                 {
-                    "name": chunk.ChunkName,
-                    "hash": chunk.ChunkDecompressedHashMd5,
-                    "offset": chunk.ChunkOnFileOffset,
-                    "size": chunk.ChunkSize,
-                    "size_decompressed": chunk.ChunkSizeDecompressed,
+                    "name": path.rsplit("/", 1)[-1],
+                    "path": path,
+                    "size": asset.AssetSize,
+                    "hash": asset.AssetHashMd5,
+                    "chunk_count": len(chunks),
+                    "chunks": chunks,
                 }
             )
-        files.append(
-            {
-                "name": path.rsplit("/", 1)[-1],
-                "path": path,
-                "size": asset.AssetSize,
-                "hash": asset.AssetHashMd5,
-                "chunk_count": len(chunks),
-                "chunks": chunks,
+        stats = item.get("stats")
+        if isinstance(stats, Mapping):
+            actual = {
+                "file_count": len(files),
+                "chunk_count": sum(len(file["chunks"]) for file in files),
+                "uncompressed_size": sum(file["size"] for file in files),
             }
+            if any(stats.get(key) is not None and stats.get(key) != value for key, value in actual.items()):
+                raise ManifestUpstream("Manifest 统计校验失败")
+        files.sort(key=lambda entry: (entry["path"].casefold(), entry["path"]))
+        return _ChunkManifestData(
+            files=tuple(files),
+            chunk_sizes={name: frozenset(sizes) for name, sizes in chunk_sizes.items()},
+            total_size=sum(file["size"] for file in files),
         )
-    stats = item.get("stats")
-    if isinstance(stats, Mapping):
-        actual = {
-            "file_count": len(files),
-            "chunk_count": sum(len(file["chunks"]) for file in files),
-            "uncompressed_size": sum(file["size"] for file in files),
-        }
-        if any(stats.get(key) is not None and stats.get(key) != value for key, value in actual.items()):
-            raise ManifestUpstream("Manifest 统计校验失败")
-    files.sort(key=lambda entry: (entry["path"].casefold(), entry["path"]))
-    return files
+
+    key = _chunk_manifest_cache_key(manifest, manifest_id, recipe, item.get("chunk_download"), item.get("stats"))
+    if isinstance(upstream, HttpUpstream) and key is not None:
+        return upstream._cached_chunk_manifest(key, load)
+    return load()
 
 
 def list_chunk_files(
@@ -503,12 +591,65 @@ def list_chunk_files(
     return result
 
 
+def _public_chunk_download_recipe(item: Mapping[str, Any]) -> dict[str, Any] | None:
+    recipe = item.get("chunk_download")
+    if not isinstance(recipe, Mapping) or "password" in recipe:
+        return None
+    prefix = recipe.get("url_prefix")
+    suffix = recipe.get("url_suffix", "")
+    if not isinstance(prefix, str) or not isinstance(suffix, str):
+        return None
+    try:
+        _validated_https_url(prefix, OFFICIAL_SOPHON_HOSTS)
+        _validated_https_url(prefix.rstrip("/") + "/chunk" + suffix, OFFICIAL_SOPHON_HOSTS)
+    except ManifestUpstream:
+        return None
+    if urlsplit(prefix).query or urlsplit(prefix).fragment:
+        return None
+    if any(ord(char) < 0x20 or ord(char) == 0x7F for char in suffix) or (suffix and not suffix.startswith("?")):
+        return None
+    if re.search(r"(?i)(?:^|[?&])(token|password|passwd|secret|auth(?:_key)?|signature|sign|key)=", suffix):
+        return None
+    return {
+        "url_prefix": prefix,
+        "url_suffix": suffix,
+        "compression": recipe.get("compression", 0),
+        "encryption": recipe.get("encryption", 0),
+    }
+
+
+def chunk_download_plan_items(
+    document: Mapping[str, Any], identity: str, upstream: Upstream, limit: int = 100, cursor: str | None = None,
+) -> tuple[str, list[dict[str, Any]], int, int, str | None]:
+    item = _find_chunk_entry(document, identity)
+    public_identity = item.get("matching_field") or (item.get("manifest") or {}).get("id")
+    if not isinstance(public_identity, str):
+        public_identity = identity
+    recipe = _public_chunk_download_recipe(item)
+    data = _chunk_manifest_data(item, upstream)
+    page_view, next_cursor = _page(data.files, limit, cursor)
+    return str(public_identity), [
+        {
+            "identity": public_identity,
+            "fetch_mode": "upstream_manifest",
+            **copy.deepcopy(file),
+            "chunk_download": copy.deepcopy(recipe),
+        }
+        for file in page_view
+    ], len(data.files), data.total_size, next_cursor
+
+
 def chunk_file_detail(document: Mapping[str, Any], identity: str, upstream: Upstream, path: str) -> dict[str, Any]:
     wanted = strict_relative_posix(path)
     item = _find_chunk_entry(document, identity)
-    for file in _chunk_files(item, upstream):
+    for file in _chunk_manifest_data(item, upstream).files:
         if file["path"] == wanted:
-            return {"identity": item.get("matching_field") or (item.get("manifest") or {}).get("id"), "fetch_mode": "upstream_manifest", **file}
+            return {
+                "identity": item.get("matching_field") or (item.get("manifest") or {}).get("id"),
+                "fetch_mode": "upstream_manifest",
+                **copy.deepcopy(file),
+                "chunk_download": _public_chunk_download_recipe(item),
+            }
     raise ManifestNotFound("文件不存在")
 
 
@@ -516,12 +657,12 @@ def chunk_content(document: Mapping[str, Any], identity: str, name: str, upstrea
     if not isinstance(name, str) or not re.fullmatch(r"[^/\\\x00-\x20\x7f]+", name):
         raise ManifestBadRequest("chunk name 无效")
     item = _find_chunk_entry(document, identity)
-    sizes = {chunk["size"] for file in _chunk_files(item, upstream) for chunk in file["chunks"] if chunk["name"] == name}
+    sizes = _chunk_manifest_data(item, upstream).chunk_sizes.get(name, frozenset())
     if not sizes:
         raise ManifestNotFound("Chunk 不存在")
     if len(sizes) != 1:
         raise ManifestUpstream("Manifest chunk 身份冲突")
-    expected = sizes.pop()
+    expected = next(iter(sizes))
     if expected > MAX_CHUNK_BYTES:
         raise ManifestUpstream("Chunk 过大")
     return upstream.get_bytes(
@@ -534,6 +675,6 @@ def chunk_content(document: Mapping[str, Any], identity: str, name: str, upstrea
 
 __all__ = [
     "HttpUpstream", "ManifestBadRequest", "ManifestCorrupt", "ManifestError", "ManifestNotFound",
-    "ManifestTimeout", "ManifestUpstream", "chunk_content", "chunk_file_detail", "list_chunk_files",
+    "ManifestTimeout", "ManifestUpstream", "chunk_content", "chunk_download_plan_items", "chunk_file_detail", "list_chunk_files",
     "list_local_files", "local_file_detail", "local_files", "strict_relative_posix",
 ]

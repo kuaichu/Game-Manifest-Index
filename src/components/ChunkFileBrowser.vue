@@ -3,7 +3,8 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { api, chunkContentUrl, isAbortError } from "../api";
 import { formatBytes, formatObservedDate, hoyoLanguageLabel, repairMojibake } from "../domain-presentation";
-import { chunkUrl, ChunkDownloadError, MAX_BROWSER_SYNTHESIS_SIZE, saveBlob, synthesizeChunkFile, type ChunkDownloadProgress } from "../chunk-download";
+import { chunkUrl, ChunkDownloadError, MAX_BROWSER_SYNTHESIS_SIZE, saveBlob, synthesizeChunkFile, writeChunkFile, type ChunkDownloadProgress } from "../chunk-download";
+import { downloadChunkDirectory, type DirectoryDownloadProgress } from "../chunk-directory-download";
 import type {
   ArchiveDomain,
   ChunkFileDetail,
@@ -106,6 +107,19 @@ const downloadController = ref<AbortController | null>(null);
 const downloadProgress = ref<ChunkDownloadProgress | null>(null);
 const downloadError = ref<string | null>(null);
 const downloading = ref(false);
+const directoryPanelOpen = ref(false);
+const directoryIdentities = ref<string[]>([]);
+const directoryController = ref<AbortController | null>(null);
+const directoryProgress = ref<DirectoryDownloadProgress | null>(null);
+const directoryMessage = ref("");
+const directoryError = ref("");
+const directoryDownloading = ref(false);
+type DownloadPickerWindow = Window & {
+  showDirectoryPicker?: (options: { mode: "readwrite" }) => Promise<FileSystemDirectoryHandle>;
+  showSaveFilePicker?: (options: { suggestedName: string }) => Promise<FileSystemFileHandle>;
+};
+const canSaveDirectory = computed(() => typeof window !== "undefined" && typeof (window as DownloadPickerWindow).showDirectoryPicker === "function");
+const canSaveFile = computed(() => typeof window !== "undefined" && typeof (window as DownloadPickerWindow).showSaveFilePicker === "function");
 
 let listController: AbortController | null = null;
 let detailController: AbortController | null = null;
@@ -153,6 +167,18 @@ const activeManifest = computed(() => {
     ) || props.chunkDetail.manifests[0]
   );
 });
+
+const directoryComponents = computed(() => (props.chunkDetail?.manifests || []).map((manifest) => ({
+  key: manifest.matching_field || manifest.language || manifest.component,
+  label: repairMojibake(manifest.category?.name || "") || (manifest.component === "game" ? "游戏主资源" : manifest.language ? `${hoyoLanguageLabel(manifest.language)}语音包` : `${manifest.component} 组件`),
+  size: manifest.stats?.uncompressed_size || 0,
+  supported: Boolean(manifest.chunk_download) && !Object.prototype.hasOwnProperty.call(manifest.chunk_download, "password") && (manifest.chunk_download?.encryption ?? 0) === 0 && [0, 1].includes(manifest.chunk_download?.compression ?? 0),
+})));
+const directorySize = computed(() => directoryComponents.value.filter((item) => directoryIdentities.value.includes(item.key)).reduce((sum, item) => sum + item.size, 0));
+
+watch(() => props.chunkDetail, () => {
+  if (!directoryDownloading.value) directoryIdentities.value = directoryComponents.value.filter((item) => item.supported).map((item) => item.key);
+}, { immediate: true });
 
 function chunkDownloadUrl(chunkName: string): string {
   const recipe = activeManifest.value?.chunk_download;
@@ -292,6 +318,7 @@ async function openFileDetail(item: ChunkFileItem): Promise<void> {
   detailController?.abort();
   const request = new AbortController();
   detailController = request;
+  const recipe = activeSource.value === "chunk" ? activeManifest.value?.chunk_download : undefined;
 
   try {
     const detail = await api.versionFileDetail(
@@ -304,7 +331,11 @@ async function openFileDetail(item: ChunkFileItem): Promise<void> {
       },
       request.signal,
     );
-    if (generation === detailGeneration) fileDetail.value = detail;
+    if (generation === detailGeneration) {
+      fileDetail.value = recipe && !detail.chunk_download
+        ? { ...detail, chunk_download: recipe }
+        : detail;
+    }
   } catch (err) {
     if (isAbortError(err) || generation !== detailGeneration) return;
     fileDetailError.value = err instanceof Error ? err.message : "获取文件明细失败";
@@ -327,9 +358,9 @@ function closeModal(): void {
 }
 
 async function downloadCompleteFile(): Promise<void> {
-  if (!fileDetail.value || downloading.value) return;
-  if (fileDetail.value.size > MAX_BROWSER_SYNTHESIS_SIZE) {
-    downloadError.value = "文件超过 512 MiB，暂不支持浏览器合成";
+  if (!fileDetail.value || downloading.value || directoryDownloading.value) return;
+  if (fileDetail.value.size > MAX_BROWSER_SYNTHESIS_SIZE && !canSaveFile.value) {
+    downloadError.value = "超过 512 MiB 的文件需要在桌面 Chrome 或 Edge 中直接保存到磁盘";
     return;
   }
   downloadController.value?.abort();
@@ -340,15 +371,66 @@ async function downloadCompleteFile(): Promise<void> {
   const chunks = fileDetail.value.chunks || [];
   downloadProgress.value = { completed: 0, total: chunks.length, receivedBytes: 0, totalBytes: chunks.reduce((sum, chunk) => sum + chunk.size, 0) };
   try {
-    const blob = await synthesizeChunkFile(fileDetail.value, controller.signal, (progress) => { downloadProgress.value = progress; }, (chunk) => chunkContentUrl(props.domainId, props.version, selectedIdentity.value, chunk.name));
     const filename = fileDetail.value.path.split("/").filter(Boolean).pop() || "download.bin";
-    saveBlob(blob, filename);
+    const detail = fileDetail.value;
+    const identity = selectedIdentity.value;
+    const domainId = props.domainId;
+    const version = props.version;
+    const onProgress = (progress: ChunkDownloadProgress) => { if (downloadController.value === controller) downloadProgress.value = progress; };
+    const urlForChunk = (chunk: NonNullable<ChunkFileDetail["chunks"]>[number]) => chunkContentUrl(domainId, version, identity, chunk.name);
+    if (canSaveFile.value) {
+      const handle = await (window as DownloadPickerWindow).showSaveFilePicker!({ suggestedName: filename });
+      if (controller.signal.aborted) return;
+      const writable = await handle.createWritable();
+      await writeChunkFile(detail, writable, controller.signal, onProgress, urlForChunk);
+    } else {
+      const blob = await synthesizeChunkFile(detail, controller.signal, onProgress, urlForChunk);
+      if (!controller.signal.aborted) saveBlob(blob, filename);
+    }
   } catch (err) {
-    if (!isAbortError(err)) downloadError.value = err instanceof ChunkDownloadError || err instanceof Error ? err.message : "完整文件合成失败";
+    if (downloadController.value === controller && !isAbortError(err)) downloadError.value = err instanceof ChunkDownloadError || err instanceof Error ? err.message : "完整文件合成失败";
   } finally {
     if (downloadController.value === controller) {
       downloadController.value = null;
       downloading.value = false;
+    }
+  }
+}
+
+async function downloadDirectory(): Promise<void> {
+  if (directoryDownloading.value || downloading.value || !directoryIdentities.value.length) return;
+  if (!canSaveDirectory.value) {
+    directoryError.value = "目录下载需要桌面 Chrome 或 Edge，请通过 HTTPS 打开本站";
+    return;
+  }
+  const controller = new AbortController();
+  directoryController.value = controller;
+  directoryDownloading.value = true;
+  directoryMessage.value = "";
+  directoryError.value = "";
+  directoryProgress.value = null;
+  const domainId = props.domainId;
+  const version = props.version;
+  const selected = [...directoryIdentities.value];
+  try {
+    const root = await (window as DownloadPickerWindow).showDirectoryPicker!({ mode: "readwrite" });
+    if (controller.signal.aborted) return;
+    const result = await downloadChunkDirectory({
+      domainId, version, identities: selected, root,
+      baseName: `${props.game?.id || props.domain?.game_id || domainId}-${version}`,
+      signal: controller.signal,
+      onProgress: (progress) => { if (directoryController.value === controller) directoryProgress.value = progress; },
+    });
+    if (directoryController.value === controller) directoryMessage.value = `已保存 ${result.files.toLocaleString()} 个文件（${formatBytes(result.bytes)}）到 ${result.directoryName}`;
+  } catch (error) {
+    if (directoryController.value === controller) {
+      if (isAbortError(error)) directoryMessage.value = directoryProgress.value ? "下载已取消，已完成的文件保留在所选目录中。" : "已取消选择目录。";
+      else directoryError.value = `${error instanceof Error ? error.message : "目录下载失败"}。已完成的文件会保留。`;
+    }
+  } finally {
+    if (directoryController.value === controller) {
+      directoryController.value = null;
+      directoryDownloading.value = false;
     }
   }
 }
@@ -384,6 +466,14 @@ function initFromRoute(): void {
 watch(
   () => [props.domainId, props.version],
   () => {
+    directoryController.value?.abort();
+    directoryController.value = null;
+    directoryDownloading.value = false;
+    directoryProgress.value = null;
+    directoryMessage.value = "";
+    directoryError.value = "";
+    closeModal();
+    directoryPanelOpen.value = false;
     initFromRoute();
     void loadFiles(currentPath.value);
   },
@@ -406,6 +496,7 @@ onBeforeUnmount(() => {
   listController?.abort();
   detailController?.abort();
   downloadController.value?.abort();
+  directoryController.value?.abort();
   window.removeEventListener("keydown", onKeydown);
 });
 </script>
@@ -455,7 +546,35 @@ onBeforeUnmount(() => {
           </button>
         </div>
       </div>
+      <button v-if="activeSource === 'chunk' && directoryComponents.length" class="tool-button cfb-directory-toggle" type="button" :aria-expanded="directoryPanelOpen" @click="directoryPanelOpen = !directoryPanelOpen">下载游戏目录</button>
     </div>
+
+    <section v-if="directoryPanelOpen" class="cfb-directory-download" aria-label="下载游戏目录">
+      <div class="cfb-directory-heading">
+        <strong>选择要下载的资源</strong>
+        <span>预计 {{ formatBytes(directorySize) }} · {{ directoryIdentities.length }} 个组件</span>
+      </div>
+      <p>重建所选清单中的全部文件，不受当前目录或搜索影响。输出为游戏文件目录，不包含安装程序。</p>
+      <div class="cfb-directory-components">
+        <label v-for="item in directoryComponents" :key="item.key">
+          <input v-model="directoryIdentities" type="checkbox" :value="item.key" :disabled="directoryDownloading || !item.supported" />
+          <span>{{ item.label }}</span><small>{{ item.supported ? formatBytes(item.size) : '暂不支持此格式' }}</small>
+        </label>
+      </div>
+      <p v-if="!canSaveDirectory" class="cfb-download-error">目录下载需要桌面 Chrome 或 Edge，请通过 HTTPS 打开本站。</p>
+      <div class="cfb-directory-actions">
+        <button class="tool-button dl-btn" type="button" :disabled="!canSaveDirectory || directoryDownloading || downloading || !directoryIdentities.length" @click="downloadDirectory">{{ directoryDownloading ? '正在下载…' : '选择目录并下载' }}</button>
+        <button v-if="directoryDownloading" class="tool-button copy-btn" type="button" @click="directoryController?.abort()">取消下载</button>
+      </div>
+      <div v-if="directoryProgress" class="cfb-directory-progress" role="status">
+        <span>{{ directoryProgress.stage === 'preparing' ? '正在读取并校验清单…' : `${directoryProgress.completedFiles.toLocaleString()}/${directoryProgress.totalFiles.toLocaleString()} 个文件 · ${formatBytes(directoryProgress.completedBytes)}/${formatBytes(directoryProgress.totalBytes)}` }}</span>
+        <span v-if="directoryProgress.currentPath">{{ directoryProgress.currentPath }}</span>
+        <span v-if="directoryProgress.chunkProgress">当前文件：{{ directoryProgress.chunkProgress.completed }}/{{ directoryProgress.chunkProgress.total }} 块 · {{ formatBytes(directoryProgress.chunkProgress.receivedBytes) }}/{{ formatBytes(directoryProgress.chunkProgress.totalBytes) }}</span>
+      </div>
+      <p v-if="directoryMessage" role="status">{{ directoryMessage }}</p>
+      <p v-if="directoryError" class="cfb-download-error" role="alert">{{ directoryError }}</p>
+      <p>在所选目录下新建游戏子目录，不覆盖已有文件。保持此页面打开；取消或失败时保留已完成文件。</p>
+    </section>
 
     <!-- 面包屑导航与目录状态栏 -->
     <div class="cfb-navbar">
@@ -812,7 +931,7 @@ onBeforeUnmount(() => {
             <!-- 情况 2: Chunk 物理分块列表 -->
             <div v-else-if="fileDetail?.chunks?.length || (fileDetail?.chunk_download && fileDetail.size === 0)" class="cfb-chunks-container">
               <div v-if="fileDetail?.chunk_download" class="cfb-complete-download">
-                <button type="button" class="tool-button dl-btn" :disabled="downloading" @click="downloadCompleteFile">
+                <button type="button" class="tool-button dl-btn" :disabled="downloading || directoryDownloading" @click="downloadCompleteFile">
                   {{ downloading ? '正在合成…' : '下载完整文件' }}
                 </button>
                 <button v-if="downloading" type="button" class="tool-button copy-btn" @click="downloadController?.abort()">取消</button>
@@ -1789,6 +1908,38 @@ onBeforeUnmount(() => {
 }
 .cfb-download-progress { color: var(--muted); font-size: 11.5px; font-family: var(--font-mono); }
 .cfb-download-error { flex-basis: 100%; color: #fb7185; font-size: 12px; }
+
+.cfb-directory-toggle { align-self: flex-start; }
+.cfb-directory-download {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 18px;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 12px;
+  background: rgba(56, 189, 248, 0.04);
+}
+.cfb-directory-heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
+.cfb-directory-heading strong { color: #e2e8f0; font-size: 14px; }
+.cfb-directory-heading > span { color: #94a3b8; font-size: 12px; }
+.cfb-directory-download p { margin: 0; color: #94a3b8; font-size: 12px; line-height: 1.7; }
+.cfb-directory-download .cfb-download-error { color: #fb7185; }
+.cfb-directory-components { display: flex; flex-wrap: wrap; gap: 8px; }
+.cfb-directory-components label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 10px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 7px;
+  color: #e2e8f0;
+  font-size: 12px;
+}
+.cfb-directory-components input { accent-color: #38bdf8; }
+.cfb-directory-components small { color: #94a3b8; }
+.cfb-directory-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.cfb-directory-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
+.cfb-directory-progress { display: grid; gap: 5px; color: #cbd5e1; font-size: 12px; overflow-wrap: anywhere; }
 
 .cfb-chunk-grid-header {
   display: grid;

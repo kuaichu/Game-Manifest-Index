@@ -632,3 +632,11 @@ export interface ChunkFileDetail {
     password?: string;
   };
 }
+
+export interface ChunkDownloadPlanPage {
+  identity: string;
+  items: ChunkFileDetail[];
+  total: number;
+  next_cursor: string | null;
+  total_size: number;
+}

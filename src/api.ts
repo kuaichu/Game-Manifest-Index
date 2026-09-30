@@ -31,6 +31,7 @@ import type {
   ChunkManifestDetail,
   ChunkFilesPage,
   ChunkFileDetail,
+  ChunkDownloadPlanPage,
   RetentionConfig,
   RetentionRunResult,
   RetentionStatus,
@@ -322,6 +323,22 @@ export const api = {
       `/domains/${encodeURIComponent(domainId)}/versions/${encodeURIComponent(version)}/chunk-manifests/${encodeURIComponent(identity)}/file?path=${encodeURIComponent(path)}`,
       signal,
     ),
+  chunkDownloadPlan: (
+    domainId: string,
+    version: string,
+    identity: string,
+    params?: { limit?: number; cursor?: string | null },
+    signal?: AbortSignal,
+  ) => {
+    const search = new URLSearchParams();
+    if (params?.limit) search.set("limit", String(params.limit));
+    if (params?.cursor) search.set("cursor", params.cursor);
+    const query = search.toString();
+    return requestJson<ChunkDownloadPlanPage>(
+      `/domains/${encodeURIComponent(domainId)}/versions/${encodeURIComponent(version)}/chunk-manifests/${encodeURIComponent(identity)}/download-plan${query ? `?${query}` : ""}`,
+      signal,
+    );
+  },
 };
 
 export const adminApi = {

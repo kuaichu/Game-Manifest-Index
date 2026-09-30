@@ -5,7 +5,10 @@ import hashlib
 import json
 import os
 import tempfile
+import threading
+import time
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
@@ -23,6 +26,9 @@ from backend.manifest_readers import (
     ManifestTimeout,
     ManifestUpstream,
     _proto_class,
+    chunk_content,
+    chunk_file_detail,
+    list_chunk_files,
 )
 from backend.schema_v2 import artifact_id
 
@@ -750,7 +756,50 @@ class TemporaryContractTests(unittest.TestCase):
         chunk = self.get("/api/v1/domains/hk4e-pc/versions/2.0.0/chunk-manifests/game/file?path=Game/Bin/a.dat").json()
         self.assertEqual(local["md5"], "a" * 32)
         self.assertEqual(chunk["chunk_count"], 1)
+        self.assertEqual(chunk["chunk_download"]["url_prefix"], "https://autopatchcn.yuanshen.com/chunks")
+        self.assertEqual(chunk["chunks"][0]["name"], "chunk-a")
         self.assertNotIn("password", json.dumps(chunk))
+
+    def test_chunk_download_plan_paginates_all_files_and_reports_total_size(self):
+        base = "/api/v1/domains/hk4e-pc/versions/2.0.0/chunk-manifests/game/download-plan"
+        first = self.get(base + "?limit=1").json()
+        self.assertEqual(first["identity"], "game")
+        self.assertEqual(first["total"], 2)
+        self.assertEqual(first["total_size"], 17)
+        self.assertEqual(first["next_cursor"], "1")
+        self.assertEqual(first["items"][0]["path"], "Game/Bin/a.dat")
+        self.assertEqual(first["items"][0]["chunk_download"]["compression"], 0)
+        self.assertEqual(first["items"][0]["chunks"][0]["name"], "chunk-a")
+        second = self.get(base + "?limit=1&cursor=1").json()
+        self.assertEqual([item["path"] for item in second["items"]], ["root.exe"])
+        self.assertIsNone(second["next_cursor"])
+
+    def test_chunk_download_plan_rejects_bad_parameters_and_missing_recipe(self):
+        base = "/api/v1/domains/hk4e-pc/versions/2.0.0/chunk-manifests"
+        for query in ("limit=0", "limit=501", "cursor=bad"):
+            self.get(f"{base}/game/download-plan?{query}", 400)
+        self.get(f"{base}/missing/download-plan", 404)
+        self.get(f"{base}/!/download-plan", 400)
+        path = self.root / "mihoyo" / "hk4e" / "pc" / "chunk-manifests" / "2.0.0.json"
+        document = json.loads(path.read_text(encoding="utf-8"))
+        del document["manifests"][0]["chunk_download"]
+        path.write_text(json.dumps(document), encoding="utf-8")
+        response = self.get(f"{base}/game/download-plan", 500)
+        self.assertEqual(response.json()["error"]["code"], "corrupt_manifest")
+
+    def test_chunk_download_plan_redacts_sensitive_recipe_and_rejects_unofficial_host(self):
+        base = "/api/v1/domains/hk4e-pc/versions/2.0.0/chunk-manifests/game/download-plan"
+        path = self.root / "mihoyo" / "hk4e" / "pc" / "chunk-manifests" / "2.0.0.json"
+        document = json.loads(path.read_text(encoding="utf-8"))
+        document["manifests"][0]["chunk_download"]["url_suffix"] = "?token=hidden-value"
+        path.write_text(json.dumps(document), encoding="utf-8")
+        body = self.get(base).text
+        self.assertNotIn("hidden-value", body)
+        self.assertIsNone(json.loads(body)["items"][0]["chunk_download"])
+
+        document["manifests"][0]["chunk_download"]["url_prefix"] = "https://evil.example/chunks"
+        path.write_text(json.dumps(document), encoding="utf-8")
+        self.get(base, 500)
 
     def test_strict_file_paths_are_400(self):
         base = "/api/v1/domains/wuwa-pc/versions/1.0.0/file?source=package&path="
@@ -786,6 +835,12 @@ class TemporaryContractTests(unittest.TestCase):
         self.assertEqual(response.headers["etag"], "fixture")
         self.get("/api/v1/domains/hk4e-pc/versions/2.0.0/chunk-content?identity=game&name=missing", 404)
         self.get("/api/v1/domains/hk4e-pc/versions/2.0.0/chunk-content?identity=game&name=a%2Fb", 400)
+
+    def test_non_http_upstream_does_not_reuse_chunk_manifest_cache(self):
+        chunk_file_detail(self.chunk_doc, "game", self.upstream, "Game/Bin/a.dat")
+        chunk_content(self.chunk_doc, "game", "chunk-a", self.upstream)
+        manifest_calls = [url for url in self.upstream.calls if "/manifests/" in url]
+        self.assertEqual(len(manifest_calls), 2)
 
     def test_validation_and_framework_errors_are_sanitized(self):
         for path, status in (("/api/v1/domains/hk4e-pc/versions/2.0.0/files?limit=0", 400), ("/api/v1/no-such", 404)):
@@ -887,6 +942,121 @@ class CheckedInContractTests(unittest.TestCase):
 
 
 class HttpUpstreamTests(unittest.TestCase):
+    def test_chunk_manifest_cache_reuses_validated_files_and_chunk_index(self):
+        document, manifest_body, chunk_body = chunk_fixture()
+        calls: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            calls.append(str(request.url))
+            if "/manifests/" in request.url.path:
+                return httpx.Response(200, content=manifest_body)
+            return httpx.Response(200, content=chunk_body)
+
+        upstream = HttpUpstream(transport=httpx.MockTransport(handler))
+        detail = chunk_file_detail(document, "game", upstream, "Game/Bin/a.dat")
+        body, _ = chunk_content(document, "game", detail["chunks"][0]["name"], upstream)
+        self.assertEqual(body, chunk_body)
+        self.assertEqual(sum("/manifests/" in call for call in calls), 1)
+        self.assertEqual(sum("/chunks/" in call for call in calls), 1)
+        detail["chunks"][0]["name"] = "mutated-response"
+        fresh_detail = chunk_file_detail(document, "game", upstream, "Game/Bin/a.dat")
+        self.assertEqual(fresh_detail["chunks"][0]["name"], "chunk-a")
+
+        changed_recipe = copy.deepcopy(document)
+        changed_recipe["manifests"][0]["chunk_download"]["url_suffix"] = "?v=2"
+        chunk_content(changed_recipe, "game", "chunk-a", upstream)
+        self.assertEqual(sum("/manifests/" in call for call in calls), 2)
+        self.assertIn("?v=2", calls[-1])
+
+        changed_manifest_recipe = copy.deepcopy(document)
+        changed_manifest_recipe["manifests"][0]["manifest_download"]["url_suffix"] = "?v=manifest"
+        list_chunk_files(changed_manifest_recipe, "game", upstream)
+        self.assertEqual(sum("/manifests/" in call for call in calls), 3)
+
+        changed_manifest_id = copy.deepcopy(document)
+        changed_manifest_id["manifests"][0]["manifest"]["id"] = "manifest-game-2"
+        list_chunk_files(changed_manifest_id, "game", upstream)
+        self.assertEqual(sum("/manifests/" in call for call in calls), 4)
+
+        changed_checksum = copy.deepcopy(document)
+        changed_checksum["manifests"][0]["manifest"]["checksum"] = "0" * 32
+        with self.assertRaises(ManifestUpstream):
+            list_chunk_files(changed_checksum, "game", upstream)
+        self.assertEqual(sum("/manifests/" in call for call in calls), 5)
+
+        changed_size = copy.deepcopy(document)
+        changed_size["manifests"][0]["manifest"]["compressed_size"] += 1
+        with self.assertRaises(ManifestUpstream):
+            list_chunk_files(changed_size, "game", upstream)
+        self.assertEqual(sum("/manifests/" in call for call in calls), 6)
+
+    def test_chunk_manifest_cache_does_not_skip_recipe_or_stats_validation(self):
+        document, manifest_body, _ = chunk_fixture()
+        manifest_calls: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if "/manifests/" in request.url.path:
+                manifest_calls.append(str(request.url))
+                return httpx.Response(200, content=manifest_body)
+            return httpx.Response(200, content=b"1234567")
+
+        upstream = HttpUpstream(transport=httpx.MockTransport(handler))
+        list_chunk_files(document, "game", upstream)
+        self.assertEqual(len(manifest_calls), 1)
+
+        invalid_recipes = []
+        invalid_host = copy.deepcopy(document)
+        invalid_host["manifests"][0]["manifest_download"]["url_prefix"] = "https://evil.example/manifests"
+        invalid_recipes.append(invalid_host)
+        password_recipe = copy.deepcopy(document)
+        password_recipe["manifests"][0]["manifest_download"]["password"] = "secret"
+        invalid_recipes.append(password_recipe)
+        encrypted = copy.deepcopy(document)
+        encrypted["manifests"][0]["manifest_download"]["encryption"] = 1
+        invalid_recipes.append(encrypted)
+        unsupported_compression = copy.deepcopy(document)
+        unsupported_compression["manifests"][0]["manifest_download"]["compression"] = 2
+        invalid_recipes.append(unsupported_compression)
+        for invalid in invalid_recipes:
+            with self.subTest(recipe=invalid["manifests"][0]["manifest_download"]):
+                with self.assertRaises(ManifestUpstream):
+                    list_chunk_files(invalid, "game", upstream)
+        self.assertEqual(len(manifest_calls), 1)
+
+        stale_stats = copy.deepcopy(document)
+        stale_stats["manifests"][0]["stats"]["file_count"] += 1
+        with self.assertRaises(ManifestUpstream):
+            list_chunk_files(stale_stats, "game", upstream)
+        self.assertEqual(len(manifest_calls), 2)
+
+    def test_chunk_manifest_cache_singleflights_concurrent_reads_and_is_bounded(self):
+        document, manifest_body, _ = chunk_fixture()
+        manifest_calls: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if "/manifests/" in request.url.path:
+                manifest_calls.append(str(request.url))
+                time.sleep(0.03)
+                return httpx.Response(200, content=manifest_body)
+            return httpx.Response(200, content=b"1234567")
+
+        upstream = HttpUpstream(transport=httpx.MockTransport(handler))
+        barrier = threading.Barrier(4)
+
+        def read_manifest() -> int:
+            barrier.wait()
+            return list_chunk_files(document, "game", upstream)["total"]
+
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            self.assertEqual(list(pool.map(lambda _: read_manifest(), range(4))), [2] * 4)
+        self.assertEqual(len(manifest_calls), 1)
+
+        for index in range(10):
+            variant = copy.deepcopy(document)
+            variant["manifests"][0]["manifest_download"]["url_suffix"] = f"?v={index}"
+            list_chunk_files(variant, "game", upstream)
+        self.assertLessEqual(len(upstream._chunk_manifest_cache), 8)
+
     def test_range_success_validates_headers_and_body(self):
         def handler(request: httpx.Request) -> httpx.Response:
             self.assertEqual(request.headers["range"], "bytes=2-4")
