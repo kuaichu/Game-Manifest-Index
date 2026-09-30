@@ -93,6 +93,33 @@ class PCAdapterTests(unittest.TestCase):
                 with self.assertRaises(ProbeError):
                     adapter_for("mihoyo", "hk4e", url, platform="windows")
 
+    def test_perfectworld_tracks_nte_resource_branches_and_keeps_history(self):
+        for branch, version in (("publish_PC", "1.3.16"), ("PC_140", "1.4.9"), ("PC_150", "1.5.1")):
+            for suffix in ("config.xml", f"version/{version}/ResList.bin.zip"):
+                url = f"https://yhcdn1.wmupd.com/clientRes/{branch}/Version/Windows/{suffix}"
+                with self.subTest(url=url):
+                    self.assertEqual(adapter_for("perfectworld", "nte", url, platform="windows").NAME, "perfectworld_patcher")
+                    self.assertEqual(adapter_for(None, None, url, platform="windows").NAME, "perfectworld_patcher")
+
+        base = "https://yhcdn1.wmupd.com/clientRes/PC_140/Version/Windows/version/1.4.9/ResList.bin.zip"
+        for url in (
+            base.replace("https://", "http://"),
+            base.replace("yhcdn1.wmupd.com", "evil.example"),
+            base.replace("yhcdn1.wmupd.com", "yhcdn2.wmupd.com"),
+            base.replace("https://", "https://u:p@"),
+            base.replace(".com/", ".com:444/"),
+            base.replace("PC_140", "../PC_140"),
+            base.replace("PC_140", "%2e%2e"),
+            base.replace("/Windows/", "/Android/"),
+            base.replace("1.4.9/", "../"),
+            base + "?x=1",
+            base + "#fragment",
+        ):
+            with self.subTest(url=url), self.assertRaises(ProbeError):
+                adapter_for("perfectworld", "nte", url, platform="windows")
+        for game in ("p5x", "tof"):
+            self.assertFalse(perfectworld_patcher.matches("perfectworld", game, base))
+
     def test_historical_pc_matchers_reject_wrong_identity_or_url_shape(self):
         arknights = (
             "https://ak.hycdn.cn/GzD1CpaWgmSq1wew/75.0/update/1/1/Windows/"

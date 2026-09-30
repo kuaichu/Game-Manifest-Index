@@ -1,0 +1,61 @@
+{
+  "schema_version": 2,
+  "vendor": "perfectworld",
+  "game_id": "nte",
+  "domain_id": "nte-pc",
+  "platform": "windows",
+  "channel": "official",
+  "version": "1.3.16",
+  "version_code": null,
+  "file_time": null,
+  "artifacts": [
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "file_manifest",
+      "name": "ResList.bin.zip",
+      "size": 86011742703,
+      "manifest": {
+        "path": "manifests/1.3.16/files.json",
+        "base_urls": [
+          {
+            "url": "https://yhcdn1.wmupd.com/clientRes/publish_PC/Res/",
+            "provider": "perfectworld",
+            "source_kind": "official",
+            "priority": 0
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://yhcdn1.wmupd.com/clientRes/publish_PC/Version/Windows/version/1.3.16/ResList.bin.zip",
+          "provider": "perfectworld",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 206,
+            "checked_at": "2026-09-30T12:29:22Z",
+            "etag": "0c4cb2ac24a45c66365f4ea11d4c0da4",
+            "crc64": "13855767055253207237",
+            "last_modified": "Wed, 23 Sep 2026 23:29:00 GMT",
+            "response_size": 45216
+          }
+        }
+      ],
+      "source": {
+        "source_kind": "official_sync",
+        "source_name": "Perfect World PatcherSDK",
+        "source_url": "https://yhcdn1.wmupd.com/clientRes/publish_PC/Version/Windows/config.xml"
+      },
+      "artifact_id": "a1_af8510dd8d211937435d3a454d580369"
+    }
+  ],
+  "references": [],
+  "provenance": {
+    "source_kind": "official_sync",
+    "source_name": "Perfect World PatcherSDK",
+    "source_url": "https://yhcdn1.wmupd.com/clientRes/publish_PC/Version/Windows/config.xml"
+  }
+}
