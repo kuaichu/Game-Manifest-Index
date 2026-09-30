@@ -147,6 +147,13 @@ onUnmounted(() => {
             <section v-if="selectedTab === 'system'" id="changelog-system-panel" role="tabpanel" aria-labelledby="changelog-system-tab">
               <div class="changelog-timeline">
                 <article class="changelog-entry">
+                  <time datetime="2026-09-30">2026.09.30</time>
+                  <div>
+                    <h3>Chunk 下载功能更新</h3>
+                    <p>支持将 Chunk 分块合并下载为完整文件，也可选择游戏资源和语音，直接保存为完整游戏目录。下载时可查看进度或随时取消。游戏目录下载需使用桌面版 Chrome 或 Edge。</p>
+                  </div>
+                </article>
+                <article class="changelog-entry">
                   <time datetime="2026-09-27">2026.09.27</time>
                   <div>
                     <h3>新增《崩坏：因缘精灵》PC 文件清单</h3>
