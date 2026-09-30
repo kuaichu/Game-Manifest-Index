@@ -17,7 +17,7 @@ import httpx
 import zstandard
 from fastapi.testclient import TestClient
 
-from backend.api_contract import _public_artifact, create_api_app
+from backend.api_contract import _file_metadata, _public_artifact, _summary, create_api_app
 from backend.app import app
 from backend.indexes import rebuild_indexes
 from backend.manifest_readers import (
@@ -379,6 +379,110 @@ class TemporaryContractTests(unittest.TestCase):
                 self.assertEqual(json.loads(path.read_text(encoding="utf-8")), value)
         wuwa = self.get("/api/v1/domains/wuwa-pc/versions").json()["items"][0]
         self.assertNotIn("manifest_modified_at", wuwa["attributes"])
+
+    def test_file_dates_cover_official_manifest_vendors_without_network(self):
+        for vendor, game, host in (
+            ("perfectworld", "tof", "htcdn1.wmupd.com"),
+            ("perfectworld", "p5x", "nsywl-client-dev1.wmupd.com"),
+            ("kuro", "wuwa", "pcdownload-aliyun.aki-game.com"),
+            ("manjuu", "azurpromilia", "syncstation.manjuu.com"),
+        ):
+            with self.subTest(game=game):
+                item = artifact("indexFile.json", delivery="file_manifest", manifest={"path": "manifests/files.json"})
+                item["urls"][0]["url"] = f"https://{host}/game/indexFile.json"
+                item["urls"][0]["current"] = {"http_code": 200, "last_modified": "Tue, 29 Sep 2026 20:00:03 GMT"}
+                value = record(vendor, game, "windows", "1.0.0", [item])
+                attributes = _summary(value)["attributes"]
+                self.assertEqual(attributes["file_modified_at"], "2026-09-29T20:00:03Z")
+                self.assertEqual(attributes["file_time_source"], "manifest")
+                self.assertNotIn("manifest_modified_at", attributes)
+
+    def test_package_date_uses_full_game_and_never_patch_voice_or_chunk_time(self):
+        full = artifact("full.zip", delivery="archive")
+        full["urls"][0].update(url="https://autopatchcn.yuanshen.com/game/full.zip", current={"http_code": 206, "last_modified": "Tue, 29 Sep 2026 20:00:03 GMT"})
+        patch_item = artifact("patch.zip", kind="patch", delivery="archive")
+        patch_item["package_type"] = "patch"
+        voice = artifact("voice.zip", delivery="archive")
+        voice["component"] = "voice"
+        for item in (patch_item, voice):
+            item["urls"][0].update(url="https://autopatchcn.yuanshen.com/game/other.zip", current={"http_code": 200, "last_modified": "Wed, 30 Sep 2026 20:00:03 GMT"})
+        value = record("mihoyo", "hk4e", "windows", "1.0.0", [patch_item, voice, full])
+        self.assertEqual(_summary(value)["attributes"]["file_time_source"], "package")
+        self.assertEqual(_summary(value)["attributes"]["file_modified_at"], "2026-09-29T20:00:03Z")
+        value["references"] = [{"kind": "chunk_manifest"}]
+        self.assertNotIn("file_modified_at", _summary(value)["attributes"])
+        self.assertEqual(_file_metadata(value, delivery="archive")["file_time_source"], "package")
+        voice["urls"] = []
+        self.assertIsNone(_file_metadata(value, artifact=voice)["file_time"])
+        voice["urls"] = [copy.deepcopy(full["urls"][0])]
+        voice["urls"][0]["current"]["last_modified"] = "Wed, 30 Sep 2026 20:00:03 GMT"
+        self.assertEqual(_file_metadata(value, artifact=voice)["file_time"], "2026-09-30T20:00:03Z")
+
+    def test_segment_package_date_can_use_canonical_whole_package_time(self):
+        segments = []
+        for part, modified in ((1, "Tue, 29 Sep 2026 20:00:03 GMT"), (2, "Wed, 30 Sep 2026 20:00:03 GMT")):
+            item = artifact(f"part{part}.zip", delivery="archive")
+            item.update(package_type="segment", part=part)
+            item["urls"][0].update(url=f"https://autopatchcn.yuanshen.com/game/part{part}.zip", current={"http_code": 200, "last_modified": modified})
+            segments.append(item)
+        value = record("mihoyo", "hk4e", "windows", "1.0.0", segments)
+        self.assertEqual(_file_metadata(value), {"file_time": value["file_time"], "file_time_source": "package"})
+        value["file_time"] = None
+        self.assertIsNone(_file_metadata(value)["file_time"])
+
+    def test_file_date_uses_canonical_date_only_and_rejects_ambiguous_evidence(self):
+        item = artifact("full.zip", delivery="archive")
+        item["urls"][0]["url"] = "https://autopatchcn.yuanshen.com/game/full.zip"
+        value = record("mihoyo", "hk4e", "windows", "1.0.0", [item])
+        value["file_time"] = "2024-01-02"
+        self.assertEqual(_file_metadata(value), {"file_time": "2024-01-02", "file_time_source": "package"})
+        first = item["urls"][0]
+        first["current"] = {"http_code": 200, "last_modified": "not a date"}
+        self.assertIsNone(_file_metadata(value)["file_time"])
+        first["current"]["last_modified"] = "Tue, 29 Sep 2026 20:00:03 GMT"
+        item["urls"].append({**first, "current": {"http_code": 200, "last_modified": "Wed, 30 Sep 2026 20:00:03 GMT"}})
+        self.assertIsNone(_file_metadata(value)["file_time"])
+        value["artifacts"] = [artifact("only_patch.zip", kind="patch", delivery="archive")]
+        self.assertIsNone(_file_metadata(value)["file_time"])
+
+    def test_manifest_date_routes_agree_and_do_not_download_for_missing_head(self):
+        path = self.root / "kuro" / "wuwa" / "pc" / "1.0.0.json"
+        value = json.loads(path.read_text(encoding="utf-8"))
+        item = value["artifacts"][0]
+        item["urls"][0].update(url="https://pcdownload-aliyun.aki-game.com/game/indexFile.json", current={"http_code": 200, "last_modified": "Tue, 29 Sep 2026 20:00:03 GMT"})
+        write_record(self.root, value)
+        rebuild_indexes(self.root)
+        for suffix in ("artifact-tree?kind=file", "files?source=package", "files?source=package&path=Client/Bin"):
+            result = self.get(f"/api/v1/domains/wuwa-pc/versions/1.0.0/{suffix}").json()
+            self.assertEqual(result["file_time"], "2026-09-29T20:00:03Z")
+            self.assertEqual(result["file_time_source"], "manifest")
+        self.assertEqual(self.upstream.calls, [])
+
+    def test_provenance_head_is_official_source_only_and_never_archive_get(self):
+        calls = []
+        def handler(request):
+            calls.append((request.method, str(request.url)))
+            return httpx.Response(200, headers={"last-modified": "Mon, 06 Jul 2026 09:53:10 GMT"})
+        upstream = HttpUpstream(transport=httpx.MockTransport(handler))
+        item = artifact("files.json", delivery="file_manifest", manifest={"path": "manifests/files.json"})
+        item["urls"] = []
+        value = record("mihoyo", "abc", "windows", "0.60.2", [item])
+        source_url = "https://autopatchcn-beta.bhyyjl.com/manifests/existing?sign=original"
+        document = {"provenance": {"source_url": source_url}}
+        self.assertEqual(_file_metadata(value, document=document, upstream=upstream)["file_time"], "2026-07-06T09:53:10Z")
+        self.assertEqual(_file_metadata(value, document=document, upstream=upstream)["file_time_source"], "manifest")
+        self.assertEqual(calls, [("HEAD", source_url)])
+        value["vendor"], value["game_id"] = "manjuu", "azurpromilia"
+        item["urls"] = [{"url": "https://syncstation.manjuu.com/game/list.mf.txt", "source_kind": "official"}]
+        value["file_time"] = None
+        self.assertEqual(_file_metadata(value, upstream=upstream), {"file_time": "2026-07-06T09:53:10Z", "file_time_source": "manifest"})
+        item["urls"] = []
+        value["vendor"], value["game_id"] = "kuro", "wuwa"
+        document["provenance"]["source_url"] = "https://pcdownload-aliyun.aki-game.com/game/indexFile.json"
+        self.assertEqual(_file_metadata(value, document=document, upstream=upstream)["file_time"], "2026-07-06T09:53:10Z")
+        document["provenance"]["source_url"] = "https://github.com/community/files.json"
+        _file_metadata(value, document=document, upstream=upstream)
+        self.assertEqual(len(calls), 3)
 
     def get_probed_url(self, path: str):
         with patch("backend.api_contract._utc_now", lambda: FROZEN_NOW):
@@ -773,8 +877,25 @@ class TemporaryContractTests(unittest.TestCase):
         root = self.get("/api/v1/domains/wuwa-pc/versions/1.0.0/artifact-tree?kind=file&limit=1").json()
         self.assertEqual(root["folders"][0]["path"], "Client")
         self.assertEqual(root["next_cursor"], "1")
+        self.assertEqual(root["manifest_total_size"], 12)
         child = self.get("/api/v1/domains/wuwa-pc/versions/1.0.0/artifact-tree?kind=file&prefix=Client/Bin").json()
         self.assertEqual(child["items"][0]["name"], "Client/Bin/a.dll")
+        self.assertEqual(child["manifest_total_size"], 12)
+        filtered = self.get("/api/v1/domains/wuwa-pc/versions/1.0.0/artifact-tree?kind=file&q=root.exe&limit=1").json()
+        self.assertEqual(filtered["manifest_total_size"], 12)
+        next_page = self.get("/api/v1/domains/wuwa-pc/versions/1.0.0/artifact-tree?kind=file&limit=1&cursor=1").json()
+        self.assertEqual(next_page["manifest_total_size"], 12)
+
+    def test_manifest_total_excludes_alternative_patch_artifacts(self):
+        path = self.root / "kuro/wuwa/pc/1.0.0.json"
+        data = json.loads(path.read_text(encoding="utf-8"))
+        patch = artifact("patch.zip", kind="patch", size=4_000_000_000_000)
+        patch.update(package_type="differential", route_from="0.9.0", route_to="1.0.0")
+        data["artifacts"].append(patch)
+        write_record(self.root, record("kuro", "wuwa", "windows", "1.0.0", data["artifacts"]))
+        rebuild_indexes(self.root)
+        response = self.get("/api/v1/domains/wuwa-pc/versions/1.0.0/artifact-tree?kind=file&limit=1").json()
+        self.assertEqual(response["manifest_total_size"], 12)
 
     def test_tree_enums_and_paths_are_400(self):
         base = "/api/v1/domains/wuwa-pc/versions/1.0.0/artifact-tree"
@@ -972,6 +1093,75 @@ class CheckedInContractTests(unittest.TestCase):
 
 
 class HttpUpstreamTests(unittest.TestCase):
+    def test_head_date_cache_is_bounded_expires_and_caches_unknown(self):
+        calls = []
+        def handler(request):
+            calls.append((request.method, request.url.path))
+            headers = {"last-modified": "Tue, 29 Sep 2026 20:00:03 GMT"} if request.url.path == "/files/dated" else {}
+            return httpx.Response(200 if headers else 404, headers=headers)
+        upstream = HttpUpstream(transport=httpx.MockTransport(handler))
+        hosts = frozenset({"autopatchcn.yuanshen.com"})
+        url = "https://autopatchcn.yuanshen.com/files/dated"
+        with patch("backend.manifest_readers.time.monotonic", return_value=100):
+            self.assertEqual(upstream.file_modified_at(url, allowed_hosts=hosts), "2026-09-29T20:00:03Z")
+            self.assertEqual(upstream.file_modified_at(url, allowed_hosts=hosts), "2026-09-29T20:00:03Z")
+            for _ in range(2):
+                self.assertIsNone(upstream.file_modified_at(url + "-missing", allowed_hosts=hosts))
+            self.assertEqual(len(calls), 2)
+        with patch("backend.manifest_readers.time.monotonic", return_value=701):
+            upstream.file_modified_at(url, allowed_hosts=hosts)
+        self.assertEqual(len(calls), 3)
+        for index in range(70):
+            upstream.file_modified_at(url + str(index), allowed_hosts=hosts)
+        self.assertLessEqual(len(upstream._file_time_cache), 64)
+        self.assertTrue(all(method == "HEAD" for method, _ in calls))
+
+    def test_head_rejects_untrusted_urls_redirects_and_invalid_status_or_dates(self):
+        hosts = frozenset({"autopatchcn.yuanshen.com"})
+        url = "https://autopatchcn.yuanshen.com/files/a?key=original"
+        for location in ("https://evil.example/files/a?key=original", "/other/a?key=original", "/files/a?key=changed"):
+            calls = []
+            def redirect(request):
+                calls.append(request)
+                return httpx.Response(302, headers={"location": location})
+            upstream = HttpUpstream(transport=httpx.MockTransport(redirect))
+            self.assertIsNone(upstream.file_modified_at(url, allowed_hosts=hosts))
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(calls[0].method, "HEAD")
+        for status, modified in ((404, "Tue, 29 Sep 2026 20:00:03 GMT"), (204, "Tue, 29 Sep 2026 20:00:03 GMT"), (200, "not a date"), (200, "Tue, 29 Sep 2026 20:00:03")):
+            upstream = HttpUpstream(transport=httpx.MockTransport(lambda _: httpx.Response(status, headers={"last-modified": modified})))
+            self.assertIsNone(upstream.file_modified_at(url, allowed_hosts=hosts))
+        calls = []
+        upstream = HttpUpstream(transport=httpx.MockTransport(lambda request: calls.append(request) or httpx.Response(200)))
+        with self.assertRaises(ManifestUpstream):
+            upstream.file_modified_at("https://evil.example/files/a", allowed_hosts=hosts)
+        self.assertEqual(calls, [])
+
+    def test_head_follows_only_bounded_official_redirect_and_maps_timeout(self):
+        hosts = frozenset({"autopatchcn.yuanshen.com"})
+        def handler(request):
+            self.assertEqual(request.method, "HEAD")
+            if request.url.path == "/files/a":
+                return httpx.Response(302, headers={"location": "/files/b"})
+            return httpx.Response(206, headers={"last-modified": "Tue, 29 Sep 2026 20:00:03 GMT"})
+        upstream = HttpUpstream(transport=httpx.MockTransport(handler))
+        self.assertEqual(upstream.file_modified_at("https://autopatchcn.yuanshen.com/files/a", allowed_hosts=hosts), "2026-09-29T20:00:03Z")
+        upstream = HttpUpstream(transport=httpx.MockTransport(lambda request: (_ for _ in ()).throw(httpx.ReadTimeout("slow", request=request))))
+        self.assertIsNone(upstream.file_modified_at("https://autopatchcn.yuanshen.com/files/a", allowed_hosts=hosts))
+
+    def test_chunk_date_comes_from_validated_manifest_get_and_cached_directory_pages(self):
+        document, manifest_body, _ = chunk_fixture()
+        calls = []
+        def handler(request):
+            calls.append(request.method)
+            return httpx.Response(200, content=manifest_body, headers={"last-modified": "Tue, 29 Sep 2026 20:00:03 GMT"})
+        upstream = HttpUpstream(transport=httpx.MockTransport(handler))
+        for path, cursor in (("", None), ("Game/Bin", None), ("", "1")):
+            result = list_chunk_files(document, "game", upstream, path=path, cursor=cursor, limit=1)
+            self.assertEqual(result["file_time"], "2026-09-29T20:00:03Z")
+            self.assertEqual(result["file_time_source"], "manifest")
+        self.assertEqual(calls, ["GET"])
+
     def test_chunk_manifest_cache_reuses_validated_files_and_chunk_index(self):
         document, manifest_body, chunk_body = chunk_fixture()
         calls: list[str] = []

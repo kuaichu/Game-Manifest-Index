@@ -49,6 +49,7 @@ import type {
   ChunkManifestSummaryItem,
   Game,
   GameActivityEvent,
+  FileTimeChange,
   VersionSummary,
 } from "../types";
 
@@ -88,6 +89,10 @@ function openProvenanceModal(event?: MouseEvent): void {
 }
 
 const remoteTreeProbeTime = ref<string | null>(null);
+const remoteManifestSize = ref<{ domainId: string; version: string; kind: string; size: number | null } | null>(null);
+const browserFileTime = ref<FileTimeChange | null>(null);
+let manifestSizeController: AbortController | null = null;
+let manifestSizeGeneration = 0;
 const globalProbeTime = ref<string | null>(null);
 const globalProbeLoaded = ref(false);
 let globalProbeController: AbortController | null = null;
@@ -279,6 +284,7 @@ const isGenericFileManifestDomain = computed(() =>
   && domain.value?.adapter === "generic"
   && Number(selectedSummary.value?.artifact_kinds?.package?.count || 0) > 0,
 );
+const usesChunkFileBrowser = computed(() => mode.value === "files" && (domain.value?.adapter === "hoyo" || isGenericFileManifestDomain.value));
 const isFileTreeMode = computed(
   () => mode.value === "files" && (
     ["patchersdk", "perfectworld_patcher", "wuwa", "hoyo"].includes(domain.value?.adapter || "")
@@ -287,6 +293,7 @@ const isFileTreeMode = computed(
 );
 const usesArtifactTree = computed(() => isFileTreeMode.value && Boolean(query.value.trim()));
 const usesRemoteTree = computed(() => mode.value === "resources" || (isFileTreeMode.value && !query.value.trim()));
+watch(() => [domainId.value, selectedVersion.value, mode.value], () => { browserFileTime.value = null; }, { flush: "sync" });
 const exportArtifactKind = computed(() => artifactKindForMode(mode.value));
 const supportsArtifactField = (field: string) =>
   domainFieldSupport(domain.value, "artifact_fields", field) === "supported";
@@ -440,6 +447,47 @@ const exportUrlsLabel = computed(() => {
 });
 
 const isWuwaFilesMode = computed(() => domain.value?.adapter === "wuwa" && mode.value === "files");
+const wuwaManifestSize = computed(() => {
+  const context = remoteManifestSize.value;
+  if (!isWuwaFilesMode.value || context?.domainId !== domainId.value
+    || context.version !== selectedVersion.value || context.kind !== "file") return null;
+  return context.size;
+});
+watch(
+  () => [domainId.value, selectedVersion.value, mode.value, usesArtifactTree.value, usesChunkFileBrowser.value],
+  () => {
+    manifestSizeController?.abort();
+    manifestSizeController = null;
+    const generation = ++manifestSizeGeneration;
+    // Search uses the local tree. Fetch metadata once when its remote browser is absent.
+    if (!usesArtifactTree.value || usesChunkFileBrowser.value) return;
+    const knownTime = browserFileTime.value?.domainId === domainId.value && browserFileTime.value?.version === selectedVersion.value
+      && !browserFileTime.value.loading;
+    if (knownTime && (!isWuwaFilesMode.value || wuwaManifestSize.value !== null)) return;
+    const context = { domainId: domainId.value, version: selectedVersion.value, kind: "file" };
+    const request = new AbortController();
+    manifestSizeController = request;
+    const isCurrent = () => manifestSizeController === request && manifestSizeGeneration === generation
+      && mode.value === "files" && usesArtifactTree.value && !usesChunkFileBrowser.value
+      && context.domainId === domainId.value && context.version === selectedVersion.value;
+    void api.artifactTree(context.domainId, context.version, { kind: "file", limit: 1 }, request.signal)
+      .then((result) => {
+        if (!isCurrent()) return;
+        onRemoteManifestSizeChange({ ...context, size: result.manifest_total_size ?? null });
+        onFileTimeChange({ domainId: context.domainId, version: context.version, source: "package", identity: "game", fileTime: result.file_time ?? null, timeSource: result.file_time_source });
+      })
+      .catch(() => {
+        if (isCurrent() && wuwaManifestSize.value === null) onRemoteManifestSizeChange({ ...context, size: null });
+        if (isCurrent()) onFileTimeChange({ domainId: context.domainId, version: context.version, source: "package", identity: "game", fileTime: null });
+      });
+  },
+  { immediate: true },
+);
+onBeforeUnmount(() => {
+  manifestSizeController?.abort();
+  manifestSizeController = null;
+  manifestSizeGeneration += 1;
+});
 const rawIndexMenuOpen = ref(false);
 const copiedManifestUrl = ref(false);
 const copiedBaseUrl = ref(false);
@@ -723,6 +771,39 @@ const syncStatus = computed(() => {
   };
 });
 
+const fileTimeMetadata = computed(() => {
+  if (mode.value !== "files") return null;
+  const summary = selectedSummary.value;
+  const attrs = (summary?.attributes || {}) as Record<string, unknown>;
+  const current = browserFileTime.value;
+  const context = current?.domainId === domainId.value && current.version === selectedVersion.value ? current : null;
+  if (context?.loading) return null;
+  if (context && context.fileTime !== null) {
+    // Invalid explicit metadata must not fall back to an unrelated date.
+    return typeof context.fileTime === "string" && observedDate(context.fileTime) && context.timeSource
+      ? { value: context.fileTime, source: context.timeSource } : null;
+  }
+  // Version summaries describe the primary identity; voice components need their own response.
+  const identity = context?.identity || (usesChunkFileBrowser.value ? String(route.query.identity || "game") : "game");
+  if (identity !== "game") return null;
+  const source = context?.source || (route.query.source === "chunk" ? "chunk" :
+    usesChunkFileBrowser.value && !summary?.artifact_kinds?.package?.count && !summary?.artifact_kinds?.file?.count && summary?.artifact_kinds?.chunk?.count ? "chunk" : "package");
+  const expectedTimeSource = context?.timeSource || (source === "chunk" || !usesChunkFileBrowser.value || isGenericFileManifestDomain.value ? "manifest" : "package");
+  if (attrs.file_modified_at !== undefined && attrs.file_modified_at !== null) {
+    return typeof attrs.file_modified_at === "string" && observedDate(attrs.file_modified_at)
+      && attrs.file_time_source === expectedTimeSource
+      ? { value: attrs.file_modified_at, source: expectedTimeSource } : null;
+  }
+  if (expectedTimeSource === "manifest" && attrs.manifest_modified_at !== undefined && attrs.manifest_modified_at !== null) {
+    return typeof attrs.manifest_modified_at === "string" && observedDate(attrs.manifest_modified_at)
+      ? { value: attrs.manifest_modified_at, source: "manifest" } : null;
+  }
+  // NTE's existing source_updated_at contract means the official manifest Last-Modified.
+  if (domain.value?.game_id === "nte" && ["pc", "windows"].includes(domain.value.platform.toLowerCase())
+    && observedDate(summary?.source_updated_at)) return { value: summary!.source_updated_at!, source: "manifest" };
+  return null;
+});
+
 const versionMetaSummary = computed(() => {
   const summary = selectedSummary.value;
   const dom = domain.value;
@@ -730,11 +811,13 @@ const versionMetaSummary = computed(() => {
 
   const items: Array<{ label: string; value: string; isMono?: boolean; title?: string }> = [];
 
-  // 1. 总大小 (仅多分卷/多文件时在顶部汇总展示，单文件不重复)
-  const kind = mode.value === "apk" ? "apk" : mode.value === "packages" ? "package" : mode.value === "patches" ? "patch" : "";
+  // WuWa's package and patch buckets include alternative update paths, not a file-list total.
+  const kind = ["apk", "packages", "patches", "files"].includes(mode.value) ? artifactKindForMode(mode.value) : "";
   const count = kind ? (summary.artifact_kinds?.[kind]?.count || 0) : (summary.artifact_count || 0);
   const size = kind ? (summary.artifact_kinds?.[kind]?.size || 0) : (summary.packed_size || 0);
-  if (size > 0 && count > 1) {
+  if (wuwaManifestSize.value !== null) {
+    items.push({ label: "总大小", value: formatBytes(wuwaManifestSize.value), isMono: true });
+  } else if (size > 0 && count > 1) {
     items.push({ label: "总大小", value: formatBytes(size), isMono: true });
   }
 
@@ -747,12 +830,14 @@ const versionMetaSummary = computed(() => {
   const apkFileTime = mode.value === "apk" ? summary.observed_at : null;
   const importedTime = summary.archived_at || summary.imported_at;
 
-  if (mode.value === "files" && dom.game_id === "nte" && ["pc", "windows"].includes(dom.platform.toLowerCase())) {
-    const fileTime = (typeof attrs.manifest_modified_at === "string" ? attrs.manifest_modified_at : "") || updateTime;
-    if (observedDate(fileTime)) {
+  if (mode.value === "files") {
+    const fileTime = fileTimeMetadata.value;
+    if (fileTime) {
       items.push({
-        label: "文件时间", value: formatObservedDate(fileTime), isMono: true,
-        title: "官方清单文件的最后修改时间（北京时间），不代表清单内每个文件的修改时间",
+        label: "文件时间", value: formatObservedDate(fileTime.value), isMono: true,
+        title: fileTime.source === "manifest"
+          ? "官方清单文件的最后修改时间（北京时间），不代表清单内每个文件的修改时间"
+          : "官方资源包的最后修改时间（北京时间），不代表资源包内每个文件的修改时间",
       });
     }
   } else if (mode.value === "chunks" && manifestTime) {
@@ -1268,6 +1353,18 @@ async function onCopyChunkUrl(url: string, label = "链接"): Promise<void> {
 }
 function onRemoteTreeProbeTimeChange(value: string | null): void {
   remoteTreeProbeTime.value = value;
+}
+function onFileTimeChange(context: FileTimeChange): void {
+  if (mode.value !== "files" || context.domainId !== domainId.value || context.version !== selectedVersion.value) return;
+  browserFileTime.value = context;
+}
+function onRemoteManifestSizeChange(context: { domainId: string; version: string; kind: string; size: number | null }): void {
+  if (!isWuwaFilesMode.value || context.domainId !== domainId.value
+    || context.version !== selectedVersion.value || context.kind !== "file") return;
+  const size = context.size;
+  remoteManifestSize.value = {
+    ...context, size: typeof size === "number" && Number.isSafeInteger(size) && size >= 0 ? size : null,
+  };
 }
 function candidateUrl(artifact: Artifact, sourceKind: string) {
   return artifact.urls.find((item) => item.source_kind === sourceKind);
@@ -1896,6 +1993,7 @@ function chunkMatchingField(artifact: Artifact): string {
             :version-summary="selectedSummary"
             :chunk-collection="chunkCollection"
             :search-query="query"
+            @file-time-change="onFileTimeChange"
           />
         </div>
         <template v-if="!loading && !error && !['legacy', 'archive', 'compare', 'manifest', 'chunks'].includes(mode) && !(mode === 'files' && (domain?.adapter === 'hoyo' || isGenericFileManifestDomain))">
@@ -1927,6 +2025,8 @@ function chunkMatchingField(artifact: Artifact): string {
               :availability-state="availabilityStateForRequest"
               :allow-actions="supportsDomainAction('open')"
               @probe-time-change="onRemoteTreeProbeTimeChange"
+              @manifest-size-change="onRemoteManifestSizeChange"
+              @file-time-change="onFileTimeChange"
             />
           </div>
           <div v-else-if="!displayedArtifacts.length" class="empty">
