@@ -1,6 +1,8 @@
 """Official Perfect World PatcherSDK file manifests for Windows PC games."""
 from __future__ import annotations
 
+import base64
+import binascii
 import io
 import json
 import os
@@ -14,7 +16,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 import zlib
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Callable
 from urllib.parse import urlsplit
@@ -32,6 +34,8 @@ VERSION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 MD5_RE = re.compile(r"^[0-9a-fA-F]{32}$")
 OBJECT_RE = re.compile(r"^([0-9a-fA-F]{32})\.([0-9]+)$")
 MAX_CONFIG_BYTES = 2 * 1024 * 1024
+MAX_RESCONFIG_BYTES = 64 * 1024
+NTE_BRANCH_RE = re.compile(r"^PC_[0-9]{1,32}$")
 MAX_ZIP_BYTES = 64 * 1024 * 1024
 MAX_MEMBER_BYTES = 128 * 1024 * 1024
 MAX_TOTAL_MEMBER_BYTES = 256 * 1024 * 1024
@@ -93,6 +97,7 @@ class Collection:
     root_url: str
     config_size: int
     reslist_size: int
+    bootstrap_config_url: str | None = None
 
 
 def _pad16(value: str) -> bytes:
@@ -159,24 +164,36 @@ def read_zip_members(data: bytes) -> dict[str, bytes]:
     return result
 
 
-def _official_path(url: str) -> bool:
+def manifest_profile_for_url(url: str, game_id: str | None = None) -> Profile | None:
+    """Match official manifest URLs, including NTE's verified PC branch layout."""
+    if not isinstance(url, str) or any(ord(ch) <= 32 or ord(ch) >= 127 for ch in url) or any(ch in url for ch in "\\%?#"):
+        return None
     try:
         parsed = urlsplit(url)
         port = parsed.port
     except ValueError:
-        return False
+        return None
     if parsed.scheme != "https" or parsed.username or parsed.password or parsed.query or parsed.fragment or port not in (None, 443):
-        return False
+        return None
     for profile in PROFILES.values():
-        if parsed.hostname != profile.host:
+        if parsed.netloc not in {profile.host, profile.host + ":443"} or (game_id and profile.game_id != game_id):
             continue
+        if profile.game_id == "nte":
+            branch = parsed.path.split("/")[2] if parsed.path.startswith("/clientRes/") else ""
+            if NTE_BRANCH_RE.fullmatch(branch):
+                profile = replace(profile, base_path=f"/clientRes/{branch}", root_url=f"https://{profile.host}/clientRes/{branch}/Res/")
         config_path = profile.base_path + "/Version/Windows/config.xml"
         prefix = profile.base_path + "/Version/Windows/version/"
         if parsed.path == config_path:
-            return True
+            return profile
         if parsed.path.startswith(prefix) and parsed.path.endswith("/ResList.bin.zip"):
-            return bool(VERSION_RE.fullmatch(parsed.path[len(prefix):-len("/ResList.bin.zip")]))
-    return False
+            if VERSION_RE.fullmatch(parsed.path[len(prefix):-len("/ResList.bin.zip")]):
+                return profile
+    return None
+
+
+def _official_path(url: str) -> bool:
+    return manifest_profile_for_url(url) is not None
 
 
 def fetch_bounded(url: str, timeout: int, *, max_bytes: int) -> tuple[bytes, dict[str, str], int, str]:
@@ -216,16 +233,20 @@ def _text(root: ET.Element, name: str) -> str:
     return ""
 
 
-def parse_config(data: bytes) -> dict[str, Any]:
+def _config_root(data: bytes) -> ET.Element:
     if len(data) > MAX_CONFIG_BYTES:
         raise PerfectWorldError("config.xml 超过 2MiB 限制")
     lowered = data.lower()
     if b"<!doctype" in lowered or b"<!entity" in lowered or b"<![" in lowered:
         raise PerfectWorldError("config.xml XML 特性不被允许")
     try:
-        root = ET.fromstring(data)
+        return ET.fromstring(data)
     except ET.ParseError as error:
         raise PerfectWorldError("config.xml XML 无效") from error
+
+
+def parse_config(data: bytes) -> dict[str, Any]:
+    root = _config_root(data)
     version = _text(root, "ResVersion")
     if not VERSION_RE.fullmatch(version):
         raise PerfectWorldError("config.xml ResVersion 无效")
@@ -243,6 +264,47 @@ def parse_config(data: bytes) -> dict[str, Any]:
             values[key[0].lower() + key[1:]] = raw
     values["baseVersion"] = _text(root, "BaseVerson") or _text(root, "BaseVersion")
     return values
+
+
+def _nte_branch_profile(data: bytes) -> Profile | None:
+    nodes = [node for node in _config_root(data).iter() if node.tag.rsplit("}", 1)[-1].lower() == "resconfig"]
+    if not nodes:
+        return None
+    if len(nodes) != 1 or len(nodes[0]) or not nodes[0].text:
+        raise PerfectWorldError("NTE ResConfig 无效")
+    encoded = nodes[0].text.strip()
+    if not encoded or len(encoded) > MAX_RESCONFIG_BYTES:
+        raise PerfectWorldError("NTE ResConfig 大小无效")
+    def unique_object(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise PerfectWorldError("NTE ResConfig JSON 字段重复")
+            result[key] = value
+        return result
+    try:
+        decoded = base64.b64decode(encoded, validate=True)
+        if len(decoded) > MAX_RESCONFIG_BYTES * 3 // 4:
+            raise PerfectWorldError("NTE ResConfig 大小超限")
+        value = json.loads(decoded.decode("utf-8"), object_pairs_hook=unique_object)
+    except (ValueError, UnicodeError, binascii.Error, RecursionError) as error:
+        raise PerfectWorldError("NTE ResConfig base64/JSON 无效") from error
+    if not isinstance(value, dict):
+        raise PerfectWorldError("NTE ResConfig 必须是对象")
+    if "appId" in value and (type(value["appId"]) not in (int, str) or value["appId"] not in (1289, "1289")):
+        raise PerfectWorldError("NTE ResConfig appId 不匹配")
+    branch = value.get("branchName")
+    if not isinstance(branch, str) or not NTE_BRANCH_RE.fullmatch(branch):
+        raise PerfectWorldError("NTE ResConfig branchName 不支持或不安全")
+    urls = value.get("gameResUrl")
+    primary = "https://yhcdn1.wmupd.com/clientRes"
+    allowed = {primary, "https://yhcdn2.wmupd.com/clientRes"}
+    if not isinstance(urls, list) or not 1 <= len(urls) <= 8 or any(not isinstance(url, str) or url not in allowed for url in urls):
+        raise PerfectWorldError("NTE ResConfig gameResUrl 不被允许")
+    if primary not in urls:
+        raise PerfectWorldError("NTE ResConfig 缺少受支持的主 CDN")
+    profile = PROFILES["nte"]
+    return replace(profile, base_path=f"/clientRes/{branch}", root_url=f"{primary}/{branch}/Res/")
 
 
 def _safe_path(value: Any, label: str = "清单文件路径") -> str:
@@ -346,21 +408,31 @@ def parse_reslist(data: bytes, profile: Profile) -> tuple[list[dict[str, Any]], 
     return files, patches
 
 
-def _collection(game_id: str, config: Mapping[str, Any], files: list[dict[str, Any]], patches: list[dict[str, Any]], *, config_url: str, reslist_url: str, root_url: str, config_size: int, reslist_size: int) -> Collection:
+def _collection_profile(game_id: str, version: str, config_url: str, reslist_url: str, root_url: str, bootstrap_config_url: str | None) -> Profile:
+    profile = manifest_profile_for_url(config_url, game_id)
+    bootstrap = PROFILES[game_id]
+    if profile is None or config_url != profile.config_url or reslist_url != profile.reslist_url(version) or root_url != profile.root_url:
+        raise AdapterError("采集结果 URL 与官方 profile 不一致")
+    expected_bootstrap = bootstrap.config_url if profile.base_path != bootstrap.base_path else None
+    if bootstrap_config_url != expected_bootstrap:
+        raise AdapterError("采集结果 bootstrap 来源不一致")
+    return profile
+
+
+def _collection(game_id: str, config: Mapping[str, Any], files: list[dict[str, Any]], patches: list[dict[str, Any]], *, config_url: str, reslist_url: str, root_url: str, config_size: int, reslist_size: int, bootstrap_config_url: str | None = None) -> Collection:
     if game_id not in PROFILES:
         raise AdapterError("完美世界 PC 适配器只支持 nte/p5x/tof")
     version = config.get("version")
     if not isinstance(version, str) or not VERSION_RE.fullmatch(version):
         raise AdapterError("版本号不安全")
-    if not isinstance(config_url, str) or config_url != PROFILES[game_id].config_url or not isinstance(reslist_url, str) or reslist_url != PROFILES[game_id].reslist_url(version) or root_url != PROFILES[game_id].root_url:
-        raise AdapterError("采集结果 URL 与官方 profile 不一致")
-    return Collection(game_id, version, dict(config), list(files), list(patches), config_url, reslist_url, root_url, config_size, reslist_size)
+    _collection_profile(game_id, version, config_url, reslist_url, root_url, bootstrap_config_url)
+    return Collection(game_id, version, dict(config), list(files), list(patches), config_url, reslist_url, root_url, config_size, reslist_size, bootstrap_config_url)
 
 
 def _document(collection: Collection) -> dict[str, Any]:
     files = [{"dest": item["dest"], "size": item["size"], "md5": item["md5"], "object": item["object"]} for item in collection.files]
     patches = [{key: item[key] for key in ("oldfile", "newfile", "patch", "object", "v", "size")} for item in collection.patch_objects]
-    return {
+    document = {
         "schema_version": 1,
         "vendor": "perfectworld",
         "game_id": collection.game_id,
@@ -384,6 +456,9 @@ def _document(collection: Collection) -> dict[str, Any]:
         },
         "provenance": {"source_kind": "official_sync", "source_name": "Perfect World PatcherSDK", "source_url": collection.config_url},
     }
+    if collection.bootstrap_config_url is not None:
+        document["bootstrap_config_url"] = collection.bootstrap_config_url
+    return document
 
 
 def _validate_collection(collection: Collection) -> None:
@@ -394,8 +469,7 @@ def _validate_collection(collection: Collection) -> None:
         raise AdapterError("完美世界 PC 适配器只支持 nte/p5x/tof")
     if not isinstance(collection.version, str) or not VERSION_RE.fullmatch(collection.version):
         raise AdapterError("版本号不安全")
-    if collection.config_url != profile.config_url or collection.reslist_url != profile.reslist_url(collection.version) or collection.root_url != profile.root_url:
-        raise AdapterError("采集结果 URL 与官方 profile 不一致")
+    profile = _collection_profile(collection.game_id, collection.version, collection.config_url, collection.reslist_url, collection.root_url, collection.bootstrap_config_url)
     config = collection.config
     expected_config = {"version", "res_size", "hash", "compressed", "encrypt", "section", "diffHash", "listHash", "baseVersion"}
     if not isinstance(config, Mapping):
@@ -556,6 +630,21 @@ def collect(game_id: str, timeout: int = 30, *, fetcher: Callable[[str, int], by
         config_body, config_headers = fetcher(profile.config_url, timeout), {}
     try:
         config = parse_config(config_body)
+        if game_id == "nte":
+            visited = {profile.config_url}
+            while True:
+                target = _nte_branch_profile(config_body)
+                if target is None or target.config_url == profile.config_url:
+                    break
+                if target.config_url in visited or len(visited) >= 4:
+                    raise PerfectWorldError("NTE ResConfig 分支链循环或超过限制")
+                visited.add(target.config_url)
+                profile = target
+                if fetcher is None:
+                    config_body, config_headers = _fetch_one(profile.config_url, timeout, MAX_CONFIG_BYTES)
+                else:
+                    config_body, config_headers = fetcher(profile.config_url, timeout), {}
+                config = parse_config(config_body)
         reslist_url = profile.reslist_url(config["version"])
         if fetcher is None:
             archive, archive_headers = _fetch_one(reslist_url, timeout, MAX_ZIP_BYTES)
@@ -567,7 +656,8 @@ def collect(game_id: str, timeout: int = 30, *, fetcher: Callable[[str, int], by
     def header_size(headers: Mapping[str, str], fallback: int) -> int:
         value = headers.get("content-length", "")
         return int(value) if isinstance(value, str) and value.isdigit() else fallback
-    return _collection(game_id, config, files, patches, config_url=profile.config_url, reslist_url=reslist_url, root_url=profile.root_url, config_size=header_size(config_headers, len(config_body)), reslist_size=header_size(archive_headers, len(archive)))
+    bootstrap_config_url = PROFILES[game_id].config_url if profile != PROFILES[game_id] else None
+    return _collection(game_id, config, files, patches, config_url=profile.config_url, reslist_url=reslist_url, root_url=profile.root_url, config_size=header_size(config_headers, len(config_body)), reslist_size=header_size(archive_headers, len(archive)), bootstrap_config_url=bootstrap_config_url)
 
 
 def discover(game_id: str, output_root: Path = Path("data"), timeout: int = 30, *, fetcher: Callable[[str, int], bytes] | None = None) -> Path:

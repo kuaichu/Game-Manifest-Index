@@ -14,6 +14,7 @@ import re
 import stat
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
@@ -878,6 +879,35 @@ def _public_version(record: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _nte_manifest_modified_at(record: dict[str, Any]) -> str | None:
+    if (record.get("vendor"), record.get("game_id"), record.get("platform")) != ("perfectworld", "nte", "windows"):
+        return None
+    for artifact in record.get("artifacts", []):
+        if artifact.get("delivery_mode") != "file_manifest" or artifact.get("name") != "ResList.bin.zip":
+            continue
+        for candidate in artifact.get("urls", []):
+            url = _safe_public_url(candidate.get("url"), allow_query=False)
+            if not url or candidate.get("source_kind") not in {"official", "legacy"}:
+                continue
+            parsed = urlsplit(url)
+            suffix = f"/Version/Windows/version/{record['version']}/ResList.bin.zip"
+            if parsed.hostname != "yhcdn1.wmupd.com" or not parsed.path.startswith("/clientRes/") or not parsed.path.endswith(suffix):
+                continue
+            current = candidate.get("current")
+            if not isinstance(current, dict) or current.get("http_code") not in {200, 206}:
+                continue
+            modified = current.get("last_modified")
+            if not isinstance(modified, str):
+                continue
+            try:
+                value = parsedate_to_datetime(modified)
+                if value.tzinfo is not None:
+                    return value.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+            except (TypeError, ValueError, OverflowError):
+                continue
+    return None
+
+
 def _summary(record: dict[str, Any]) -> dict[str, Any]:
     scheduled_indices = _scheduled_probe_indices(record)
     artifacts = [
@@ -902,6 +932,10 @@ def _summary(record: dict[str, Any]) -> dict[str, Any]:
             reason = artifact["availability"]["reason"]
             reasons[reason] = reasons.get(reason, 0) + 1
             bucket["availability_reasons"][reason] = bucket["availability_reasons"].get(reason, 0) + 1
+    attributes = {"has_chunk": True} if has_chunk else {}
+    modified_at = _nte_manifest_modified_at(record)
+    if modified_at is not None:
+        attributes["manifest_modified_at"] = modified_at
     return {
         "version": record["version"],
         "current_revision_id": 1,
@@ -914,7 +948,7 @@ def _summary(record: dict[str, Any]) -> dict[str, Any]:
         "artifact_kinds": kinds,
         "availability_states": states,
         "availability_reasons": reasons,
-        "attributes": {"has_chunk": True} if has_chunk else {},
+        "attributes": attributes,
         "provenance": _public_provenance(record.get("provenance")),
         "is_visible": True,
     }
