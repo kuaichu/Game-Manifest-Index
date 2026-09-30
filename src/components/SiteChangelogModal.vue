@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { api, isAbortError } from "../api";
 import { gameActivityTime, gameActivityTitle } from "../game-activity";
+import { gameIcons } from "../game-icons";
 import type { GameActivityEvent } from "../types";
 
 const props = defineProps<{
@@ -19,6 +20,24 @@ const activityLoading = ref(false);
 const activityError = ref(false);
 const refreshKey = ref(0);
 const refreshSpinning = ref(false);
+const failedIcons = ref(new Set<string>());
+const activityDays = computed(() => {
+  const days = new Map<string, { date: string; label: string; events: GameActivityEvent[] }>();
+  for (const event of activity.value) {
+    const time = new Date(event.occurred_at);
+    const valid = !Number.isNaN(time.getTime());
+    const date = valid
+      ? `${time.getFullYear()}-${String(time.getMonth() + 1).padStart(2, "0")}-${String(time.getDate()).padStart(2, "0")}`
+      : "unknown";
+    if (!days.has(date)) days.set(date, {
+      date,
+      label: valid ? time.toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" }) : "时间未知",
+      events: [],
+    });
+    days.get(date)!.events.push(event);
+  }
+  return [...days.values()];
+});
 let refreshTimer: number | null = null;
 let previousFocus: HTMLElement | null = null;
 let previousOverflow = "";
@@ -33,6 +52,11 @@ const originStyle = computed(() => {
 
 function handleKeydown(event: KeyboardEvent): void {
   if (event.key === "Escape" && props.open) emit("close");
+}
+
+function activityClock(value: string): string {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleTimeString("zh-CN", { hour12: false, hour: "2-digit", minute: "2-digit" });
 }
 
 function refreshActivity(): void {
@@ -134,16 +158,16 @@ onUnmounted(() => {
 
             <section v-else id="changelog-data-panel" role="tabpanel" aria-labelledby="changelog-data-tab">
               <div class="changelog-data-head">
-                <p>全站最近动态</p>
-                <button type="button" :class="{ 'is-refreshing': refreshSpinning }" @click="refreshActivity">
+                <p>全站最近动态 <span v-if="activity.length" class="changelog-count">{{ activity.length }} 条</span></p>
+                <button type="button" :disabled="activityLoading" :class="{ 'is-refreshing': refreshSpinning || activityLoading }" @click="refreshActivity">
                   <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d="M13.5 7a5.5 5.5 0 1 0 .2 2.2" />
                     <path d="M13.5 3.5V7h-3.5" />
                   </svg>
-                  <span>刷新</span>
+                  <span>{{ activityLoading ? '刷新中' : '刷新' }}</span>
                 </button>
               </div>
-              <p v-if="activityLoading" class="changelog-empty" role="status">正在读取数据动态…</p>
+              <p v-if="activityLoading && !activity.length" class="changelog-empty" role="status">正在读取数据动态…</p>
               <p v-else-if="activityError" class="changelog-empty" role="alert">数据动态暂时无法读取，请稍后刷新。</p>
               <div v-else-if="!activity.length" class="changelog-empty changelog-empty-idle">
                 <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
@@ -155,15 +179,34 @@ onUnmounted(() => {
                 <span class="changelog-empty-code">STATUS: AWAITING_NEW_EVENTS</span>
                 <p>暂无数据动态。</p>
               </div>
-              <ol v-else class="changelog-activity-list changelog-timeline">
-                <li v-for="event in activity" :key="event.id" class="changelog-entry">
-                  <time :datetime="event.occurred_at">{{ gameActivityTime(event.occurred_at) }}</time>
-                  <div>
-                    <h3>{{ gameActivityTitle(event, gameNames[event.game_id] || event.game_id) }}</h3>
-                    <p>{{ event.platform === 'android' ? 'Android' : 'PC' }} · {{ event.type === 'version_update' ? '发现新版本' : '探活确认不可用' }}</p>
-                  </div>
-                </li>
-              </ol>
+              <div v-else class="changelog-activity-days" :aria-busy="activityLoading">
+                <section v-for="day in activityDays" :key="day.date" class="changelog-day" :aria-label="day.label">
+                  <h3 class="changelog-day-heading">
+                    <time v-if="day.date !== 'unknown'" :datetime="day.date">{{ day.label }}</time>
+                    <span v-else>{{ day.label }}</span>
+                    <span class="changelog-day-count">{{ day.events.length }} 条动态</span>
+                  </h3>
+                  <ol class="changelog-activity-list">
+                    <li v-for="event in day.events" :key="event.id" class="changelog-event" :aria-label="`${gameActivityTitle(event, gameNames[event.game_id] || event.game_id)} · ${event.platform === 'android' ? 'Android' : 'PC'} · ${gameActivityTime(event.occurred_at)}`">
+                      <span class="changelog-game-icon" aria-hidden="true">
+                        <img v-if="gameIcons[event.game_id] && !failedIcons.has(event.game_id)" :src="gameIcons[event.game_id]" alt="" @error="failedIcons.add(event.game_id)" />
+                        <span v-else>{{ (gameNames[event.game_id] || event.game_id).slice(0, 1) }}</span>
+                      </span>
+                      <div class="changelog-event-content">
+                        <div class="changelog-event-title">
+                          <h4>{{ gameNames[event.game_id] || event.game_id }}</h4>
+                          <span class="changelog-version">{{ event.version }}</span>
+                        </div>
+                        <div class="changelog-event-details">
+                          <span class="changelog-platform">{{ event.platform === 'android' ? 'Android' : 'PC' }}</span>
+                          <span class="changelog-event-status" :class="{ 'is-unavailable': event.type === 'version_unavailable' }">{{ event.type === 'version_update' ? '发现新版本' : '探活确认不可用' }}</span>
+                        </div>
+                      </div>
+                      <time class="changelog-event-time" :datetime="event.occurred_at" :title="gameActivityTime(event.occurred_at)">{{ activityClock(event.occurred_at) }}</time>
+                    </li>
+                  </ol>
+                </section>
+              </div>
             </section>
           </div>
         </section>
@@ -291,9 +334,25 @@ onUnmounted(() => {
 }
 
 .changelog-data-head p {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 0;
   color: #94a3b8;
   font-size: 12px;
+}
+
+.changelog-count {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(148, 163, 184, 0.08);
+  color: #94a3b8;
+  font: 11px var(--font-mono);
+}
+
+.changelog-data-head button:disabled {
+  cursor: wait;
+  opacity: 0.6;
 }
 
 .changelog-data-head button {
@@ -364,6 +423,117 @@ onUnmounted(() => {
   list-style: none;
 }
 
+.changelog-activity-days {
+  display: grid;
+  gap: 24px;
+}
+
+.changelog-day-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  color: #cbd5e1;
+  font: 600 12px var(--font-mono);
+}
+
+.changelog-day-heading::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.changelog-day-count {
+  color: #94a3b8;
+  font: 11px var(--font-sans);
+}
+
+.changelog-event {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+}
+
+.changelog-event:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.changelog-game-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: rgba(56, 189, 248, 0.08);
+  color: #7dd3fc;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.changelog-game-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.changelog-event-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+.changelog-event-title h4 {
+  margin: 0;
+  color: #f1f5f9;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.changelog-version {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(56, 189, 248, 0.09);
+  color: #7dd3fc;
+  font: 12px var(--font-mono);
+  overflow-wrap: anywhere;
+}
+
+.changelog-event-details {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.changelog-platform {
+  color: #cbd5e1;
+  font: 11px var(--font-mono);
+}
+
+.changelog-event-status {
+  color: #94a3b8;
+}
+
+.changelog-event-status.is-unavailable {
+  color: #fda4af;
+}
+
+.changelog-event-time {
+  padding-top: 3px;
+  color: #94a3b8;
+  font: 11px var(--font-mono);
+}
+
 @media (max-width: 600px) {
   .changelog-timeline::before {
     left: 4px;
@@ -377,6 +547,20 @@ onUnmounted(() => {
 
   .changelog-entry::before {
     left: 0;
+  }
+
+  .changelog-event {
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+    gap: 9px;
+  }
+
+  .changelog-game-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .changelog-event-title h4 {
+    font-size: 13px;
   }
 }
 
