@@ -5,7 +5,7 @@
       "name": "蓝色星原：旅谣",
       "sub_name": "Azur Promilia",
       "platform": "windows",
-      "icon_source": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/8e/6f/71/8e6f710c-03f5-9a08-870d-ebb5f9ebc221/AppIcon-0-0-1x_U007emarketing-0-8-0-85-220.png/512x512bb.jpg",
+      "icon_source": "builtin:azurpromilia",
       "is_enabled": true,
       "sort_order": 12,
       "vendor": "manjuu"
@@ -15,7 +15,7 @@
       "name": "崩坏：因缘精灵",
       "sub_name": "Honkai: Nexus Anima",
       "platform": "windows",
-      "icon_source": "https://img-tc.tapimg.com/market/images/2b1b7439386c604482bd60353508f081.jpg",
+      "icon_source": "builtin:abc",
       "is_enabled": true,
       "sort_order": 12,
       "vendor": "mihoyo"
