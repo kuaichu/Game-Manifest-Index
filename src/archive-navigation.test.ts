@@ -31,7 +31,7 @@ describe("archive cross-game navigation", () => {
       observed_at: null, packed_size: 24374639429, unpacked_size: 24374639429,
       artifact_count: 1,
       artifact_kinds: { package: { count: 1, size: 24374639429, availability_states: { unknown: 1 } } },
-      availability_states: { unknown: 1 }, attributes: {}, provenance: { source_kind: "manual" },
+      availability_states: { unknown: 1 }, attributes: { file_modified_at: "2026-08-01T00:00:00Z", file_time_source: "manifest" }, provenance: { source_kind: "manual" },
     };
     vi.spyOn(api, "games").mockResolvedValue([game] as never);
     vi.spyOn(api, "domains").mockResolvedValue([domain] as never);
@@ -41,6 +41,7 @@ describe("archive cross-game navigation", () => {
       source: "package", fetch_mode: "checked_in_manifest", identity: "game", path: "", q: null,
       items: [{ type: "file", name: "NexusAnima.exe", path: "NexusAnima.exe", size: 680224, md5: "a".repeat(32) }],
       total: 1, next_cursor: null, totals: { files: 1, directories: 0, size: 680224 },
+      file_time: "2026-09-29T20:00:03Z", file_time_source: "manifest",
     } as never);
 
     const router = createRouter({
@@ -63,6 +64,81 @@ describe("archive cross-game navigation", () => {
     expect(root.textContent).toContain("文件清单");
     expect(root.textContent).not.toContain("完整包");
     expect(root.textContent).not.toContain("未判定");
+    expect(root.querySelector(".panel-meta-inline")?.textContent).toContain("文件时间2026.09.30 04:00");
+    expect(root.querySelector(".panel-meta-inline")?.textContent).not.toContain("2026.08.01");
+    app.unmount();
+  });
+
+  it("keeps package, chunk and voice file dates isolated and hides invalid metadata", async () => {
+    vi.spyOn(api, "games").mockResolvedValue([{ id: "nap", name: "绝区零" }] as never);
+    vi.spyOn(api, "domains").mockResolvedValue([{
+      id: "nap-pc", game_id: "nap", kind: "mixed", platform: "windows", adapter: "hoyo",
+      capabilities: ["files", "packages", "chunks"], version_count: 1, latest_version: "2.3.0",
+    }] as never);
+    vi.spyOn(api, "versions").mockResolvedValue([{
+      version: "2.3.0", current_revision_id: 1, revision_count: 1, artifact_count: 3,
+      observed_at: "2026-08-01T00:00:00Z", source_released_at: "2026-08-02T00:00:00Z", imported_at: "2026-08-03T00:00:00Z",
+      artifact_kinds: { package: { count: 1 }, chunk: { count: 2 } },
+      attributes: { file_modified_at: "2026-09-01T00:00:00Z", file_time_source: "package" },
+    }] as never);
+    vi.spyOn(api, "artifacts").mockResolvedValue(emptyPage as never);
+    vi.spyOn(api, "chunkManifestCollection").mockResolvedValue({ items: [] } as never);
+    vi.spyOn(api, "chunkManifests").mockResolvedValue({ manifests: [
+      { component: "game", matching_field: "game", stats: { file_count: 1 } },
+      { component: "voice", language: "zh-cn", matching_field: "zh-cn", stats: { file_count: 1 } },
+    ] } as never);
+    const page = { source: "package", identity: "game", path: "", q: null, items: [], total: 0, next_cursor: null };
+    const files = vi.spyOn(api, "versionFiles").mockResolvedValue({ ...page, file_time: "2026-09-29T20:00:03Z", file_time_source: "package" });
+    const router = createRouter({ history: createMemoryHistory(), routes: [{ path: "/games/:gameId/:domainId?/:version?/:mode?", name: "archive", component: ArchiveView }] });
+    await router.push("/games/nap/nap-pc/2.3.0/files"); await router.isReady();
+    const root = document.createElement("div"); document.body.appendChild(root);
+    const app = createApp(ArchiveView); app.use(router); app.mount(root);
+    await flushUpdates(); await flushUpdates();
+    const metadata = () => root.querySelector(".panel-meta-inline");
+    expect(metadata()?.textContent).toContain("文件时间2026.09.30 04:00");
+    expect(metadata()?.querySelector("[title]")?.getAttribute("title")).toContain("官方资源包");
+    files.mockResolvedValue({ ...page, source: "chunk", file_time: null, file_time_source: "manifest" });
+    root.querySelectorAll<HTMLButtonElement>(".cfb-source-switch-group button")[1].click();
+    await flushUpdates(); await flushUpdates();
+    expect(metadata()).toBeNull();
+    files.mockResolvedValue({ ...page, source: "chunk", identity: "zh-cn", file_time: "2026-09-28T00:00:00Z", file_time_source: "manifest" });
+    root.querySelectorAll<HTMLButtonElement>(".cfb-identity-chips button")[1].click();
+    await flushUpdates(); await flushUpdates();
+    expect(metadata()?.textContent).toContain("文件时间2026.09.28 08:00");
+    expect(metadata()?.querySelector("[title]")?.getAttribute("title")).toContain("官方清单文件");
+    files.mockResolvedValue({ ...page, file_time: "invalid", file_time_source: "package" });
+    root.querySelectorAll<HTMLButtonElement>(".cfb-source-switch-group button")[0].click();
+    await flushUpdates(); await flushUpdates();
+    expect(metadata()).toBeNull();
+    app.unmount();
+  });
+
+  it("fetches file dates for an initial Perfect World tree search without an extra normal-tree request", async () => {
+    vi.spyOn(api, "games").mockResolvedValue([{ id: "pw", name: "完美世界" }] as never);
+    vi.spyOn(api, "domains").mockResolvedValue([{
+      id: "pw-pc", game_id: "pw", kind: "files", platform: "windows", adapter: "perfectworld_patcher",
+      capabilities: ["files"], version_count: 1, latest_version: "1.0.0",
+    }] as never);
+    vi.spyOn(api, "versions").mockResolvedValue([{
+      version: "1.0.0", current_revision_id: 1, revision_count: 1, artifact_count: 1,
+      observed_at: "2026-08-01T00:00:00Z", imported_at: "2026-08-03T00:00:00Z",
+      artifact_kinds: { file: { count: 1, size: 10 } }, attributes: {},
+    }] as never);
+    vi.spyOn(api, "artifacts").mockResolvedValue(emptyPage as never);
+    const tree = vi.spyOn(api, "artifactTree").mockResolvedValue({ prefix: "", folders: [], items: [], next_cursor: null,
+      file_time: "2026-09-29T20:00:03Z", file_time_source: "manifest" });
+    const router = createRouter({ history: createMemoryHistory(), routes: [{ path: "/games/:gameId/:domainId?/:version?/:mode?", name: "archive", component: ArchiveView }] });
+    await router.push("/games/pw/pw-pc/1.0.0/files?q=Client"); await router.isReady();
+    const root = document.createElement("div"); document.body.appendChild(root);
+    const app = createApp(ArchiveView); app.use(router); app.mount(root);
+    await flushUpdates(); await flushUpdates();
+    expect(root.querySelector(".panel-meta-inline")?.textContent).toContain("文件时间2026.09.30 04:00");
+    expect(tree).toHaveBeenCalledTimes(1);
+    expect(tree).toHaveBeenLastCalledWith("pw-pc", "1.0.0", { kind: "file", limit: 1 }, expect.any(AbortSignal));
+    await router.push("/games/pw/pw-pc/1.0.0/files");
+    await flushUpdates(); await flushUpdates();
+    expect(tree).toHaveBeenCalledTimes(2);
+    expect(root.querySelector(".panel-meta-inline")?.textContent).toContain("文件时间2026.09.30 04:00");
     app.unmount();
   });
 

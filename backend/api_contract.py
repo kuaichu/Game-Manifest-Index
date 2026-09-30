@@ -14,7 +14,6 @@ import re
 import stat
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
@@ -46,9 +45,11 @@ from backend.manifest_readers import (
     local_files,
     list_chunk_files,
     list_local_files,
+    normalize_file_time,
     strict_relative_posix,
 )
 from backend.mihoyo_package_files import (
+    PACKAGE_HOSTS_BY_GAME,
     PackageFilesBadRequest,
     PackageFilesCacheError,
     PackageFilesNotFound,
@@ -882,30 +883,102 @@ def _public_version(record: dict[str, Any]) -> dict[str, Any]:
 def _nte_manifest_modified_at(record: dict[str, Any]) -> str | None:
     if (record.get("vendor"), record.get("game_id"), record.get("platform")) != ("perfectworld", "nte", "windows"):
         return None
-    for artifact in record.get("artifacts", []):
-        if artifact.get("delivery_mode") != "file_manifest" or artifact.get("name") != "ResList.bin.zip":
-            continue
-        for candidate in artifact.get("urls", []):
-            url = _safe_public_url(candidate.get("url"), allow_query=False)
-            if not url or candidate.get("source_kind") not in {"official", "legacy"}:
+    return _file_metadata(record, delivery="file_manifest")["file_time"]
+
+
+def _file_artifacts(record: dict[str, Any], delivery: str | None = None) -> list[dict[str, Any]]:
+    candidates = [
+        item for item in record.get("artifacts", []) if isinstance(item, dict)
+        and item.get("component") == "game" and item.get("package_type") in {"full", "segment"}
+        and item.get("delivery_mode") in ({delivery} if delivery else {"file_manifest", "archive"})
+        and item.get("kind") == "package"
+    ]
+    manifests = [item for item in candidates if item.get("delivery_mode") == "file_manifest"]
+    candidates = manifests or candidates
+    full = [item for item in candidates if item.get("package_type") == "full"]
+    # Ambiguous complete packages cannot share a reliable list-level timestamp.
+    return full if len(full) == 1 else [] if full else candidates
+
+
+def _file_metadata(
+    record: dict[str, Any], *, artifact: dict[str, Any] | None = None,
+    document: dict[str, Any] | None = None, upstream: Any = None, delivery: str | None = None,
+) -> dict[str, Any]:
+    """Project source timestamps; optional HEAD is only used on actual file-list routes."""
+    missing = {"file_time": None, "file_time_source": None}
+    selected = [artifact] if artifact is not None else _file_artifacts(record, delivery)
+    if not selected or record.get("platform") != "windows":
+        return missing
+    source = "manifest" if selected[0].get("delivery_mode") == "file_manifest" else "package"
+    hosts = LOCAL_OFFICIAL_HOSTS.get(record["vendor"], frozenset())
+    if record["vendor"] == "mihoyo":
+        hosts = PACKAGE_HOSTS_BY_GAME.get(record["game_id"], frozenset())
+    dates: set[str] = set()
+    urls: list[str] = []
+    invalid_evidence = False
+    nte = (record.get("vendor"), record.get("game_id")) == ("perfectworld", "nte") and source == "manifest"
+    for item in selected:
+        for candidate in item.get("urls", []):
+            if not isinstance(candidate, dict) or candidate.get("source_kind") not in {"official", "legacy"}:
                 continue
-            parsed = urlsplit(url)
-            suffix = f"/Version/Windows/version/{record['version']}/ResList.bin.zip"
-            if parsed.hostname != "yhcdn1.wmupd.com" or not parsed.path.startswith("/clientRes/") or not parsed.path.endswith(suffix):
+            url = _safe_public_url(candidate.get("url"), allow_query=not nte)
+            if not url or urlsplit(url).hostname not in hosts:
                 continue
+            if nte:
+                parsed = urlsplit(url)
+                suffix = f"/Version/Windows/version/{record['version']}/ResList.bin.zip"
+                if item.get("name") != "ResList.bin.zip" or parsed.hostname != "yhcdn1.wmupd.com" or not parsed.path.startswith("/clientRes/") or not parsed.path.endswith(suffix):
+                    continue
+            urls.append(url)
             current = candidate.get("current")
-            if not isinstance(current, dict) or current.get("http_code") not in {200, 206}:
+            if not isinstance(current, dict):
                 continue
-            modified = current.get("last_modified")
-            if not isinstance(modified, str):
+            if current.get("http_code") not in {200, 206}:
+                invalid_evidence = True
                 continue
+            modified = normalize_file_time(current.get("last_modified"), http_header=True)
+            if modified is not None:
+                dates.add(modified)
+            elif "last_modified" in current:
+                invalid_evidence = True
+    if len(dates) > 1:
+        if source == "package" and len(selected) > 1 and all(item.get("component") == "game" and item.get("package_type") == "segment" for item in selected):
+            modified = normalize_file_time(record.get("file_time"))
+            return {"file_time": modified, "file_time_source": "package" if modified is not None else None}
+        return missing
+    if dates:
+        return {"file_time": dates.pop(), "file_time_source": source}
+    # Metadata-only reads can recover an absent header, but never download an archive.
+    read_time = getattr(upstream, "file_modified_at", None)
+    if callable(read_time):
+        if urls:
+            modified = read_time(urls[0], allowed_hosts=hosts)
+            if modified is not None:
+                return {"file_time": modified, "file_time_source": source}
+        elif source == "manifest":
+            provenance = document.get("provenance") if isinstance(document, dict) else None
+            artifact_source = selected[0].get("source")
+            provenance = provenance if isinstance(provenance, dict) else artifact_source if isinstance(artifact_source, dict) else record.get("provenance")
+            source_url = provenance.get("source_url") if isinstance(provenance, dict) else None
+            document_url = document.get("manifest_url") if isinstance(document, dict) else None
+            if (record["vendor"], record["game_id"]) == ("mihoyo", "abc") and document_url == source_url:
+                source_url = document_url
+            # ABC's already authenticated CBT source is metadata-only: do not expand
+            # the Sophon content-download allowlist for this historical inventory.
+            provenance_hosts = frozenset({"autopatchcn-beta.bhyyjl.com"}) if (record["vendor"], record["game_id"]) == ("mihoyo", "abc") else hosts
             try:
-                value = parsedate_to_datetime(modified)
-                if value.tzinfo is not None:
-                    return value.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
-            except (TypeError, ValueError, OverflowError):
-                continue
-    return None
+                parsed = urlsplit(source_url) if isinstance(source_url, str) else None
+                recognized = (record["vendor"], record["game_id"]) == ("mihoyo", "abc") or (record["vendor"] == "kuro" and parsed is not None and parsed.path.endswith("/indexFile.json"))
+                if recognized and parsed is not None and parsed.hostname in provenance_hosts:
+                    modified = read_time(source_url, allowed_hosts=provenance_hosts)
+                    return {"file_time": modified, "file_time_source": "manifest" if modified is not None else None}
+            except (ValueError, ManifestError):
+                pass
+    # Existing canonical file_time is usable for historical package records. NTE
+    # specifically promises an authenticated ResList date, so retain its strictness.
+    is_complete_game = all(item.get("component") == "game" and item.get("package_type") in {"full", "segment"} for item in selected)
+    modified = normalize_file_time(record.get("file_time")) if is_complete_game and not nte and not invalid_evidence else None
+    return {"file_time": modified, "file_time_source": source if modified is not None else None}
 
 
 def _summary(record: dict[str, Any]) -> dict[str, Any]:
@@ -936,6 +1009,12 @@ def _summary(record: dict[str, Any]) -> dict[str, Any]:
     modified_at = _nte_manifest_modified_at(record)
     if modified_at is not None:
         attributes["manifest_modified_at"] = modified_at
+    # The default files source is Sophon when present; archive dates belong to the
+    # explicit package source, not to the selected chunk manifest.
+    metadata = _file_metadata(record) if not has_chunk else {"file_time": None}
+    if metadata["file_time"] is not None:
+        attributes["file_modified_at"] = metadata["file_time"]
+        attributes["file_time_source"] = metadata["file_time_source"]
     return {
         "version": record["version"],
         "current_revision_id": 1,
@@ -1486,12 +1565,13 @@ def create_api_app(data_root: Path, upstream: Any | None = None, *, state_root: 
             if selected == "chunk":
                 return {"source": "chunk", **list_chunk_files(payload, identity, service().upstream, path, q, limit, cursor)}
             if selected == "mihoyo_package":
-                return list_mihoyo_package_files(
+                result = list_mihoyo_package_files(
                     service().state_root, record, record["game_id"], record["version"], identity,
                     path, q, limit, cursor, service().upstream,
                 )
+                return {**result, **_file_metadata(record, delivery="archive", upstream=service().upstream)}
             artifact, document, base_urls = payload
-            return {"source": "package", "fetch_mode": "checked_in_manifest", "identity": str(_stable_id(artifact["artifact_id"])), **list_local_files(document, base_urls, path, q, limit, cursor)}
+            return {"source": "package", "fetch_mode": "checked_in_manifest", "identity": str(_stable_id(artifact["artifact_id"])), **list_local_files(document, base_urls, path, q, limit, cursor), **_file_metadata(record, artifact=artifact, document=document, upstream=service().upstream)}
         except ManifestError as error:
             raise _manifest_error(error) from error
 
@@ -1608,6 +1688,7 @@ def create_api_app(data_root: Path, upstream: Any | None = None, *, state_root: 
             try:
                 artifact, document, base_urls = service().package_document(domain, record, "game")
                 page = list_local_files(document, base_urls, prefix, q, limit, cursor)
+                manifest_total_size = sum(item["size"] for item in local_files(document))
             except ApiFault as error:
                 if error.status == 404:
                     _cursor(cursor)
@@ -1620,7 +1701,7 @@ def create_api_app(data_root: Path, upstream: Any | None = None, *, state_root: 
                 for item in page["items"] if item.get("type") == "directory"
             ]
             items = [tree_artifact(artifact["artifact_id"], item) for item in page["items"] if item.get("type") == "file"]
-            return {"prefix": prefix, "folders": folders, "items": items, "next_cursor": page["next_cursor"], "base_url": base_urls[0] if base_urls else None, "base_urls": base_urls}
+            return {"prefix": prefix, "folders": folders, "items": items, "next_cursor": page["next_cursor"], "base_url": base_urls[0] if base_urls else None, "base_urls": base_urls, "manifest_total_size": manifest_total_size, **_file_metadata(record, artifact=artifact, document=document, upstream=service().upstream)}
         scheduled_indices = _scheduled_probe_indices(record)
         public = [
             _public_artifact(record, item, index, scheduled_indices)

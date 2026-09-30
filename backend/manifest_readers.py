@@ -12,10 +12,13 @@ import hashlib
 import json
 import re
 import threading
+import time
 from collections import OrderedDict
 from collections.abc import Mapping
 from concurrent.futures import Future
 from dataclasses import dataclass
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from typing import Any, Protocol, Sequence
 from urllib.parse import quote, urljoin, urlsplit
 
@@ -29,6 +32,8 @@ MAX_MANIFEST_BYTES = 64 * 1024 * 1024
 MAX_MANIFEST_DECOMPRESSED_BYTES = 128 * 1024 * 1024
 MAX_CHUNK_BYTES = 64 * 1024 * 1024
 MAX_CHUNK_MANIFEST_CACHE_ENTRIES = 8
+MAX_FILE_TIME_CACHE_ENTRIES = 64
+FILE_TIME_CACHE_TTL = 600
 OFFICIAL_SOPHON_HOSTS = frozenset(
     {
         "autopatchcn.yuanshen.com",
@@ -74,6 +79,24 @@ class Upstream(Protocol):
     ) -> tuple[bytes, Mapping[str, str]]: ...
 
 
+def normalize_file_time(value: Any, *, http_header: bool = False) -> str | None:
+    """Accept explicit dated evidence, never naive timestamps or collection clocks."""
+    if not isinstance(value, str):
+        return None
+    try:
+        if http_header:
+            parsed = parsedate_to_datetime(value)
+        else:
+            if re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+                return datetime.strptime(value, "%Y-%m-%d").date().isoformat()
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            return None
+        return parsed.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    except (TypeError, ValueError, OverflowError):
+        return None
+
+
 def _validated_https_url(url: str, allowed_hosts: frozenset[str]) -> None:
     try:
         parsed = urlsplit(url)
@@ -102,6 +125,63 @@ class HttpUpstream:
         self._chunk_manifest_cache: OrderedDict[str, _ChunkManifestData] = OrderedDict()
         self._chunk_manifest_inflight: dict[str, Future[_ChunkManifestData]] = {}
         self._chunk_manifest_lock = threading.Lock()
+        self._file_time_cache: OrderedDict[tuple[str, frozenset[str]], tuple[float, str | None]] = OrderedDict()
+        self._file_time_lock = threading.Lock()
+
+    def file_modified_at(self, url: str, *, allowed_hosts: frozenset[str]) -> str | None:
+        """Bounded in-memory metadata cache, including unavailable/undated resources."""
+        _validated_https_url(url, allowed_hosts)
+        key = (url, allowed_hosts)
+        with self._file_time_lock:
+            cached = self._file_time_cache.get(key)
+            if cached is not None and time.monotonic() - cached[0] < FILE_TIME_CACHE_TTL:
+                self._file_time_cache.move_to_end(key)
+                return cached[1]
+        try:
+            headers = self.get_headers(url, allowed_hosts=allowed_hosts)
+            modified = normalize_file_time(headers.get("last-modified"), http_header=True)
+        except ManifestError:
+            modified = None
+        with self._file_time_lock:
+            self._file_time_cache[key] = (time.monotonic(), modified)
+            self._file_time_cache.move_to_end(key)
+            while len(self._file_time_cache) > MAX_FILE_TIME_CACHE_ENTRIES:
+                self._file_time_cache.popitem(last=False)
+            return modified
+
+    def get_headers(self, url: str, *, allowed_hosts: frozenset[str]) -> Mapping[str, str]:
+        """Read metadata with HEAD only and the same redirect boundary as get_bytes."""
+        _validated_https_url(url, allowed_hosts)
+        original = urlsplit(url)
+        path_prefix = original.path.rsplit("/", 1)[0] + "/"
+        current = url
+        try:
+            with httpx.Client(timeout=self.timeout, follow_redirects=False, transport=self.transport, trust_env=False) as client:
+                for redirect_count in range(self.max_redirects + 1):
+                    with client.stream("HEAD", current) as response:
+                        if response.status_code in {301, 302, 303, 307, 308}:
+                            location = response.headers.get("location")
+                            if redirect_count >= self.max_redirects or not location:
+                                raise ManifestUpstream("官方资源重定向无效")
+                            target = urljoin(current, location)
+                            _validated_https_url(target, allowed_hosts)
+                            parsed = urlsplit(target)
+                            if parsed.query != original.query or not parsed.path.startswith(path_prefix):
+                                raise ManifestUpstream("官方资源重定向越界")
+                            current = target
+                            continue
+                        if response.status_code in {404, 410}:
+                            raise ManifestNotFound("官方资源不存在")
+                        if response.status_code not in {200, 206}:
+                            raise ManifestUpstream("官方资源请求失败")
+                        return dict(response.headers)
+        except ManifestError:
+            raise
+        except httpx.TimeoutException as error:
+            raise ManifestTimeout("官方资源请求超时") from error
+        except httpx.HTTPError as error:
+            raise ManifestUpstream("官方资源请求失败") from error
+        raise ManifestUpstream("官方资源请求失败")
 
     def _cached_chunk_manifest(self, key: str, loader: Any) -> _ChunkManifestData:
         with self._chunk_manifest_lock:
@@ -456,6 +536,7 @@ class _ChunkManifestData:
     files: tuple[dict[str, Any], ...]
     chunk_sizes: Mapping[str, frozenset[int]]
     total_size: int
+    file_time: str | None
 
 
 def _chunk_manifest_cache_key(
@@ -496,7 +577,7 @@ def _chunk_manifest_data(item: Mapping[str, Any], upstream: Upstream) -> _ChunkM
     manifest_url = _recipe_url(item, "manifest_download", manifest_id)
 
     def load() -> _ChunkManifestData:
-        body, _ = upstream.get_bytes(
+        body, headers = upstream.get_bytes(
             manifest_url,
             allowed_hosts=OFFICIAL_SOPHON_HOSTS,
             max_bytes=MAX_MANIFEST_BYTES,
@@ -572,6 +653,7 @@ def _chunk_manifest_data(item: Mapping[str, Any], upstream: Upstream) -> _ChunkM
             files=tuple(files),
             chunk_sizes={name: frozenset(sizes) for name, sizes in chunk_sizes.items()},
             total_size=sum(file["size"] for file in files),
+            file_time=normalize_file_time(next((value for key, value in headers.items() if key.lower() == "last-modified"), None), http_header=True),
         )
 
     key = _chunk_manifest_cache_key(manifest, manifest_id, recipe, item.get("chunk_download"), item.get("stats"))
@@ -585,9 +667,12 @@ def list_chunk_files(
     limit: int = 100, cursor: str | None = None,
 ) -> dict[str, Any]:
     item = _find_chunk_entry(document, identity)
-    result = _directory_page(_chunk_files(item, upstream), path, q, limit, cursor)
+    data = _chunk_manifest_data(item, upstream)
+    result = _directory_page(copy.deepcopy(list(data.files)), path, q, limit, cursor)
     result["identity"] = item.get("matching_field") or (item.get("manifest") or {}).get("id")
     result["fetch_mode"] = "upstream_manifest"
+    result["file_time"] = data.file_time
+    result["file_time_source"] = "manifest" if data.file_time is not None else None
     return result
 
 

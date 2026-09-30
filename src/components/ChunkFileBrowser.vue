@@ -13,6 +13,7 @@ import type {
   ChunkManifestDetail,
   ChunkManifestSummaryItem,
   Game,
+  FileTimeChange,
   VersionSummary,
 } from "../types";
 
@@ -25,6 +26,10 @@ const props = defineProps<{
   versionSummary?: VersionSummary | null;
   chunkCollection?: ChunkManifestSummaryItem[];
   searchQuery?: string;
+}>();
+
+const emit = defineEmits<{
+  (e: "file-time-change", value: FileTimeChange): void;
 }>();
 
 const route = useRoute();
@@ -222,27 +227,33 @@ function syncRouteQuery(): void {
 }
 
 async function loadFiles(path: string, append = false): Promise<void> {
+  const context = { domainId: props.domainId, version: props.version, source: activeSource.value, identity: selectedIdentity.value };
+  const query = props.searchQuery;
   listController?.abort();
   const request = new AbortController();
   listController = request;
   const currentReq = ++requestId;
+  const isCurrent = () => currentReq === requestId && listController === request
+    && props.domainId === context.domainId && props.version === context.version
+    && activeSource.value === context.source && selectedIdentity.value === context.identity && props.searchQuery === query;
 
   if (append) {
     loadingMore.value = true;
   } else {
     loading.value = true;
+    emit("file-time-change", { ...context, fileTime: null, loading: true });
   }
   error.value = null;
 
   try {
-    const q = props.searchQuery?.trim() || undefined;
+    const q = query?.trim() || undefined;
     const cursor = append ? filePage.value?.next_cursor : undefined;
     const res = await api.versionFiles(
-      props.domainId,
-      props.version,
+      context.domainId,
+      context.version,
       {
-        source: activeSource.value,
-        identity: selectedIdentity.value,
+        source: context.source,
+        identity: context.identity,
         path: path || undefined,
         q,
         limit: 100,
@@ -251,7 +262,7 @@ async function loadFiles(path: string, append = false): Promise<void> {
       request.signal,
     );
 
-    if (currentReq !== requestId) return;
+    if (!isCurrent()) return;
 
     if (append && filePage.value) {
       filePage.value = {
@@ -261,12 +272,14 @@ async function loadFiles(path: string, append = false): Promise<void> {
     } else {
       filePage.value = res;
     }
+    emit("file-time-change", { ...context, fileTime: res.file_time ?? null, timeSource: res.file_time_source });
     syncRouteQuery();
   } catch (err) {
-    if (isAbortError(err) || currentReq !== requestId) return;
+    if (isAbortError(err) || !isCurrent()) return;
     error.value = err instanceof Error ? err.message : "读取文件列表失败";
+    emit("file-time-change", { ...context, fileTime: null });
   } finally {
-    if (currentReq === requestId) {
+    if (isCurrent()) {
       loading.value = false;
       loadingMore.value = false;
     }
@@ -493,6 +506,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  requestId += 1;
   listController?.abort();
   detailController?.abort();
   downloadController.value?.abort();
