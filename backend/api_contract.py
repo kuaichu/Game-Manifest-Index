@@ -39,6 +39,7 @@ from backend.manifest_readers import (
     ManifestUpstream,
     OFFICIAL_SOPHON_HOSTS,
     chunk_content,
+    chunk_download_plan_items,
     chunk_file_detail,
     local_file_detail,
     local_files,
@@ -1497,6 +1498,31 @@ def create_api_app(data_root: Path, upstream: Any | None = None, *, state_root: 
         document = service().chunk_document(domain, record)
         try:
             return {"source": "chunk", **list_chunk_files(document, identity, service().upstream, path, q, limit, cursor)}
+        except ManifestError as error:
+            raise _manifest_error(error) from error
+
+    @app.get("/api/v1/domains/{domain_id}/versions/{version}/chunk-manifests/{identity}/download-plan")
+    def chunk_download_plan_route(
+        domain_id: str, version: str, identity: str,
+        limit: int = Query(100, ge=1, le=500), cursor: str | None = None,
+    ) -> dict[str, Any]:
+        if SAFE_COMPONENT.fullmatch(identity) is None:
+            fail(400, "bad_identity", "identity 无效")
+        _cursor(cursor)
+        domain = service().domain(domain_id)
+        record = service().record(domain, version)
+        document = service().chunk_document(domain, record)
+        try:
+            public_identity, page, total, total_size, next_cursor = chunk_download_plan_items(
+                document, identity, service().upstream, limit=limit, cursor=cursor,
+            )
+            return {
+                "identity": public_identity,
+                "items": page,
+                "total": total,
+                "next_cursor": next_cursor,
+                "total_size": total_size,
+            }
         except ManifestError as error:
             raise _manifest_error(error) from error
 
