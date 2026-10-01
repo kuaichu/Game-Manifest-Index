@@ -165,6 +165,110 @@ describe("ChunkFileBrowser", () => {
     vi.unstubAllGlobals();
   });
 
+  it("keeps large component collections compact and selects every identity through the route and API", async () => {
+    const versionFilesMock = vi.spyOn(api, "versionFiles").mockResolvedValue(mockChunkFiles);
+    const detail: ChunkManifestDetail = {
+      ...mockDetail,
+      game_id: "nap",
+      domain_id: "nap-pc",
+      manifests: [mockDetail.manifests[0], ...Array.from({ length: 117 }, (_, index) => ({
+        ...mockDetail.manifests[0],
+        category: { id: 10100 + index, name: `任务资源 ${index + 1}` },
+        component: "resource",
+        matching_field: String(10100 + index),
+        stats: { ...mockDetail.manifests[0].stats, file_count: index + 1 },
+      }))],
+    };
+    const version = ref("3.2.0");
+    const currentDetail = ref(detail);
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const router = createTestRouter();
+    await router.push("/?source=chunk");
+    await router.isReady();
+    const app = createApp({ setup: () => () => h(ChunkFileBrowser, {
+      domainId: "nap-pc", version: version.value, game: null, domain: null, chunkDetail: currentDetail.value,
+      versionSummary: { version: version.value, current_revision_id: 1, revision_count: 1, observed_at: null,
+        artifact_count: 119, packed_size: 0, unpacked_size: 0, availability_states: {}, attributes: {},
+        artifact_kinds: { package: { count: 1, size: 0 }, chunk: { count: 118, size: 0 } } },
+    }) });
+    app.use(router); app.mount(host);
+    try {
+      await flushUpdates();
+      const select = host.querySelector<HTMLSelectElement>('select[aria-label="组件清单"]');
+      expect(select).not.toBeNull();
+      expect(select!.options).toHaveLength(118);
+      expect(host.querySelectorAll(".cfb-identity-chips button")).toHaveLength(0);
+      expect(host.querySelector(".cfb-identities-row")?.textContent).toContain("118 个组件");
+      select!.value = "10216";
+      select!.dispatchEvent(new Event("change", { bubbles: true }));
+      await flushUpdates();
+      expect(versionFilesMock).toHaveBeenLastCalledWith("nap-pc", "3.2.0", expect.objectContaining({ source: "chunk", identity: "10216" }), expect.any(AbortSignal));
+      expect(router.currentRoute.value.query.identity).toBe("10216");
+      expect(host.querySelector(".cfb-identities-row")?.textContent).toContain("117 个文件");
+      expect(select!.selectedOptions[0].title).toContain("任务资源 117");
+
+      version.value = "3.1.0";
+      await flushUpdates();
+      expect(host.querySelector<HTMLSelectElement>("select")?.value).toBe("10216");
+      expect(versionFilesMock).toHaveBeenLastCalledWith("nap-pc", "3.1.0", expect.objectContaining({ source: "chunk", identity: "10216" }), expect.any(AbortSignal));
+
+      host.querySelectorAll<HTMLButtonElement>(".cfb-source-switch-group button")[0].click();
+      await flushUpdates();
+      expect(host.querySelector('select[aria-label="组件清单"]')).toBeNull();
+      expect(versionFilesMock).toHaveBeenLastCalledWith("nap-pc", "3.1.0", expect.objectContaining({ source: "package", identity: "game" }), expect.any(AbortSignal));
+      expect(router.currentRoute.value.query.identity).toBeUndefined();
+      host.querySelectorAll<HTMLButtonElement>(".cfb-source-switch-group button")[1].click();
+      await flushUpdates();
+      expect(host.querySelector<HTMLSelectElement>("select")?.value).toBe("game");
+
+      currentDetail.value = { ...detail, manifests: detail.manifests.slice(0, 8) };
+      version.value = "1.7.0";
+      await flushUpdates();
+      expect(host.querySelector('select[aria-label="组件清单"]')).toBeNull();
+      expect(host.querySelectorAll(".cfb-identity-chips button")).toHaveLength(8);
+      expect(versionFilesMock).toHaveBeenLastCalledWith("nap-pc", "1.7.0", expect.objectContaining({ source: "chunk", identity: "game" }), expect.any(AbortSignal));
+    } finally {
+      app.unmount(); host.remove();
+    }
+  });
+
+  it("uses meaningful labels for unnamed components in browsing and directory downloads", async () => {
+    vi.spyOn(api, "versionFiles").mockResolvedValue(mockChunkFiles);
+    const resources = [" null ", " UNDEFINED ", "   ", undefined, "  任务▶主线  "].map((name, index) => ({
+      ...mockDetail.manifests[0],
+      category: name === undefined ? undefined : { id: 10140 + index, name },
+      component: "resource",
+      matching_field: String(10100 + index),
+    }));
+    const detail: ChunkManifestDetail = { ...mockDetail, manifests: [
+      { ...mockDetail.manifests[0], category: { id: 10017, name: "NULL" } },
+      { ...mockDetail.manifests[1], category: { id: 10018, name: "undefined" } },
+      ...resources,
+    ] };
+    const expectedLabels = ["游戏主资源", "中文语音包", "资源组件 10100", "资源组件 10101", "资源组件 10102", "资源组件 10103", "任务▶主线"];
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const router = createTestRouter();
+    await router.push("/?source=chunk&identity=10100");
+    await router.isReady();
+    const app = createApp(ChunkFileBrowser, { domainId: "nap-pc", version: "3.2.0", game: null, domain: null, chunkDetail: detail });
+    app.use(router); app.mount(host);
+    try {
+      await flushUpdates();
+      expect([...host.querySelectorAll(".cfb-identity-chips button span:last-of-type")].map((item) => item.textContent)).toEqual(expectedLabels);
+      expect(host.querySelector(".cfb-chip.active")?.textContent).toContain("资源组件 10100");
+      expect(router.currentRoute.value.query.identity).toBe("10100");
+      host.querySelector<HTMLButtonElement>(".cfb-directory-toggle")!.click();
+      await flushUpdates();
+      expect([...host.querySelectorAll(".cfb-directory-components label span")].map((item) => item.textContent)).toEqual(expectedLabels);
+      expect([...host.querySelectorAll<HTMLInputElement>(".cfb-directory-components input")].map((item) => item.value)).toEqual(["game", "zh-cn", "10100", "10101", "10102", "10103", "10104"]);
+      expect([...host.querySelectorAll<HTMLInputElement>(".cfb-directory-components input")].every((item) => item.checked)).toBe(true);
+    } finally {
+      app.unmount(); host.remove();
+    }
+  });
+
   it("renders identities, folder rows, file rows, and breadcrumbs in chunk mode", async () => {
     const versionFilesMock = vi.spyOn(api, "versionFiles").mockResolvedValue(mockChunkFiles);
 

@@ -11,6 +11,7 @@ import type {
   ChunkFileItem,
   ChunkFilesPage,
   ChunkManifestDetail,
+  ChunkManifestEntry,
   ChunkManifestSummaryItem,
   Game,
   FileTimeChange,
@@ -139,21 +140,23 @@ function copyText(text: string, label: string): void {
   }, 2000);
 }
 
+function manifestLabel(manifest: ChunkManifestEntry): string {
+  const label = repairMojibake(manifest.category?.name || "").trim();
+  if (label && !/^(null|undefined)$/i.test(label)) return label;
+  if (manifest.component === "game") return "游戏主资源";
+  if (manifest.language) return `${hoyoLanguageLabel(manifest.language)}语音包`;
+  return `资源组件 ${manifest.matching_field || manifest.component}`;
+}
+
 // Identities available in this chunk manifest
 const identities = computed(() => {
   if (activeSource.value === "chunk" && props.chunkDetail?.manifests?.length) {
     const result: Array<{ key: string; label: string; component: string; count: number }> = [];
     for (const m of props.chunkDetail.manifests) {
       const key = m.matching_field || m.language || m.component;
-      let label = repairMojibake(m.category?.name || "");
-      if (!label) {
-        if (m.component === "game") label = "游戏主资源";
-        else if (m.language) label = `${hoyoLanguageLabel(m.language)}语音包`;
-        else label = `${m.component} 组件`;
-      }
       result.push({
         key,
-        label,
+        label: manifestLabel(m),
         component: m.component,
         count: m.stats?.file_count || 0,
       });
@@ -162,6 +165,7 @@ const identities = computed(() => {
   }
   return [{ key: "game", label: "游戏主资源", component: "game", count: 0 }];
 });
+const selectedIdentityItem = computed(() => identities.value.find((item) => item.key === selectedIdentity.value));
 
 // Active Manifest Recipe for chunk downloading
 const activeManifest = computed(() => {
@@ -175,7 +179,7 @@ const activeManifest = computed(() => {
 
 const directoryComponents = computed(() => (props.chunkDetail?.manifests || []).map((manifest) => ({
   key: manifest.matching_field || manifest.language || manifest.component,
-  label: repairMojibake(manifest.category?.name || "") || (manifest.component === "game" ? "游戏主资源" : manifest.language ? `${hoyoLanguageLabel(manifest.language)}语音包` : `${manifest.component} 组件`),
+  label: manifestLabel(manifest),
   size: manifest.stats?.uncompressed_size || 0,
   supported: Boolean(manifest.chunk_download) && !Object.prototype.hasOwnProperty.call(manifest.chunk_download, "password") && (manifest.chunk_download?.encryption ?? 0) === 0 && [0, 1].includes(manifest.chunk_download?.compression ?? 0),
 })));
@@ -545,7 +549,21 @@ onBeforeUnmount(() => {
       <!-- 组件/语音包分类切换栏 (Chunk 模式多分类时展示) -->
       <div v-if="identities.length > 1" class="cfb-identities-row">
         <span class="cfb-toolbar-label">组件清单</span>
-        <div class="cfb-identity-chips">
+        <template v-if="identities.length > 8">
+          <select
+            class="cfb-identity-select"
+            aria-label="组件清单"
+            :value="selectedIdentity"
+            :title="selectedIdentityItem?.label"
+            @change="selectIdentity(($event.target as HTMLSelectElement).value)"
+          >
+            <option v-for="item in identities" :key="item.key" :value="item.key" :title="item.label">
+              {{ item.label }} · {{ item.count.toLocaleString() }} 个文件
+            </option>
+          </select>
+          <span class="cfb-identity-summary">{{ identities.length }} 个组件 · 当前 {{ (selectedIdentityItem?.count || 0).toLocaleString() }} 个文件</span>
+        </template>
+        <div v-else class="cfb-identity-chips">
           <button
             v-for="item in identities"
             :key="item.key"
@@ -1141,6 +1159,30 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.cfb-identity-select {
+  flex: 1 1 260px;
+  width: 100%;
+  min-width: 0;
+  max-width: 520px;
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 8px;
+  background: #0f172a;
+  color: #e2e8f0;
+  font: inherit;
+}
+
+.cfb-identity-select:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
+}
+
+.cfb-identity-summary {
+  color: #94a3b8;
+  font-size: 12px;
 }
 
 .cfb-chip {
@@ -1923,7 +1965,7 @@ onBeforeUnmount(() => {
 .cfb-download-progress { color: var(--muted); font-size: 11.5px; font-family: var(--font-mono); }
 .cfb-download-error { flex-basis: 100%; color: #fb7185; font-size: 12px; }
 
-.cfb-directory-toggle { align-self: flex-start; }
+.cfb-directory-toggle { align-self: flex-start; margin-inline-start: 14px; }
 .cfb-directory-download {
   display: grid;
   gap: 12px;
@@ -2119,6 +2161,14 @@ onBeforeUnmount(() => {
     flex-direction: column;
     align-items: flex-start;
     gap: 6px;
+  }
+
+  .cfb-identity-select {
+    flex: none;
+  }
+
+  .cfb-directory-toggle {
+    margin-inline-start: 19px;
   }
 
   .cfb-identity-chips {
