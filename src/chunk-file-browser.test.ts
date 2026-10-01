@@ -123,6 +123,34 @@ function createTestRouter() {
 }
 
 describe("ChunkFileBrowser", () => {
+  it.each([
+    { secure: true, picker: undefined, message: "当前浏览器未提供目录选择功能", disabled: true },
+    { secure: false, picker: undefined, message: "当前页面不是安全上下文", disabled: true },
+    { secure: true, picker: vi.fn(), message: "", disabled: false },
+  ])("explains directory availability for secure=$secure and picker=$picker", async ({ secure, picker, message, disabled }) => {
+    vi.stubGlobal("isSecureContext", secure);
+    vi.stubGlobal("showDirectoryPicker", picker);
+    vi.spyOn(api, "versionFiles").mockResolvedValue(mockChunkFiles);
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const router = createTestRouter();
+    await router.push("/?source=chunk"); await router.isReady();
+    const app = createApp(ChunkFileBrowser, { domainId: "hk4e-pc", version: "7.0.0", game: null, domain: null, chunkDetail: mockDetail });
+    app.use(router); app.mount(host);
+    try {
+      await flushUpdates();
+      host.querySelector<HTMLButtonElement>(".cfb-directory-toggle")!.click();
+      await flushUpdates();
+      expect(host.querySelector<HTMLButtonElement>(".cfb-directory-actions .dl-btn")!.disabled).toBe(disabled);
+      const reason = host.querySelector(".cfb-directory-download .cfb-download-error")?.textContent || "";
+      if (message) expect(reason).toContain(message);
+      else expect(reason).toBe("");
+      if (secure) expect(reason).not.toContain("HTTPS");
+    } finally {
+      app.unmount(); host.remove(); vi.unstubAllGlobals();
+    }
+  });
+
   it("emits source and identity dates and rejects obsolete identity and version responses", async () => {
     const pending: Array<{ resolve: (page: ChunkFilesPage) => void }> = [];
     vi.spyOn(api, "versionFiles").mockImplementation(() => new Promise((resolve) => pending.push({ resolve })));

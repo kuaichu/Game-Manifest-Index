@@ -124,7 +124,15 @@ type DownloadPickerWindow = Window & {
   showDirectoryPicker?: (options: { mode: "readwrite" }) => Promise<FileSystemDirectoryHandle>;
   showSaveFilePicker?: (options: { suggestedName: string }) => Promise<FileSystemFileHandle>;
 };
-const canSaveDirectory = computed(() => typeof window !== "undefined" && typeof (window as DownloadPickerWindow).showDirectoryPicker === "function");
+const directoryUnavailableReason = computed(() => {
+  if (typeof window === "undefined") return "当前环境无法选择本地目录。";
+  if (window.isSecureContext === false) return "当前页面不是安全上下文，请通过 HTTPS 打开本站后下载游戏目录。";
+  if (typeof (window as DownloadPickerWindow).showDirectoryPicker !== "function") {
+    return "当前浏览器未提供目录选择功能，请改用支持该功能的桌面 Chrome 或 Edge。";
+  }
+  return "";
+});
+const canSaveDirectory = computed(() => !directoryUnavailableReason.value);
 const canSaveFile = computed(() => typeof window !== "undefined" && typeof (window as DownloadPickerWindow).showSaveFilePicker === "function");
 
 let listController: AbortController | null = null;
@@ -417,7 +425,7 @@ async function downloadCompleteFile(): Promise<void> {
 async function downloadDirectory(): Promise<void> {
   if (directoryDownloading.value || downloading.value || !directoryIdentities.value.length) return;
   if (!canSaveDirectory.value) {
-    directoryError.value = "目录下载需要桌面 Chrome 或 Edge，请通过 HTTPS 打开本站";
+    directoryError.value = directoryUnavailableReason.value;
     return;
   }
   const controller = new AbortController();
@@ -593,7 +601,7 @@ onBeforeUnmount(() => {
           <span>{{ item.label }}</span><small>{{ item.supported ? formatBytes(item.size) : '暂不支持此格式' }}</small>
         </label>
       </div>
-      <p v-if="!canSaveDirectory" class="cfb-download-error">目录下载需要桌面 Chrome 或 Edge，请通过 HTTPS 打开本站。</p>
+      <p v-if="!canSaveDirectory" class="cfb-download-error">{{ directoryUnavailableReason }}</p>
       <div class="cfb-directory-actions">
         <button class="tool-button dl-btn" type="button" :disabled="!canSaveDirectory || directoryDownloading || downloading || !directoryIdentities.length" @click="downloadDirectory">{{ directoryDownloading ? '正在下载…' : '选择目录并下载' }}</button>
         <button v-if="directoryDownloading" class="tool-button copy-btn" type="button" @click="directoryController?.abort()">取消下载</button>
