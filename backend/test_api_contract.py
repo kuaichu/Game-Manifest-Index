@@ -418,7 +418,7 @@ class TemporaryContractTests(unittest.TestCase):
         voice["urls"][0]["current"]["last_modified"] = "Wed, 30 Sep 2026 20:00:03 GMT"
         self.assertEqual(_file_metadata(value, artifact=voice)["file_time"], "2026-09-30T20:00:03Z")
 
-    def test_segment_package_date_can_use_canonical_whole_package_time(self):
+    def test_segment_package_date_uses_latest_part_without_canonical_time(self):
         segments = []
         for part, modified in ((1, "Tue, 29 Sep 2026 20:00:03 GMT"), (2, "Wed, 30 Sep 2026 20:00:03 GMT")):
             item = artifact(f"part{part}.zip", delivery="archive")
@@ -426,9 +426,26 @@ class TemporaryContractTests(unittest.TestCase):
             item["urls"][0].update(url=f"https://autopatchcn.yuanshen.com/game/part{part}.zip", current={"http_code": 200, "last_modified": modified})
             segments.append(item)
         value = record("mihoyo", "hk4e", "windows", "1.0.0", segments)
-        self.assertEqual(_file_metadata(value), {"file_time": value["file_time"], "file_time_source": "package"})
+        self.assertEqual(_file_metadata(value), {"file_time": "2026-09-30T20:00:03Z", "file_time_source": "package"})
         value["file_time"] = None
+        self.assertEqual(_file_metadata(value)["file_time"], "2026-09-30T20:00:03Z")
+        # Different dates on separate parts are valid; alternate URLs for one part
+        # must agree and a partial date cannot stand in for the whole package.
+        segments[0]["urls"].append(copy.deepcopy(segments[0]["urls"][0]))
+        segments[0]["urls"][1]["current"]["last_modified"] = "Wed, 30 Sep 2026 21:00:03 GMT"
         self.assertIsNone(_file_metadata(value)["file_time"])
+        segments[0]["urls"].pop()
+        segments[1]["urls"][0].pop("current")
+        self.assertIsNone(_file_metadata(value)["file_time"])
+        value["file_time"] = "2025-01-02"
+        self.assertEqual(_file_metadata(value)["file_time"], "2025-01-02")
+        value["file_time"] = None
+        upstream = HttpUpstream(transport=httpx.MockTransport(lambda request: httpx.Response(
+            200, headers={"last-modified": "Wed, 30 Sep 2026 20:00:03 GMT"},
+        )))
+        self.assertEqual(_file_metadata(value, upstream=upstream)["file_time"], "2026-09-30T20:00:03Z")
+        segments[1]["part"] = 3
+        self.assertIsNone(_file_metadata(value, upstream=upstream)["file_time"])
 
     def test_file_date_uses_canonical_date_only_and_rejects_ambiguous_evidence(self):
         item = artifact("full.zip", delivery="archive")
