@@ -913,11 +913,20 @@ def _file_metadata(
     hosts = LOCAL_OFFICIAL_HOSTS.get(record["vendor"], frozenset())
     if record["vendor"] == "mihoyo":
         hosts = PACKAGE_HOSTS_BY_GAME.get(record["game_id"], frozenset())
+    segmented = source == "package" and len(selected) > 1 and all(item.get("package_type") == "segment" for item in selected)
+    if segmented:
+        parts = [item.get("part") for item in selected]
+        if any(isinstance(part, bool) or not isinstance(part, int) for part in parts) or sorted(parts) != list(range(1, len(parts) + 1)):
+            return missing
+    part_times: list[str | None] = []
+    read_time = getattr(upstream, "file_modified_at", None)
     dates: set[str] = set()
     urls: list[str] = []
     invalid_evidence = False
     nte = (record.get("vendor"), record.get("game_id")) == ("perfectworld", "nte") and source == "manifest"
     for item in selected:
+        item_dates: set[str] = set()
+        item_urls: list[str] = []
         for candidate in item.get("urls", []):
             if not isinstance(candidate, dict) or candidate.get("source_kind") not in {"official", "legacy"}:
                 continue
@@ -930,6 +939,7 @@ def _file_metadata(
                 if item.get("name") != "ResList.bin.zip" or parsed.hostname != "yhcdn1.wmupd.com" or not parsed.path.startswith("/clientRes/") or not parsed.path.endswith(suffix):
                     continue
             urls.append(url)
+            item_urls.append(url)
             current = candidate.get("current")
             if not isinstance(current, dict):
                 continue
@@ -939,17 +949,29 @@ def _file_metadata(
             modified = normalize_file_time(current.get("last_modified"), http_header=True)
             if modified is not None:
                 dates.add(modified)
+                item_dates.add(modified)
             elif "last_modified" in current:
                 invalid_evidence = True
+        if segmented:
+            # Separate volumes have separate modification clocks; alternate URLs
+            # for the same volume must still agree before using its evidence.
+            if len(item_dates) > 1:
+                return missing
+            modified = next(iter(item_dates), None)
+            if modified is None and item_urls and callable(read_time):
+                modified = read_time(item_urls[0], allowed_hosts=hosts)
+            part_times.append(modified)
+    if segmented:
+        if all(part_times):
+            modified = max(value for value in part_times if value is not None)
+        else:
+            modified = normalize_file_time(record.get("file_time")) if not invalid_evidence else None
+        return {"file_time": modified, "file_time_source": "package" if modified is not None else None}
     if len(dates) > 1:
-        if source == "package" and len(selected) > 1 and all(item.get("component") == "game" and item.get("package_type") == "segment" for item in selected):
-            modified = normalize_file_time(record.get("file_time"))
-            return {"file_time": modified, "file_time_source": "package" if modified is not None else None}
         return missing
     if dates:
         return {"file_time": dates.pop(), "file_time_source": source}
     # Metadata-only reads can recover an absent header, but never download an archive.
-    read_time = getattr(upstream, "file_modified_at", None)
     if callable(read_time):
         if urls:
             modified = read_time(urls[0], allowed_hosts=hosts)

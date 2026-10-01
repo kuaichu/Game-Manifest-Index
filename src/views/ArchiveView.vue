@@ -837,7 +837,7 @@ const versionMetaSummary = computed(() => {
         label: "文件时间", value: formatObservedDate(fileTime.value), isMono: true,
         title: fileTime.source === "manifest"
           ? "官方清单文件的最后修改时间（北京时间），不代表清单内每个文件的修改时间"
-          : "官方资源包的最后修改时间（北京时间），不代表资源包内每个文件的修改时间",
+          : "官方资源包的最后修改时间（北京时间）；分卷包取各分卷中最晚的修改时间，不代表资源包内每个文件的修改时间",
       });
     }
   } else if (mode.value === "chunks" && manifestTime) {
