@@ -16,6 +16,7 @@ from backend.admin_probe import ADMIN_PROBE_LOCK, AdminProbeDataError, Candidate
 from backend.api_contract import PROBE_EVIDENCE_TTL, _probe_checked_at
 from backend.admin_state import AdminStateError, AdminStateStore
 from backend.indexes import rebuild_index
+from backend.telegram_notify import notify_operation
 from url_adapters.service import DISCOVERERS, PC_DISCOVERERS, discover_games
 
 
@@ -67,6 +68,34 @@ def _safe_discover_item(item: dict[str, Any]) -> dict[str, Any]:
         "new": bool(item.get("new")), "available": item.get("available"),
         "path": None, "error": "discovery_failed" if item.get("error") else None,
     }
+
+
+def _notification_discovery(items: list[dict[str, Any]], summary: dict[str, Any], previous: dict[tuple[str, str], str]) -> dict[str, Any]:
+    """Project successful new PC stages without changing the public result."""
+    updates: list[dict[str, Any]] = []
+    seen: set[tuple[str, str, str]] = set()
+    for item in items:
+        stages = item.get("stages")
+        sources = stages if item.get("platform") == "windows" and isinstance(stages, list) else [item]
+        for source in sources:
+            if not isinstance(source, dict) or source.get("ok") is not True or source.get("new") is not True:
+                continue
+            version = source.get("version")
+            if not isinstance(version, str) or not version or item.get("error") == "index_rebuild_failed":
+                continue
+            key = (item.get("game_id"), item.get("platform"), version)
+            if key in seen:
+                continue
+            seen.add(key)
+            update = {"game_id": key[0], "platform": key[1], "version": version, "ok": True, "new": True}
+            old = previous.get(key[:2])
+            if old is not None:
+                if _version_key(version) > _version_key(old):
+                    update["previous_version"] = old
+                else:
+                    update["archived"] = True
+            updates.append(update)
+    return {"items": updates, "failed": summary["failed"]}
 
 
 def _candidate_key(record: dict[str, Any], _artifact_index: int, _url_index: int, artifact: dict[str, Any], candidate: dict[str, Any]) -> tuple[str, ...]:
@@ -233,7 +262,7 @@ class OperationManager:
                 self._log(f"自动探活任务 scheduled_mode={scheduled_mode}")
             self._save()
             job_id = self._job["job_id"]
-            thread = Thread(target=self._run, args=(job_id, actions, game_ids, scope, timeout, workers, candidate_filter), daemon=True)
+            thread = Thread(target=self._run, args=(job_id, actions, game_ids, scope, timeout, workers, candidate_filter, scheduled_mode), daemon=True)
             self._thread = thread
             thread.start()
             return self._view()
@@ -418,8 +447,9 @@ class OperationManager:
             except Exception:  # noqa: BLE001 - history must not fail discovery
                 LOGGER.warning("Could not persist version-update activity", exc_info=True)
 
-    def _run(self, job_id: str, actions: list[str], game_ids: list[str], scope: str, timeout: int, workers: int, candidate_filter: CandidateFilter | None = None) -> None:
+    def _run(self, job_id: str, actions: list[str], game_ids: list[str], scope: str, timeout: int, workers: int, candidate_filter: CandidateFilter | None = None, scheduled_mode: str | None = None) -> None:
         result = {"actions": actions, "game_ids": game_ids, "scope": scope, "discover": None, "probe": None}
+        notification_discover = None
         completed = failed = 0
         try:
             if "discover" in actions:
@@ -452,10 +482,14 @@ class OperationManager:
                     LOGGER.warning("Could not process version-update activity", exc_info=True)
                 safe_items = [_safe_discover_item(item) for item in raw_items]
                 result["discover"] = {"selected": total, "succeeded": sum(item["ok"] for item in safe_items), "failed": sum(not item["ok"] for item in safe_items), "new_versions": sum(item["new"] for item in safe_items), "cancelled": self._cancel.is_set(), "items": safe_items}
+                try:
+                    notification_discover = _notification_discovery(raw_items, result["discover"], previous_versions)
+                except Exception:  # notification preparation must not fail discovery
+                    LOGGER.warning("Telegram notification preparation failed: request_error")
                 completed += len(safe_items)
                 failed += result["discover"]["failed"]
             if self._cancel.is_set():
-                self._finish(job_id, "cancelled", result)
+                self._finish(job_id, "cancelled", result, scheduled_mode=scheduled_mode, notification_discover=notification_discover)
                 return
             if "probe" in actions:
                 records = selected_records(self.data_root, game_ids, scope)
@@ -480,11 +514,11 @@ class OperationManager:
                         item["reason"] = "probe_result"
                 completed += result["probe"]["checked"]
                 failed += result["probe"]["failed"]
-            self._finish(job_id, "cancelled" if self._cancel.is_set() else "finished", result)
+            self._finish(job_id, "cancelled" if self._cancel.is_set() else "finished", result, scheduled_mode=scheduled_mode, notification_discover=notification_discover)
         except Exception as error:
-            self._finish(job_id, "failed", result, type(error).__name__)
+            self._finish(job_id, "failed", result, type(error).__name__, scheduled_mode=scheduled_mode, notification_discover=notification_discover)
 
-    def _finish(self, job_id: str, status: str, result: dict[str, Any], error: str | None = None) -> None:
+    def _finish(self, job_id: str, status: str, result: dict[str, Any], error: str | None = None, *, scheduled_mode: str | None = None, notification_discover: dict[str, Any] | None = None) -> None:
         with self._lock:
             if self._job is None or self._job["job_id"] != job_id:
                 return
@@ -499,6 +533,12 @@ class OperationManager:
             self._job.pop("_phase_failed", None)
             self._log("任务已取消" if status == "cancelled" else "任务完成" if status == "finished" else "任务失败")
             self._save()
+            notification = deepcopy({"discover": notification_discover if notification_discover is not None else result.get("discover"), "probe": result.get("probe")})
+            started_at, finished_at = self._job["started_at"], self._job["finished_at"]
+        try:
+            notify_operation(notification, started_at=started_at, finished_at=finished_at, scheduled=scheduled_mode is not None, status=status)
+        except Exception:  # notification must not change persisted job state or expose credentials
+            LOGGER.warning("Telegram notification failed: request_error")
 
 
 __all__ = ["OperationManager", "utc_now"]
