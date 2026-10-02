@@ -483,7 +483,8 @@ describe("AdminView capability alignment", () => {
     expect(root.textContent).toContain("这里只保存每日采集计划参数");
     expect(root.textContent).toContain("时区、漏跑策略及采集动作由外部计划任务决定");
     expect(root.textContent).toContain("内置探活计时器：运行中");
-    expect(root.textContent).toContain("下次探活：");
+    expect(root.textContent).toContain("下次任务计划：");
+    expect(root.textContent).toContain("最近任务启动：");
     expect(root.textContent).toContain("内置计时器先从官方来源采集新 URL");
     expect(root.textContent).toContain("Android+PC 新发现或上次探活可用的官方与历史 URL");
     expect(root.textContent).toContain("仅发送新版本更新");

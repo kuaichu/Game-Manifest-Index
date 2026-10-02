@@ -39,6 +39,7 @@ import { gameActivityTime, gameActivityTitle } from "../game-activity";
 import { publisherGroups } from "../game-meta";
 import SourceProvenanceModal from "../components/SourceProvenanceModal.vue";
 import SiteChangelogModal from "../components/SiteChangelogModal.vue";
+import ProbeScheduleInfo from "../components/ProbeScheduleInfo.vue";
 import { domainRouteLabel, resolveRouteDomain, useArchiveLoader } from "../composables/useArchiveLoader";
 import { useArchiveArtifactsLoader, type ArchiveArtifactsLoaderState, type ArchiveArtifactLoadContext } from "../composables/useArchiveArtifactsLoader";
 import type {
@@ -2684,9 +2685,7 @@ function chunkMatchingField(artifact: Artifact): string {
         </template>
       </section>
       <footer class="archive-footer">
-        <div v-if="syncTimeText" class="footer-sync-info">
-          <span>当前资源最近探活于 <b>{{ syncTimeText }}</b></span>
-        </div>
+        <ProbeScheduleInfo :checked-time="syncTimeText" :global-time="globalProbeLoaded" @refresh="loadGlobalProbeTime" />
         <div class="footer-notice">
           <button type="button" class="footer-provenance-link" @click="openProvenanceModal($event)">
             官方下载索引与数据溯源

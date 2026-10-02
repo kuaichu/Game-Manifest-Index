@@ -12,6 +12,12 @@ export interface SiteChangelogDay {
 
 export const siteChangelog: SiteChangelogEntry[] = [
   {
+    id: "2026-10-03-probe-status-clarity",
+    date: "2026-10-03",
+    title: "区分定时检查与链接检测时间",
+    body: "页脚分别显示定时任务最近启动、下次计划和链接最近实际检测时间，并说明普通模式的 20 小时跳过规则，避免将检测时间未变化误认为服务器停止运行。",
+  },
+  {
     id: "2026-10-03-changelog-browsing",
     date: "2026-10-03",
     title: "更新日志浏览优化",

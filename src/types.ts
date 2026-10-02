@@ -367,6 +367,17 @@ export interface ProbeSchedulerStatus {
   error: string | null;
 }
 
+export interface PublicProbeScheduleStatus {
+  running: boolean;
+  enabled: boolean;
+  interval_hours: number | null;
+  mode: "normal" | "full" | null;
+  next_run_at: string | null;
+  last_started_at: string | null;
+  error: string | null;
+  evidence_ttl_hours: number;
+}
+
 export interface RetentionConfig {
   cache_days: number;
   observation_days: number;
