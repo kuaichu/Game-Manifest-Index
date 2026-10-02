@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { api, isAbortError } from "../api";
 import { gameActivityTime, gameActivityTitle } from "../game-activity";
 import { gameIcons } from "../game-icons";
+import { groupSiteChangelogByDate, searchSiteChangelog, siteChangelog } from "../site-changelog";
 import type { GameActivityEvent } from "../types";
 
 const props = defineProps<{
@@ -15,6 +16,15 @@ const props = defineProps<{
 const emit = defineEmits<{ (event: "close"): void }>();
 const closeButton = ref<HTMLButtonElement | null>(null);
 const selectedTab = ref<"system" | "data">("system");
+const changelogQuery = ref("");
+const visibleDayCount = ref(3);
+const filteredChangelog = computed(() => searchSiteChangelog(siteChangelog, changelogQuery.value));
+const changelogDays = computed(() => groupSiteChangelogByDate(filteredChangelog.value));
+const visibleChangelogDays = computed(() => changelogDays.value.slice(0, visibleDayCount.value));
+const remainingChangelogDays = computed(() => Math.max(0, changelogDays.value.length - visibleChangelogDays.value.length));
+const remainingChangelogEntries = computed(() => changelogDays.value
+  .slice(visibleChangelogDays.value.length)
+  .reduce((count, day) => count + day.entries.length, 0));
 const activity = ref<GameActivityEvent[]>([]);
 const activityLoading = ref(false);
 const activityError = ref(false);
@@ -90,6 +100,8 @@ watch(
 watch(() => props.open, (open) => {
   if (open) {
     selectedTab.value = props.initialTab;
+    changelogQuery.value = "";
+    visibleDayCount.value = 3;
     previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -99,6 +111,12 @@ watch(() => props.open, (open) => {
     void nextTick(() => previousFocus?.focus());
   }
 });
+
+watch(changelogQuery, () => { visibleDayCount.value = 3; });
+
+function showEarlierChangelog(): void {
+  visibleDayCount.value += 3;
+}
 
 onMounted(() => window.addEventListener("keydown", handleKeydown));
 onUnmounted(() => {
@@ -138,77 +156,34 @@ onUnmounted(() => {
             </button>
           </header>
 
-          <div class="provenance-modal-body changelog-body">
+          <div class="changelog-toolbar">
             <div class="changelog-tabs" role="tablist" aria-label="更新日志类别">
               <button id="changelog-system-tab" type="button" role="tab" :aria-selected="selectedTab === 'system'" aria-controls="changelog-system-panel" @click="selectedTab = 'system'">系统日志</button>
               <button id="changelog-data-tab" type="button" role="tab" :aria-selected="selectedTab === 'data'" aria-controls="changelog-data-panel" @click="selectedTab = 'data'">数据动态</button>
             </div>
+            <label v-if="selectedTab === 'system'" class="changelog-search">
+              <span>搜索系统日志</span>
+              <input v-model="changelogQuery" type="search" placeholder="搜索标题或正文" autocomplete="off" />
+              <button v-if="changelogQuery" type="button" aria-label="清除搜索" @click="changelogQuery = ''">清除</button>
+            </label>
+          </div>
+
+          <div class="provenance-modal-body changelog-body">
 
             <section v-if="selectedTab === 'system'" id="changelog-system-panel" role="tabpanel" aria-labelledby="changelog-system-tab">
-              <div class="changelog-timeline">
-                <article class="changelog-entry">
-                  <time datetime="2026-10-03">2026.10.3</time>
-                  <div>
-                    <h3>修复小窗版本选择栏布局</h3>
-                    <p>修复窄窗口中版本选择框与视图标签重叠、末尾标签被裁切的问题。工具栏按可用宽度自动换行；手机仍可横向滑动切换视图。</p>
-                  </div>
-                </article>
-                <article class="changelog-entry">
-                  <time datetime="2026-10-02">2026.10.2</time>
-                  <div>
-                    <h3>新增 TG 新版本通知</h3>
-                    <p>配置 TG 后，批量和定时探活会先检查官方新版本，发现更新时自动通知；没有新版本时保持静默。单链接和单版本探活只检查指定目标。</p>
-                  </div>
-                </article>
-                <article class="changelog-entry">
-                  <time datetime="2026-10-01">2026.10.1</time>
-                  <div>
-                    <h3>修正鸣潮文件列表总大小</h3>
-                    <p>鸣潮文件列表总大小现按当前版本的完整文件清单计算，避免重复计入补丁。1.X 至 3.7 已收录清单的版本均可显示正确大小。</p>
-                  </div>
-                </article>
-                <article class="changelog-entry">
-                  <time datetime="2026-10-01">2026.10.1</time>
-                  <div>
-                    <h3>更多游戏文件列表显示文件时间</h3>
-                    <p>各游戏文件列表标题旁新增文件时间，显示官方清单或资源包的最后修改时间，统一以北京时间展示。切换资源或语音时同步更新；无法确认时间的历史版本暂不显示。</p>
-                  </div>
-                </article>
-                <article class="changelog-entry">
-                  <time datetime="2026-10-01">2026.10.1</time>
-                  <div>
-                    <h3>异环 PC 资源更新</h3>
-                    <p>异环 PC 资源现可跟随官方配置切换到当前资源分支，继续收录新版本和文件清单。</p>
-                  </div>
-                </article>
-                <article class="changelog-entry">
-                  <time datetime="2026-10-01">2026.10.1</time>
-                  <div>
-                    <h3>补充异环 PC 历史版本</h3>
-                    <p>补充 1.3.14 及 1.4 系列中官方清单可获取的版本，现已收录至 1.4.9，共 70 个版本。支持浏览对应版本的文件清单。</p>
-                  </div>
-                </article>
-                <article class="changelog-entry">
-                  <time datetime="2026-10-01">2026.10.1</time>
-                  <div>
-                    <h3>异环文件列表新增文件时间</h3>
-                    <p>异环文件列表标题旁新增文件时间，显示官方清单文件的最后修改时间，统一以北京时间展示。</p>
-                  </div>
-                </article>
-                <article class="changelog-entry">
-                  <time datetime="2026-09-30">2026.09.30</time>
-                  <div>
-                    <h3>Chunk 下载功能更新</h3>
-                    <p>支持将 Chunk 分块合并下载为完整文件，也可选择游戏资源和语音，直接保存为完整游戏目录。下载时可查看进度或随时取消。游戏目录下载需使用桌面版 Chrome 或 Edge。</p>
-                  </div>
-                </article>
-                <article class="changelog-entry">
-                  <time datetime="2026-09-27">2026.09.27</time>
-                  <div>
-                    <h3>新增《崩坏：因缘精灵》PC 文件清单</h3>
-                    <p>《崩坏：因缘精灵》国服 CBT2 0.60.2 版本的 PC 文件清单现已收录，共 566 个文件。支持按目录浏览和搜索，并可查看文件大小与 MD5 校验信息。</p>
-                  </div>
-                </article>
+              <p class="changelog-result-count" role="status">{{ filteredChangelog.length }} 条记录</p>
+              <p v-if="!filteredChangelog.length" class="changelog-empty" role="status">没有找到匹配的更新日志。<button type="button" @click="changelogQuery = ''">清除搜索</button></p>
+              <div v-else class="changelog-timeline">
+                <section v-for="(day, dayIndex) in visibleChangelogDays" :key="day.date" class="changelog-entry-day">
+                  <h3 class="changelog-date"><time :datetime="day.date">{{ day.date.replaceAll('-', '.') }}</time><span>{{ day.entries.length }} 条记录</span></h3>
+                  <details v-for="(entry, entryIndex) in day.entries" :key="entry.id" class="changelog-entry" :open="dayIndex === 0 && entryIndex === 0 && !changelogQuery.trim()">
+                    <summary><span>{{ entry.title }}</span></summary>
+                    <p>{{ entry.body }}</p>
+                  </details>
+                </section>
+                <button v-if="remainingChangelogDays" class="changelog-more" type="button" @click="showEarlierChangelog">
+                  显示更早记录（还有 {{ remainingChangelogDays }} 天，{{ remainingChangelogEntries }} 条）
+                </button>
               </div>
             </section>
 
@@ -276,14 +251,20 @@ onUnmounted(() => {
   max-width: 680px;
 }
 
+.changelog-toolbar {
+  flex: 0 0 auto;
+  padding: 16px 24px 0;
+}
+
 .changelog-body {
   gap: 0;
+  min-height: 0;
 }
 
 .changelog-tabs {
   display: flex;
   gap: 4px;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
   padding: 4px;
   border: 1px solid rgba(148, 201, 255, 0.12);
   border-radius: 10px;
@@ -310,9 +291,59 @@ onUnmounted(() => {
 }
 
 .changelog-tabs button:focus-visible,
-.changelog-data-head button:focus-visible {
+.changelog-data-head button:focus-visible,
+.changelog-search input:focus-visible,
+.changelog-search button:focus-visible,
+.changelog-entry summary:focus-visible,
+.changelog-more:focus-visible,
+.changelog-empty button:focus-visible {
   outline: 2px solid #38bdf8;
   outline-offset: 2px;
+}
+
+.changelog-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 14px;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.changelog-search span {
+  flex: 0 0 auto;
+}
+
+.changelog-search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 36px;
+  padding: 7px 10px;
+  border: 1px solid rgba(148, 201, 255, 0.18);
+  border-radius: 7px;
+  background: rgba(8, 13, 22, 0.7);
+  color: #e2e8f0;
+  font: inherit;
+}
+
+.changelog-search input::placeholder {
+  color: #64748b;
+}
+
+.changelog-search button,
+.changelog-empty button {
+  padding: 4px 6px;
+  border: 0;
+  background: transparent;
+  color: #38bdf8;
+  font: inherit;
+  cursor: pointer;
+}
+
+.changelog-result-count {
+  margin: 0 0 14px;
+  color: #94a3b8;
+  font-size: 12px;
 }
 
 .changelog-timeline {
@@ -322,26 +353,24 @@ onUnmounted(() => {
 .changelog-timeline::before {
   content: "";
   position: absolute;
-  top: 9px;
-  bottom: 9px;
-  left: 107px;
+  top: 10px;
+  bottom: 10px;
+  left: 4px;
   border-left: 1px dashed rgba(148, 163, 184, 0.17);
   pointer-events: none;
 }
 
-.changelog-entry {
-  display: grid;
-  grid-template-columns: 98px minmax(0, 1fr);
-  gap: 20px;
+.changelog-entry-day {
   position: relative;
-  padding: 0 0 24px;
+  margin-bottom: 22px;
+  padding-left: 20px;
 }
 
-.changelog-entry::before {
+.changelog-entry-day::before {
   content: "";
   position: absolute;
   top: 5px;
-  left: 103px;
+  left: 0;
   width: 7px;
   height: 7px;
   border: 1px solid rgba(56, 189, 248, 0.65);
@@ -350,35 +379,66 @@ onUnmounted(() => {
   box-shadow: 0 0 0 3px #0b111c;
 }
 
-.changelog-entry + .changelog-entry {
-  padding-top: 8px;
-}
-
-.changelog-entry + .changelog-entry::before {
-  top: 13px;
-}
-
-.changelog-entry:last-child {
-  padding-bottom: 0;
-}
-
-.changelog-entry time {
-  padding-top: 3px;
+.changelog-date {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 9px;
   color: #38bdf8;
   font: 700 12px var(--font-mono);
 }
 
-.changelog-entry h3 {
+.changelog-date span {
+  color: #64748b;
+  font: 11px var(--font-sans);
+}
+
+.changelog-date span::after {
+  content: "";
+  display: inline-block;
+  width: 25px;
+  margin-left: 9px;
+  vertical-align: middle;
+  border-top: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.changelog-entry {
   margin: 0 0 8px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 8px;
+  background: rgba(8, 13, 22, 0.35);
+}
+
+.changelog-entry summary {
+  padding: 10px 12px;
   color: #f1f5f9;
   font-size: 15px;
+  font-weight: 650;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  cursor: pointer;
 }
 
 .changelog-entry p {
   margin: 0;
+  padding: 0 12px 12px;
   color: #94a3b8;
   font-size: 13px;
   line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+.changelog-more {
+  width: 100%;
+  min-height: 38px;
+  margin-top: 2px;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 8px;
+  background: rgba(56, 189, 248, 0.06);
+  color: #7dd3fc;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
 }
 
 .changelog-data-head {
@@ -591,18 +651,22 @@ onUnmounted(() => {
 }
 
 @media (max-width: 600px) {
-  .changelog-timeline::before {
-    left: 4px;
+  .changelog-toolbar {
+    padding: 12px 16px 0;
   }
 
-  .changelog-entry {
-    grid-template-columns: 1fr;
-    gap: 7px;
-    padding-left: 20px;
+  .changelog-search {
+    flex-wrap: wrap;
+    gap: 6px 9px;
   }
 
-  .changelog-entry::before {
-    left: 0;
+  .changelog-search input {
+    flex-basis: 100%;
+    order: 1;
+  }
+
+  .changelog-search button {
+    margin-left: auto;
   }
 
   .changelog-event {
