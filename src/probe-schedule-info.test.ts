@@ -28,10 +28,15 @@ describe("probe schedule explanation", () => {
     vi.spyOn(api, "probeScheduleStatus").mockResolvedValue(status);
     const { root } = await mount();
     expect(root.textContent).toContain("每 1 小时检查新版本");
-    expect(root.textContent).toContain("最近任务启动：10/03 00:32");
-    expect(root.textContent).toContain("下次计划：10/03 01:32");
+    expect(root.textContent).toContain("最近任务启动：2026.10.03 00:32");
+    expect(root.textContent).toContain("下次计划：2026.10.03 01:32");
     expect(root.textContent).toContain("全站链接最近实际检测：22:32 (3 小时前)");
     expect(root.textContent).toContain("跳过 20 小时");
+    const help = root.querySelector("details")!;
+    expect(help.open).toBe(false);
+    expect(root.querySelector("summary")?.textContent).toBe("为什么链接检测时间没有变化？");
+    help.open = true;
+    expect(help.querySelector("p")?.textContent).toContain("跳过 20 小时");
     expect(root.textContent).not.toContain("当前资源最近探活");
   });
   it("shows disabled, stopped and failed scheduling without claiming success", async () => {
