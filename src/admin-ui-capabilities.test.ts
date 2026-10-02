@@ -48,5 +48,7 @@ describe("admin UI capability gates", () => {
     expect(probeScheduleNotice).toContain("下一周期生效");
     expect(probeScheduleNotice).toContain("运行繁忙时顺延");
     expect(probeScheduleNotice).toContain("合并为一次补跑");
+    expect(probeScheduleNotice).toContain("仅发送新版本更新");
+    expect(probeScheduleNotice).toContain("仅有异常时保持静默");
   });
 });

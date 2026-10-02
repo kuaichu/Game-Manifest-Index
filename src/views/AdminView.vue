@@ -2277,9 +2277,7 @@ function gameDisplayName(gameId: string): string {
 
 async function executeAdminOperation(): Promise<void> {
   const actions: ("discover" | "probe")[] =
-    opAction.value === "both"
-      ? ["discover", "probe"]
-      : [opAction.value];
+    opAction.value === "discover" ? ["discover"] : ["discover", "probe"];
 
   if (opScope.value === "custom" && opSelectedGameIds.value.length === 0) {
     error.value = "请至少勾选一款游戏，或切换为【全部游戏】模式。";
@@ -2300,7 +2298,7 @@ async function executeAdminOperation(): Promise<void> {
       ? "【查找新版本 + 探活全量】"
       : opAction.value === "discover"
       ? "【仅查找新版本 (discover)】"
-      : "【仅探活历史版本 (probe)】";
+      : "【检查新版本并探活历史版本】";
   const scopeText =
     opScope.value === "all"
       ? `全部 ${catalog.value.games.length || "已注册"} 款游戏`
@@ -4642,7 +4640,7 @@ onBeforeUnmount(() => {
               <div class="card-title-group">
                 <div class="kicker-tag">OPERATIONS CONSOLE</div>
                 <h3>数据采集与版本探活控制台</h3>
-                <p class="card-subtitle">支持单款/多款/全量游戏执行新版本查找与历史版本探活，并实时显示进度</p>
+                <p class="card-subtitle">批量探活会先检查官方新版本；配置 TG 后仅发送新版本更新，无变化时保持静默。单链接和单版本探活只检查指定目标。</p>
               </div>
 
               <!-- 动作模式选择 -->
@@ -4678,8 +4676,8 @@ onBeforeUnmount(() => {
                 >
                   <input v-model="opAction" class="op-radio" type="radio" value="probe" />
                   <div class="op-action-text">
-                    <span class="op-action-title">⚡ 仅探活历史版本 (probe)</span>
-                    <span class="op-action-desc">批量探活所选游戏在本地存储的所有历史版本可用性</span>
+                    <span class="op-action-title">⚡ 探活历史版本（含新版本检查）</span>
+                    <span class="op-action-desc">先查询官方新版本，再探活所选游戏的历史版本与新发现链接</span>
                   </div>
                 </label>
               </div>
