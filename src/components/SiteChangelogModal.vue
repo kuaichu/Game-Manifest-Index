@@ -147,6 +147,20 @@ onUnmounted(() => {
             <section v-if="selectedTab === 'system'" id="changelog-system-panel" role="tabpanel" aria-labelledby="changelog-system-tab">
               <div class="changelog-timeline">
                 <article class="changelog-entry">
+                  <time datetime="2026-10-03">2026.10.3</time>
+                  <div>
+                    <h3>修复小窗版本选择栏布局</h3>
+                    <p>修复窄窗口中版本选择框与视图标签重叠、末尾标签被裁切的问题。工具栏按可用宽度自动换行；手机仍可横向滑动切换视图。</p>
+                  </div>
+                </article>
+                <article class="changelog-entry">
+                  <time datetime="2026-10-02">2026.10.2</time>
+                  <div>
+                    <h3>新增 TG 新版本通知</h3>
+                    <p>配置 TG 后，批量和定时探活会先检查官方新版本，发现更新时自动通知；没有新版本时保持静默。单链接和单版本探活只检查指定目标。</p>
+                  </div>
+                </article>
+                <article class="changelog-entry">
                   <time datetime="2026-10-01">2026.10.1</time>
                   <div>
                     <h3>修正鸣潮文件列表总大小</h3>
