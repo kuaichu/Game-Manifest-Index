@@ -816,9 +816,9 @@ a {
   position: sticky;
   top: 12px;
   z-index: 8;
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   min-height: 72px;
-  grid-template-columns: minmax(180px, 1fr) auto minmax(240px, 1fr);
   align-items: center;
   gap: 20px;
   padding: 12px 20px;
@@ -839,7 +839,8 @@ a {
 }
 
 .mode-field {
-  justify-self: center;
+  flex: 1 1 auto;
+  justify-items: center;
 }
 
 .version-field {
@@ -892,7 +893,7 @@ a {
 .version-picker {
   position: relative;
   display: grid;
-  flex: 0 0 210px;
+  flex: 0 0 auto;
   width: 210px;
   gap: 5px;
   justify-self: start;
@@ -1282,6 +1283,8 @@ a {
 /* --- Mode Tabs --- */
 .mode-tabs {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   max-width: 100%;
   overflow: hidden;
   border: 1px solid var(--line);
@@ -8815,7 +8818,6 @@ a {
     padding: 24px 28px 50px;
   }
   .control-strip {
-    grid-template-columns: 160px minmax(0, 1fr) 260px;
     padding: 10px 16px;
     gap: 14px;
   }
@@ -9031,6 +9033,8 @@ a {
   .mode-tabs {
     width: 100% !important;
     display: flex !important;
+    flex-wrap: nowrap !important;
+    justify-content: flex-start !important;
     gap: 6px !important;
     overflow-x: auto !important;
     overflow-y: hidden !important;
