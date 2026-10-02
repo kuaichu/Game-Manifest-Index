@@ -453,11 +453,13 @@ class OperationManager:
         completed = failed = 0
         try:
             if "discover" in actions:
+                previous_versions_known = True
                 try:
                     previous_versions = _previous_versions(self.data_root, game_ids, scope)
                 except (AdminProbeDataError, OSError, ValueError):
                     LOGGER.warning("Could not read previous versions for activity history")
                     previous_versions = {}
+                    previous_versions_known = False
                 scopes = [scope] if scope != "all" else ["android", "pc"]
                 total = sum(len([game for game in game_ids if game in (DISCOVERERS if part == "android" else PC_DISCOVERERS)]) for part in scopes)
                 self._phase(job_id, "discover", completed, total)
@@ -483,7 +485,8 @@ class OperationManager:
                 safe_items = [_safe_discover_item(item) for item in raw_items]
                 result["discover"] = {"selected": total, "succeeded": sum(item["ok"] for item in safe_items), "failed": sum(not item["ok"] for item in safe_items), "new_versions": sum(item["new"] for item in safe_items), "cancelled": self._cancel.is_set(), "items": safe_items}
                 try:
-                    notification_discover = _notification_discovery(raw_items, result["discover"], previous_versions)
+                    if previous_versions_known:
+                        notification_discover = _notification_discovery(raw_items, result["discover"], previous_versions)
                 except Exception:  # notification preparation must not fail discovery
                     LOGGER.warning("Telegram notification preparation failed: request_error")
                 completed += len(safe_items)
@@ -533,7 +536,9 @@ class OperationManager:
             self._job.pop("_phase_failed", None)
             self._log("任务已取消" if status == "cancelled" else "任务完成" if status == "finished" else "任务失败")
             self._save()
-            notification = deepcopy({"discover": notification_discover if notification_discover is not None else result.get("discover"), "probe": result.get("probe")})
+            # An unavailable notification projection has no verified updates;
+            # the public projection omits archive classification and cannot substitute.
+            notification = deepcopy({"discover": notification_discover, "probe": result.get("probe")})
             started_at, finished_at = self._job["started_at"], self._job["finished_at"]
         try:
             notify_operation(notification, started_at=started_at, finished_at=finished_at, scheduled=scheduled_mode is not None, status=status)

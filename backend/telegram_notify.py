@@ -1,18 +1,23 @@
-"""Best-effort Telegram summaries for discovery and probe operations."""
+"""Best-effort Telegram notifications for newly discovered game versions."""
 
 from __future__ import annotations
 
+import errno
 import json
 import logging
 import os
 import re
-import threading
+import socket
+import ssl
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from collections.abc import Mapping
 from datetime import datetime
 from typing import Any
+
+import certifi
 
 from backend.api_contract import GAME_CATALOG
 
@@ -22,7 +27,8 @@ API_URL = "https://api.telegram.org/bot{token}/{method}"
 REQUEST_TIMEOUT_SECONDS = 10
 MAX_MESSAGE_LENGTH = 3900
 MAX_DETAIL_LINES = 12
-DEFAULT_TRANSIENT_DELETE_SECONDS = 600
+MAX_SEND_ATTEMPTS = 3
+MAX_RETRY_DELAY_SECONDS = 3
 GAME_NAMES = {game_id: name for game_id, name, _sub_name in GAME_CATALOG}
 
 
@@ -67,8 +73,6 @@ def _version_label(item: Mapping[str, Any]) -> str:
     current = _safe_version(item.get("version"))
     if isinstance(previous, str) and previous and isinstance(current, str) and current:
         return f"{previous} -> {current}"
-    if item.get("archived") and isinstance(current, str) and current:
-        return f"新增归档版本 {current}"
     if isinstance(current, str) and current:
         return f"新版本 {current}"
     versions = item.get("versions")
@@ -146,15 +150,17 @@ def build_message(
     result: Mapping[str, Any], *, started_at: object, finished_at: object,
     scheduled: bool, status: str = "finished",
 ) -> tuple[str | None, int | None]:
-    """Return ``(text, delete_after_seconds)`` for one finished operation."""
+    """Return a new-version summary and the reserved deletion value (always None)."""
     discover = result.get("discover")
     discover = discover if isinstance(discover, Mapping) else {}
     probe = result.get("probe")
     probe = probe if isinstance(probe, Mapping) else {}
     updates = [
         item for item in discover.get("items", [])
-        if isinstance(item, Mapping) and item.get("ok") and item.get("new")
+        if isinstance(item, Mapping) and item.get("ok") and item.get("new") and item.get("archived") is not True
     ]
+    if not updates:
+        return None, None
     probe_items = [item for item in probe.get("items", []) if isinstance(item, Mapping)]
     failures = [item for item in probe_items if not item.get("ok")]
     unavailable_items = [item for item in probe_items if item.get("ok") and item.get("available") is False]
@@ -165,67 +171,27 @@ def build_message(
     duration = _duration_label(started_at, finished_at)
     discovery_failed = max(0, int(discover.get("failed", 0) or 0))
 
-    lines: list[str]
-    delete_after: int | None = None
-    if updates:
-        title = "[GMI 资源巡检] 发现新版本" if len(updates) == 1 and not scheduled else "[GMI 资源巡检] 检测到版本更新"
-        if all(item.get("archived") for item in updates):
-            title = "[GMI 资源巡检] 新增归档版本"
-        elif any(item.get("archived") for item in updates):
-            title = "[GMI 资源巡检] 检测到版本更新与归档补录"
-        if failures or failed or unavailable_items or unavailable or discovery_failed or status != "finished":
-            title += "（存在巡检异常）"
-        lines = [title, "", *_limited_lines([_version_line(item) for item in updates])]
-        if failures or unavailable_items:
-            details = [_probe_line(item) for item in failures]
-            details.extend(_unavailable_line(item) for item in unavailable_items)
-            lines.extend(["", "探活异常：", *_limited_lines(details)])
-        if len(updates) == 1 and not scheduled and checked and available == checked:
-            lines.extend(["", f"耗时: {duration} | 探活正常"])
-        elif checked:
-            parts = [f"{available:,} 可用"]
-            if unavailable:
-                parts.append(f"{unavailable:,} 不可用")
-            if unknown:
-                parts.append(f"{unknown:,} 未判定")
-            if failed:
-                parts.append(f"{failed:,} 异常")
-            lines.extend(["", f"耗时: {duration} | 探活: {checked:,} 项 ({' / '.join(parts)})"])
-        else:
-            lines.extend(["", f"耗时: {duration} | 未执行探活"])
-    elif failures or failed or unavailable_items or unavailable:
-        title = "[GMI 巡检异常] 检测到探活失败" if failures or failed else "[GMI 巡检异常] 检测到不可用链接"
-        lines = [title, ""]
+    title = "[GMI 资源巡检] 发现新版本" if len(updates) == 1 and not scheduled else "[GMI 资源巡检] 检测到版本更新"
+    if failures or failed or unavailable_items or unavailable or discovery_failed or status != "finished":
+        title += "（存在巡检异常）"
+    lines = [title, "", *_limited_lines([_version_line(item) for item in updates])]
+    if failures or unavailable_items:
         details = [_probe_line(item) for item in failures]
         details.extend(_unavailable_line(item) for item in unavailable_items)
-        if details:
-            lines.extend(_limited_lines(details))
-        elif failed:
-            lines.append(f"• 探活失败: {failed:,} 项")
-        else:
-            lines.append(f"• 链接不可用: {unavailable:,} 项")
-        counts = [f"总计: {checked:,} 项"]
-        if failed:
-            counts.append(f"失败: {failed:,} 项")
+        lines.extend(["", "探活异常：", *_limited_lines(details)])
+    if len(updates) == 1 and not scheduled and checked and available == checked:
+        lines.extend(["", f"耗时: {duration} | 探活正常"])
+    elif checked:
+        parts = [f"{available:,} 可用"]
         if unavailable:
-            counts.append(f"不可用: {unavailable:,} 项")
-        lines.extend(["", " | ".join(counts)])
-    elif status != "finished" or discovery_failed:
-        lines = ["[GMI 巡检异常] 巡检未全部完成", "", f"耗时: {duration}"]
-    elif scheduled:
-        outcome = (
-            "未执行探活" if not checked else "探活正常" if available == checked
-            else f"探活: {checked:,} 项 ({available:,} 可用 / {unavailable:,} 不可用 / {unknown:,} 未判定)"
-        )
-        lines = [
-            "[GMI 调度心跳] 巡检完成", "",
-            "• 未检测到版本变动", "",
-            f"• 耗时: {duration} | {outcome}", "",
-            "(10 分钟后自动销毁)",
-        ]
-        delete_after = DEFAULT_TRANSIENT_DELETE_SECONDS
+            parts.append(f"{unavailable:,} 不可用")
+        if unknown:
+            parts.append(f"{unknown:,} 未判定")
+        if failed:
+            parts.append(f"{failed:,} 异常")
+        lines.extend(["", f"耗时: {duration} | 探活: {checked:,} 项 ({' / '.join(parts)})"])
     else:
-        return None, None
+        lines.extend(["", f"耗时: {duration} | 未执行探活"])
 
     if discovery_failed:
         lines.extend(["", f"• 官方发现失败: {discovery_failed:,} 项"])
@@ -234,7 +200,42 @@ def build_message(
     text = "\n".join(lines)
     if len(text) > MAX_MESSAGE_LENGTH:
         text = text[: MAX_MESSAGE_LENGTH - 24].rstrip() + "\n...其余内容已省略"
-    return text, delete_after
+    return text, None
+
+
+def _ssl_context() -> ssl.SSLContext:
+    # Retain system and environment trust, supplementing it for Windows Python.
+    context = ssl.create_default_context()
+    context.load_verify_locations(cafile=certifi.where())
+    return context
+
+
+def _retry_delay(error: Exception, attempt: int) -> float | None:
+    """Retry only temporary failures, with a bounded delay and attempt count."""
+    if isinstance(error, urllib.error.HTTPError):
+        if error.code != 429 and not 500 <= error.code < 600:
+            return None
+        if error.code == 429:
+            try:
+                payload = json.loads(error.read(64_000).decode("utf-8", "replace"))
+                retry_after = payload.get("parameters", {}).get("retry_after")
+            except (OSError, ValueError, AttributeError):
+                retry_after = None
+            if isinstance(retry_after, (int, float)) and not isinstance(retry_after, bool):
+                if not 0 <= retry_after <= MAX_RETRY_DELAY_SECONDS:
+                    return None
+                return float(retry_after)
+        return min(attempt, MAX_RETRY_DELAY_SECONDS)
+    reason = error.reason if isinstance(error, urllib.error.URLError) else error
+    # TLS verification errors require configuration repair, not repeated sends.
+    if isinstance(reason, ssl.SSLError):
+        return None
+    if isinstance(reason, (TimeoutError, ConnectionError)) or isinstance(reason, OSError) and reason.errno in {
+        errno.ETIMEDOUT, errno.ECONNRESET, errno.ECONNREFUSED, errno.ECONNABORTED,
+        errno.EHOSTUNREACH, errno.ENETUNREACH, socket.EAI_AGAIN,
+    }:
+        return min(attempt, MAX_RETRY_DELAY_SECONDS)
+    return None
 
 
 def _send_one(token: str, chat_id: str, text: str) -> int | None:
@@ -245,8 +246,19 @@ def _send_one(token: str, chat_id: str, text: str) -> int | None:
         headers={"Content-Type": "application/x-www-form-urlencoded"},
         method="POST",
     )
-    with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
-        payload = json.loads(response.read(64_000).decode("utf-8", "replace"))
+    context = _ssl_context()
+    for attempt in range(1, MAX_SEND_ATTEMPTS + 1):
+        try:
+            with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT_SECONDS, context=context) as response:
+                payload = json.loads(response.read(64_000).decode("utf-8", "replace"))
+            break
+        except Exception as error:
+            delay = _retry_delay(error, attempt) if attempt < MAX_SEND_ATTEMPTS else None
+            if isinstance(error, urllib.error.HTTPError):
+                error.close()
+            if delay is None:
+                raise
+            time.sleep(delay)
     if not isinstance(payload, dict) or payload.get("ok") is not True:
         raise RuntimeError("Telegram sendMessage returned an unsuccessful response")
     message = payload.get("result")
@@ -254,37 +266,12 @@ def _send_one(token: str, chat_id: str, text: str) -> int | None:
     return message_id if isinstance(message_id, int) else None
 
 
-def _delete_one(token: str, chat_id: str, message_id: int) -> None:
-    body = urllib.parse.urlencode({"chat_id": chat_id, "message_id": message_id}).encode("utf-8")
-    request = urllib.request.Request(
-        API_URL.format(token=token, method="deleteMessage"),
-        data=body,
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-        method="POST",
-    )
-    with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
-        payload = json.loads(response.read(64_000).decode("utf-8", "replace"))
-    if not isinstance(payload, dict) or payload.get("ok") is not True:
-        raise RuntimeError("Telegram deleteMessage returned an unsuccessful response")
-
-
-def _delete_later(token: str, chat_id: str, message_id: int, seconds: int) -> None:
-    def worker() -> None:
-        try:
-            time.sleep(seconds)
-            _delete_one(token, chat_id, message_id)
-        except Exception:  # noqa: BLE001 - cleanup is best-effort
-            LOGGER.warning("Telegram transient message deletion failed: %s", "request_error")
-
-    threading.Thread(target=worker, name="gmi-telegram-delete", daemon=True).start()
-
-
 def notify_operation(
     result: Mapping[str, Any], *, started_at: object, finished_at: object,
     scheduled: bool, status: str = "finished", environ: Mapping[str, str] | None = None,
 ) -> list[dict[str, Any]]:
-    """Send one operation summary; missing configuration and failures are non-fatal."""
-    text, delete_after = build_message(
+    """Send new-version updates; missing configuration and failures are non-fatal."""
+    text, _delete_after = build_message(
         result, started_at=started_at, finished_at=finished_at,
         scheduled=scheduled, status=status,
     )
@@ -299,9 +286,7 @@ def notify_operation(
     results: list[dict[str, Any]] = []
     for chat_id in chat_ids:
         try:
-            message_id = _send_one(token, chat_id, text)
-            if delete_after is not None and message_id is not None:
-                _delete_later(token, chat_id, message_id, delete_after)
+            _send_one(token, chat_id, text)
         except Exception:  # noqa: BLE001 - never log token-bearing request/exception text
             LOGGER.warning("Telegram notification failed for configured target: request_error")
             results.append({"chat_id": chat_id, "ok": False})

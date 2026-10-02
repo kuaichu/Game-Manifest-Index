@@ -69,9 +69,7 @@ class OperationNotificationTests(unittest.TestCase):
         item = call.args[0]["discover"]["items"][0]
         self.assertTrue(item["archived"])
         self.assertNotIn("previous_version", item)
-        text, _ = telegram_notify.build_message(call.args[0], started_at="", finished_at="", scheduled=False)
-        self.assertNotIn("7.0.0 -> 6.9.0", text)
-        self.assertIn("新增归档版本", text)
+        self.assertEqual(telegram_notify.build_message(call.args[0], started_at="", finished_at="", scheduled=False), (None, None))
 
     def test_pc_stages_deduplicate_and_keep_distinct_new_versions(self):
         write_v2_record(record("windows", version="7.0.0"), self.data)
@@ -87,6 +85,9 @@ class OperationNotificationTests(unittest.TestCase):
         self.assertEqual([i["version"] for i in items], ["7.1.0", "6.9.0"])
         self.assertEqual(items[0]["previous_version"], "7.0.0")
         self.assertTrue(items[1]["archived"])
+        text, _ = telegram_notify.build_message(call.args[0], started_at="", finished_at="", scheduled=True)
+        self.assertIn("7.0.0 -> 7.1.0", text)
+        self.assertNotIn("6.9.0", text)
         self.assertIsNone(manager.latest()["result"]["discover"]["items"][0]["version"])
         self.assertNotIn("stages", manager.latest()["result"]["discover"]["items"][0])
 
@@ -111,8 +112,8 @@ class OperationNotificationTests(unittest.TestCase):
         call = self.run_job(manager, actions=["discover", "probe"], scheduled_mode="normal")
         self.assertTrue(call.kwargs["scheduled"])
         text, delete_after = telegram_notify.build_message(call.args[0], started_at="", finished_at="", scheduled=True)
-        self.assertIn("调度心跳", text)
-        self.assertEqual(delete_after, 600)
+        self.assertIsNone(text)
+        self.assertIsNone(delete_after)
 
     def test_probe_failure_payload_does_not_contain_exception_text_or_urls(self):
         write_v2_record(record("android"), self.data)
@@ -150,9 +151,23 @@ class OperationNotificationTests(unittest.TestCase):
         self.assertNotIn("TOKEN", str(logs.output))
         self.assertTrue(call.kwargs["scheduled"])
         text, delete_after = telegram_notify.build_message(call.args[0], started_at="", finished_at="", scheduled=True)
-        self.assertIn("新版本 1.0.0", text)
-        self.assertNotIn("未检测到版本变动", text)
+        self.assertIsNone(text)
         self.assertIsNone(delete_after)
+
+    def test_unreadable_previous_version_baseline_does_not_invent_an_update(self):
+        manager = self.manager(lambda *a, **kw: {"items": [{"game_id": "hk4e", "platform": "android", "ok": True, "new": True, "version": "1.0.0"}]})
+        with patch.object(admin_operations, "_previous_versions", side_effect=OSError("private")), self.assertLogs(admin_operations.LOGGER):
+            call = self.run_job(manager)
+        self.assertEqual(manager.latest()["status"], "finished")
+        self.assertEqual(telegram_notify.build_message(call.args[0], started_at="", finished_at="", scheduled=True), (None, None))
+
+    def test_low_level_probe_only_does_not_discover_or_create_updates(self):
+        with patch.object(admin_operations, "discover_games", side_effect=AssertionError("no discovery")) as discovery:
+            manager = self.manager(discovery)
+            call = self.run_job(manager, actions=["probe"])
+        discovery.assert_not_called()
+        self.assertIsNone(call.args[0]["discover"])
+        self.assertEqual(telegram_notify.build_message(call.args[0], started_at="", finished_at="", scheduled=False), (None, None))
 
     def test_failed_notifier_runs_after_save_outside_lock_and_cannot_fail_next_job(self):
         manager = self.manager(lambda *a, **kw: {"items": []})
