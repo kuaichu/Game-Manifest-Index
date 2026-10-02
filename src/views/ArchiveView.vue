@@ -95,6 +95,7 @@ const browserFileTime = ref<FileTimeChange | null>(null);
 let manifestSizeController: AbortController | null = null;
 let manifestSizeGeneration = 0;
 const globalProbeTime = ref<string | null>(null);
+const probeTimeClock = ref(Date.now());
 const globalProbeLoaded = ref(false);
 let globalProbeController: AbortController | null = null;
 const chunkCollection = ref<ChunkManifestSummaryItem[]>([]);
@@ -888,7 +889,7 @@ const syncTimeText = computed(() => {
     : latestLiveProbeTime(footerProbeArtifacts.value) || remoteTreeProbeTime.value;
   if (!time) return "";
   const formatted = formatObservedDate(time);
-  const rel = formatRelativeTime(time);
+  const rel = formatRelativeTime(time, probeTimeClock.value);
   return rel ? `${formatted} (${rel})` : formatted;
 });
 const currentVersionApiUrl = computed(() => {
@@ -1191,6 +1192,7 @@ function onAvailabilityInvalidated(): void {
 }
 
 async function loadGlobalProbeTime(): Promise<void> {
+  probeTimeClock.value = Date.now();
   globalProbeController?.abort();
   const controller = new AbortController();
   globalProbeController = controller;
@@ -1292,10 +1294,10 @@ function formatDate(value?: string | null): string {
     }, {});
   return `${parts.year}.${parts.month}.${parts.day} ${parts.hour}:${parts.minute}`;
 }
-function formatRelativeTime(value?: string | null): string {
+function formatRelativeTime(value?: string | null, now = Date.now()): string {
   const date = observedDate(value);
   if (!date) return "-";
-  const seconds = Math.max(0, Math.round((Date.now() - date.getTime()) / 1000));
+  const seconds = Math.max(0, Math.round((now - date.getTime()) / 1000));
   if (seconds < 60) return "刚刚";
   const minutes = Math.round(seconds / 60);
   if (minutes < 60) return `${minutes} 分钟前`;
