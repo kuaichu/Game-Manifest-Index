@@ -183,6 +183,62 @@ class SchedulerTests(unittest.TestCase):
 
 
 class SchedulerAppTests(unittest.TestCase):
+    def test_public_schedule_status_is_unauthenticated_and_admin_status_stays_private(self):
+        with tempfile.TemporaryDirectory() as temp:
+            data, state = Path(temp) / "data", Path(temp) / "state"
+            data.mkdir()
+            store = AdminStateStore(state)
+            store.write_schedule("probe", {"enabled": True, "interval_hours": 6, "mode": "full"})
+            now = datetime(2026, 9, 14, tzinfo=timezone.utc)
+            app = create_app(data, state_root=state, admin_token="fixture-token",
+                             clock=lambda: now, scheduler_timer=ManualTimer())
+            with TestClient(app) as client:
+                response = client.get("/api/v1/probe/schedule-status")
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.json(), {
+                    "running": True, "enabled": True, "interval_hours": 6, "mode": "full",
+                    "next_run_at": "2026-09-14T06:00:00Z", "last_started_at": None,
+                    "error": None, "evidence_ttl_hours": 20,
+                })
+                self.assertEqual(client.get("/api/v1/admin/probe/scheduler").status_code, 401)
+
+    def test_public_schedule_status_reports_disabled_and_unauthorized_runtime(self):
+        with tempfile.TemporaryDirectory() as temp:
+            data, state = Path(temp) / "data", Path(temp) / "state"
+            data.mkdir()
+            app = create_app(data, state_root=state, admin_token=None,
+                             scheduler_timer=ManualTimer())
+            with TestClient(app) as client:
+                response = client.get("/api/v1/probe/schedule-status")
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.json(), {
+                    "running": False, "enabled": False, "interval_hours": 24, "mode": "normal",
+                    "next_run_at": None, "last_started_at": None,
+                    "error": None, "evidence_ttl_hours": 20,
+                })
+
+    def test_public_schedule_status_sanitizes_invalid_runtime_state(self):
+        with tempfile.TemporaryDirectory() as temp:
+            data, state = Path(temp) / "data", Path(temp) / "state"
+            data.mkdir()
+            store = AdminStateStore(state)
+            store.write_schedule("probe", {"enabled": True, "interval_hours": 2, "mode": "normal"})
+            store.write("probe_scheduler", {"private detail": "sensitive value"})
+            app = create_app(data, state_root=state, admin_token="fixture-token",
+                             clock=lambda: datetime(2026, 9, 14, tzinfo=timezone.utc),
+                             scheduler_timer=ManualTimer())
+            with self.assertLogs("backend.probe_scheduler", level="ERROR") as logs:
+                with TestClient(app) as client:
+                    response = client.get("/api/v1/probe/schedule-status")
+                    self.assertEqual(response.status_code, 200)
+                    self.assertEqual(response.json(), {
+                        "running": True, "enabled": True, "interval_hours": 2, "mode": "normal",
+                        "next_run_at": None, "last_started_at": None,
+                        "error": "scheduler_state_invalid", "evidence_ttl_hours": 20,
+                    })
+                    self.assertNotIn("sensitive value", response.text)
+            self.assertNotIn("sensitive value", str(logs.output))
+
     def test_lifespan_authenticated_save_and_due_probe_without_manual_post(self):
         with tempfile.TemporaryDirectory() as temp:
             data, state = Path(temp) / "data", Path(temp) / "state"

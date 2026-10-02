@@ -4827,10 +4827,10 @@ onBeforeUnmount(() => {
                   内置探活计时器：<strong>{{ !probeSchedulerStatus ? '状态未知' : probeSchedulerStatus.running ? '运行中' : '已停止' }}</strong>
                 </div>
                 <div v-if="probeSchedulerStatus?.next_run_at">
-                  下次探活：{{ formatSyncTime(probeSchedulerStatus.next_run_at) || '时间无效' }}
+                  下次任务计划：{{ formatSyncTime(probeSchedulerStatus.next_run_at) || '时间无效' }}
                 </div>
                 <div v-if="probeSchedulerStatus?.last_started_at">
-                  最近触发：{{ formatSyncTime(probeSchedulerStatus.last_started_at) || '时间无效' }}
+                  最近任务启动：{{ formatSyncTime(probeSchedulerStatus.last_started_at) || '时间无效' }}
                   <span v-if="probeSchedulerStatus.last_job_id"> · 任务 {{ probeSchedulerStatus.last_job_id }}</span>
                 </div>
                 <div v-if="probeSchedulerStatus?.error" class="text-danger">错误：{{ probeSchedulerStatus.error }}</div>

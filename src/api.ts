@@ -23,6 +23,7 @@ import type {
   ManualVersionPayload,
   ProbeSchedule,
   ProbeSchedulerStatus,
+  PublicProbeScheduleStatus,
   ProbeStatus,
   ProbeUrlResult,
   VersionRecord,
@@ -159,6 +160,7 @@ function versionIndexSummary(item: VersionIndexItem, index: number): VersionSumm
 export const api = {
   games: (signal?: AbortSignal) => requestJson<Game[]>("/games", signal),
   latestProbeTime: (signal?: AbortSignal) => requestJson<LatestProbeTime>("/probe/latest", signal),
+  probeScheduleStatus: (signal?: AbortSignal) => requestJson<PublicProbeScheduleStatus>("/probe/schedule-status", signal),
   activity: (signal?: AbortSignal) =>
     requestJson<{ items: GameActivityEvent[] }>("/activity?limit=20", signal),
   gameActivity: (gameId: string, signal?: AbortSignal) =>
