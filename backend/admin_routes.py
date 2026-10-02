@@ -322,6 +322,8 @@ def create_admin_router(
     @router.post("/operations/start", dependencies=protected)
     def start_operation(payload: OperationPayload) -> dict[str, Any]:
         actions, games = operation_targets(payload)
+        if actions == ["probe"]:
+            actions = ["discover", "probe"]
         try:
             return operations.start(actions, games, payload.scope, payload.timeout, payload.workers)
         except RuntimeError:

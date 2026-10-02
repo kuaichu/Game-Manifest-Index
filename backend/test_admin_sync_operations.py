@@ -20,6 +20,7 @@ from backend.indexes import rebuild_index
 from backend.schema_v2 import artifact_id, validate_v2_record
 from backend.version_store import write_v2_record
 from probe_adapters.service import apply_result
+from url_adapters.service import DISCOVERERS, PC_DISCOVERERS
 
 
 TOKEN = "correct-admin-token-123456"
@@ -65,8 +66,23 @@ def fake_probe(url: str, **kwargs):
     }
 
 
+def fake_discovery(game_ids, root, timeout, workers, **kwargs):
+    scope = kwargs["scope"]
+    registry = DISCOVERERS if scope == "android" else PC_DISCOVERERS
+    items = [{"game_id": game, "platform": "android" if scope == "android" else "windows",
+              "ok": True, "new": False, "version": None, "status": "finished"}
+             for game in game_ids if game in registry]
+    for done, item in enumerate(items, 1):
+        kwargs["progress"](item, done, len(items))
+    return {"selected": len(items), "succeeded": len(items), "failed": 0,
+            "new_versions": 0, "items": items, "cancelled": kwargs["cancelled"]()}
+
+
 class AdminFixture(unittest.TestCase):
     def setUp(self):
+        env = patch.dict(os.environ, {"GMI_TELEGRAM_BOT_TOKEN": "", "GMI_TELEGRAM_CHAT_ID": ""})
+        env.start()
+        self.addCleanup(env.stop)
         self.temp = tempfile.TemporaryDirectory()
         base = Path(self.temp.name)
         self.data = base / "data"
@@ -81,7 +97,10 @@ class AdminFixture(unittest.TestCase):
 
     def client(self, token=TOKEN, **kwargs):
         kwargs.setdefault("probe_fn", fake_probe)
-        return TestClient(create_app(self.data, state_root=self.state, admin_token=token, **kwargs))
+        kwargs.setdefault("discovery", fake_discovery)
+        client = TestClient(create_app(self.data, state_root=self.state, admin_token=token, **kwargs))
+        self.addCleanup(client.app.state.admin_operations.shutdown, 2)
+        return client
 
     @staticmethod
     def auth(token=TOKEN):
@@ -436,6 +455,46 @@ class ProbeTests(AdminFixture):
 
 
 class OperationTests(AdminFixture):
+    def test_bulk_probe_discovers_once_before_probing_with_original_selection(self):
+        events = []
+        new_url = "https://autopatchcn.yuanshen.com/game-2.apk"
+        def discovery(game_ids, root, timeout, workers, **kwargs):
+            events.append(("discover", list(game_ids), kwargs["scope"], timeout, workers))
+            write_v2_record(record("android", version="2.0.0", artifacts=[artifact("game-2.apk", [new_url])]), root)
+            item = {"game_id": "hk4e", "platform": "android", "ok": True, "new": True, "version": "2.0.0"}
+            kwargs["progress"](item, 1, 1)
+            return {"items": [item]}
+        def probing(url, **kwargs):
+            events.append(("probe", url))
+            return fake_probe(url, **kwargs)
+        client = self.client(discovery=discovery, probe_fn=probing)
+        for actions in (["probe"], ["discover", "probe"]):
+            events.clear()
+            started = client.post("/api/v1/admin/operations/start", headers=self.auth(), json={
+                "actions": actions, "game_ids": ["hk4e"], "all_games": False,
+                "scope": "android", "timeout": 7, "workers": 3,
+            })
+            self.assertEqual(started.status_code, 200)
+            finished = self.wait(client, started.json()["job_id"])
+            self.assertTrue(client.app.state.admin_operations.shutdown(2))
+            self.assertEqual(finished["actions"], ["discover", "probe"])
+            self.assertEqual(events[0], ("discover", ["hk4e"], "android", 7, 3))
+            self.assertEqual(sum(event[0] == "discover" for event in events), 1)
+            self.assertIn(("probe", new_url), events)
+            self.assertEqual(finished["result"]["probe"]["checked"], 2)
+
+    def test_single_url_url_many_and_version_probe_do_not_discover_or_notify(self):
+        with patch("backend.admin_operations.discover_games", side_effect=AssertionError("no discovery")) as discovery, patch("backend.admin_operations.notify_operation") as notify:
+            client = self.client(discovery=discovery)
+            url = self.android["artifacts"][0]["urls"][0]["url"]
+            for path, payload in (("/api/v1/admin/probe/url", {"url": url}),
+                                  ("/api/v1/admin/probe/urls", {"urls": [url]}),
+                                  ("/api/v1/admin/domains/hk4e-android/versions/1.0.0/probe", None)):
+                response = client.post(path, headers=self.auth(), json=payload)
+                self.assertEqual(response.status_code, 200)
+            discovery.assert_not_called()
+            notify.assert_not_called()
+
     def test_endfield_probe_operations_count_archives_and_preserve_resources(self):
         package = artifact("game.zip.001", ["https://beyond.hycdn.cn/release/game.zip.001"], kind="package")
         patch_archive = artifact("patch.zip.001", ["https://beyond.hycdn.cn/release/patch.zip.001"], kind="patch")
@@ -467,9 +526,10 @@ class OperationTests(AdminFixture):
         })
         self.assertEqual(started.status_code, 200)
         finished = self.wait(client, started.json()["job_id"])
-        self.assertEqual(started.json()["total"], 2)
+        self.assertEqual(started.json()["actions"], ["discover", "probe"])
+        self.assertEqual(started.json()["total"], 3)
         self.assertEqual(finished["status"], "finished")
-        self.assertEqual((finished["completed"], finished["failed"]), (2, 0))
+        self.assertEqual((finished["completed"], finished["failed"]), (3, 0))
         self.assertEqual(calls, [package["urls"][0]["url"], patch_archive["urls"][0]["url"]])
         calls.clear()
         response = client.post("/api/v1/admin/domains/endfield-resources/versions/1.0.0/probe", headers=self.auth())

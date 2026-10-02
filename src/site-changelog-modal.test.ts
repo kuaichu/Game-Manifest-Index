@@ -4,6 +4,20 @@ import { api } from "./api";
 import SiteChangelogModal from "./components/SiteChangelogModal.vue";
 import type { GameActivityEvent } from "./types";
 
+vi.mock("./site-changelog", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./site-changelog")>();
+  return {
+    ...actual,
+    siteChangelog: [
+      { id: "2026-10-03-newest", date: "2026-10-03", title: "最新系统更新", body: "系统日志记录：最近的布局调整。" },
+      { id: "2026-10-03-same-day", date: "2026-10-03", title: "同日系统更新", body: "系统日志记录：同日的第二条。" },
+      { id: "2026-10-02-middle", date: "2026-10-02", title: "中间系统更新", body: "系统日志记录：中间日期。" },
+      { id: "2026-10-01-oldest-visible", date: "2026-10-01", title: "较早系统更新", body: "系统日志记录：默认可见的第三天。" },
+      { id: "2026-09-27-historical", date: "2026-09-27", title: "新增《崩坏：因缘精灵》PC 文件清单", body: "系统日志记录：《崩坏：因缘精灵》PC 文件清单现已收录，共 566 个文件。" },
+    ],
+  };
+});
+
 afterEach(() => {
   vi.restoreAllMocks();
   document.body.innerHTML = "";
@@ -19,6 +33,10 @@ describe("site changelog", () => {
     ];
     vi.spyOn(api, "activity").mockResolvedValue({ items: events });
     const root = document.createElement("div");
+    const opener = document.createElement("button");
+    opener.textContent = "打开更新日志";
+    document.body.appendChild(opener);
+    opener.focus();
     document.body.appendChild(root);
     const app = createApp({
       setup: () => () => h(SiteChangelogModal, {
@@ -32,12 +50,54 @@ describe("site changelog", () => {
     app.mount(root);
     open.value = true;
     await nextTick();
+    await nextTick();
 
     const dialog = document.querySelector('[role="dialog"]');
+    expect(document.activeElement).toBe(document.querySelector(".modal-close-btn"));
     expect(dialog?.textContent).toContain("PROJECT & GAME UPDATES");
-    expect(dialog?.textContent).toContain("2026.09.27");
+    expect(dialog?.textContent).not.toContain("2026.09.27");
     expect(dialog?.textContent).not.toContain("原神更新至");
     expect(dialog?.querySelector(".changelog-timeline .changelog-entry")).not.toBeNull();
+    expect(dialog?.querySelectorAll(".changelog-entry-day")).toHaveLength(3);
+    expect(dialog?.querySelectorAll(".changelog-date time[datetime='2026-10-03']")).toHaveLength(1);
+    expect(dialog?.querySelector(".changelog-date")?.textContent).toContain("2 条记录");
+    expect(dialog?.querySelector(".changelog-entry[open] summary")?.textContent).toContain("最新系统更新");
+
+    const search = dialog?.querySelector<HTMLInputElement>(".changelog-search input");
+    expect(search?.getAttribute("type")).toBe("search");
+    search!.value = "系统日志";
+    search!.dispatchEvent(new Event("input", { bubbles: true }));
+    await nextTick();
+    expect(dialog?.querySelector(".changelog-result-count")?.textContent).toBe("5 条记录");
+    expect(dialog?.querySelectorAll(".changelog-entry-day")).toHaveLength(3);
+    expect(dialog?.textContent).not.toContain("2026.09.27");
+    (dialog?.querySelector(".changelog-more") as HTMLButtonElement).click();
+    await nextTick();
+    expect(dialog?.textContent).toContain("2026.09.27");
+
+    search!.value = "566 个文件";
+    search!.dispatchEvent(new Event("input", { bubbles: true }));
+    await nextTick();
+    expect(dialog?.querySelector(".changelog-result-count")?.textContent).toBe("1 条记录");
+    expect(dialog?.textContent).toContain("崩坏：因缘精灵");
+    expect(dialog?.querySelector(".changelog-entry-day time")?.getAttribute("datetime")).toBe("2026-09-27");
+    const historicalDetail = dialog?.querySelector<HTMLDetailsElement>(".changelog-entry");
+    expect(historicalDetail?.open).toBe(false);
+    historicalDetail?.querySelector("summary")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(historicalDetail?.open).toBe(true);
+    expect(dialog?.querySelector(".changelog-search button")?.getAttribute("aria-label")).toBe("清除搜索");
+    search!.value = "no matching entry";
+    search!.dispatchEvent(new Event("input", { bubbles: true }));
+    await nextTick();
+    expect(dialog?.querySelector(".changelog-result-count")?.textContent).toBe("0 条记录");
+    expect(dialog?.querySelector(".changelog-empty")?.textContent).toContain("没有找到匹配的更新日志");
+    (dialog?.querySelector(".changelog-empty button") as HTMLButtonElement).click();
+    await nextTick();
+    expect(dialog?.querySelectorAll(".changelog-entry-day")).toHaveLength(3);
+
+    (dialog?.querySelector(".changelog-more") as HTMLButtonElement).click();
+    await nextTick();
+    expect(dialog?.textContent).toContain("2026.09.27");
 
     (document.getElementById("changelog-data-tab") as HTMLButtonElement).click();
     await Promise.resolve();
@@ -50,9 +110,26 @@ describe("site changelog", () => {
     expect(rows?.[1].querySelector(".is-unavailable")?.textContent).toBe("探活确认不可用");
     expect(dialog?.textContent).not.toContain("崩坏：因缘精灵");
 
+    (document.getElementById("changelog-system-tab") as HTMLButtonElement).click();
+    await nextTick();
+    const queryBeforeClose = document.querySelector<HTMLInputElement>(".changelog-search input")!;
+    queryBeforeClose.value = "566 个文件";
+    queryBeforeClose.dispatchEvent(new Event("input", { bubbles: true }));
+    await nextTick();
+
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
     await nextTick();
+    await nextTick();
     expect(open.value).toBe(false);
+    expect(document.activeElement).toBe(opener);
+    open.value = true;
+    await nextTick();
+    await nextTick();
+    const reopenedDialog = document.querySelector('[role="dialog"]');
+    expect(document.querySelector<HTMLInputElement>(".changelog-search input")?.value).toBe("");
+    expect(reopenedDialog?.querySelectorAll(".changelog-entry-day")).toHaveLength(3);
+    expect(reopenedDialog?.textContent).not.toContain("2026.09.27");
+    expect(reopenedDialog?.querySelector(".changelog-entry[open] summary")?.textContent).toContain("最新系统更新");
     app.unmount();
   });
 

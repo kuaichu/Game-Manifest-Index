@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.concurrency import run_in_threadpool
 
 from backend.admin_routes import create_admin_router
-from backend.api_contract import create_api_app
+from backend.api_contract import PROBE_EVIDENCE_TTL, create_api_app
 from backend.probe_scheduler import ProbeScheduler, TimerAdapter
 from probe_adapters.service import apply_result, probe
 from url_adapters.service import discover_games
@@ -63,6 +63,41 @@ def create_app(
         **({"clock": clock} if clock is not None else {}),
     )
     app.state.probe_scheduler = scheduler
+
+    @app.get("/api/v1/probe/schedule-status")
+    def public_probe_schedule_status() -> dict[str, Any]:
+        """Expose sanitized scheduler state separately from URL probe evidence."""
+        live = scheduler.status()
+        result: dict[str, Any] = {
+            "running": live.get("running") is True,
+            "enabled": False,
+            "interval_hours": None,
+            "mode": None,
+            "next_run_at": live.get("next_run_at") if isinstance(live.get("next_run_at"), str) else None,
+            "last_started_at": live.get("last_started_at") if isinstance(live.get("last_started_at"), str) else None,
+            "error": None,
+            "evidence_ttl_hours": int(PROBE_EVIDENCE_TTL.total_seconds() // 3600),
+        }
+        try:
+            schedule = store.schedules()["probe"]
+            result.update(
+                enabled=schedule["enabled"],
+                interval_hours=schedule["interval_hours"],
+                mode=schedule["mode"],
+            )
+        except Exception:
+            # Public status must not leak state paths or exception details.
+            result["error"] = "scheduler_state_invalid"
+
+        scheduler_error = live.get("error")
+        if result["error"] is None and isinstance(scheduler_error, str) and scheduler_error in {
+            "scheduler_state_invalid", "scheduler_tick_failed", "scheduled_probe_start_failed",
+        }:
+            result["error"] = scheduler_error
+        elif result["error"] is None and scheduler_error is not None:
+            result["error"] = "scheduler_status_unavailable"
+        return result
+
     original_lifespan = app.router.lifespan_context
 
     @asynccontextmanager

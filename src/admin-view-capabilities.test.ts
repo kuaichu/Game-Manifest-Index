@@ -483,12 +483,37 @@ describe("AdminView capability alignment", () => {
     expect(root.textContent).toContain("这里只保存每日采集计划参数");
     expect(root.textContent).toContain("时区、漏跑策略及采集动作由外部计划任务决定");
     expect(root.textContent).toContain("内置探活计时器：运行中");
-    expect(root.textContent).toContain("下次探活：");
+    expect(root.textContent).toContain("下次任务计划：");
+    expect(root.textContent).toContain("最近任务启动：");
     expect(root.textContent).toContain("内置计时器先从官方来源采集新 URL");
-    expect(root.textContent).toContain("Android+PC 已收录的官方与历史 URL");
+    expect(root.textContent).toContain("Android+PC 新发现或上次探活可用的官方与历史 URL");
+    expect(root.textContent).toContain("仅发送新版本更新");
     expect(root.textContent).toContain("启动新的间隔周期");
     expect(root.textContent).not.toContain("北京时间");
     expect(adminApi.probeScheduler).toHaveBeenCalled();
+    app.unmount();
+  });
+
+  it("checks official updates before a batch probe selected in the console", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    vi.spyOn(adminApi, "latestOperation").mockRejectedValue(new Error("no previous operation"));
+    const start = vi.spyOn(adminApi, "startOperation").mockResolvedValue(operationJob({
+      status: "running", phase: "discover", actions: ["discover", "probe"],
+      result: null, finished_at: null,
+    }) as never);
+    const { app, root } = await mountAdmin("android");
+    buttonByText(root, "监控").click();
+    await flushUpdates();
+    const probeOption = root.querySelector<HTMLInputElement>('input[type="radio"][value="probe"]');
+    expect(probeOption).not.toBeNull();
+    probeOption!.click();
+    await flushUpdates();
+    buttonByText(root, "启动运维任务").click();
+    await flushUpdates();
+    expect(start).toHaveBeenCalledWith(expect.objectContaining({
+      actions: ["discover", "probe"], scope: "all", all_games: true,
+    }), "test-admin-token", expect.any(AbortSignal));
+    expect(root.textContent).toContain("仅发送新版本更新");
     app.unmount();
   });
 
