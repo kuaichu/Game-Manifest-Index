@@ -16,6 +16,25 @@ from probe_adapters.service import probe
 
 
 class PCAdapterTests(unittest.TestCase):
+    def test_endfield_signed_queries_only_on_official_archives(self):
+        archive = ("https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.5/update/1/1/Windows/"
+                   "1.5.3_testToken/packs/Beyond_Release_official.zip.001")
+        auth = "auth_key=1790964096-" + "a" * 32 + "-0-" + "b" * 32
+        self.assertTrue(hypergryph_endfield.matches("hypergryph", "endfield", archive + "?" + auth))
+        self.assertEqual(adapter_for("hypergryph", "endfield", archive + "?" + auth, platform="windows").NAME,
+                         "hypergryph_endfield_pc")
+        invalid = ["auth_key=secret", auth + "&other=1", auth + "&" + auth, auth + "%26",
+                   auth.replace("-0-", "--"), auth.replace("auth_key", "auth%5Fkey")]
+        for query in invalid:
+            with self.subTest(query=query):
+                self.assertFalse(hypergryph_endfield.matches("hypergryph", "endfield", archive + "?" + query))
+        resource = ("https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.0/resource/Windows/initial/"
+                    "5793042-32_testToken/files/VFS/07A1BB91/872C74CD14DB0F9D81789B343A26C123.chk")
+        mirror = ("https://github.com/AetherArchive/beyond-hg-archive/releases/download/tag/"
+                  "Beyond_Release_official.zip.001")
+        for url in (resource, mirror):
+            self.assertFalse(hypergryph_endfield.matches("hypergryph", "endfield", url + "?" + auth))
+
     def test_endfield_official_mirror_patch_and_resource_urls(self):
         urls = (
             "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.0/update/1/1/Windows/"
