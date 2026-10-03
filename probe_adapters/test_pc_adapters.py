@@ -16,6 +16,67 @@ from probe_adapters.service import probe
 
 
 class PCAdapterTests(unittest.TestCase):
+    def test_endfield_oss_dispatches_packages_and_historical_patch_shapes(self):
+        base = ("https://beyond-prod.oss-cn-shanghai.aliyuncs.com/6LL0KJuqHBVz33WK/"
+                "1.5/update/1/1/Windows/1.5.3_testToken/")
+        paths = [
+            "packs/Beyond_Release_official.zip.001",
+            "patches/1.5.2/Beyond_Release_official_1_5_2.zip.002",
+            "patches/testToken/1.5.2/v3/tm8rLW5hjS6wSihE_1_5_3_1_5_2.zip.001",
+        ]
+        for path in paths:
+            for identity in (("hypergryph", "endfield"), (None, None)):
+                with self.subTest(path=path, identity=identity):
+                    self.assertEqual(adapter_for(*identity, base + path, platform="windows").NAME,
+                                     "hypergryph_endfield_pc")
+                    self.assertEqual(adapter_for(*identity, base + path).NAME,
+                                     "hypergryph_endfield_pc")
+
+    def test_endfield_oss_rejects_unsafe_wrong_game_apk_and_runtime_paths(self):
+        archive = ("https://beyond-prod.oss-cn-shanghai.aliyuncs.com/6LL0KJuqHBVz33WK/"
+                   "1.5/update/1/1/Windows/1.5.3_testToken/packs/Beyond_Release_official.zip.001")
+        auth = "auth_key=1790964096-" + "a" * 32 + "-0-" + "b" * 32
+        invalid = [
+            archive + "?" + auth, archive + "?", archive + "#fragment", archive + "#",
+            archive.replace("https://", "http://"), archive.replace("https://", "https://u:p@"),
+            archive.replace(".com/", ".com:444/"),
+            archive.replace(".com/", ".com.evil.example/"),
+            archive.replace("/6LL0KJuqHBVz33WK/", "/GzD1CpaWgmSq1wew/"),
+            archive.replace("/Windows/", "/Android/"), archive.replace(".zip.001", ".apk"),
+            archive.replace("/packs/", "/packs/../"), archive.replace("/packs/", "/packs/%2e%2e/"),
+            archive.replace("/packs/", "/patches/../"), archive.replace("/packs/", "/patches/./"),
+            archive.replace("/packs/", "/packs/\n"), archive + "\x7f",
+        ]
+        resource_base = ("https://beyond-prod.oss-cn-shanghai.aliyuncs.com/6LL0KJuqHBVz33WK/"
+                         "1.0/resource/Windows/initial/5793042-32_testToken/files/VFS/07A1BB91/")
+        invalid.extend(resource_base + name for name in ("872C74CD14DB0F9D81789B343A26C123.chk", "07A1BB91.blc"))
+        for url in invalid:
+            with self.subTest(url=url), patch("probe_adapters.service.probe_url") as transport:
+                self.assertFalse(hypergryph_endfield.matches("hypergryph", "endfield", url))
+                with self.assertRaises(ProbeError):
+                    probe(url, vendor="hypergryph", game_id="endfield", platform="windows")
+                transport.assert_not_called()
+        for vendor, game in (("mihoyo", "endfield"), ("hypergryph", "arknights")):
+            self.assertFalse(hypergryph_endfield.matches(vendor, game, archive))
+
+    def test_endfield_oss_probe_uses_size_and_keeps_multipart_etag_separate_from_md5(self):
+        base = ("https://beyond-prod.oss-cn-shanghai.aliyuncs.com/6LL0KJuqHBVz33WK/"
+                "1.5/update/1/1/Windows/1.5.3_testToken/packs/Beyond_Release_official.zip.")
+        etag = "a" * 32 + "-200"
+        for suffix, prefix in (("001", b"PK\x03\x04"), ("002", b"")):
+            for size, expected in ((123, True), (122, suffix == "001")):
+                url = base + suffix
+                with self.subTest(suffix=suffix, size=size), patch(
+                    "probe_adapters.service.probe_url",
+                    return_value=(206, {"content-range": f"bytes 0-3/{size}", "etag": '"' + etag + '"'}, url, prefix),
+                ):
+                    result = probe(url, vendor="hypergryph", game_id="endfield", platform="windows", expected_size=123)
+                self.assertEqual(result["adapter"], "hypergryph_endfield_pc")
+                self.assertEqual(result["available"], expected)
+                self.assertEqual(result["observed_size"], size)
+                self.assertEqual(result["etag"], etag)
+                self.assertIsNone(result["md5"])
+
     def test_endfield_signed_queries_only_on_official_archives(self):
         archive = ("https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.5/update/1/1/Windows/"
                    "1.5.3_testToken/packs/Beyond_Release_official.zip.001")

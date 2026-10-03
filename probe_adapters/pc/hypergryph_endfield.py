@@ -32,6 +32,8 @@ _AUTH_QUERY = re.compile(r"auth_key=[0-9]{10}-[0-9a-fA-F]{32}-[0-9]+-[0-9a-fA-F]
 
 
 def matches(vendor: str | None, game_id: str | None, url: str) -> bool:
+    if any(ord(char) <= 32 or ord(char) == 127 for char in url):
+        return False
     try:
         parsed = urlsplit(url)
         port = parsed.port
@@ -55,6 +57,11 @@ def matches(vendor: str | None, game_id: str | None, url: str) -> bool:
             _OFFICIAL_ARCHIVE_PATH.fullmatch(parsed.path)
             or _OFFICIAL_RESOURCE_PATH.fullmatch(parsed.path)
         )
+    if parsed.hostname == "beyond-prod.oss-cn-shanghai.aliyuncs.com":
+        return ("?" not in url and "#" not in url
+                and parsed.path.startswith("/6LL0KJuqHBVz33WK/")
+                and all(segment not in {".", ".."} for segment in parsed.path.split("/"))
+                and _OFFICIAL_ARCHIVE_PATH.fullmatch(parsed.path) is not None)
     return (not parsed.query and parsed.hostname == "github.com"
             and _MIRROR_PATH.fullmatch(parsed.path) is not None)
 
