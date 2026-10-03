@@ -6,3 +6,7 @@ __pycache__/
 .pytest_cache/
 .cache/
 data/.cache/
+GMI_V5_global_handoff.md
+PROJECT_STATUS.md
+AGENTS.md
+BRANCHING.md
