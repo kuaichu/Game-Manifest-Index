@@ -4,6 +4,7 @@ import unittest
 from copy import deepcopy
 from pathlib import Path
 from unittest.mock import patch
+from urllib.parse import urlsplit
 
 from backend.schema_v2 import artifact_id, validate_v2_record
 from backend.version_store import persist_v2_record
@@ -54,6 +55,13 @@ class HypergryphPackageTests(unittest.TestCase):
                     self.assertNotIn("current", artifact["urls"][0])
                     self.assertEqual(artifact["kind"], "package")
                     self.assertEqual(artifact["source"]["source_url"], hg.SOURCE_URL)
+                    original_url = packs(collection)[artifact["part"] - 1]["url"]
+                    expected_url = (f"https://{hg.ENDFIELD_OSS_HOST}{urlsplit(original_url).path}"
+                                    if game == "endfield" else original_url)
+                    self.assertEqual(artifact["urls"][0]["url"], expected_url)
+                    original_artifact = deepcopy(artifact)
+                    original_artifact["urls"][0]["url"] = original_url
+                    self.assertEqual(artifact["artifact_id"], artifact_id(original_artifact, record))
                 path = hg.discover_collection(collection, Path(tmp))
                 self.assertEqual(path, Path(tmp) / "hypergryph" / game / "pc" / (record["version"] + ".json"))
                 self.assertFalse((path.parent / "index.json").exists())
@@ -135,7 +143,8 @@ class HypergryphPackageTests(unittest.TestCase):
         after = hg.organize(collection)
         self.assertEqual([item["artifact_id"] for item in before["artifacts"]],
                          [item["artifact_id"] for item in after["artifacts"]])
-        self.assertTrue(all(ROTATED_AUTH in item["urls"][0]["url"] for item in after["artifacts"]))
+        self.assertEqual([item["urls"] for item in before["artifacts"]],
+                         [item["urls"] for item in after["artifacts"]])
 
     def test_repeat_and_rotation_preserve_manual_content_and_history(self):
         collection = fixture("endfield")
@@ -177,8 +186,88 @@ class HypergryphPackageTests(unittest.TestCase):
             self.assertEqual(changed["source"], first["source"])
             self.assertEqual(changed["urls"][1], manual_url)
             self.assertEqual(len(changed["urls"]), 2)
-            self.assertIn(ROTATED_AUTH, changed["urls"][0]["url"])
-            self.assertNotIn("current", changed["urls"][0])
+            self.assertEqual(changed["urls"][0], first["urls"][0])
+            self.assertEqual(path.read_bytes(), initial_bytes)
+
+    def test_existing_cdn_observation_stays_on_cdn_when_oss_is_added(self):
+        collection = fixture("endfield")
+        existing = hg.organize(collection)
+        existing["references"] = [{"kind": "chunk_manifest", "path": "manifests/history.json"}]
+        existing["provenance"] = {"source_kind": "third_party_history", "source_name": "historical import"}
+        old_candidates = []
+        for artifact, pack in zip(existing["artifacts"], packs(collection)):
+            artifact["source"] = deepcopy(existing["provenance"])
+            candidate = artifact["urls"][0]
+            candidate["url"] = pack["url"]
+            candidate["current"] = {"state": "unavailable", "http_code": 403,
+                                    "checked_at": "2026-10-02T00:00:00Z"}
+            artifact["urls"].extend([
+                {"url": "https://github.com/AetherArchive/beyond-hg-archive/releases/download/pkg/" + artifact["name"],
+                 "provider": "github", "source_kind": "third_party", "priority": 1},
+                {"url": "https://example.test/" + artifact["name"],
+                 "provider": "manual", "source_kind": "manual", "priority": 3},
+            ])
+            old_candidates.append(deepcopy(artifact["urls"]))
+        runtime = {"kind": "resource", "component": "resource", "name": "872C74CD14DB0F9D81789B343A26C123.chk",
+                   "size": 10, "checksum": {"md5": "a" * 32},
+                   "urls": [{"url": "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.0/resource/Windows/initial/"
+                                      "5793042-32_testToken/files/VFS/07A1BB91/872C74CD14DB0F9D81789B343A26C123.chk",
+                             "provider": "hypergryph", "source_kind": "official", "priority": 0}],
+                   "source": deepcopy(existing["provenance"])}
+        runtime["artifact_id"] = artifact_id(runtime, existing)
+        existing["artifacts"].append(runtime)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            path = persist_v2_record(existing, root)
+            hg.discover_collection(collection, root)
+            merged = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(merged["provenance"], existing["provenance"])
+            self.assertEqual(merged["references"], existing["references"])
+            self.assertEqual(merged["artifacts"][-1], runtime)
+            for fresh, old, retained in zip(merged["artifacts"], existing["artifacts"], old_candidates):
+                self.assertEqual(fresh["artifact_id"], old["artifact_id"])
+                self.assertEqual(fresh["source"], old["source"])
+                self.assertNotIn("current", fresh["urls"][0])
+                self.assertEqual(fresh["urls"][1:], retained)
+                self.assertEqual(fresh["urls"][0]["url"],
+                                 f"https://{hg.ENDFIELD_OSS_HOST}{urlsplit(old['urls'][0]['url']).path}")
+            initial_bytes = path.read_bytes()
+            for pack in packs(collection):
+                pack["url"] = pack["url"].replace(AUTH, ROTATED_AUTH)
+            hg.discover_collection(collection, root)
+            self.assertEqual(path.read_bytes(), initial_bytes)
+
+    def test_direct_official_oss_is_accepted_only_for_exact_endfield_package_path(self):
+        collection = fixture("endfield")
+        for pack in packs(collection):
+            pack["url"] = f"https://{hg.ENDFIELD_OSS_HOST}{urlsplit(pack['url']).path}"
+        record = hg.organize(collection)
+        self.assertEqual([item["urls"][0]["url"] for item in record["artifacts"]],
+                         [pack["url"] for pack in packs(collection)])
+        original = packs(collection)[0]["url"]
+        invalid_urls = [
+            original + "?" + AUTH, original + "?", original + "#fragment", original + "#",
+            original.replace("https://", "http://"), original.replace("https://", "https://u:p@"),
+            original.replace(hg.ENDFIELD_OSS_HOST, hg.ENDFIELD_OSS_HOST + ".evil.example"),
+            original.replace(".com/", ".com:444/"),
+            original.replace("/6LL0KJuqHBVz33WK/", "/GzD1CpaWgmSq1wew/"),
+            original.replace("/1.5/", "/1.4/"), original.replace("/1.5.3_", "/1.5.2_"),
+            original.replace("/Windows/", "/Android/"), original.replace(".zip.001", ".apk"),
+            original.replace("/packs/", "/patches/1.5.2/"),
+            original.replace("/packs/", "/packs/../"), original.replace("/packs/", "/packs/%2e%2e/"),
+            original.replace("/packs/", "/resource/Windows/initial/"),
+            original.replace("/packs/", "/packs/\n"), original + "\x7f",
+        ]
+        for url in invalid_urls:
+            with self.subTest(url=url):
+                invalid = deepcopy(collection)
+                packs(invalid)[0]["url"] = url
+                with self.assertRaises(AdapterError):
+                    hg.organize(invalid)
+        arknights = fixture("arknights")
+        packs(arknights)[0]["url"] = packs(arknights)[0]["url"].replace("ak.hycdn.cn", hg.ENDFIELD_OSS_HOST)
+        with self.assertRaises(AdapterError):
+            hg.organize(arknights)
 
     def test_signed_query_validation(self):
         invalid_queries = ["auth_key=secret", AUTH + "&other=1", AUTH + "&" + AUTH, AUTH.replace("auth_key", "auth%5Fkey"),
