@@ -12,6 +12,12 @@ export interface SiteChangelogDay {
 
 export const siteChangelog: SiteChangelogEntry[] = [
   {
+    id: "2026-10-03-endfield-official-oss",
+    date: "2026-10-03",
+    title: "修复终末地历史版本下载",
+    body: "终末地 PC 完整包和更新补丁改用官方 OSS 稳定链接，后续自动采集也保存该链接；修复旧版 Android APK 下载。原始来源和历史链接保留，运行时资源入口已移除。",
+  },
+  {
     id: "2026-10-03-hypergryph-pc-discovery",
     date: "2026-10-03",
     title: "新增明日方舟与终末地 PC 自动采集",
