@@ -5,6 +5,7 @@ import { api, chunkContentUrl, isAbortError } from "../api";
 import { formatBytes, formatObservedDate, hoyoLanguageLabel, repairMojibake } from "../domain-presentation";
 import { chunkUrl, ChunkDownloadError, MAX_BROWSER_SYNTHESIS_SIZE, saveBlob, synthesizeChunkFile, writeChunkFile, type ChunkDownloadProgress } from "../chunk-download";
 import { downloadChunkDirectory, type DirectoryDownloadProgress } from "../chunk-directory-download";
+import { downloadSelectedFiles, selectedFileExport, selectedFilePlan, type SelectedFileContext } from "../selected-file-download";
 import type {
   ArchiveDomain,
   ChunkFileDetail,
@@ -120,6 +121,74 @@ const directoryProgress = ref<DirectoryDownloadProgress | null>(null);
 const directoryMessage = ref("");
 const directoryError = ref("");
 const directoryDownloading = ref(false);
+const selectedPaths = ref<string[]>([]);
+const selectedController = ref<AbortController | null>(null);
+const selectedBusy = ref(false);
+const selectedProgress = ref<DirectoryDownloadProgress | null>(null);
+const selectedMessage = ref("");
+const selectedError = ref("");
+const loadedFiles = computed(() => filePage.value?.items.filter((item) => item.type !== "directory") || []);
+const selectedSize = computed(() => loadedFiles.value.filter((item) => selectedPaths.value.includes(item.path)).reduce((sum, item) => sum + (item.size || 0), 0));
+const allLoadedSelected = computed(() => loadedFiles.value.length > 0 && loadedFiles.value.every((item) => selectedPaths.value.includes(item.path)));
+const anyDownloadBusy = computed(() => selectedBusy.value || downloading.value || directoryDownloading.value);
+
+function resetSelection(): void {
+  selectedController.value?.abort();
+  selectedController.value = null;
+  selectedBusy.value = false;
+  selectedPaths.value = [];
+  selectedProgress.value = null;
+  selectedMessage.value = "";
+  selectedError.value = "";
+}
+
+function toggleSelected(path: string): void {
+  if (selectedBusy.value) return;
+  selectedPaths.value = selectedPaths.value.includes(path) ? selectedPaths.value.filter((value) => value !== path) : [...selectedPaths.value, path];
+}
+
+function toggleLoadedFiles(): void {
+  if (selectedBusy.value) return;
+  selectedPaths.value = allLoadedSelected.value ? [] : loadedFiles.value.map((item) => item.path);
+}
+
+async function selectedAction(action: "download" | "copy" | "export"): Promise<void> {
+  if (anyDownloadBusy.value || !selectedPaths.value.length) return;
+  if (action === "download" && !canSaveDirectory.value) { selectedError.value = directoryUnavailableReason.value; return; }
+  const controller = new AbortController();
+  selectedController.value = controller;
+  selectedBusy.value = true;
+  selectedMessage.value = "";
+  selectedError.value = "";
+  selectedProgress.value = null;
+  const context: SelectedFileContext = { domainId: props.domainId, version: props.version, source: activeSource.value,
+    identity: selectedIdentity.value, paths: [...selectedPaths.value], signal: controller.signal, recipe: activeManifest.value?.chunk_download };
+  const isCurrent = () => selectedController.value === controller && !controller.signal.aborted;
+  try {
+    if (action === "download") {
+      const root = await (window as DownloadPickerWindow).showDirectoryPicker!({ mode: "readwrite" });
+      if (!isCurrent()) return;
+      const result = await downloadSelectedFiles({ ...context, root,
+        baseName: `${props.game?.id || props.domain?.game_id || props.domainId}-${context.version}-selected`,
+        onProgress: (progress) => { if (isCurrent()) selectedProgress.value = progress; } });
+      if (isCurrent()) selectedMessage.value = `已保存 ${result.files} 个文件（${formatBytes(result.bytes)}）到 ${result.directoryName}`;
+    } else {
+      const files = await selectedFilePlan(context);
+      if (!isCurrent()) return;
+      const output = selectedFileExport(context, files);
+      if (action === "copy") await navigator.clipboard.writeText(output.text);
+      else saveBlob(new Blob([output.text], { type: output.mime }), `selected-${context.version}.${output.extension}`);
+      if (isCurrent()) selectedMessage.value = `已${action === "copy" ? "复制" : "导出"} ${files.length} 个文件的${context.source === "chunk" ? "合成清单" : "官方直链"}`;
+    }
+  } catch (error) {
+    if (selectedController.value === controller) {
+      if (isAbortError(error)) selectedMessage.value = "操作已取消，已完成的文件保留在新建目录中。";
+      else selectedError.value = `${error instanceof Error ? error.message : "所选文件操作失败"}。已完成的文件会保留。`;
+    }
+  } finally {
+    if (selectedController.value === controller) { selectedController.value = null; selectedBusy.value = false; }
+  }
+}
 type DownloadPickerWindow = Window & {
   showDirectoryPicker?: (options: { mode: "readwrite" }) => Promise<FileSystemDirectoryHandle>;
   showSaveFilePicker?: (options: { suggestedName: string }) => Promise<FileSystemFileHandle>;
@@ -252,6 +321,7 @@ async function loadFiles(path: string, append = false): Promise<void> {
   if (append) {
     loadingMore.value = true;
   } else {
+    resetSelection();
     loading.value = true;
     emit("file-time-change", { ...context, fileTime: null, loading: true });
   }
@@ -383,7 +453,7 @@ function closeModal(): void {
 }
 
 async function downloadCompleteFile(): Promise<void> {
-  if (!fileDetail.value || downloading.value || directoryDownloading.value) return;
+  if (!fileDetail.value || anyDownloadBusy.value) return;
   if (fileDetail.value.size > MAX_BROWSER_SYNTHESIS_SIZE && !canSaveFile.value) {
     downloadError.value = "超过 512 MiB 的文件需要在桌面 Chrome 或 Edge 中直接保存到磁盘";
     return;
@@ -423,7 +493,7 @@ async function downloadCompleteFile(): Promise<void> {
 }
 
 async function downloadDirectory(): Promise<void> {
-  if (directoryDownloading.value || downloading.value || !directoryIdentities.value.length) return;
+  if (anyDownloadBusy.value || !directoryIdentities.value.length) return;
   if (!canSaveDirectory.value) {
     directoryError.value = directoryUnavailableReason.value;
     return;
@@ -523,6 +593,7 @@ onBeforeUnmount(() => {
   detailController?.abort();
   downloadController.value?.abort();
   directoryController.value?.abort();
+  selectedController.value?.abort();
   window.removeEventListener("keydown", onKeydown);
 });
 </script>
@@ -603,7 +674,7 @@ onBeforeUnmount(() => {
       </div>
       <p v-if="!canSaveDirectory" class="cfb-download-error">{{ directoryUnavailableReason }}</p>
       <div class="cfb-directory-actions">
-        <button class="tool-button dl-btn" type="button" :disabled="!canSaveDirectory || directoryDownloading || downloading || !directoryIdentities.length" @click="downloadDirectory">{{ directoryDownloading ? '正在下载…' : '选择目录并下载' }}</button>
+        <button class="tool-button dl-btn" type="button" :disabled="!canSaveDirectory || anyDownloadBusy || !directoryIdentities.length" @click="downloadDirectory">{{ directoryDownloading ? '正在下载…' : '选择目录并下载' }}</button>
         <button v-if="directoryDownloading" class="tool-button copy-btn" type="button" @click="directoryController?.abort()">取消下载</button>
       </div>
       <div v-if="directoryProgress" class="cfb-directory-progress" role="status">
@@ -676,6 +747,25 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
+    <div v-if="!loading && !error && loadedFiles.length" class="cfb-selected-toolbar">
+      <label><input type="checkbox" :checked="allLoadedSelected" :disabled="selectedBusy" @change="toggleLoadedFiles" />全选已加载文件</label>
+      <span>已选 {{ selectedPaths.length }} 个文件 · {{ formatBytes(selectedSize) }}</span>
+      <button type="button" class="cfb-act-btn copy-act" :disabled="selectedBusy || !selectedPaths.length" @click="resetSelection">清空</button>
+      <button type="button" class="cfb-act-btn dl-act" :disabled="anyDownloadBusy || !selectedPaths.length || !canSaveDirectory" @click="selectedAction('download')">选择目录并下载所选文件</button>
+      <button type="button" class="cfb-act-btn copy-act" :disabled="anyDownloadBusy || !selectedPaths.length" @click="selectedAction('copy')">{{ activeSource === 'chunk' ? '复制合成清单' : '复制官方直链' }}</button>
+      <button type="button" class="cfb-act-btn copy-act" :disabled="anyDownloadBusy || !selectedPaths.length" @click="selectedAction('export')">{{ activeSource === 'chunk' ? '导出合成清单 JSON' : '导出官方直链列表' }}</button>
+      <button v-if="selectedBusy" type="button" class="cfb-act-btn copy-act" @click="selectedController?.abort()">取消</button>
+      <p>仅选择已加载的文件，不包含文件夹或尚未加载的结果。下载在保存位置新建独立子目录，保留完整相对路径并校验大小和 MD5。</p>
+      <p v-if="!canSaveDirectory">{{ directoryUnavailableReason }} 仍可复制或导出{{ activeSource === 'chunk' ? '合成清单；Chunk 需要按配方合成，不是完整文件直链。' : '官方直链列表。' }}</p>
+      <p v-else-if="activeSource === 'chunk'">Chunk 文件按分块配方合成；导出的 JSON 是合成清单，不是完整文件下载链接。</p>
+      <div v-if="selectedProgress" class="cfb-directory-progress" role="status">
+        <span>{{ selectedProgress.stage === 'preparing' ? '读取所选文件详情…' : `已完成 ${selectedProgress.completedFiles} / ${selectedProgress.totalFiles} 个文件 · ${formatBytes(selectedProgress.completedBytes)} / ${formatBytes(selectedProgress.totalBytes)}` }}</span>
+        <span v-if="selectedProgress.currentPath">{{ selectedProgress.currentPath }} <template v-if="selectedProgress.chunkProgress">· {{ formatBytes(selectedProgress.chunkProgress.receivedBytes) }} / {{ formatBytes(selectedProgress.chunkProgress.totalBytes) }}</template></span>
+      </div>
+      <p v-if="selectedMessage" role="status">{{ selectedMessage }}</p>
+      <p v-if="selectedError" class="cfb-download-error" role="alert">{{ selectedError }}</p>
+    </div>
+
     <!-- 加载中状态 -->
     <div v-if="loading" class="cfb-state-box">
       <div class="cfb-spinner"></div>
@@ -735,6 +825,7 @@ onBeforeUnmount(() => {
             <!-- 1. 名称列 -->
             <div class="cfb-col cfb-col-name">
               <div class="cfb-name-block">
+                <input v-if="item.type !== 'directory'" class="cfb-file-checkbox" type="checkbox" :aria-label="`选择 ${item.path}`" :checked="selectedPaths.includes(item.path)" :disabled="selectedBusy" @click.stop @change="toggleSelected(item.path)" />
                 <span v-if="item.type === 'directory'" class="cfb-type-icon dir-icon">
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M3 6.5h6l2 2h10v9H3z" />
@@ -971,7 +1062,7 @@ onBeforeUnmount(() => {
             <!-- 情况 2: Chunk 物理分块列表 -->
             <div v-else-if="fileDetail?.chunks?.length || (fileDetail?.chunk_download && fileDetail.size === 0)" class="cfb-chunks-container">
               <div v-if="fileDetail?.chunk_download" class="cfb-complete-download">
-                <button type="button" class="tool-button dl-btn" :disabled="downloading || directoryDownloading" @click="downloadCompleteFile">
+                <button type="button" class="tool-button dl-btn" :disabled="anyDownloadBusy" @click="downloadCompleteFile">
                   {{ downloading ? '正在合成…' : '下载完整文件' }}
                 </button>
                 <button v-if="downloading" type="button" class="tool-button copy-btn" @click="downloadController?.abort()">取消</button>
@@ -2003,6 +2094,11 @@ onBeforeUnmount(() => {
 .cfb-directory-components small { color: #94a3b8; }
 .cfb-directory-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .cfb-directory-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
+.cfb-selected-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 14px; padding: 14px; border: 1px solid var(--line-soft); border-radius: 10px; color: #cbd5e1; font-size: 12px; }
+.cfb-selected-toolbar label { display: inline-flex; align-items: center; gap: 6px; }
+.cfb-selected-toolbar p, .cfb-selected-toolbar .cfb-directory-progress { flex-basis: 100%; margin: 0; line-height: 1.7; }
+.cfb-selected-toolbar button:disabled { opacity: 0.5; cursor: not-allowed; }
+.cfb-selected-toolbar input, .cfb-file-checkbox { accent-color: #38bdf8; }
 .cfb-directory-progress { display: grid; gap: 5px; color: #cbd5e1; font-size: 12px; overflow-wrap: anywhere; }
 
 .cfb-chunk-grid-header {
