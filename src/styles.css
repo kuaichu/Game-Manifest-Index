@@ -1867,6 +1867,7 @@ a {
 /* --- File List & Cards --- */
 .file-list {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   padding: 18px;
 }
@@ -1966,6 +1967,7 @@ a {
 
 .file-path {
   margin-top: 3px;
+  max-width: 100%;
   overflow: hidden;
   color: #64748b;
   font-family: var(--font-mono);
