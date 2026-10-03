@@ -12,6 +12,12 @@ export interface SiteChangelogDay {
 
 export const siteChangelog: SiteChangelogEntry[] = [
   {
+    id: "2026-10-03-hypergryph-pc-discovery",
+    date: "2026-10-03",
+    title: "新增明日方舟与终末地 PC 自动采集",
+    body: "两款游戏的 PC 完整包现通过鹰角启动器官方 API 自动发现并收录，支持分包大小、MD5 和链接探活。终末地下载链接保留官方签名；批量与定时探活发现新版本时可自动通知 TG。历史记录和运行时资源保留原有来源。",
+  },
+  {
     id: "2026-10-03-probe-status-clarity",
     date: "2026-10-03",
     title: "区分定时检查与链接检测时间",
