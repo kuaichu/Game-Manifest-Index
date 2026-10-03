@@ -1004,6 +1004,87 @@ class TemporaryContractTests(unittest.TestCase):
         self.get("/api/v1/domains/hk4e-pc/versions/2.0.0/chunk-content?identity=game&name=missing", 404)
         self.get("/api/v1/domains/hk4e-pc/versions/2.0.0/chunk-content?identity=game&name=a%2Fb", 400)
 
+    def test_file_content_resolves_official_metadata_and_rejects_unknown_or_chunk_paths(self):
+        calls = []
+        class Blocks(httpx.AsyncByteStream):
+            closed = False
+            async def __aiter__(self):
+                yield b"hello"
+            async def aclose(self):
+                self.closed = True
+        stream = Blocks()
+        def handler(request):
+            calls.append(request)
+            return httpx.Response(200, headers={"content-length": "5"}, stream=stream)
+        upstream = HttpUpstream(transport=httpx.MockTransport(handler))
+        with TestClient(create_api_app(self.root, upstream, state_root=Path(self.state.name))) as client:
+            base = "/api/v1/domains/wuwa-pc/versions/1.0.0/file-content"
+            response = client.get(base, params={"source": "package", "identity": "game", "path": "root.exe", "url": "https://127.0.0.1/private"}, headers={"Range": "bytes=0-1"})
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.content, b"hello")
+            self.assertEqual(response.headers["content-length"], "5")
+            self.assertEqual(response.headers["x-accel-buffering"], "no")
+            self.assertEqual(str(calls[0].url), "https://pcdownload-aliyun.aki-game.com/files/root.exe")
+            self.assertNotIn("range", calls[0].headers)
+            self.assertTrue(stream.closed)
+            for params, status in (({"path": "missing"}, 404), ({"path": "../x"}, 400), ({"path": "Client"}, 404), ({"path": "root.exe", "source": "chunk"}, 400), ({"path": "root.exe", "source": "mirror"}, 400), ({"path": "root.exe", "identity": "unknown"}, 404)):
+                self.assertEqual(client.get(base, params=params).status_code, status)
+            self.assertEqual(len(calls), 1)
+
+    def test_file_content_upstream_failures_are_mapped_before_headers(self):
+        for status, expected in ((404, 404), (500, 502), (200, 502)):
+            upstream = HttpUpstream(transport=httpx.MockTransport(lambda _: httpx.Response(status, headers={"content-length": "100"})))
+            with TestClient(create_api_app(self.root, upstream, state_root=Path(self.state.name))) as client:
+                response = client.get("/api/v1/domains/wuwa-pc/versions/1.0.0/file-content", params={"path": "root.exe"})
+                self.assertEqual(response.status_code, expected)
+
+    def test_file_content_closes_upstream_when_downstream_disconnects(self):
+        import asyncio
+        class Blocks(httpx.AsyncByteStream):
+            closed = False
+            async def __aiter__(self):
+                yield b"hello"
+            async def aclose(self):
+                self.closed = True
+        stream = Blocks()
+        upstream = HttpUpstream(transport=httpx.MockTransport(lambda _: httpx.Response(200, headers={"content-length": "5"}, stream=stream)))
+        application = create_api_app(self.root, upstream, state_root=Path(self.state.name))
+        endpoint = next(route.endpoint for route in application.routes if getattr(route, "path", "").endswith("/file-content"))
+        async def exercise():
+            response = await endpoint("wuwa-pc", "1.0.0", "root.exe")
+            async def receive():
+                await asyncio.Event().wait()
+            async def send(message):
+                if message["type"] == "http.response.body":
+                    raise OSError("client disconnected")
+            try:
+                await response({"type": "http", "asgi": {"spec_version": "2.4"}}, receive, send)
+            except Exception:
+                pass
+            self.assertTrue(stream.closed)
+        asyncio.run(exercise())
+
+    def test_file_content_closes_client_even_when_response_close_raises(self):
+        import asyncio
+        from unittest.mock import AsyncMock
+        response = httpx.Response(200, content=b"hello")
+        response.aclose = AsyncMock(side_effect=RuntimeError("close failed"))
+        client = type("Client", (), {"aclose": AsyncMock()})()
+        upstream = type("Upstream", (), {"open_file": AsyncMock(return_value=(response, client))})()
+        application = create_api_app(self.root, upstream, state_root=Path(self.state.name))
+        endpoint = next(route.endpoint for route in application.routes if getattr(route, "path", "").endswith("/file-content"))
+        async def exercise():
+            result = await endpoint("wuwa-pc", "1.0.0", "root.exe")
+            async def receive():
+                await asyncio.Event().wait()
+            async def send(_message):
+                pass
+            with self.assertRaises(RuntimeError):
+                await result({"type": "http", "asgi": {"spec_version": "2.4"}}, receive, send)
+            response.aclose.assert_awaited_once()
+            client.aclose.assert_awaited_once()
+        asyncio.run(exercise())
+
     def test_non_http_upstream_does_not_reuse_chunk_manifest_cache(self):
         chunk_file_detail(self.chunk_doc, "game", self.upstream, "Game/Bin/a.dat")
         chunk_content(self.chunk_doc, "game", "chunk-a", self.upstream)
@@ -1110,6 +1191,68 @@ class CheckedInContractTests(unittest.TestCase):
 
 
 class HttpUpstreamTests(unittest.TestCase):
+    def test_open_file_closes_client_even_when_rejected_response_close_raises(self):
+        import asyncio
+        from unittest.mock import AsyncMock
+        response = httpx.Response(404)
+        response.aclose = AsyncMock(side_effect=RuntimeError("close failed"))
+        client = type("Client", (), {"aclose": AsyncMock(), "send": AsyncMock(return_value=response), "build_request": lambda *_args, **_kwargs: httpx.Request("GET", "https://syncstation.manjuu.com/files/a")})()
+        async def exercise():
+            with patch("backend.manifest_readers.httpx.AsyncClient", return_value=client):
+                with self.assertRaises(RuntimeError):
+                    await HttpUpstream().open_file("https://syncstation.manjuu.com/files/a", allowed_hosts=frozenset({"syncstation.manjuu.com"}), expected_size=5)
+            response.aclose.assert_awaited_once()
+            client.aclose.assert_awaited_once()
+        asyncio.run(exercise())
+
+    def test_file_stream_is_bounded_and_closed_on_finish_or_disconnect(self):
+        import asyncio
+        class Blocks(httpx.AsyncByteStream):
+            closed = False
+            reads = 0
+            async def __aiter__(self):
+                for block in (b"ab", b"cd"):
+                    self.reads += 1
+                    yield block
+            async def aclose(self):
+                self.closed = True
+        async def exercise(early):
+            stream = Blocks()
+            upstream = HttpUpstream(transport=httpx.MockTransport(lambda _: httpx.Response(200, headers={"content-length": "4"}, stream=stream)))
+            response, client = await upstream.open_file("https://syncstation.manjuu.com/files/a", allowed_hosts=frozenset({"syncstation.manjuu.com"}), expected_size=4)
+            self.assertEqual(stream.reads, 0)
+            result = []
+            async for block in response.aiter_raw():
+                result.append(block)
+                if early:
+                    break
+            await response.aclose()
+            await client.aclose()
+            self.assertTrue(stream.closed)
+            self.assertTrue(client.is_closed)
+            self.assertEqual(b"".join(result), b"ab" if early else b"abcd")
+        asyncio.run(exercise(False))
+        asyncio.run(exercise(True))
+
+    def test_file_stream_checks_official_hosts_redirects_and_lengths_before_body(self):
+        import asyncio
+        async def exercise():
+            allowed = frozenset({"syncstation.manjuu.com"})
+            for url in ("http://syncstation.manjuu.com/files/a", "https://127.0.0.1/files/a", "https://evil.example/files/a", "https://user@syncstation.manjuu.com/files/a"):
+                with self.assertRaises(ManifestUpstream):
+                    await HttpUpstream().open_file(url, allowed_hosts=allowed, expected_size=4)
+            for location in ("https://evil.example/files/a", "https://127.0.0.1/files/a", "/other/a", "/files/%2e%2e/private/a", "/files/a?token=x"):
+                with self.assertRaises(ManifestUpstream):
+                    await HttpUpstream(transport=httpx.MockTransport(lambda _: httpx.Response(302, headers={"location": location}))).open_file("https://syncstation.manjuu.com/files/a", allowed_hosts=allowed, expected_size=4)
+            for status, headers, error in ((404, {}, ManifestNotFound), (206, {}, ManifestUpstream), (200, {"content-length": "5"}, ManifestUpstream), (200, {"content-encoding": "gzip"}, ManifestUpstream)):
+                with self.assertRaises(error):
+                    await HttpUpstream(transport=httpx.MockTransport(lambda _: httpx.Response(status, headers=headers))).open_file("https://syncstation.manjuu.com/files/a", allowed_hosts=allowed, expected_size=4)
+            def timeout(request):
+                raise httpx.ReadTimeout("timeout", request=request)
+            with self.assertRaises(ManifestTimeout):
+                await HttpUpstream(transport=httpx.MockTransport(timeout)).open_file("https://syncstation.manjuu.com/files/a", allowed_hosts=allowed, expected_size=4)
+        asyncio.run(exercise())
+
     def test_head_date_cache_is_bounded_expires_and_caches_unknown(self):
         calls = []
         def handler(request):

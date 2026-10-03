@@ -12,6 +12,12 @@ export interface SiteChangelogDay {
 
 export const siteChangelog: SiteChangelogEntry[] = [
   {
+    id: "2026-10-03-selected-files-download",
+    date: "2026-10-03",
+    title: "文件清单支持多选下载",
+    body: "文件清单可勾选文件，在桌面 Chrome 或 Edge 中选择目录批量保存，保留相对路径并校验大小与 MD5；普通文件流式下载，Chunk 文件按配方合成。其他浏览器可复制或导出官方直链，Chunk 则导出合成清单。",
+  },
+  {
     id: "2026-10-03-endfield-official-oss",
     date: "2026-10-03",
     title: "修复终末地历史版本下载",

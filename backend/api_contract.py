@@ -21,6 +21,8 @@ from urllib.parse import urlsplit
 from fastapi import FastAPI, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response
+from starlette.responses import StreamingResponse
+from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from backend import catalog_admin
@@ -1616,6 +1618,48 @@ def create_api_app(data_root: Path, upstream: Any | None = None, *, state_root: 
             return {"source": "package", "fetch_mode": "checked_in_manifest", "identity": str(_stable_id(artifact["artifact_id"])), **local_file_detail(document, base_urls, path)}
         except ManifestError as error:
             raise _manifest_error(error) from error
+
+    @app.get("/api/v1/domains/{domain_id}/versions/{version}/file-content")
+    async def version_file_content(domain_id: str, version: str, path: str, source: str = "package", identity: str = "game") -> Response:
+        if source != "package":
+            fail(400, "bad_source", "完整文件下载仅支持 package 来源")
+        # Resolve from the existing authenticated metadata; clients cannot supply URLs.
+        detail = await run_in_threadpool(version_file, domain_id, version, path, source, identity)
+        domain = service().domain(domain_id)
+        allowed_hosts = PACKAGE_HOSTS_BY_GAME.get(domain.game_id, frozenset()) if domain.vendor == "mihoyo" else LOCAL_OFFICIAL_HOSTS.get(domain.vendor, frozenset())
+        url = detail.get("download_url")
+        if not isinstance(url, str) or not allowed_hosts:
+            fail(404, "file_not_found", "文件没有可下载的官方直链")
+        try:
+            upstream_response, client = await service().upstream.open_file(url, allowed_hosts=allowed_hosts, expected_size=detail["size"])
+        except ManifestError as error:
+            raise _manifest_error(error) from error
+
+        async def body():
+            received = 0
+            async for block in upstream_response.aiter_raw(64 * 1024):
+                received += len(block)
+                if received > detail["size"]:
+                    raise ManifestUpstream("官方文件长度不匹配")
+                yield block
+            if received != detail["size"]:
+                raise ManifestUpstream("官方文件响应不完整")
+
+        class FileResponse(StreamingResponse):
+            async def __call__(self, scope, receive, send):
+                try:
+                    await super().__call__(scope, receive, send)
+                finally:
+                    # Disconnect cancellation must not interrupt connection cleanup.
+                    import anyio
+                    with anyio.CancelScope(shield=True):
+                        try:
+                            await upstream_response.aclose()
+                        finally:
+                            await client.aclose()
+
+        headers = {"Content-Length": str(detail["size"]), "Cache-Control": "no-store", "X-Accel-Buffering": "no"}
+        return FileResponse(body(), status_code=200, headers=headers, media_type="application/octet-stream")
 
     @app.get("/api/v1/domains/{domain_id}/versions/{version}/chunk-manifests/{identity}/files")
     def chunk_files_route(

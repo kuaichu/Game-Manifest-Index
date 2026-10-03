@@ -129,6 +129,11 @@ export function chunkContentUrl(domainId: string, version: string, identity: str
   return apiUrl(`/domains/${encodeURIComponent(domainId)}/versions/${encodeURIComponent(version)}/chunk-content?${search.toString()}`);
 }
 
+export function fileContentUrl(domainId: string, version: string, identity: string, path: string): string {
+  const search = new URLSearchParams({ source: "package", identity, path });
+  return apiUrl(`/domains/${encodeURIComponent(domainId)}/versions/${encodeURIComponent(version)}/file-content?${search.toString()}`);
+}
+
 type VersionIndexItem = {
   version: string;
   updated_at: string | null;

@@ -41,7 +41,7 @@ export interface ChunkDirectoryDownloadResult {
   bytes: number;
 }
 
-interface PlannedFile {
+export interface PlannedFile {
   identity: string;
   detail: ChunkFileDetail;
   path: string;
@@ -73,7 +73,7 @@ function isMissingEntry(error: unknown): boolean {
   return hasErrorName(error, "NotFoundError");
 }
 
-function safePath(path: string): { path: string; key: string; segments: string[]; keys: string[] } {
+export function safePath(path: string): { path: string; key: string; segments: string[]; keys: string[] } {
   if (!path || path.startsWith("/") || path.includes("\\") || path.includes("\0")) {
     throw new ChunkDirectoryDownloadError(`不安全的文件路径：${path || "(empty)"}`);
   }
@@ -113,7 +113,7 @@ function requiredMd5(detail: ChunkFileDetail): string {
   return value;
 }
 
-function planFileConflicts(files: PlannedFile[], signal: AbortSignal): PlannedFile[] {
+export function planFileConflicts(files: PlannedFile[], signal: AbortSignal): PlannedFile[] {
   const byPath = new Map<string, PlannedFile>();
   const directories = new Set<string>();
 
@@ -225,7 +225,7 @@ async function collectIdentity(
   }
 }
 
-async function createFreshDirectory(
+export async function createFreshDirectory(
   root: ChunkDirectoryHandle,
   baseName: string,
   signal: AbortSignal,
@@ -260,7 +260,7 @@ async function createFreshDirectory(
   throw new ChunkDirectoryDownloadError(`无法创建新的下载目录（已尝试 ${MAX_DIRECTORY_NAME_ATTEMPTS} 个名称）`);
 }
 
-async function createParentDirectories(
+export async function createParentDirectories(
   root: ChunkDirectoryHandle,
   segments: string[],
   signal: AbortSignal,

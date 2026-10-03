@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from typing import Any, Protocol, Sequence
-from urllib.parse import quote, urljoin, urlsplit
+from urllib.parse import quote, unquote, urljoin, urlsplit
 
 import httpx
 import zstandard
@@ -69,6 +69,10 @@ class ManifestUpstream(ManifestError):
 
 
 class Upstream(Protocol):
+    async def open_file(
+        self, url: str, *, allowed_hosts: frozenset[str], expected_size: int,
+    ) -> tuple[httpx.Response, httpx.AsyncClient]: ...
+
     def get_bytes(
         self,
         url: str,
@@ -273,6 +277,62 @@ class HttpUpstream:
         except httpx.HTTPError as error:
             raise ManifestUpstream("官方资源请求失败") from error
         raise ManifestUpstream("官方资源请求失败")
+
+    async def open_file(
+        self, url: str, *, allowed_hosts: frozenset[str], expected_size: int,
+    ) -> tuple[httpx.Response, httpx.AsyncClient]:
+        """Open a full official file without buffering it. The caller owns both closes."""
+        _validated_https_url(url, allowed_hosts)
+        if type(expected_size) is not int or expected_size < 0:
+            raise ManifestUpstream("官方文件大小无效")
+        original = urlsplit(url)
+        path_prefix = original.path.rsplit("/", 1)[0] + "/"
+        current = url
+        client = httpx.AsyncClient(timeout=self.timeout, follow_redirects=False, transport=self.transport, trust_env=False)
+        response = None
+        try:
+            for redirect_count in range(self.max_redirects + 1):
+                request = client.build_request("GET", current, headers={"Accept": "application/octet-stream", "Accept-Encoding": "identity"})
+                response = await client.send(request, stream=True)
+                if response.status_code in {301, 302, 303, 307, 308}:
+                    location = response.headers.get("location")
+                    if redirect_count >= self.max_redirects or not location:
+                        raise ManifestUpstream("官方资源重定向无效")
+                    target = urljoin(current, location)
+                    _validated_https_url(target, allowed_hosts)
+                    parsed = urlsplit(target)
+                    decoded = parsed.path
+                    for _ in range(3):
+                        decoded = unquote(decoded)
+                    if parsed.query != original.query or not parsed.path.startswith(path_prefix) or "\\" in decoded or any(part in {".", ".."} for part in decoded.split("/")):
+                        raise ManifestUpstream("官方资源重定向越界")
+                    await response.aclose()
+                    current = target
+                    continue
+                if response.status_code in {404, 410}:
+                    raise ManifestNotFound("官方资源不存在")
+                if response.status_code != 200:
+                    raise ManifestUpstream("官方完整文件请求失败")
+                if response.headers.get("content-encoding", "identity").lower() not in {"", "identity"}:
+                    raise ManifestUpstream("官方文件编码无效")
+                length = response.headers.get("content-length")
+                if length is not None and (not length.isdigit() or int(length) != expected_size):
+                    raise ManifestUpstream("官方文件长度不匹配")
+                return response, client
+            raise ManifestUpstream("官方资源请求失败")
+        except BaseException as error:
+            import anyio
+            with anyio.CancelScope(shield=True):
+                try:
+                    if response is not None:
+                        await response.aclose()
+                finally:
+                    await client.aclose()
+            if isinstance(error, httpx.TimeoutException):
+                raise ManifestTimeout("官方资源请求超时") from error
+            if isinstance(error, httpx.HTTPError):
+                raise ManifestUpstream("官方资源请求失败") from error
+            raise
 
     def get_range(
         self,
