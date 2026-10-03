@@ -28,6 +28,7 @@ GAME_IDENTITIES = {
     "endfield": ("6LL0KJuqHBVz33WK", "beyond.hycdn.cn", "Beyond_Release_"),
 }
 GAMES = tuple(GAME_IDENTITIES)
+ENDFIELD_OSS_HOST = "beyond-prod.oss-cn-shanghai.aliyuncs.com"
 _AUTH_QUERY = re.compile(r"auth_key=[0-9]{10}-[0-9a-fA-F]{32}-[0-9]+-[0-9a-fA-F]{32}")
 
 
@@ -74,8 +75,8 @@ def _size(value: Any, field: str) -> int:
     return value
 
 
-def _package_identity(url: Any, game_id: str, version: str) -> tuple[str, int]:
-    if not isinstance(url, str) or any(ord(char) <= 32 for char in url):
+def _package_identity(url: Any, game_id: str, version: str) -> tuple[str, int, str]:
+    if not isinstance(url, str) or any(ord(char) <= 32 or ord(char) == 127 for char in url):
         raise AdapterError("完整包 URL 无效")
     try:
         parsed = urlsplit(url)
@@ -83,6 +84,7 @@ def _package_identity(url: Any, game_id: str, version: str) -> tuple[str, int]:
     except ValueError as error:
         raise AdapterError("完整包 URL 无效") from error
     appcode, host, prefix = GAME_IDENTITIES[game_id]
+    is_oss = game_id == "endfield" and parsed.hostname == ENDFIELD_OSS_HOST
     major = ".".join(version.split(".")[:2])
     path_pattern = (
         rf"/{appcode}/{re.escape(major)}/update/1/1/Windows/"
@@ -90,15 +92,18 @@ def _package_identity(url: Any, game_id: str, version: str) -> tuple[str, int]:
         rf"(?P<name>{prefix}[A-Za-z0-9._-]+\.zip\.(?P<part>[0-9]{{3}}))"
     )
     match = re.fullmatch(path_pattern, parsed.path)
-    if (parsed.scheme != "https" or parsed.hostname != host or port not in (None, 443)
+    if (parsed.scheme != "https" or (parsed.hostname != host and not is_oss) or port not in (None, 443)
             or parsed.username is not None or parsed.password is not None or parsed.fragment
+            or (is_oss and ("?" in url or "#" in url))
             or match is None or (parsed.query and (
                 game_id != "endfield" or _AUTH_QUERY.fullmatch(parsed.query) is None))):
         raise AdapterError("完整包必须使用目标游戏的官方 Windows CDN 路径")
     name, part = match.group("name"), int(match.group("part"))
     if part < 1:
         raise AdapterError("完整包分卷必须从 1 开始")
-    return name, part
+    # Verified official Windows package paths are shared by CDN and the public OSS origin.
+    canonical_url = f"https://{ENDFIELD_OSS_HOST}{parsed.path}" if game_id == "endfield" else url
+    return name, part, canonical_url
 
 
 def organize(collection: HypergryphPackageCollection) -> dict[str, Any]:
@@ -147,7 +152,7 @@ def organize(collection: HypergryphPackageCollection) -> dict[str, Any]:
     for pack in packs:
         if not isinstance(pack, Mapping):
             raise AdapterError("pkg.packs 分卷必须是对象")
-        name, part = _package_identity(pack.get("url"), collection.game_id, version)
+        name, part, package_url = _package_identity(pack.get("url"), collection.game_id, version)
         archive = name.rsplit(".", 1)[0].casefold()
         parts = archive_parts.setdefault(archive, set())
         if name.casefold() in names or part in parts:
@@ -162,7 +167,7 @@ def organize(collection: HypergryphPackageCollection) -> dict[str, Any]:
             "delivery_mode": "archive", "name": name, "part": part,
             "size": _size(pack.get("package_size"), "package_size"),
             "checksum": {"md5": md5.lower()},
-            "urls": [{"url": pack["url"], "provider": "hypergryph", "source_kind": "official", "priority": 0}],
+            "urls": [{"url": package_url, "provider": "hypergryph", "source_kind": "official", "priority": 0}],
             "source": deepcopy(record["provenance"]),
         }
         artifact["artifact_id"] = artifact_id(artifact, record)
