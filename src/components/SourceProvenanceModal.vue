@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from "vue";
 import { gameIcons } from "../game-icons";
+import { useModalScrollLock } from "../composables/useModalScrollLock";
 
 interface GameProvenance {
   id: string;
@@ -297,18 +298,17 @@ function handleKeydown(e: KeyboardEvent): void {
   }
 }
 
+useModalScrollLock(() => props.open);
+
 watch(
   () => props.open,
   (isOpen) => {
     if (isOpen) {
-      document.body.style.overflow = "hidden";
       nextTick(() => {
         if (props.activeGameId && activeCardRef.value) {
           activeCardRef.value.scrollIntoView({ behavior: "smooth", block: "nearest" });
         }
       });
-    } else {
-      document.body.style.overflow = "";
     }
   }
 );
@@ -319,7 +319,6 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener("keydown", handleKeydown);
-  document.body.style.overflow = "";
 });
 </script>
 

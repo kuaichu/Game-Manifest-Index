@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { useModalScrollLock } from "../composables/useModalScrollLock";
 import type { ArchiveDomain, VersionSummary } from "../types";
 import { artifactCountForMode, artifactKindForMode, availabilityStatesForMode, buildVersionBadges, displayVersionLabel, versionSupportsMode } from "../domain-presentation";
 import { versionFamily } from "../version-grouping";
@@ -361,21 +362,7 @@ function updateMobileStatus() {
   isMobile.value = typeof window !== "undefined" && window.innerWidth <= 860;
 }
 
-watch(
-  () => open.value && isMobile.value,
-  (shouldLock) => {
-    if (typeof document !== "undefined") {
-      if (shouldLock) {
-        document.body.style.overflow = "hidden";
-        document.body.style.touchAction = "none";
-      } else {
-        document.body.style.overflow = "";
-        document.body.style.touchAction = "";
-      }
-    }
-  },
-  { immediate: true },
-);
+useModalScrollLock(() => open.value && isMobile.value);
 
 onMounted(() => {
   updateMobileStatus();
@@ -385,10 +372,6 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-  if (typeof document !== "undefined") {
-    document.body.style.overflow = "";
-    document.body.style.touchAction = "";
-  }
   window.removeEventListener("resize", updateMobileStatus);
   document.removeEventListener("click", onDocumentClick);
   document.removeEventListener("keydown", onKey);

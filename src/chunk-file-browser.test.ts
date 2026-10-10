@@ -578,6 +578,8 @@ describe("ChunkFileBrowser", () => {
     expect(detailMock).toHaveBeenCalledWith("hk4e-pc", "7.0.0", expect.objectContaining({ path: "YuanShen.exe" }), expect.any(AbortSignal));
     const dialog = document.body.querySelector(".cfb-modal-card");
     expect(dialog).not.toBeNull();
+    expect(document.documentElement.style.overflow).toBe("hidden");
+    expect(document.body.style.overflow).toBe("hidden");
     expect(dialog?.textContent).toContain("YuanShen.exe");
     expect(dialog?.textContent).toContain("hash_chunk_1");
     expect(dialog?.textContent).toContain("hash_chunk_2");
@@ -599,6 +601,8 @@ describe("ChunkFileBrowser", () => {
     await flushUpdates();
 
     expect(document.body.querySelector(".cfb-modal-card")).toBeNull();
+    expect(document.documentElement.style.overflow).toBe("");
+    expect(document.body.style.overflow).toBe("");
 
     app.unmount();
     host.remove();

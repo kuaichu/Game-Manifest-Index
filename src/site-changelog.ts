@@ -12,6 +12,12 @@ export interface SiteChangelogDay {
 
 export const siteChangelog: SiteChangelogEntry[] = [
   {
+    id: "2026-10-10-changelog-layout-and-modal-scroll",
+    date: "2026-10-10",
+    title: "优化数据动态列表与弹窗滚动",
+    body: "数据动态按日期紧凑分组，游戏、平台和版本层次更清晰，并修正终末地图标的深色背景显示。更新日志、来源说明、文件详情及移动端版本弹层打开时锁定背景滚动，弹窗内容仍可独立滚动，关闭后恢复页面滚动。",
+  },
+  {
     id: "2026-10-03-selected-files-download",
     date: "2026-10-03",
     title: "文件清单支持多选下载",
