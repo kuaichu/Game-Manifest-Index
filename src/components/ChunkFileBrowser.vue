@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { useModalScrollLock } from "../composables/useModalScrollLock";
 import { api, chunkContentUrl, isAbortError } from "../api";
 import { formatBytes, formatObservedDate, hoyoLanguageLabel, repairMojibake } from "../domain-presentation";
 import { chunkUrl, ChunkDownloadError, MAX_BROWSER_SYNTHESIS_SIZE, saveBlob, synthesizeChunkFile, writeChunkFile, type ChunkDownloadProgress } from "../chunk-download";
@@ -109,6 +110,7 @@ const fileDetail = ref<ChunkFileDetail | null>(null);
 const fileDetailLoading = ref<boolean>(false);
 const fileDetailError = ref<string | null>(null);
 const showDetailModal = ref<boolean>(false);
+useModalScrollLock(() => showDetailModal.value);
 const toastMessage = ref<string>("");
 const downloadController = ref<AbortController | null>(null);
 const downloadProgress = ref<ChunkDownloadProgress | null>(null);
@@ -1983,6 +1985,7 @@ onBeforeUnmount(() => {
 .cfb-modal-body {
   flex: 1;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 16px 20px;
 }
 

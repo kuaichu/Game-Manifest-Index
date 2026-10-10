@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { api, isAbortError } from "../api";
+import { useModalScrollLock } from "../composables/useModalScrollLock";
 import { gameActivityTime, gameActivityTitle } from "../game-activity";
 import { gameIcons } from "../game-icons";
 import { groupSiteChangelogByDate, searchSiteChangelog, siteChangelog } from "../site-changelog";
@@ -14,6 +15,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{ (event: "close"): void }>();
+useModalScrollLock(() => props.open);
 const closeButton = ref<HTMLButtonElement | null>(null);
 const selectedTab = ref<"system" | "data">("system");
 const changelogQuery = ref("");
@@ -50,7 +52,6 @@ const activityDays = computed(() => {
 });
 let refreshTimer: number | null = null;
 let previousFocus: HTMLElement | null = null;
-let previousOverflow = "";
 
 const originStyle = computed(() => {
   if (!props.originPos || typeof window === "undefined") return { "--origin-x": "38vw", "--origin-y": "-38vh" };
@@ -103,11 +104,8 @@ watch(() => props.open, (open) => {
     changelogQuery.value = "";
     visibleDayCount.value = 3;
     previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     void nextTick(() => closeButton.value?.focus());
   } else {
-    document.body.style.overflow = previousOverflow;
     void nextTick(() => previousFocus?.focus());
   }
 });
@@ -122,7 +120,6 @@ onMounted(() => window.addEventListener("keydown", handleKeydown));
 onUnmounted(() => {
   window.removeEventListener("keydown", handleKeydown);
   if (refreshTimer !== null) window.clearTimeout(refreshTimer);
-  if (props.open) document.body.style.overflow = previousOverflow;
 });
 </script>
 
@@ -213,23 +210,23 @@ onUnmounted(() => {
               <div v-else class="changelog-activity-days" :aria-busy="activityLoading">
                 <section v-for="day in activityDays" :key="day.date" class="changelog-day" :aria-label="day.label">
                   <h3 class="changelog-day-heading">
-                    <time v-if="day.date !== 'unknown'" :datetime="day.date">{{ day.label }}</time>
+                    <time v-if="day.date !== 'unknown'" :datetime="day.date">{{ day.date.replaceAll('-', '.') }}</time>
                     <span v-else>{{ day.label }}</span>
                     <span class="changelog-day-count">{{ day.events.length }} 条动态</span>
                   </h3>
                   <ol class="changelog-activity-list">
                     <li v-for="event in day.events" :key="event.id" class="changelog-event" :aria-label="`${gameActivityTitle(event, gameNames[event.game_id] || event.game_id)} · ${event.platform === 'android' ? 'Android' : 'PC'} · ${gameActivityTime(event.occurred_at)}`">
                       <span class="changelog-game-icon" aria-hidden="true">
-                        <img v-if="gameIcons[event.game_id] && !failedIcons.has(event.game_id)" :src="gameIcons[event.game_id]" alt="" @error="failedIcons.add(event.game_id)" />
+                        <img v-if="gameIcons[event.game_id] && !failedIcons.has(event.game_id)" :src="gameIcons[event.game_id]" :class="{ 'endfield-icon': event.game_id === 'endfield' }" alt="" @error="failedIcons.add(event.game_id)" />
                         <span v-else>{{ (gameNames[event.game_id] || event.game_id).slice(0, 1) }}</span>
                       </span>
                       <div class="changelog-event-content">
                         <div class="changelog-event-title">
                           <h4>{{ gameNames[event.game_id] || event.game_id }}</h4>
-                          <span class="changelog-version">{{ event.version }}</span>
+                          <span class="changelog-platform">{{ event.platform === 'android' ? 'Android' : 'PC' }}</span>
                         </div>
                         <div class="changelog-event-details">
-                          <span class="changelog-platform">{{ event.platform === 'android' ? 'Android' : 'PC' }}</span>
+                          <span class="changelog-version">{{ event.version }}</span>
                           <span class="changelog-event-status" :class="{ 'is-unavailable': event.type === 'version_unavailable' }">{{ event.type === 'version_update' ? '发现新版本' : '探活确认不可用' }}</span>
                         </div>
                       </div>
@@ -259,6 +256,13 @@ onUnmounted(() => {
 .changelog-body {
   gap: 0;
   min-height: 0;
+  padding-top: 16px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+}
+
+.changelog-toolbar > :last-child {
+  margin-bottom: 0;
 }
 
 .changelog-tabs {
@@ -446,7 +450,7 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .changelog-data-head p {
@@ -475,6 +479,8 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  min-height: 32px;
+  padding: 4px 8px;
   border: 0;
   background: none;
   color: #38bdf8;
@@ -541,7 +547,15 @@ onUnmounted(() => {
 
 .changelog-activity-days {
   display: grid;
-  gap: 24px;
+  gap: 12px;
+}
+
+.changelog-day {
+  min-width: 0;
+  padding: 0 14px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 12px;
+  background: rgba(8, 13, 22, 0.3);
 }
 
 .changelog-day-heading {
@@ -549,17 +563,14 @@ onUnmounted(() => {
   align-items: center;
   gap: 10px;
   margin: 0;
-  color: #cbd5e1;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  color: #94a3b8;
   font: 600 12px var(--font-mono);
 }
 
-.changelog-day-heading::after {
-  content: "";
-  flex: 1;
-  border-top: 1px solid rgba(148, 163, 184, 0.12);
-}
-
 .changelog-day-count {
+  margin-left: auto;
   color: #94a3b8;
   font: 11px var(--font-sans);
 }
@@ -567,15 +578,18 @@ onUnmounted(() => {
 .changelog-event {
   display: grid;
   grid-template-columns: 36px minmax(0, 1fr) auto;
-  align-items: start;
+  align-items: center;
   gap: 12px;
-  padding: 16px 0;
+  padding: 8px 0;
   border-bottom: 1px solid rgba(148, 163, 184, 0.08);
 }
 
 .changelog-event:last-child {
-  padding-bottom: 0;
   border-bottom: 0;
+}
+
+.changelog-event-content {
+  min-width: 0;
 }
 
 .changelog-game-icon {
@@ -601,7 +615,7 @@ onUnmounted(() => {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 10px;
+  gap: 4px 8px;
 }
 
 .changelog-event-title h4 {
@@ -614,11 +628,8 @@ onUnmounted(() => {
 }
 
 .changelog-version {
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: rgba(56, 189, 248, 0.09);
   color: #7dd3fc;
-  font: 12px var(--font-mono);
+  font: 600 13px/1.5 var(--font-mono);
   overflow-wrap: anywhere;
 }
 
@@ -627,13 +638,17 @@ onUnmounted(() => {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  margin-top: 6px;
+  margin-top: 3px;
   font-size: 12px;
+  line-height: 1.5;
 }
 
 .changelog-platform {
-  color: #cbd5e1;
-  font: 11px var(--font-mono);
+  padding: 1px 5px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 4px;
+  color: #94a3b8;
+  font: 10px/1.5 var(--font-mono);
 }
 
 .changelog-event-status {
@@ -645,7 +660,6 @@ onUnmounted(() => {
 }
 
 .changelog-event-time {
-  padding-top: 3px;
   color: #94a3b8;
   font: 11px var(--font-mono);
 }
@@ -653,6 +667,14 @@ onUnmounted(() => {
 @media (max-width: 600px) {
   .changelog-toolbar {
     padding: 12px 16px 0;
+  }
+
+  .changelog-body {
+    padding: 14px 16px;
+  }
+
+  .changelog-day {
+    padding: 0 10px;
   }
 
   .changelog-search {

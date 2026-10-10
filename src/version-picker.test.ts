@@ -1,9 +1,45 @@
 import { createApp, h, nextTick } from "vue";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import VersionPicker from "./components/VersionPicker.vue";
 import type { ArchiveDomain, VersionSummary } from "./types";
 import { versionFamily } from "./version-grouping";
+
+describe("version picker page scroll lock", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    document.body.innerHTML = "";
+  });
+
+  it("locks only the mobile sheet, updates on resize and restores styles when closed", async () => {
+    vi.stubGlobal("innerWidth", 1200);
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const app = createApp(VersionPicker, { versions: [], modelValue: "", domain: null });
+    app.mount(host);
+    try {
+      (host.querySelector(".select-button") as HTMLButtonElement).click();
+      await nextTick();
+      expect(host.querySelector(".version-menu")).not.toBeNull();
+      expect(document.documentElement.style.overflow).toBe("");
+      expect(document.body.style.overflow).toBe("");
+
+      vi.stubGlobal("innerWidth", 600);
+      window.dispatchEvent(new Event("resize"));
+      await nextTick();
+      expect(document.body.querySelector(".mobile-version-sheet")).not.toBeNull();
+      expect(document.documentElement.style.overflow).toBe("hidden");
+      expect(document.body.style.overflow).toBe("hidden");
+
+      (document.body.querySelector(".sheet-close-btn") as HTMLButtonElement).click();
+      await nextTick();
+      expect(document.documentElement.style.overflow).toBe("");
+      expect(document.body.style.overflow).toBe("");
+    } finally {
+      app.unmount();
+    }
+  });
+});
 
 describe("version family labels", () => {
   it("keeps HoYo and WuWa major families while splitting NTE by release family", () => {

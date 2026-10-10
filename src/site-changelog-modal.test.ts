@@ -54,6 +54,7 @@ describe("site changelog", () => {
 
     const dialog = document.querySelector('[role="dialog"]');
     expect(document.activeElement).toBe(document.querySelector(".modal-close-btn"));
+    expect(document.documentElement.style.overflow).toBe("hidden");
     expect(dialog?.textContent).toContain("PROJECT & GAME UPDATES");
     expect(dialog?.textContent).not.toContain("2026.09.27");
     expect(dialog?.textContent).not.toContain("原神更新至");
@@ -121,6 +122,7 @@ describe("site changelog", () => {
     await nextTick();
     await nextTick();
     expect(open.value).toBe(false);
+    expect(document.documentElement.style.overflow).toBe("");
     expect(document.activeElement).toBe(opener);
     open.value = true;
     await nextTick();
