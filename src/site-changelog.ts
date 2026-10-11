@@ -12,6 +12,12 @@ export interface SiteChangelogDay {
 
 export const siteChangelog: SiteChangelogEntry[] = [
   {
+    id: "2026-10-11-http403-unavailable",
+    date: "2026-10-11",
+    title: "统一 HTTP 403 链接状态",
+    body: "所有 HTTP 403 链接统一判定并显示为不可用，历史记录也按同一规则展示，不再显示为访问受限。",
+  },
+  {
     id: "2026-10-10-changelog-layout-and-modal-scroll",
     date: "2026-10-10",
     title: "优化数据动态列表与弹窗滚动",

@@ -12,6 +12,7 @@ import json
 import os
 import re
 import stat
+from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -214,6 +215,26 @@ class DomainData:
     records: tuple[dict[str, Any], ...]
 
 
+def _index_entry_matches(item: dict[str, Any], record: dict[str, Any] | None, platform: str) -> bool:
+    expected = index_entry(record, platform) if record is not None else None
+    if expected is None or set(item) != set(expected):
+        return False
+    if item == expected:
+        return True
+    if any(item[key] != value for key, value in expected.items() if key != "available"):
+        return False
+    # Accept only the exact pre-403-policy summary of this canonical record.
+    # This keeps historical indexes readable without rewriting server data.
+    legacy_record = deepcopy(record)
+    for artifact in legacy_record.get("artifacts", []):
+        for candidate in artifact.get("urls", []):
+            current = candidate.get("current")
+            if isinstance(current, dict) and current.get("http_code") == 403:
+                del current["http_code"]
+    legacy = index_entry(legacy_record, platform)
+    return legacy != expected and item == legacy
+
+
 class ApiContract:
     def __init__(self, data_root: Path, upstream: Any | None = None, state_root: Path | None = None) -> None:
         self.data_root = Path(data_root)
@@ -347,10 +368,7 @@ class ApiContract:
             fail(500, "index_mismatch", "版本索引与记录不一致")
         for item in entries:
             record = by_version.get(item["version"])
-            expected_entry = index_entry(record, "windows") if record is not None else None
-            if expected_entry is None or set(item) != set(expected_entry) or any(
-                item.get(key) != value for key, value in expected_entry.items()
-            ):
+            if not _index_entry_matches(item, record, "windows"):
                 fail(500, "index_mismatch", "版本索引摘要不匹配")
         indexed = set(indexed_versions)
         ordered = [by_version[version] for version in indexed_versions]
@@ -482,8 +500,7 @@ class ApiContract:
                     for item in entries:
                         if item["version"] not in by_version:
                             fail(500, "index_mismatch", "版本索引指向缺失记录")
-                        expected_entry = index_entry(by_version[item["version"]], platform)
-                        if expected_entry is None or set(item) != set(expected_entry) or any(item.get(key) != value for key, value in expected_entry.items()):
+                        if not _index_entry_matches(item, by_version[item["version"]], platform):
                             fail(500, "index_mismatch", "版本索引摘要不匹配")
                     unindexed_versions = [version for version in visible_versions if version not in set(indexed_versions)]
                     records = [by_version[version] for version in indexed_versions + sorted(unindexed_versions, key=_version_key, reverse=True)]
@@ -669,6 +686,8 @@ def _public_current(current: Any, *, rotation_eligible: bool = True) -> dict[str
     state = current.get("state") if current.get("state") in AVAILABILITY_STATES else "unknown"
     checked_at = current.get("checked_at") if isinstance(current.get("checked_at"), str) else None
     http_code = current.get("http_code") if isinstance(current.get("http_code"), int) and not isinstance(current.get("http_code"), bool) else None
+    if http_code == 403:
+        state = "unavailable"
     probe = _probe_checked_at(current)
     now = _utc_now()
     evidence_status = "unverified"
@@ -779,7 +798,9 @@ def _artifact_state(artifact: dict[str, Any]) -> str:
             if current is None:
                 continue
             evidence_status = current["evidence_status"]
-        if evidence_status != "verified":
+        if evidence_status != "verified" and not (
+            current.get("state") == "unavailable" and current.get("reason") == "HTTP 403"
+        ):
             continue
         state = current.get("state")
         if state in AVAILABILITY_STATES:
@@ -820,7 +841,7 @@ def _artifact_availability(artifact: dict[str, Any], *, scheduled_indices: set[t
             continue
         else:
             code = candidate["current"].get("http_code")
-            if code in {401, 403}:
+            if code == 401:
                 reason = f"上游拒绝访问（HTTP {code}）"
             elif code in {200, 206}:
                 reason = f"已响应，但未取得有效文件证据（HTTP {code}）"
@@ -857,7 +878,7 @@ def _public_version(record: dict[str, Any]) -> dict[str, Any]:
     candidate = next((item for item in artifact.get("urls", []) if isinstance(item, dict) and _safe_public_url(item.get("url"))), {})
     current = candidate.get("current") if isinstance(candidate, dict) and isinstance(candidate.get("current"), dict) else {}
     checksum = artifact.get("checksum") if isinstance(artifact.get("checksum"), dict) else {}
-    state = current.get("state")
+    state = (_public_current(current) or {}).get("state")
     return {
         "vendor": record["vendor"],
         "game_id": record["game_id"],
