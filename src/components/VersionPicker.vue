@@ -286,7 +286,6 @@ function atomicBadges(row: {
       }
     }
     const labels: Record<string, string> = {
-      "上游拒绝访问（HTTP 403）": "访问受限",
       "上游拒绝访问（HTTP 401）": "访问受限",
       "没有可探活的下载 URL": "无探活链接",
       "探活证据已过期": "证据过期",

@@ -533,7 +533,7 @@ class TemporaryContractTests(unittest.TestCase):
 
     def test_unknown_summary_explains_denied_html_missing_and_stale_evidence(self):
         cases = [
-            ("7.0.0", {"state": "unknown", "http_code": 403, "checked_at": "2026-08-29T01:00:00Z"}, "上游拒绝访问（HTTP 403）"),
+            ("7.0.0", {"state": "unknown", "http_code": 401, "checked_at": "2026-08-29T01:00:00Z"}, "上游拒绝访问（HTTP 401）"),
             ("7.1.0", {"state": "unknown", "http_code": 200, "checked_at": "2026-08-29T01:00:00Z"}, "已响应，但未取得有效文件证据（HTTP 200）"),
             ("7.2.0", None, "尚无有效探活记录"),
             ("7.3.0", {"state": "available", "http_code": 200, "checked_at": "2026-08-20T00:00:00Z"}, "探活证据已过期"),
@@ -551,6 +551,52 @@ class TemporaryContractTests(unittest.TestCase):
                 self.assertEqual(summaries[version]["availability_states"]["unknown"], 1)
                 self.assertEqual(summaries[version]["availability_reasons"], {reason: 1})
                 self.assertEqual(summaries[version]["artifact_kinds"]["apk"]["availability_reasons"], {reason: 1})
+
+    def test_historical_403_is_unavailable_without_mutating_records_or_other_candidates(self):
+        for platform, domain, kind in (("android", "hk4e-android", "apk"), ("windows", "hk4e-pc", "package")):
+            for version, state, alternate in (("7.8.0", "unknown", False), ("7.8.1", "available", False), ("7.8.2", "unknown", True)):
+                with self.subTest(platform=platform, state=state, alternate=alternate):
+                    item = artifact("forbidden.apk" if kind == "apk" else "forbidden.zip", kind=kind, current={
+                        "state": state, "http_code": 403, "checked_at": "2026-08-20T00:00:00Z",
+                    })
+                    if alternate:
+                        item["urls"].append({
+                            "url": "https://official.example/available", "provider": "fixture",
+                            "source_kind": "official", "priority": 1,
+                            "current": {"state": "available", "http_code": 206, "checked_at": "2026-08-29T01:00:00Z"},
+                        })
+                    path = write_record(self.root, record("mihoyo", "hk4e", platform, version, [item]))
+                    original = path.read_bytes()
+                    rebuild_indexes(self.root)
+                    base = f"/api/v1/domains/{domain}/versions/{version}"
+                    expected = "available" if alternate else "unavailable"
+                    with patch("backend.api_contract._utc_now", lambda: FROZEN_NOW):
+                        summaries = self.get(f"/api/v1/domains/{domain}/versions").json()["items"]
+                        summary = next(item for item in summaries if item["version"] == version)
+                        detail = self.get(base).json()
+                        page = self.get(f"{base}/artifacts?availability_state={expected}").json()
+                        unavailable_page = self.get(f"{base}/artifacts?availability_state=unavailable").json()
+                        unknown_page = self.get(f"{base}/artifacts?availability_state=unknown").json()
+                        tree = self.get(f"{base}/artifact-tree?kind={kind}&availability_state={expected}").json()
+                    self.assertEqual(summary["availability_states"][expected], 1)
+                    self.assertEqual(summary["availability_states"]["unknown"], 0)
+                    self.assertEqual(summary["artifact_kinds"][kind]["availability_states"][expected], 1)
+                    self.assertEqual(detail["status"]["http_code"], 403)
+                    self.assertIs(detail["status"]["available"], False)
+                    self.assertEqual(page["total"], 1)
+                    public = page["items"][0]
+                    self.assertEqual(public["availability"]["state"], expected)
+                    current = public["urls"][0]["current"]
+                    self.assertEqual(current["state"], "unavailable")
+                    self.assertEqual(current["reason"], "HTTP 403")
+                    self.assertEqual(current["evidence_status"], "verified")
+                    self.assertIsNone(current["expires_at"])
+                    if alternate:
+                        self.assertEqual(public["urls"][1]["current"]["state"], "available")
+                    self.assertEqual(unavailable_page["total"], 0 if alternate else 1)
+                    self.assertEqual(unknown_page["items"], [])
+                    self.assertEqual(len(tree["items"]), 1)
+                    self.assertEqual(path.read_bytes(), original)
 
     def test_probe_evidence_freshness_boundary_is_20_hours(self):
         cases = {
@@ -571,6 +617,57 @@ class TemporaryContractTests(unittest.TestCase):
             self.assertEqual(url["current"]["observed_at"], checked_at)
             self.assertEqual(url["current"]["expires_at"], "2026-08-29T12:01:00Z" if version == "5.0.0" else "2026-08-29T12:00:00Z" if version == "5.1.0" else "2026-08-20T20:00:00Z")
             self.assertEqual(url["evidence_status"], expected)
+
+    def test_historical_403_without_valid_probe_timestamp_stays_unavailable(self):
+        for checked_at in (None, "invalid", "2026-08-29T13:00:00Z"):
+            with self.subTest(checked_at=checked_at):
+                current = {"state": "unknown", "http_code": 403}
+                if checked_at is not None:
+                    current["checked_at"] = checked_at
+                value = record("mihoyo", "hk4e", "android", "7.9.0", [artifact("denied.apk", kind="apk", current=current)])
+                original = copy.deepcopy(value)
+                with patch("backend.api_contract._utc_now", lambda: FROZEN_NOW):
+                    public = _public_artifact(value, value["artifacts"][0])
+                    summary = _summary(value)
+                self.assertEqual(public["availability"]["state"], "unavailable")
+                self.assertEqual(public["urls"][0]["current"]["state"], "unavailable")
+                self.assertEqual(public["urls"][0]["current"]["source_kind"], "canonical_current")
+                self.assertEqual(public["urls"][0]["current"]["evidence_status"], "unverified")
+                self.assertEqual(summary["availability_states"], {"available": 0, "unavailable": 1, "unknown": 0})
+                self.assertEqual(value, original)
+
+    def test_exact_legacy_403_index_is_readable_but_other_summary_mismatches_fail(self):
+        for platform, disk, kind in (("android", "android", "apk"), ("windows", "pc", "package")):
+            for state, legacy_available in (("unknown", None), ("available", True)):
+                with self.subTest(platform=platform, state=state):
+                    value = record("mihoyo", "hk4e", platform, "7.9.1", [artifact("denied", kind=kind, current={
+                        "state": state, "http_code": 403,
+                    })])
+                    path = write_record(self.root, value)
+                    original = path.read_bytes()
+                    rebuild_indexes(self.root)
+                    index_path = self.root / "mihoyo" / "hk4e" / disk / "index.json"
+                    index = json.loads(index_path.read_text(encoding="utf-8"))
+                    row = next(item for item in index["versions"] if item["version"] == "7.9.1")
+                    row["available"] = legacy_available
+                    index_path.write_text(json.dumps(index), encoding="utf-8")
+                    legacy_bytes = index_path.read_bytes()
+                    summaries = self.get(f"/api/v1/domains/hk4e-{'android' if platform == 'android' else 'pc'}/versions").json()["items"]
+                    summary = next(item for item in summaries if item["version"] == "7.9.1")
+                    self.assertEqual(summary["availability_states"]["unavailable"], 1)
+                    self.assertEqual(path.read_bytes(), original)
+                    self.assertEqual(index_path.read_bytes(), legacy_bytes)
+                    for field, corrupted in (("available", not legacy_available), ("size", row["size"] + 1)):
+                        saved = row[field]
+                        row[field] = corrupted
+                        index_path.write_text(json.dumps(index), encoding="utf-8")
+                        if field == "available" and corrupted is False:
+                            # The new-policy index is valid too.
+                            self.get("/api/v1/games")
+                        else:
+                            self.assertEqual(self.get("/api/v1/games", 500).json()["error"]["code"], "index_mismatch")
+                        row[field] = saved
+                    index_path.write_text(json.dumps(index), encoding="utf-8")
 
     def test_non_rotating_unavailable_and_unknown_evidence_does_not_expire(self):
         write_record(self.root, record("mihoyo", "hk4e", "android", "6.0.0", [

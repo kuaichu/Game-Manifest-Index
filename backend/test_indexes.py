@@ -23,6 +23,21 @@ def write_record(directory, name, value):
 
 
 class IndexTests(unittest.TestCase):
+    def test_403_overrides_historical_state_but_keeps_first_url_selection(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            for platform, disk in (("android", "android"), ("windows", "pc")):
+                directory = root / "v" / "g" / disk
+                directory.mkdir(parents=True)
+                for version, state, code in (("1", "unknown", 403), ("2", "available", 403), ("3", "unknown", 401)):
+                    value = make_record(platform, version, state=state)
+                    urls = value["artifacts"][0]["urls"]
+                    urls[0]["current"]["http_code"] = code
+                    urls.append({"url": "https://example.invalid/second", "current": {"state": "available", "http_code": 200}})
+                    write_record(directory, version + ".json", value)
+                entries = read_index(rebuild_index(root, "v", "g", platform))["versions"]
+                self.assertEqual({x["version"]: x["available"] for x in entries}, {"1": False, "2": False, "3": None})
+
     def test_nondefault_resource_index_is_isolated_from_same_version_default_domain(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

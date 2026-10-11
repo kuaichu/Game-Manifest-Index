@@ -437,6 +437,20 @@ describe("domain presentation", () => {
     })).toEqual({ available: 0, unavailable: 1, unknown: 0 });
   });
 
+  it("counts terminal HTTP 403 as unavailable without upgrading its probe evidence", () => {
+    const forbidden = availability({
+      state: "unavailable", reason: "HTTP 403", evidence_status: "unverified",
+      checked_at: null, observed_at: null, source_kind: "canonical_current",
+    });
+    expect(artifactUrlStateCounts(artifact([
+      { id: 1, url: "https://a.example/game.bin", priority: 0, source_kind: "official", current: forbidden },
+      { id: 2, url: "https://b.example/game.bin", priority: 1, source_kind: "official", current: availability() },
+      { id: 3, url: "https://c.example/game.bin", priority: 2, source_kind: "official", current: availability({ state: "unknown", reason: "HTTP 401", evidence_status: "unverified" }) },
+      { id: 4, url: "https://d.example/game.bin", priority: 3, source_kind: "official", current: availability({ state: "unavailable", reason: "HTTP 404", evidence_status: "unverified" }) },
+    ]))).toEqual({ available: 1, unavailable: 1, unknown: 2 });
+    expect(forbidden.evidence_status).toBe("unverified");
+  });
+
   it("drives WuWa split, provider and action rendering from the capability contract", () => {
     const current = domain("generic", ["files", "patches", "archive", "compare"], "capability-game");
     current.capability_contract = {
