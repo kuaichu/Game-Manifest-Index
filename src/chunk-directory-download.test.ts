@@ -117,6 +117,22 @@ beforeEach(() => {
 });
 
 describe("downloadChunkDirectory", () => {
+  it("consumes large paginated plans without spreading component arrays and deduplicates before writes", async () => {
+    const root = new TestDirectory();
+    const item = detail("shared.bin");
+    const total = 150_000;
+    mocks.chunkDownloadPlan.mockImplementation(async (_domain, _version, _identity, params) => {
+      expect(root.entries.size).toBe(0);
+      const offset = Number(params.cursor || 0);
+      return { identity: "component", items: Array(500).fill(item), total, total_size: total * item.size,
+        next_cursor: offset + 500 < total ? String(offset + 500) : null };
+    });
+    const result = await downloadChunkDirectory(options(root));
+    expect(result).toMatchObject({ files: 1, bytes: 2 });
+    expect(mocks.chunkDownloadPlan).toHaveBeenCalledTimes(300);
+    expect(mocks.writeChunkFile).toHaveBeenCalledOnce();
+  });
+
   it("collects every component page without a search filter and writes cross-component duplicates once", async () => {
     usePlans({
       componentA: {

@@ -88,6 +88,19 @@ describe("selected files", () => {
 });
 
 describe("raw file streaming", () => {
+  it("writes and hashes only a stream view's byte range", async () => {
+    const backing = new Uint8Array([99, ...bytes, 88]);
+    const view = backing.subarray(1, backing.length - 1);
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(new ReadableStream<Uint8Array>({
+      start(controller) { controller.enqueue(view); controller.close(); },
+    }))));
+    const writable = sink();
+    await writeDirectFile(detail("a"), "/file-content", writable, new AbortController().signal);
+    expect(writable.bytes).toEqual([...bytes]);
+    expect(writable.close).toHaveBeenCalledOnce();
+    expect(backing[0]).toBe(99); expect(backing[backing.length - 1]).toBe(88);
+  });
+
   it.each([{ raw: bytes, length: 6 }, { raw: new Uint8Array(4) }, { raw: new Uint8Array(6) }, { raw: new TextEncoder().encode("wrong") }])("rejects wrong length or MD5 without committing", async ({ raw, length }) => {
     vi.stubGlobal("fetch", vi.fn(async () => response(raw, length))); const writable = sink();
     await expect(writeDirectFile(detail("a"), "/file-content", writable, new AbortController().signal)).rejects.toThrow(/校验/);

@@ -527,9 +527,10 @@ class OperationTests(AdminFixture):
         self.assertEqual(started.status_code, 200)
         finished = self.wait(client, started.json()["job_id"])
         self.assertEqual(started.json()["actions"], ["discover", "probe"])
-        self.assertEqual(started.json()["total"], 3)
+        # Android and PC each discover once, then probe the two archive URLs.
+        self.assertEqual(started.json()["total"], 4)
         self.assertEqual(finished["status"], "finished")
-        self.assertEqual((finished["completed"], finished["failed"]), (3, 0))
+        self.assertEqual((finished["completed"], finished["failed"]), (4, 0))
         self.assertEqual(calls, [package["urls"][0]["url"], patch_archive["urls"][0]["url"]])
         calls.clear()
         response = client.post("/api/v1/admin/domains/endfield-resources/versions/1.0.0/probe", headers=self.auth())

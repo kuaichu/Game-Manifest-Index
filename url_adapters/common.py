@@ -42,9 +42,11 @@ def add_options(parser: argparse.ArgumentParser) -> None:
 def curl(args: list[str], timeout: int) -> str:
     command = ["curl", "-sS", "--connect-timeout", "10", "--max-time", str(timeout), *args]
     try:
-        result = subprocess.run(command, capture_output=True, check=False)
+        result = subprocess.run(command, capture_output=True, check=False, timeout=timeout + 5)
     except FileNotFoundError as exc:
         raise AdapterError("系统中没有找到 curl") from exc
+    except subprocess.TimeoutExpired as exc:
+        raise AdapterError(f"curl 超时（{timeout + 5} 秒）") from exc
     output = result.stdout.decode("latin-1", errors="replace")
     error = result.stderr.decode("utf-8", errors="replace").strip()
     if result.returncode:

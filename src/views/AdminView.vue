@@ -1994,6 +1994,7 @@ const opJob = ref<AdminOperationJob | null>(null);
 const opResult = ref<AdminOperationResult | null>(null);
 const opExecutionTime = ref<number | null>(null);
 const opTerminalLogs = ref<string[]>([]);
+const OP_TERMINAL_LOG_LIMIT = 256;
 const opLogOffset = ref(0);
 const opTerminalHidden = ref(false);
 let operationPollTimer: number | null = null;
@@ -2135,12 +2136,12 @@ async function applyOperationJob(job: AdminOperationJob, isInitialRestore = fals
   if (restoredScope) opPlatformScope.value = restoredScope;
   opRunning.value = job.status === "running" || job.status === "cancelling";
   if (incremental && sameJob) {
-    opTerminalLogs.value = [...opTerminalLogs.value, ...(job.logs || [])];
+    opTerminalLogs.value = [...opTerminalLogs.value, ...(job.logs || [])].slice(-OP_TERMINAL_LOG_LIMIT);
     opLogOffset.value = job.log_total ?? (opLogOffset.value + (job.logs || []).length);
     if (job.logs?.length) opTerminalHidden.value = false;
   } else {
-    opTerminalLogs.value = [...(job.logs || [])];
-    opLogOffset.value = job.logs?.length || 0;
+    opTerminalLogs.value = (job.logs || []).slice(-OP_TERMINAL_LOG_LIMIT);
+    opLogOffset.value = job.log_total ?? ((job.log_offset ?? 0) + (job.logs?.length || 0));
     opTerminalHidden.value = false;
   }
   if (opRunning.value) return;
@@ -2242,8 +2243,8 @@ function isGameSelected(gameId: string): boolean {
 function appendOpLog(line: string): void {
   opTerminalHidden.value = false;
   opTerminalLogs.value.push(line);
-  if (opTerminalLogs.value.length > 300) {
-    opTerminalLogs.value = opTerminalLogs.value.slice(-300);
+  if (opTerminalLogs.value.length > OP_TERMINAL_LOG_LIMIT) {
+    opTerminalLogs.value = opTerminalLogs.value.slice(-OP_TERMINAL_LOG_LIMIT);
   }
 }
 
@@ -4954,6 +4955,9 @@ onBeforeUnmount(() => {
 
             <!-- 查找新版本明细表 -->
             <div v-if="opResult.discover" class="op-table-section">
+              <p v-if="opResult.discover.items_truncated" class="text-muted">
+                本次采集共 {{ opResult.discover.items_total }} 条结果，下方保留 {{ opResult.discover.items.length }} 条明细；上方统计包含全部结果。
+              </p>
               <h4 style="margin: 0 0 10px; font-size: 13.5px; font-weight: 750; color: #7dd3fc;">🔍 查找新版本 (Discover) 执行明细</h4>
               <div class="op-table-wrapper">
                 <table class="op-table">
@@ -5007,6 +5011,9 @@ onBeforeUnmount(() => {
 
             <!-- 探活历史版本明细表 -->
             <div v-if="opResult.probe" class="op-table-section">
+              <p v-if="opResult.probe.items_truncated" class="text-muted">
+                本次探活共 {{ opResult.probe.items_total }} 条结果，下方保留 {{ opResult.probe.items.length }} 条明细；筛选仅针对保留的明细，上方统计包含全部结果。
+              </p>
               <div class="op-table-head-row">
                 <h4 style="margin: 0; font-size: 13.5px; font-weight: 750; color: #34d399;">
                   ⚡ 历史版本探活 (Probe) 执行明细
