@@ -379,6 +379,9 @@ class ApiContract:
         return DomainData(vendor, game_id, "pc", "windows", domain_id, directory, tuple(ordered))
 
     def inventory(self) -> dict[str, DomainData]:
+        return self._inventory()
+
+    def _inventory(self, requested_domain: str | None = None) -> dict[str, DomainData]:
         if not _ordinary(self.data_root, directory=True):
             fail(500, "data_root_invalid", "数据目录不可用")
         result: dict[str, DomainData] = {}
@@ -395,12 +398,14 @@ class ApiContract:
                 if not _ordinary(game_root, directory=True):
                     fail(500, "unsafe_data_path", "数据目录不安全")
                 for disk_platform, platform in PLATFORMS:
+                    domain_id = f"{game_id}-{'android' if platform == 'android' else 'pc'}"
+                    if requested_domain is not None and domain_id != requested_domain:
+                        continue
                     directory = game_root / disk_platform
                     if not _present(directory):
                         continue
                     if not _ordinary(directory, directory=True):
                         fail(500, "unsafe_data_path", "数据目录不安全")
-                    domain_id = f"{game_id}-{'android' if platform == 'android' else 'pc'}"
                     if domain_id in result:
                         fail(500, "duplicate_domain", "归档域归属冲突")
                     index_path = directory / "index.json"
@@ -520,6 +525,8 @@ class ApiContract:
                 *nondefault_pc_domains(vendor, game_id),
                 *catalog_admin.configured_nondefault_pc_domains(self.data_root, vendor, game_id),
             ):
+                if requested_domain is not None and domain_id != requested_domain:
+                    continue
                 domain_config = self._catalog_domains().get(domain_id)
                 if domain_config is not None and domain_config.get("is_enabled") is False:
                     continue
@@ -537,7 +544,7 @@ class ApiContract:
 
     def domain(self, domain_id: str) -> DomainData:
         _safe_component(domain_id, not_found=True)
-        domain = self.inventory().get(domain_id)
+        domain = self._inventory(domain_id).get(domain_id)
         if domain is None:
             fail(404, "domain_not_found", "归档域不存在")
         return domain

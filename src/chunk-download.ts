@@ -2,13 +2,34 @@ import { Decompress as ZstdDecompress } from "fzstd";
 import SparkMD5 from "spark-md5";
 import type { ChunkFileDetail, ChunkFileChunkItem } from "./types";
 
-export const MAX_BROWSER_SYNTHESIS_SIZE = 512 * 1024 * 1024;
-const MAX_CONCURRENCY = 4;
+// Budget at most 64 MiB each for output, Blob snapshot, and the single in-flight
+// compressed/decoded pair. Codec, browser internals, and pending GC are additional.
+export const MAX_BROWSER_SYNTHESIS_SIZE = 64 * 1024 * 1024;
+const MAX_BROWSER_CHUNK_SIZE = 512 * 1024 * 1024;
+const MD5_BLOCK_SIZE = 1024 * 1024;
 export interface ChunkDownloadProgress { completed: number; total: number; receivedBytes: number; totalBytes: number; }
 export interface ChunkWritableSink { write(data: ArrayBuffer): Promise<void>; close(): Promise<void>; abort(reason?: unknown): Promise<void>; }
 export class ChunkDownloadError extends Error { constructor(message: string) { super(message); this.name = "ChunkDownloadError"; } }
 function abortError(): DOMException { return new DOMException("Aborted", "AbortError"); }
-function digest(value: Uint8Array): string { return SparkMD5.ArrayBuffer.hash(value.slice().buffer as ArrayBuffer); }
+/** SparkMD5.append copies its input internally, so never pass a whole large file. */
+export function appendHashBytes(md5: SparkMD5.ArrayBuffer, value: Uint8Array): void {
+  if (value.byteLength <= MD5_BLOCK_SIZE && value.byteOffset === 0 && value.byteLength === value.buffer.byteLength) {
+    md5.append(value.buffer as ArrayBuffer);
+    return;
+  }
+  for (let offset = 0; offset < value.byteLength; offset += MD5_BLOCK_SIZE) {
+    md5.append(value.slice(offset, offset + MD5_BLOCK_SIZE).buffer as ArrayBuffer);
+  }
+}
+
+function digest(value: Uint8Array): string {
+  if (value.byteOffset === 0 && value.byteLength === value.buffer.byteLength) {
+    return SparkMD5.ArrayBuffer.hash(value.buffer as ArrayBuffer);
+  }
+  const md5 = new SparkMD5.ArrayBuffer();
+  try { appendHashBytes(md5, value); return md5.end(); }
+  finally { md5.destroy(); }
+}
 
 async function abortable<T>(signal: AbortSignal, action: () => Promise<T>): Promise<T> {
   if (signal.aborted) throw abortError();
@@ -24,7 +45,7 @@ function decompressZstd(input: Uint8Array, expected: number): Uint8Array {
   const output = new Uint8Array(expected);
   let written = 0;
   const decoder = new ZstdDecompress((part) => {
-    if (written + part.byteLength > expected || written + part.byteLength > MAX_BROWSER_SYNTHESIS_SIZE) {
+    if (written + part.byteLength > expected || written + part.byteLength > MAX_BROWSER_CHUNK_SIZE) {
       throw new ChunkDownloadError("Chunk 解压输出超过声明大小");
     }
     output.set(part, written);
@@ -47,11 +68,11 @@ export function chunkUrl(recipe: NonNullable<ChunkFileDetail["chunk_download"]>,
 }
 
 function validateDetail(detail: ChunkFileDetail, maxFileSize = MAX_BROWSER_SYNTHESIS_SIZE): ChunkFileChunkItem[] {
-  if (!Number.isSafeInteger(detail.size) || detail.size < 0 || detail.size > maxFileSize) throw new ChunkDownloadError(detail.size > maxFileSize ? "文件超过 512 MiB，暂不支持浏览器合成" : "文件大小无效");
+  if (!Number.isSafeInteger(detail.size) || detail.size < 0 || detail.size > maxFileSize) throw new ChunkDownloadError(detail.size > maxFileSize ? "文件超过 64 MiB，请使用桌面 Chrome 或 Edge 直接保存到磁盘" : "文件大小无效");
   for (const chunk of detail.chunks || []) {
     if (![chunk.offset, chunk.size, chunk.size_decompressed].every((v) => Number.isSafeInteger(v) && v >= 0)) throw new ChunkDownloadError("Chunk 元数据无效");
     if (!Number.isSafeInteger(chunk.offset + chunk.size_decompressed) || chunk.offset + chunk.size_decompressed > detail.size) throw new ChunkDownloadError("Chunk 超出文件范围");
-    if (chunk.size > MAX_BROWSER_SYNTHESIS_SIZE || chunk.size_decompressed > MAX_BROWSER_SYNTHESIS_SIZE) throw new ChunkDownloadError("Chunk 超过浏览器合成限制");
+    if (chunk.size > MAX_BROWSER_CHUNK_SIZE || chunk.size_decompressed > MAX_BROWSER_CHUNK_SIZE) throw new ChunkDownloadError("Chunk 超过浏览器合成限制");
   }
   const chunks = [...(detail.chunks || [])].sort((a, b) => a.offset - b.offset);
   let cursor = 0;
@@ -119,7 +140,7 @@ export async function writeChunkFile(detail: ChunkFileDetail, writable: ChunkWri
       const buffer = bytes.buffer as ArrayBuffer;
       await abortable(signal, () => writable.write(buffer));
       if (signal.aborted) throw abortError();
-      md5.append(buffer);
+      appendHashBytes(md5, bytes);
       completed++;
       onProgress({ completed, total: chunks.length, receivedBytes, totalBytes });
     }
@@ -134,17 +155,20 @@ export async function writeChunkFile(detail: ChunkFileDetail, writable: ChunkWri
 
 export async function synthesizeChunkFile(detail: ChunkFileDetail, signal: AbortSignal, onProgress: (p: ChunkDownloadProgress) => void = () => undefined, urlForChunk: (chunk: ChunkFileChunkItem) => string = (chunk) => chunkUrl(detail.chunk_download!, chunk.name)): Promise<Blob> {
   if (signal.aborted) throw abortError();
-  validateDetail(detail); const recipe = validateRecipe(detail);
-  const chunks = detail.chunks || []; if (!chunks.length) { const empty = new Uint8Array(0); if (detail.hash && digest(empty) !== detail.hash.toLowerCase()) throw new ChunkDownloadError("完整文件 MD5 校验失败"); return new Blob([empty], { type: "application/octet-stream" }); }
+  const chunks = validateDetail(detail); const recipe = validateRecipe(detail);
+  if (!chunks.length) { const empty = new Uint8Array(0); if (detail.hash && digest(empty) !== detail.hash.toLowerCase()) throw new ChunkDownloadError("完整文件 MD5 校验失败"); return new Blob([empty], { type: "application/octet-stream" }); }
   const totalBytes = compressedTotal(chunks, MAX_BROWSER_SYNTHESIS_SIZE);
-  const output = new Uint8Array(detail.size); const internal = new AbortController(); const relay = () => internal.abort(); signal.addEventListener("abort", relay, { once: true });
-  let receivedBytes = 0; let completed = 0; let next = 0; let failure: unknown;
-  const worker = async (): Promise<void> => { while (true) { if (internal.signal.aborted) throw abortError(); const index = next++; if (index >= chunks.length) return; const chunk: ChunkFileChunkItem = chunks[index]; try {
-    const decompressed = await downloadChunk(chunk, recipe, internal.signal, (n) => { receivedBytes += n; onProgress({ completed, total: chunks.length, receivedBytes, totalBytes }); }, urlForChunk);
+  const output = new Uint8Array(detail.size);
+  let receivedBytes = 0; let completed = 0;
+  for (const chunk of chunks) {
+    if (signal.aborted) throw abortError();
+    const decompressed = await downloadChunk(chunk, recipe, signal, (n) => { receivedBytes += n; onProgress({ completed, total: chunks.length, receivedBytes, totalBytes }); }, urlForChunk);
+    if (signal.aborted) throw abortError();
     output.set(decompressed, chunk.offset); completed++; onProgress({ completed, total: chunks.length, receivedBytes, totalBytes });
-  } catch (error) { if (!failure) failure = error; internal.abort(); throw error; } } };
-  try { await Promise.all(Array.from({ length: Math.min(MAX_CONCURRENCY, chunks.length) }, () => worker())); if (failure) throw failure; if (detail.hash && digest(output) !== detail.hash.toLowerCase()) throw new ChunkDownloadError("完整文件 MD5 校验失败"); return new Blob([output], { type: "application/octet-stream" }); }
-  finally { signal.removeEventListener("abort", relay); }
+  }
+  if (signal.aborted) throw abortError();
+  if (detail.hash && digest(output) !== detail.hash.toLowerCase()) throw new ChunkDownloadError("完整文件 MD5 校验失败");
+  return new Blob([output], { type: "application/octet-stream" });
 }
 
 export function saveBlob(blob: Blob, filename: string, releaseDelay = 1000): void { const url = URL.createObjectURL(blob); const anchor = document.createElement("a"); anchor.href = url; anchor.download = filename || "download.bin"; anchor.click(); window.setTimeout(() => URL.revokeObjectURL(url), releaseDelay); }

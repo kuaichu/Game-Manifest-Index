@@ -1,6 +1,6 @@
 import SparkMD5 from "spark-md5";
 import { api, chunkContentUrl, fileContentUrl } from "./api";
-import { writeChunkFile, type ChunkWritableSink } from "./chunk-download";
+import { appendHashBytes, writeChunkFile, type ChunkWritableSink } from "./chunk-download";
 import { createFreshDirectory, createParentDirectories, planFileConflicts, safePath, type ChunkDirectoryHandle, type DirectoryDownloadProgress, type PlannedFile } from "./chunk-directory-download";
 import type { ChunkFileDetail } from "./types";
 
@@ -71,10 +71,11 @@ export async function writeDirectFile(detail: ChunkFileDetail, url: string, writ
       if (done) break;
       received += value.byteLength;
       if (received > detail.size) throw new Error("完整文件大小校验失败");
-      const buffer = value.slice().buffer as ArrayBuffer;
+      const buffer = value.byteOffset === 0 && value.byteLength === value.buffer.byteLength
+        ? value.buffer as ArrayBuffer : value.slice().buffer as ArrayBuffer;
       await abortable(signal, () => writable.write(buffer));
       check(signal);
-      md5.append(buffer);
+      appendHashBytes(md5, value);
       onProgress(received);
     }
     if (received !== detail.size) throw new Error("完整文件大小校验失败");

@@ -11,6 +11,7 @@ import copy
 import hashlib
 import json
 import re
+import sys
 import threading
 import time
 from collections import OrderedDict
@@ -32,8 +33,30 @@ MAX_MANIFEST_BYTES = 64 * 1024 * 1024
 MAX_MANIFEST_DECOMPRESSED_BYTES = 128 * 1024 * 1024
 MAX_CHUNK_BYTES = 64 * 1024 * 1024
 MAX_CHUNK_MANIFEST_CACHE_ENTRIES = 8
+MAX_CHUNK_MANIFEST_CACHE_BYTES = 64 * 1024 * 1024
 MAX_FILE_TIME_CACHE_ENTRIES = 64
 FILE_TIME_CACHE_TTL = 600
+
+
+def _retained_size(value: Any) -> int:
+    """Estimate retained Python object bytes, counting shared objects only once."""
+    seen: set[int] = set()
+
+    def size(item: Any) -> int:
+        identity = id(item)
+        if identity in seen:
+            return 0
+        seen.add(identity)
+        total = sys.getsizeof(item)
+        if isinstance(item, Mapping):
+            return total + sum(size(key) + size(value) for key, value in item.items())
+        if isinstance(item, (tuple, list, set, frozenset)):
+            return total + sum(size(value) for value in item)
+        return total
+
+    return size(value)
+
+
 OFFICIAL_SOPHON_HOSTS = frozenset(
     {
         "autopatchcn.yuanshen.com",
@@ -127,6 +150,8 @@ class HttpUpstream:
         self.max_redirects = max_redirects
         self.transport = transport
         self._chunk_manifest_cache: OrderedDict[str, _ChunkManifestData] = OrderedDict()
+        self._chunk_manifest_cache_sizes: dict[str, int] = {}
+        self._chunk_manifest_cache_bytes = 0
         self._chunk_manifest_inflight: dict[str, Future[_ChunkManifestData]] = {}
         self._chunk_manifest_lock = threading.Lock()
         self._file_time_cache: OrderedDict[tuple[str, frozenset[str]], tuple[float, str | None]] = OrderedDict()
@@ -204,16 +229,23 @@ class HttpUpstream:
             return pending.result()
         try:
             value = loader()
+            value_bytes = _retained_size((value.files, value.chunk_sizes, value.total_size, value.file_time))
         except BaseException as error:
             with self._chunk_manifest_lock:
                 self._chunk_manifest_inflight.pop(key, None)
                 pending.set_exception(error)
             raise
         with self._chunk_manifest_lock:
-            self._chunk_manifest_cache[key] = value
-            self._chunk_manifest_cache.move_to_end(key)
-            while len(self._chunk_manifest_cache) > MAX_CHUNK_MANIFEST_CACHE_ENTRIES:
-                self._chunk_manifest_cache.popitem(last=False)
+            if value_bytes <= MAX_CHUNK_MANIFEST_CACHE_BYTES:
+                self._chunk_manifest_cache[key] = value
+                self._chunk_manifest_cache_sizes[key] = value_bytes
+                self._chunk_manifest_cache_bytes += value_bytes
+                while (
+                    len(self._chunk_manifest_cache) > MAX_CHUNK_MANIFEST_CACHE_ENTRIES
+                    or self._chunk_manifest_cache_bytes > MAX_CHUNK_MANIFEST_CACHE_BYTES
+                ):
+                    evicted, _ = self._chunk_manifest_cache.popitem(last=False)
+                    self._chunk_manifest_cache_bytes -= self._chunk_manifest_cache_sizes.pop(evicted)
             self._chunk_manifest_inflight.pop(key, None)
             pending.set_result(value)
         return value
@@ -410,7 +442,7 @@ def _page(items: Sequence[dict[str, Any]], limit: int, cursor: str | None) -> tu
 
 
 def _directory_page(
-    files: list[dict[str, Any]], path: str, q: str | None, limit: int, cursor: str | None
+    files: Sequence[dict[str, Any]], path: str, q: str | None, limit: int, cursor: str | None
 ) -> dict[str, Any]:
     path = strict_relative_posix(path, allow_empty=True)
     prefix = path + "/" if path else ""
@@ -444,18 +476,18 @@ def _directory_page(
             child["file_count"] += 1
             child["size"] += item["size"]
         else:
-            children[child_path] = {"type": "file", **{key: value for key, value in item.items() if key != "chunks"}}
-    ordered = sorted(children.values(), key=lambda item: (item["name"].casefold(), item["name"], item["type"]))
+            children[child_path] = item
+    ordered = sorted(children.values(), key=lambda item: (item["name"].casefold(), item["name"], item.get("type", "file")))
     page, next_cursor = _page(ordered, limit, cursor)
     return {
         "path": path,
         "q": None,
-        "items": page,
+        "items": [{"type": "file", **{key: value for key, value in item.items() if key != "chunks"}} for item in page],
         "total": len(ordered),
         "next_cursor": next_cursor,
         "totals": {
             "files": sum(item.get("file_count", 1) for item in ordered),
-            "directories": sum(item["type"] == "directory" for item in ordered),
+            "directories": sum(item.get("type") == "directory" for item in ordered),
             "size": sum(item.get("size", 0) for item in ordered),
         },
     }
@@ -728,7 +760,7 @@ def list_chunk_files(
 ) -> dict[str, Any]:
     item = _find_chunk_entry(document, identity)
     data = _chunk_manifest_data(item, upstream)
-    result = _directory_page(copy.deepcopy(list(data.files)), path, q, limit, cursor)
+    result = _directory_page(data.files, path, q, limit, cursor)
     result["identity"] = item.get("matching_field") or (item.get("manifest") or {}).get("id")
     result["fetch_mode"] = "upstream_manifest"
     result["file_time"] = data.file_time

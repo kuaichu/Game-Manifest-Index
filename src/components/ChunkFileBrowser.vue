@@ -69,6 +69,8 @@ const currentPath = ref<string>("");
 const filePage = ref<ChunkFilesPage | null>(null);
 const loading = ref<boolean>(true);
 const loadingMore = ref<boolean>(false);
+const pageIndex = ref(0);
+const pageCursors = ref<Array<string | undefined>>([undefined]);
 const error = ref<string | null>(null);
 
 // Detect if package is unavailable / expired on CDN
@@ -123,35 +125,41 @@ const directoryProgress = ref<DirectoryDownloadProgress | null>(null);
 const directoryMessage = ref("");
 const directoryError = ref("");
 const directoryDownloading = ref(false);
-const selectedPaths = ref<string[]>([]);
+const selectedFiles = ref(new Map<string, number>());
+const selectedPaths = computed(() => [...selectedFiles.value.keys()]);
 const selectedController = ref<AbortController | null>(null);
 const selectedBusy = ref(false);
 const selectedProgress = ref<DirectoryDownloadProgress | null>(null);
 const selectedMessage = ref("");
 const selectedError = ref("");
 const loadedFiles = computed(() => filePage.value?.items.filter((item) => item.type !== "directory") || []);
-const selectedSize = computed(() => loadedFiles.value.filter((item) => selectedPaths.value.includes(item.path)).reduce((sum, item) => sum + (item.size || 0), 0));
-const allLoadedSelected = computed(() => loadedFiles.value.length > 0 && loadedFiles.value.every((item) => selectedPaths.value.includes(item.path)));
+const selectedSize = computed(() => [...selectedFiles.value.values()].reduce((sum, size) => sum + size, 0));
+const allLoadedSelected = computed(() => loadedFiles.value.length > 0 && loadedFiles.value.every((item) => selectedFiles.value.has(item.path)));
 const anyDownloadBusy = computed(() => selectedBusy.value || downloading.value || directoryDownloading.value);
 
 function resetSelection(): void {
   selectedController.value?.abort();
   selectedController.value = null;
   selectedBusy.value = false;
-  selectedPaths.value = [];
+  selectedFiles.value.clear();
   selectedProgress.value = null;
   selectedMessage.value = "";
   selectedError.value = "";
 }
 
-function toggleSelected(path: string): void {
+function toggleSelected(item: ChunkFileItem): void {
   if (selectedBusy.value) return;
-  selectedPaths.value = selectedPaths.value.includes(path) ? selectedPaths.value.filter((value) => value !== path) : [...selectedPaths.value, path];
+  if (selectedFiles.value.has(item.path)) selectedFiles.value.delete(item.path);
+  else selectedFiles.value.set(item.path, item.size || 0);
 }
 
 function toggleLoadedFiles(): void {
   if (selectedBusy.value) return;
-  selectedPaths.value = allLoadedSelected.value ? [] : loadedFiles.value.map((item) => item.path);
+  const clear = allLoadedSelected.value;
+  for (const item of loadedFiles.value) {
+    if (clear) selectedFiles.value.delete(item.path);
+    else selectedFiles.value.set(item.path, item.size || 0);
+  }
 }
 
 async function selectedAction(action: "download" | "copy" | "export"): Promise<void> {
@@ -309,7 +317,7 @@ function syncRouteQuery(): void {
   }
 }
 
-async function loadFiles(path: string, append = false): Promise<void> {
+async function loadFiles(path: string, targetPage?: number): Promise<void> {
   const context = { domainId: props.domainId, version: props.version, source: activeSource.value, identity: selectedIdentity.value };
   const query = props.searchQuery;
   listController?.abort();
@@ -320,10 +328,12 @@ async function loadFiles(path: string, append = false): Promise<void> {
     && props.domainId === context.domainId && props.version === context.version
     && activeSource.value === context.source && selectedIdentity.value === context.identity && props.searchQuery === query;
 
-  if (append) {
+  if (targetPage !== undefined) {
     loadingMore.value = true;
   } else {
     resetSelection();
+    pageCursors.value = [undefined];
+    pageIndex.value = 0;
     loading.value = true;
     emit("file-time-change", { ...context, fileTime: null, loading: true });
   }
@@ -331,7 +341,8 @@ async function loadFiles(path: string, append = false): Promise<void> {
 
   try {
     const q = query?.trim() || undefined;
-    const cursor = append ? filePage.value?.next_cursor : undefined;
+    const page = targetPage ?? 0;
+    const cursor = pageCursors.value[page];
     const res = await api.versionFiles(
       context.domainId,
       context.version,
@@ -348,14 +359,10 @@ async function loadFiles(path: string, append = false): Promise<void> {
 
     if (!isCurrent()) return;
 
-    if (append && filePage.value) {
-      filePage.value = {
-        ...res,
-        items: [...filePage.value.items, ...res.items],
-      };
-    } else {
-      filePage.value = res;
-    }
+    filePage.value = res;
+    pageIndex.value = page;
+    pageCursors.value.length = page + 1;
+    if (res.next_cursor) pageCursors.value.push(res.next_cursor);
     emit("file-time-change", { ...context, fileTime: res.file_time ?? null, timeSource: res.file_time_source });
     syncRouteQuery();
   } catch (err) {
@@ -457,7 +464,7 @@ function closeModal(): void {
 async function downloadCompleteFile(): Promise<void> {
   if (!fileDetail.value || anyDownloadBusy.value) return;
   if (fileDetail.value.size > MAX_BROWSER_SYNTHESIS_SIZE && !canSaveFile.value) {
-    downloadError.value = "超过 512 MiB 的文件需要在桌面 Chrome 或 Edge 中直接保存到磁盘";
+    downloadError.value = "超过 64 MiB 的文件需要在桌面 Chrome 或 Edge 中直接保存到磁盘";
     return;
   }
   downloadController.value?.abort();
@@ -749,15 +756,15 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <div v-if="!loading && !error && loadedFiles.length" class="cfb-selected-toolbar">
-      <label><input type="checkbox" :checked="allLoadedSelected" :disabled="selectedBusy" @change="toggleLoadedFiles" />全选已加载文件</label>
+    <div v-if="!loading && !error && (loadedFiles.length || selectedFiles.size)" class="cfb-selected-toolbar">
+      <label><input type="checkbox" :checked="allLoadedSelected" :disabled="selectedBusy || !loadedFiles.length" @change="toggleLoadedFiles" />全选本页文件</label>
       <span>已选 {{ selectedPaths.length }} 个文件 · {{ formatBytes(selectedSize) }}</span>
       <button type="button" class="cfb-act-btn copy-act" :disabled="selectedBusy || !selectedPaths.length" @click="resetSelection">清空</button>
       <button type="button" class="cfb-act-btn dl-act" :disabled="anyDownloadBusy || !selectedPaths.length || !canSaveDirectory" @click="selectedAction('download')">选择目录并下载所选文件</button>
       <button type="button" class="cfb-act-btn copy-act" :disabled="anyDownloadBusy || !selectedPaths.length" @click="selectedAction('copy')">{{ activeSource === 'chunk' ? '复制合成清单' : '复制官方直链' }}</button>
       <button type="button" class="cfb-act-btn copy-act" :disabled="anyDownloadBusy || !selectedPaths.length" @click="selectedAction('export')">{{ activeSource === 'chunk' ? '导出合成清单 JSON' : '导出官方直链列表' }}</button>
       <button v-if="selectedBusy" type="button" class="cfb-act-btn copy-act" @click="selectedController?.abort()">取消</button>
-      <p>仅选择已加载的文件，不包含文件夹或尚未加载的结果。下载在保存位置新建独立子目录，保留完整相对路径并校验大小和 MD5。</p>
+      <p>可跨页选择文件，全选只作用于本页，不包含文件夹；切换目录、搜索或资源组件后清空选择。下载在保存位置新建独立子目录，保留完整相对路径并校验大小和 MD5。</p>
       <p v-if="!canSaveDirectory">{{ directoryUnavailableReason }} 仍可复制或导出{{ activeSource === 'chunk' ? '合成清单；Chunk 需要按配方合成，不是完整文件直链。' : '官方直链列表。' }}</p>
       <p v-else-if="activeSource === 'chunk'">Chunk 文件按分块配方合成；导出的 JSON 是合成清单，不是完整文件下载链接。</p>
       <div v-if="selectedProgress" class="cfb-directory-progress" role="status">
@@ -790,7 +797,7 @@ onBeforeUnmount(() => {
     <div v-else-if="error" class="cfb-state-box cfb-error-box">
       <strong>文件目录读取失败</strong>
       <span>{{ error }}</span>
-      <button class="tool-button cfb-retry-btn" type="button" @click="loadFiles(currentPath)">
+      <button class="tool-button cfb-retry-btn" type="button" @click="loadFiles(currentPath, pageIndex)">
         重试
       </button>
     </div>
@@ -827,7 +834,7 @@ onBeforeUnmount(() => {
             <!-- 1. 名称列 -->
             <div class="cfb-col cfb-col-name">
               <div class="cfb-name-block">
-                <input v-if="item.type !== 'directory'" class="cfb-file-checkbox" type="checkbox" :aria-label="`选择 ${item.path}`" :checked="selectedPaths.includes(item.path)" :disabled="selectedBusy" @click.stop @change="toggleSelected(item.path)" />
+                <input v-if="item.type !== 'directory'" class="cfb-file-checkbox" type="checkbox" :aria-label="`选择 ${item.path}`" :checked="selectedFiles.has(item.path)" :disabled="selectedBusy" @click.stop @change="toggleSelected(item)" />
                 <span v-if="item.type === 'directory'" class="cfb-type-icon dir-icon">
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M3 6.5h6l2 2h10v9H3z" />
@@ -943,15 +950,17 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <!-- 分页加载按钮 -->
-      <div v-if="filePage?.next_cursor" class="cfb-pagination-bar">
+      <!-- Keep only one response page mounted, retaining selected paths across pages. -->
+      <div v-if="pageIndex > 0 || filePage?.next_cursor" class="cfb-pagination-bar">
+        <button type="button" class="cfb-prevpage-btn cfb-loadmore-btn" :disabled="loadingMore || pageIndex === 0" @click="loadFiles(currentPath, pageIndex - 1)">上一页</button>
+        <span>第 {{ pageIndex + 1 }} 页</span>
         <button
           type="button"
-          class="cfb-loadmore-btn"
-          :disabled="loadingMore"
-          @click="loadFiles(currentPath, true)"
+          class="cfb-nextpage-btn cfb-loadmore-btn"
+          :disabled="loadingMore || !filePage?.next_cursor"
+          @click="loadFiles(currentPath, pageIndex + 1)"
         >
-          {{ loadingMore ? '正在载入更多条目…' : '加载下一页文件' }}
+          {{ loadingMore ? '正在载入…' : '下一页文件' }}
         </button>
       </div>
     </div>
@@ -1825,6 +1834,10 @@ onBeforeUnmount(() => {
   padding: 12px;
   display: flex;
   justify-content: center;
+  align-items: center;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 12px;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 

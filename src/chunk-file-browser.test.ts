@@ -159,7 +159,7 @@ describe("ChunkFileBrowser", () => {
     } finally { app.unmount(); host.remove(); }
   });
 
-  it("selects only loaded files, preserves selection when appending, and clears on browsing context changes", async () => {
+  it("preserves selection across pages, toggles only the current page, and clears on browsing context changes", async () => {
     const second = { ...mockPackageFiles.items[1], name: "second.bin", path: "second.bin", size: 10 };
     vi.spyOn(api, "versionFiles").mockImplementation(async (_d, _v, params) => params?.cursor
       ? { ...mockPackageFiles, items: [second], next_cursor: null }
@@ -181,11 +181,16 @@ describe("ChunkFileBrowser", () => {
       host.querySelector<HTMLInputElement>(".cfb-selected-toolbar label input")!.click(); await flushUpdates();
       expect(count()).toContain("已选 1 个文件");
       expect(host.querySelector(".cfb-selected-toolbar")?.textContent).toContain("桌面 Chrome 或 Edge");
-      host.querySelector<HTMLButtonElement>(".cfb-loadmore-btn")!.click(); await flushUpdates();
+      host.querySelector<HTMLButtonElement>(".cfb-nextpage-btn")!.click(); await flushUpdates();
       expect(count()).toContain("已选 1 个文件");
-      expect(host.querySelectorAll<HTMLInputElement>(".cfb-file-checkbox")[1].checked).toBe(false);
+      expect(host.querySelectorAll<HTMLInputElement>(".cfb-file-checkbox")).toHaveLength(1);
+      expect(host.querySelector<HTMLInputElement>(".cfb-file-checkbox")!.checked).toBe(false);
       host.querySelector<HTMLInputElement>(".cfb-selected-toolbar label input")!.click(); await flushUpdates();
       expect(count()).toContain("已选 2 个文件");
+      host.querySelector<HTMLInputElement>(".cfb-selected-toolbar label input")!.click(); await flushUpdates();
+      expect(count()).toContain("已选 1 个文件");
+      host.querySelector<HTMLButtonElement>(".cfb-prevpage-btn")!.click(); await flushUpdates();
+      expect(host.querySelector<HTMLInputElement>(".cfb-file-checkbox")!.checked).toBe(true);
       host.querySelector<HTMLButtonElement>(".cfb-grid-row.row-is-dir button")!.click(); await flushUpdates();
       expect(count()).toContain("已选 0 个文件");
       await selectFirst(); search.value = "exe"; await flushUpdates(); expect(count()).toContain("已选 0 个文件");
@@ -195,6 +200,58 @@ describe("ChunkFileBrowser", () => {
       expect(count()).toContain("已选 0 个文件"); expect(count()).toContain("导出合成清单 JSON");
       await selectFirst(); host.querySelectorAll<HTMLButtonElement>(".cfb-identity-chips button")[1].click(); await flushUpdates();
       expect(count()).toContain("已选 0 个文件");
+    } finally { app.unmount(); host.remove(); }
+  });
+
+  it("bounds mounted rows to one page while retaining earlier selected paths and sizes", async () => {
+    vi.spyOn(api, "versionFiles").mockImplementation(async (_d, _v, params) => {
+      const page = Number(params?.cursor || 0);
+      return { ...mockPackageFiles, total: 2000, next_cursor: page < 19 ? String(page + 1) : null,
+        items: Array.from({ length: 100 }, (_, index) => ({ type: "file", name: `${page}-${index}.bin`, path: `${page}-${index}.bin`, size: 10 })) };
+    });
+    const plan = vi.spyOn(selectedDownload, "selectedFilePlan").mockResolvedValue([]);
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: vi.fn(async () => undefined) } });
+    const host = document.createElement("div"); document.body.appendChild(host);
+    const router = createTestRouter(); await router.push("/"); await router.isReady();
+    const app = createApp(ChunkFileBrowser, { domainId: "hk4e-pc", version: "7.0.0", game: null, domain: null, chunkDetail: mockDetail,
+      versionSummary: { artifact_kinds: { package: { count: 1 } } } });
+    app.use(router); app.mount(host);
+    try {
+      await flushUpdates();
+      host.querySelector<HTMLInputElement>(".cfb-file-checkbox")!.click(); await flushUpdates();
+      for (let page = 1; page < 20; page++) {
+        host.querySelector<HTMLButtonElement>(".cfb-nextpage-btn")!.click(); await flushUpdates();
+        expect(host.querySelectorAll(".cfb-grid-row")).toHaveLength(100);
+      }
+      expect(host.querySelector(".cfb-selected-toolbar")!.textContent).toContain("已选 1 个文件 · 10 B");
+      host.querySelector<HTMLInputElement>(".cfb-file-checkbox")!.click(); await flushUpdates();
+      const copy = [...host.querySelectorAll<HTMLButtonElement>(".cfb-selected-toolbar button")].find((button) => button.textContent === "复制官方直链")!;
+      copy.click(); await flushUpdates();
+      expect(plan).toHaveBeenCalledWith(expect.objectContaining({ paths: ["0-0.bin", "19-0.bin"] }));
+      expect(host.querySelector(".cfb-selected-toolbar")!.textContent).toContain("已选 2 个文件 · 20 B");
+    } finally { app.unmount(); host.remove(); }
+  });
+
+  it("retains selections after a failed page request and on a page containing only directories", async () => {
+    const first = { ...mockPackageFiles, next_cursor: "more" };
+    vi.spyOn(api, "versionFiles").mockResolvedValueOnce(first).mockRejectedValueOnce(new Error("temporary failure"))
+      .mockResolvedValueOnce(first).mockResolvedValueOnce({ ...mockPackageFiles, items: [mockPackageFiles.items[0]], next_cursor: null });
+    const host = document.createElement("div"); document.body.appendChild(host);
+    const router = createTestRouter(); await router.push("/"); await router.isReady();
+    const app = createApp(ChunkFileBrowser, { domainId: "hk4e-pc", version: "7.0.0", game: null, domain: null, chunkDetail: mockDetail });
+    app.use(router); app.mount(host);
+    try {
+      await flushUpdates();
+      host.querySelector<HTMLInputElement>(".cfb-file-checkbox")!.click(); await flushUpdates();
+      host.querySelector<HTMLButtonElement>(".cfb-nextpage-btn")!.click(); await flushUpdates();
+      host.querySelector<HTMLButtonElement>(".cfb-retry-btn")!.click(); await flushUpdates();
+      expect(host.querySelector<HTMLInputElement>(".cfb-file-checkbox")!.checked).toBe(true);
+      host.querySelector<HTMLButtonElement>(".cfb-nextpage-btn")!.click(); await flushUpdates();
+      expect(host.querySelectorAll(".cfb-file-checkbox")).toHaveLength(0);
+      const toolbar = host.querySelector(".cfb-selected-toolbar")!;
+      expect(toolbar.textContent).toContain("已选 1 个文件");
+      expect(toolbar.querySelector<HTMLInputElement>("input")!.disabled).toBe(true);
+      expect([...toolbar.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.startsWith("复制"))!.disabled).toBe(false);
     } finally { app.unmount(); host.remove(); }
   });
 
@@ -543,7 +600,7 @@ describe("ChunkFileBrowser", () => {
 
   it("opens file chunk detail modal and displays chunks list with download urls", async () => {
     vi.spyOn(api, "versionFiles").mockResolvedValue(mockChunkFiles);
-    const detailMock = vi.spyOn(api, "versionFileDetail").mockResolvedValue(mockFileDetail);
+    const detailMock = vi.spyOn(api, "versionFileDetail").mockResolvedValue({ ...mockFileDetail, size: 5000 });
 
     const host = document.createElement("div");
     document.body.appendChild(host);

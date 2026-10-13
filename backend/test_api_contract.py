@@ -17,7 +17,7 @@ import httpx
 import zstandard
 from fastapi.testclient import TestClient
 
-from backend.api_contract import _file_metadata, _public_artifact, _summary, create_api_app
+from backend.api_contract import ApiContract, ApiFault, _file_metadata, _public_artifact, _summary, create_api_app
 from backend.app import app
 from backend.indexes import rebuild_indexes
 from backend.manifest_readers import (
@@ -251,6 +251,42 @@ class TemporaryContractTests(unittest.TestCase):
         self.assertEqual([item["id"] for item in games], ["hk4e", "wuwa", "nte"])
         domains = sum((self.get(f"/api/v1/games/{game['id']}/domains").json() for game in games), [])
         self.assertEqual({item["id"] for item in domains}, {"hk4e-android", "hk4e-pc", "wuwa-pc", "nte-pc"})
+
+    def test_domain_reads_only_requested_records_and_keeps_live_probe_updates(self):
+        contract = ApiContract(self.root)
+        original_read = contract._read_json
+        reads = []
+
+        def read(path, limit, code):
+            reads.append(path)
+            return original_read(path, limit, code)
+
+        with patch.object(contract, "_read_json", side_effect=read):
+            domain = contract.domain("hk4e-pc")
+        self.assertEqual(domain, contract.inventory()["hk4e-pc"])
+        self.assertEqual(reads, [self.root / "mihoyo" / "hk4e" / "pc" / "2.0.0.json"])
+        path = reads[0]
+        value = json.loads(path.read_text(encoding="utf-8"))
+        value["artifacts"][0]["urls"][0]["current"] = {"state": "unknown", "http_code": 403}
+        path.write_text(json.dumps(value), encoding="utf-8")
+        self.assertEqual(contract.domain("hk4e-pc").records[0]["artifacts"][0]["urls"][0]["current"]["http_code"], 403)
+
+        unrelated = self.root / "kuro" / "wuwa" / "pc" / "1.0.0.json"
+        unrelated.write_text("{broken", encoding="utf-8")
+        self.assertEqual(contract.domain("hk4e-pc").domain_id, "hk4e-pc")
+        with self.assertRaises(ApiFault):
+            contract.inventory()
+
+    def test_domain_retains_requested_identity_and_index_validation(self):
+        path = self.root / "mihoyo" / "hk4e" / "pc" / "index.json"
+        value = json.loads(path.read_text(encoding="utf-8"))
+        value["game_id"] = "wuwa"
+        path.write_text(json.dumps(value), encoding="utf-8")
+        self.assertEqual(self.get("/api/v1/domains/hk4e-pc/versions", 500).json()["error"]["code"], "index_mismatch")
+        rebuild_indexes(self.root)
+        path = path.parent / "2.0.0.json"
+        path.rename(path.parent / "wrong.json")
+        self.assertEqual(self.get("/api/v1/domains/hk4e-pc/versions", 500).json()["error"]["code"], "record_identity_mismatch")
 
     def test_registered_resource_domain_coexists_and_supports_generic_api(self):
         default = record("hypergryph", "endfield", "windows", "1.0.0", [artifact("game.zip")])
@@ -1533,6 +1569,58 @@ class HttpUpstreamTests(unittest.TestCase):
             variant["manifests"][0]["manifest_download"]["url_suffix"] = f"?v={index}"
             list_chunk_files(variant, "game", upstream)
         self.assertLessEqual(len(upstream._chunk_manifest_cache), 8)
+
+    def test_chunk_pages_do_not_copy_cached_chunks_and_do_not_expose_cache(self):
+        document, manifest_body, _ = chunk_fixture()
+        upstream = HttpUpstream(transport=httpx.MockTransport(lambda _: httpx.Response(200, content=manifest_body)))
+        list_chunk_files(document, "game", upstream)
+
+        class CopyTrap(list):
+            def __deepcopy__(self, memo):
+                raise AssertionError("page copied hidden chunk data")
+
+        cached = next(iter(upstream._chunk_manifest_cache.values()))
+        for file in cached.files:
+            file["chunks"] = CopyTrap(file["chunks"])
+        for q in (None, ".dat"):
+            page = list_chunk_files(document, "game", upstream, path="Game/Bin", q=q, limit=1)
+            self.assertEqual(len(page["items"]), 1)
+            self.assertNotIn("chunks", page["items"][0])
+            page["items"][0]["path"] = "mutated"
+            self.assertNotEqual(list_chunk_files(document, "game", upstream, path="Game/Bin", q=q, limit=1)["items"][0]["path"], "mutated")
+
+        copied_paths = []
+
+        class CountedFile(dict):
+            def items(self):
+                copied_paths.append(self["path"])
+                return super().items()
+
+        with patch("backend.manifest_readers._chunk_manifest_data") as read:
+            read.return_value.files = tuple(CountedFile(file) for file in cached.files)
+            read.return_value.file_time = None
+            for q in (None, ".dat"):
+                copied_paths.clear()
+                page = list_chunk_files(document, "game", upstream, q=q, limit=1)
+                self.assertEqual(len(copied_paths), 0 if page["items"][0].get("type") == "directory" else 1)
+
+    def test_chunk_cache_byte_budget_evicts_and_skips_oversized_entries(self):
+        document, manifest_body, _ = chunk_fixture()
+        upstream = HttpUpstream(transport=httpx.MockTransport(lambda _: httpx.Response(200, content=manifest_body)))
+        list_chunk_files(document, "game", upstream)
+        entry_bytes = upstream._chunk_manifest_cache_bytes
+        self.assertGreater(entry_bytes, 0)
+        with patch("backend.manifest_readers.MAX_CHUNK_MANIFEST_CACHE_BYTES", entry_bytes):
+            variant = copy.deepcopy(document)
+            variant["manifests"][0]["manifest_download"]["url_suffix"] = "?v=another"
+            list_chunk_files(variant, "game", upstream)
+        self.assertEqual(len(upstream._chunk_manifest_cache), 1)
+        self.assertLessEqual(upstream._chunk_manifest_cache_bytes, entry_bytes)
+        oversized = HttpUpstream(transport=httpx.MockTransport(lambda _: httpx.Response(200, content=manifest_body)))
+        with patch("backend.manifest_readers.MAX_CHUNK_MANIFEST_CACHE_BYTES", 1):
+            self.assertEqual(list_chunk_files(document, "game", oversized)["total"], 2)
+        self.assertEqual(len(oversized._chunk_manifest_cache), 0)
+        self.assertEqual(oversized._chunk_manifest_cache_bytes, 0)
 
     def test_range_success_validates_headers_and_body(self):
         def handler(request: httpx.Request) -> httpx.Response:

@@ -12,6 +12,12 @@ export interface SiteChangelogDay {
 
 export const siteChangelog: SiteChangelogEntry[] = [
   {
+    id: "2026-10-13-memory-and-large-lists",
+    date: "2026-10-13",
+    title: "优化大清单浏览与下载",
+    body: "文件清单改为分页浏览，支持跨页勾选，减少大目录的内存占用和卡顿。优化清单读取、缓存及 Chunk 下载的内存使用，并修复大批量任务的完成状态保存问题。",
+  },
+  {
     id: "2026-10-11-http403-unavailable",
     date: "2026-10-11",
     title: "统一 HTTP 403 链接状态",
