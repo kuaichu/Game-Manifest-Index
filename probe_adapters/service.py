@@ -1,8 +1,7 @@
-"""Probe an existing direct URL and merge probe-owned fields into a record."""
+"""Probe an existing direct URL and project evidence into current fields."""
 
 from __future__ import annotations
 
-from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -12,7 +11,6 @@ from backend.android_record_compat import (
     AndroidRecordCompatibilityError,
     android_v2_current_from_result,
 )
-from backend.schema_v2 import validate_v2_record
 from probe_adapters.common import (
     ProbeError,
     ProbeObservation,
@@ -260,33 +258,6 @@ def current_from_result(
 
 class PCRecordCompatibilityError(ValueError):
     """A Windows v2 record/result cannot be represented safely."""
-
-
-def apply_pc_v2_result(record: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]:
-    if not isinstance(result, dict):
-        raise PCRecordCompatibilityError("PC 探活结果必须是对象")
-    if record.get("schema_version") != 2 or record.get("platform") != "windows":
-        raise PCRecordCompatibilityError("PC 探活写回仅支持 schema_version=2 的 Windows 记录")
-    target_url = result.get("target_url")
-    if not isinstance(target_url, str) or not target_url:
-        raise PCRecordCompatibilityError("PC 探活结果缺少 target_url")
-    validate_v2_record(record)
-    updated = deepcopy(record)
-    artifact_index = result.get("artifact_index")
-    url_index = result.get("url_index")
-    if (not isinstance(artifact_index, int) or isinstance(artifact_index, bool) or artifact_index < 0
-            or not isinstance(url_index, int) or isinstance(url_index, bool) or url_index < 0):
-        raise PCRecordCompatibilityError("PC 探活结果缺少有效 artifact_index/url_index")
-    try:
-        artifact = updated["artifacts"][artifact_index]
-        candidate = artifact["urls"][url_index]
-    except (IndexError, KeyError, TypeError):
-        raise PCRecordCompatibilityError("PC 探活结果索引超出记录范围") from None
-    if not isinstance(artifact, dict) or not isinstance(candidate, dict) or candidate.get("url") != target_url:
-        raise PCRecordCompatibilityError("schema v2 PC 探活结果与索引目标 URL 不一致")
-    candidate["current"] = pc_v2_current_from_result(record, target_url, result)
-    validate_v2_record(updated)
-    return updated
 
 
 def pc_v2_current_from_result(
