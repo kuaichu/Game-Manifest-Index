@@ -15,7 +15,7 @@ from backend.app import create_app
 from backend.admin_probe import _record_unavailable_transition, stable_url_id
 from backend.indexes import rebuild_index
 from backend.schema_v2 import artifact_id, validate_v2_record
-from backend.version_store import write_v2_record
+from backend.version_store import persist_v2_record, write_v2_record
 
 
 TOKEN = "activity-test-token-123456"
@@ -113,7 +113,7 @@ class ActivityHistoryTests(unittest.TestCase):
                 "android", version, [url_candidate(f"https://example.invalid/{version}.apk")],
                 provenance=discovered["provenance"],
             )
-            path = write_v2_record(newest, root)
+            path = persist_v2_record(newest, root)
             item = {
                 "game_id": "hk4e", "platform": "android", "ok": True,
                 "supported": True, "status": "finished", "version": version,
@@ -177,9 +177,9 @@ class ActivityHistoryTests(unittest.TestCase):
 
         def discovery(game_ids, root, timeout, workers, **kwargs):
             newest = make_record("windows", "1.1.0", [url_candidate("https://example.invalid/new.zip")])
-            new_path = write_v2_record(newest, root)
+            new_path = persist_v2_record(newest, root)
             older = make_record("windows", "0.9.0", [url_candidate("https://example.invalid/older.zip")])
-            older_path = write_v2_record(older, root)
+            older_path = persist_v2_record(older, root)
             item = {
                 "game_id": "hk4e", "platform": "windows", "ok": True,
                 "supported": True, "status": "finished", "version": None,
@@ -203,7 +203,7 @@ class ActivityHistoryTests(unittest.TestCase):
 
         def discovery(game_ids, root, timeout, workers, **kwargs):
             newest = make_record("android", "1.1.0", [url_candidate("https://example.invalid/new.apk")])
-            path = write_v2_record(newest, root)
+            path = persist_v2_record(newest, root)
             item = {
                 "game_id": "hk4e", "platform": "android", "ok": True,
                 "supported": True, "status": "finished", "version": "1.1.0",

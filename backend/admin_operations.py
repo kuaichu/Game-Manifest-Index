@@ -16,7 +16,6 @@ from backend.activity_store import ActivityStore
 from backend.admin_probe import ADMIN_PROBE_LOCK, AdminProbeDataError, CandidateFilter, candidates, probe_records, selected_records
 from backend.api_contract import PROBE_EVIDENCE_TTL, _probe_checked_at
 from backend.admin_state import AdminStateError, AdminStateStore, BoundedItems
-from backend.indexes import rebuild_index
 from backend.telegram_notify import notify_operation
 from url_adapters.service import DISCOVERERS, PC_DISCOVERERS, discover_games
 
@@ -92,7 +91,7 @@ def _notification_discovery(items: list[dict[str, Any]], summary: dict[str, Any]
             if not isinstance(source, dict) or source.get("ok") is not True or source.get("new") is not True:
                 continue
             version = source.get("version")
-            if not isinstance(version, str) or not version or item.get("error") == "index_rebuild_failed":
+            if not isinstance(version, str) or not version:
                 continue
             key = (item.get("game_id"), item.get("platform"), version)
             if key in seen:
@@ -425,21 +424,6 @@ class OperationManager:
         with ADMIN_PROBE_LOCK:
             return self.discovery(selected, self.data_root, timeout, workers, scope=scope, progress=progress, cancelled=self._cancel.is_set)
 
-    def _rebuild_discovered(self, items: list[dict[str, Any]]) -> None:
-        successful = {(item.get("game_id"), item.get("platform")) for item in items if item.get("ok")}
-        domains: set[tuple[str, str, str]] = set()
-        for _path, record in selected_records(self.data_root, [game for game, _ in successful if isinstance(game, str)], "all"):
-            if (record.get("game_id"), record.get("platform")) in successful:
-                domains.add((record["vendor"], record["game_id"], record["platform"]))
-        for vendor, game_id, platform in sorted(domains):
-            try:
-                with ADMIN_PROBE_LOCK:
-                    rebuild_index(self.data_root, vendor, game_id, platform)
-            except (OSError, TypeError, ValueError):
-                for item in items:
-                    if item.get("game_id") == game_id and item.get("platform") == platform:
-                        item.update({"ok": False, "status": "failed", "error": "index_rebuild_failed"})
-
     def _record_discovery_events(
         self, items: list[dict[str, Any]], game_ids: list[str], scope: str,
         previous_versions: dict[tuple[str, str], str],
@@ -461,8 +445,6 @@ class OperationManager:
 
         candidates_to_record: list[tuple[str, str, str, str]] = []
         for item in items:
-            if item.get("error") == "index_rebuild_failed":
-                continue
             game_id, platform = item.get("game_id"), item.get("platform")
             if not isinstance(game_id, str) or platform not in {"android", "windows"}:
                 continue
@@ -540,7 +522,6 @@ class OperationManager:
                             self._progress(job_id, "discover", completed, failed, item, offset + item_index, total)
                     raw_items.extend(summary.get("items", []))
                     offset += len(summary.get("items", []))
-                self._rebuild_discovered(raw_items)
                 try:
                     self._record_discovery_events(raw_items, game_ids, scope, previous_versions)
                 except Exception:  # activity history must not fail discovery

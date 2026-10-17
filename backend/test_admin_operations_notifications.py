@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import tempfile
 import unittest
@@ -10,9 +11,13 @@ from unittest.mock import patch
 from backend import admin_operations, telegram_notify
 from backend.admin_operations import JOB_FIELDS, OperationManager
 from backend.admin_state import AdminStateStore
-from backend.test_admin_sync_operations import record
-from backend.version_store import write_v2_record
+from backend.api_contract import ApiContract
+from backend.indexes import index_path, rebuild_index
+from backend.test_admin_sync_operations import artifact, record
+from backend.version_store import persist_v2_record, write_v2_record
 from probe_adapters.common import ProbeError
+from url_adapters import service as discovery_service
+from url_adapters.common import AdapterError
 
 
 class OperationNotificationTests(unittest.TestCase):
@@ -48,7 +53,7 @@ class OperationNotificationTests(unittest.TestCase):
     def test_previous_version_is_snapshot_and_api_projection_is_unchanged(self):
         write_v2_record(record("android", version="7.0.0"), self.data)
         def discovery(*args, **kwargs):
-            write_v2_record(record("android", version="7.1.0"), self.data)
+            persist_v2_record(record("android", version="7.1.0"), self.data)
             return {"items": [{"game_id": "hk4e", "platform": "android", "ok": True, "new": True, "version": "7.1.0", "path": "private/path"}]}
         manager = self.manager(discovery)
         call = self.run_job(manager)
@@ -101,6 +106,50 @@ class OperationNotificationTests(unittest.TestCase):
         text, _ = telegram_notify.build_message(call.args[0], started_at="", finished_at="", scheduled=False)
         self.assertIn("官方发现失败", text)
         self.assertNotIn("private secret", text)
+
+    def test_real_pc_discovery_publishes_successful_stage_before_later_failure(self):
+        def pc_record(version):
+            return record("windows", version=version, artifacts=[artifact(
+                f"game-{version}.zip", [f"https://example.test/game-{version}.zip"], kind="package",
+            )])
+
+        write_v2_record(pc_record("7.0.0"), self.data)
+        rebuild_index(self.data, "mihoyo", "hk4e", "windows")
+        published_versions = []
+
+        def packages(game_id, root, timeout):
+            return persist_v2_record(pc_record("7.1.0"), root)
+
+        def chunks(game_id, root, timeout):
+            # Check the intermediate publication, before the operation manager
+            # receives a per-game result or can perform deferred repair.
+            index = json.loads(index_path(root, "mihoyo", "hk4e", "windows").read_text(encoding="utf-8"))
+            published_versions.extend(item["version"] for item in index["versions"])
+            raise AdapterError("private chunk-stage failure")
+
+        manager = self.manager(discovery_service.discover_games)
+        with patch.dict(discovery_service.PC_DISCOVERERS, {
+            "hk4e": (("packages", packages), ("chunks", chunks)),
+        }):
+            call = self.run_job(manager, scope="pc")
+
+        self.assertIn("7.1.0", published_versions)
+        published = ApiContract(self.data, state_root=self.store.root).domain("hk4e-pc")
+        self.assertIn("7.1.0", [item["version"] for item in published.records])
+        self.assertEqual(
+            [(event["version"], event["type"]) for event in manager.activity_store.list_for_game("hk4e")],
+            [("7.1.0", "version_update")],
+        )
+        result = manager.latest()["result"]["discover"]
+        self.assertEqual((result["succeeded"], result["failed"]), (0, 1))
+        self.assertFalse(result["items"][0]["ok"])
+        self.assertEqual(manager.latest()["status"], "finished")
+        update = call.args[0]["discover"]["items"]
+        self.assertEqual([(item["version"], item["previous_version"]) for item in update], [("7.1.0", "7.0.0")])
+        text, _ = telegram_notify.build_message(call.args[0], started_at="", finished_at="", scheduled=False)
+        self.assertIn("7.0.0 -> 7.1.0", text)
+        self.assertIn("官方发现失败", text)
+        self.assertNotIn("private chunk-stage failure", text)
 
     def test_scheduled_mode_does_not_depend_on_log_marker(self):
         manager = self.manager()
