@@ -12,6 +12,42 @@ export interface SiteChangelogDay {
 
 export const siteChangelog: SiteChangelogEntry[] = [
   {
+    id: "2026-10-17-game-icon-quality",
+    date: "2026-10-17",
+    title: "提升游戏图标清晰度",
+    body: "异环、战双帕弥什、明日方舟替换为官方高清图标，改善侧栏及数据动态在高分屏上的模糊显示。",
+  },
+  {
+    id: "2026-10-13-memory-and-large-lists",
+    date: "2026-10-13",
+    title: "优化大清单浏览与下载",
+    body: "文件清单改为分页浏览，支持跨页勾选，减少大目录的内存占用和卡顿。优化清单读取、缓存及 Chunk 下载的内存使用，并修复大批量任务的完成状态保存问题。",
+  },
+  {
+    id: "2026-10-11-http403-unavailable",
+    date: "2026-10-11",
+    title: "统一 HTTP 403 链接状态",
+    body: "所有 HTTP 403 链接统一判定并显示为不可用，历史记录也按同一规则展示，不再显示为访问受限。",
+  },
+  {
+    id: "2026-10-10-changelog-layout-and-modal-scroll",
+    date: "2026-10-10",
+    title: "优化数据动态列表与弹窗滚动",
+    body: "数据动态按日期紧凑分组，游戏、平台和版本层次更清晰，并修正终末地图标的深色背景显示。更新日志、来源说明、文件详情及移动端版本弹层打开时锁定背景滚动，弹窗内容仍可独立滚动，关闭后恢复页面滚动。",
+  },
+  {
+    id: "2026-10-03-selected-files-download",
+    date: "2026-10-03",
+    title: "文件清单支持多选下载",
+    body: "文件清单可勾选文件，在桌面 Chrome 或 Edge 中选择目录批量保存，保留相对路径并校验大小与 MD5；普通直链流式保存原文件，Chunk 文件按配方合成。其他浏览器可复制或导出官方直链，Chunk 则导出合成清单。",
+  },
+  {
+    id: "2026-10-03-endfield-official-oss",
+    date: "2026-10-03",
+    title: "修复终末地历史版本下载",
+    body: "终末地 PC 完整包和更新补丁改用官方 OSS 稳定链接，后续自动采集也保存该链接；修复旧版 Android APK 下载。原始来源和历史链接保留，运行时资源入口已移除。",
+  },
+  {
     id: "2026-10-03-hypergryph-pc-discovery",
     date: "2026-10-03",
     title: "新增明日方舟与终末地 PC 自动采集",

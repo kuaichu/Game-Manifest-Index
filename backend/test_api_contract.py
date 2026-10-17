@@ -17,7 +17,7 @@ import httpx
 import zstandard
 from fastapi.testclient import TestClient
 
-from backend.api_contract import _file_metadata, _public_artifact, _summary, create_api_app
+from backend.api_contract import ApiContract, ApiFault, _file_metadata, _public_artifact, _summary, create_api_app
 from backend.app import app
 from backend.indexes import rebuild_indexes
 from backend.manifest_readers import (
@@ -251,6 +251,42 @@ class TemporaryContractTests(unittest.TestCase):
         self.assertEqual([item["id"] for item in games], ["hk4e", "wuwa", "nte"])
         domains = sum((self.get(f"/api/v1/games/{game['id']}/domains").json() for game in games), [])
         self.assertEqual({item["id"] for item in domains}, {"hk4e-android", "hk4e-pc", "wuwa-pc", "nte-pc"})
+
+    def test_domain_reads_only_requested_records_and_keeps_live_probe_updates(self):
+        contract = ApiContract(self.root)
+        original_read = contract._read_json
+        reads = []
+
+        def read(path, limit, code):
+            reads.append(path)
+            return original_read(path, limit, code)
+
+        with patch.object(contract, "_read_json", side_effect=read):
+            domain = contract.domain("hk4e-pc")
+        self.assertEqual(domain, contract.inventory()["hk4e-pc"])
+        self.assertEqual(reads, [self.root / "mihoyo" / "hk4e" / "pc" / "2.0.0.json"])
+        path = reads[0]
+        value = json.loads(path.read_text(encoding="utf-8"))
+        value["artifacts"][0]["urls"][0]["current"] = {"state": "unknown", "http_code": 403}
+        path.write_text(json.dumps(value), encoding="utf-8")
+        self.assertEqual(contract.domain("hk4e-pc").records[0]["artifacts"][0]["urls"][0]["current"]["http_code"], 403)
+
+        unrelated = self.root / "kuro" / "wuwa" / "pc" / "1.0.0.json"
+        unrelated.write_text("{broken", encoding="utf-8")
+        self.assertEqual(contract.domain("hk4e-pc").domain_id, "hk4e-pc")
+        with self.assertRaises(ApiFault):
+            contract.inventory()
+
+    def test_domain_retains_requested_identity_and_index_validation(self):
+        path = self.root / "mihoyo" / "hk4e" / "pc" / "index.json"
+        value = json.loads(path.read_text(encoding="utf-8"))
+        value["game_id"] = "wuwa"
+        path.write_text(json.dumps(value), encoding="utf-8")
+        self.assertEqual(self.get("/api/v1/domains/hk4e-pc/versions", 500).json()["error"]["code"], "index_mismatch")
+        rebuild_indexes(self.root)
+        path = path.parent / "2.0.0.json"
+        path.rename(path.parent / "wrong.json")
+        self.assertEqual(self.get("/api/v1/domains/hk4e-pc/versions", 500).json()["error"]["code"], "record_identity_mismatch")
 
     def test_registered_resource_domain_coexists_and_supports_generic_api(self):
         default = record("hypergryph", "endfield", "windows", "1.0.0", [artifact("game.zip")])
@@ -533,7 +569,7 @@ class TemporaryContractTests(unittest.TestCase):
 
     def test_unknown_summary_explains_denied_html_missing_and_stale_evidence(self):
         cases = [
-            ("7.0.0", {"state": "unknown", "http_code": 403, "checked_at": "2026-08-29T01:00:00Z"}, "上游拒绝访问（HTTP 403）"),
+            ("7.0.0", {"state": "unknown", "http_code": 401, "checked_at": "2026-08-29T01:00:00Z"}, "上游拒绝访问（HTTP 401）"),
             ("7.1.0", {"state": "unknown", "http_code": 200, "checked_at": "2026-08-29T01:00:00Z"}, "已响应，但未取得有效文件证据（HTTP 200）"),
             ("7.2.0", None, "尚无有效探活记录"),
             ("7.3.0", {"state": "available", "http_code": 200, "checked_at": "2026-08-20T00:00:00Z"}, "探活证据已过期"),
@@ -551,6 +587,52 @@ class TemporaryContractTests(unittest.TestCase):
                 self.assertEqual(summaries[version]["availability_states"]["unknown"], 1)
                 self.assertEqual(summaries[version]["availability_reasons"], {reason: 1})
                 self.assertEqual(summaries[version]["artifact_kinds"]["apk"]["availability_reasons"], {reason: 1})
+
+    def test_historical_403_is_unavailable_without_mutating_records_or_other_candidates(self):
+        for platform, domain, kind in (("android", "hk4e-android", "apk"), ("windows", "hk4e-pc", "package")):
+            for version, state, alternate in (("7.8.0", "unknown", False), ("7.8.1", "available", False), ("7.8.2", "unknown", True)):
+                with self.subTest(platform=platform, state=state, alternate=alternate):
+                    item = artifact("forbidden.apk" if kind == "apk" else "forbidden.zip", kind=kind, current={
+                        "state": state, "http_code": 403, "checked_at": "2026-08-20T00:00:00Z",
+                    })
+                    if alternate:
+                        item["urls"].append({
+                            "url": "https://official.example/available", "provider": "fixture",
+                            "source_kind": "official", "priority": 1,
+                            "current": {"state": "available", "http_code": 206, "checked_at": "2026-08-29T01:00:00Z"},
+                        })
+                    path = write_record(self.root, record("mihoyo", "hk4e", platform, version, [item]))
+                    original = path.read_bytes()
+                    rebuild_indexes(self.root)
+                    base = f"/api/v1/domains/{domain}/versions/{version}"
+                    expected = "available" if alternate else "unavailable"
+                    with patch("backend.api_contract._utc_now", lambda: FROZEN_NOW):
+                        summaries = self.get(f"/api/v1/domains/{domain}/versions").json()["items"]
+                        summary = next(item for item in summaries if item["version"] == version)
+                        detail = self.get(base).json()
+                        page = self.get(f"{base}/artifacts?availability_state={expected}").json()
+                        unavailable_page = self.get(f"{base}/artifacts?availability_state=unavailable").json()
+                        unknown_page = self.get(f"{base}/artifacts?availability_state=unknown").json()
+                        tree = self.get(f"{base}/artifact-tree?kind={kind}&availability_state={expected}").json()
+                    self.assertEqual(summary["availability_states"][expected], 1)
+                    self.assertEqual(summary["availability_states"]["unknown"], 0)
+                    self.assertEqual(summary["artifact_kinds"][kind]["availability_states"][expected], 1)
+                    self.assertEqual(detail["status"]["http_code"], 403)
+                    self.assertIs(detail["status"]["available"], False)
+                    self.assertEqual(page["total"], 1)
+                    public = page["items"][0]
+                    self.assertEqual(public["availability"]["state"], expected)
+                    current = public["urls"][0]["current"]
+                    self.assertEqual(current["state"], "unavailable")
+                    self.assertEqual(current["reason"], "HTTP 403")
+                    self.assertEqual(current["evidence_status"], "verified")
+                    self.assertIsNone(current["expires_at"])
+                    if alternate:
+                        self.assertEqual(public["urls"][1]["current"]["state"], "available")
+                    self.assertEqual(unavailable_page["total"], 0 if alternate else 1)
+                    self.assertEqual(unknown_page["items"], [])
+                    self.assertEqual(len(tree["items"]), 1)
+                    self.assertEqual(path.read_bytes(), original)
 
     def test_probe_evidence_freshness_boundary_is_20_hours(self):
         cases = {
@@ -571,6 +653,57 @@ class TemporaryContractTests(unittest.TestCase):
             self.assertEqual(url["current"]["observed_at"], checked_at)
             self.assertEqual(url["current"]["expires_at"], "2026-08-29T12:01:00Z" if version == "5.0.0" else "2026-08-29T12:00:00Z" if version == "5.1.0" else "2026-08-20T20:00:00Z")
             self.assertEqual(url["evidence_status"], expected)
+
+    def test_historical_403_without_valid_probe_timestamp_stays_unavailable(self):
+        for checked_at in (None, "invalid", "2026-08-29T13:00:00Z"):
+            with self.subTest(checked_at=checked_at):
+                current = {"state": "unknown", "http_code": 403}
+                if checked_at is not None:
+                    current["checked_at"] = checked_at
+                value = record("mihoyo", "hk4e", "android", "7.9.0", [artifact("denied.apk", kind="apk", current=current)])
+                original = copy.deepcopy(value)
+                with patch("backend.api_contract._utc_now", lambda: FROZEN_NOW):
+                    public = _public_artifact(value, value["artifacts"][0])
+                    summary = _summary(value)
+                self.assertEqual(public["availability"]["state"], "unavailable")
+                self.assertEqual(public["urls"][0]["current"]["state"], "unavailable")
+                self.assertEqual(public["urls"][0]["current"]["source_kind"], "canonical_current")
+                self.assertEqual(public["urls"][0]["current"]["evidence_status"], "unverified")
+                self.assertEqual(summary["availability_states"], {"available": 0, "unavailable": 1, "unknown": 0})
+                self.assertEqual(value, original)
+
+    def test_exact_legacy_403_index_is_readable_but_other_summary_mismatches_fail(self):
+        for platform, disk, kind in (("android", "android", "apk"), ("windows", "pc", "package")):
+            for state, legacy_available in (("unknown", None), ("available", True)):
+                with self.subTest(platform=platform, state=state):
+                    value = record("mihoyo", "hk4e", platform, "7.9.1", [artifact("denied", kind=kind, current={
+                        "state": state, "http_code": 403,
+                    })])
+                    path = write_record(self.root, value)
+                    original = path.read_bytes()
+                    rebuild_indexes(self.root)
+                    index_path = self.root / "mihoyo" / "hk4e" / disk / "index.json"
+                    index = json.loads(index_path.read_text(encoding="utf-8"))
+                    row = next(item for item in index["versions"] if item["version"] == "7.9.1")
+                    row["available"] = legacy_available
+                    index_path.write_text(json.dumps(index), encoding="utf-8")
+                    legacy_bytes = index_path.read_bytes()
+                    summaries = self.get(f"/api/v1/domains/hk4e-{'android' if platform == 'android' else 'pc'}/versions").json()["items"]
+                    summary = next(item for item in summaries if item["version"] == "7.9.1")
+                    self.assertEqual(summary["availability_states"]["unavailable"], 1)
+                    self.assertEqual(path.read_bytes(), original)
+                    self.assertEqual(index_path.read_bytes(), legacy_bytes)
+                    for field, corrupted in (("available", not legacy_available), ("size", row["size"] + 1)):
+                        saved = row[field]
+                        row[field] = corrupted
+                        index_path.write_text(json.dumps(index), encoding="utf-8")
+                        if field == "available" and corrupted is False:
+                            # The new-policy index is valid too.
+                            self.get("/api/v1/games")
+                        else:
+                            self.assertEqual(self.get("/api/v1/games", 500).json()["error"]["code"], "index_mismatch")
+                        row[field] = saved
+                    index_path.write_text(json.dumps(index), encoding="utf-8")
 
     def test_non_rotating_unavailable_and_unknown_evidence_does_not_expire(self):
         write_record(self.root, record("mihoyo", "hk4e", "android", "6.0.0", [
@@ -1004,6 +1137,87 @@ class TemporaryContractTests(unittest.TestCase):
         self.get("/api/v1/domains/hk4e-pc/versions/2.0.0/chunk-content?identity=game&name=missing", 404)
         self.get("/api/v1/domains/hk4e-pc/versions/2.0.0/chunk-content?identity=game&name=a%2Fb", 400)
 
+    def test_file_content_resolves_official_metadata_and_rejects_unknown_or_chunk_paths(self):
+        calls = []
+        class Blocks(httpx.AsyncByteStream):
+            closed = False
+            async def __aiter__(self):
+                yield b"hello"
+            async def aclose(self):
+                self.closed = True
+        stream = Blocks()
+        def handler(request):
+            calls.append(request)
+            return httpx.Response(200, headers={"content-length": "5"}, stream=stream)
+        upstream = HttpUpstream(transport=httpx.MockTransport(handler))
+        with TestClient(create_api_app(self.root, upstream, state_root=Path(self.state.name))) as client:
+            base = "/api/v1/domains/wuwa-pc/versions/1.0.0/file-content"
+            response = client.get(base, params={"source": "package", "identity": "game", "path": "root.exe", "url": "https://127.0.0.1/private"}, headers={"Range": "bytes=0-1"})
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.content, b"hello")
+            self.assertEqual(response.headers["content-length"], "5")
+            self.assertEqual(response.headers["x-accel-buffering"], "no")
+            self.assertEqual(str(calls[0].url), "https://pcdownload-aliyun.aki-game.com/files/root.exe")
+            self.assertNotIn("range", calls[0].headers)
+            self.assertTrue(stream.closed)
+            for params, status in (({"path": "missing"}, 404), ({"path": "../x"}, 400), ({"path": "Client"}, 404), ({"path": "root.exe", "source": "chunk"}, 400), ({"path": "root.exe", "source": "mirror"}, 400), ({"path": "root.exe", "identity": "unknown"}, 404)):
+                self.assertEqual(client.get(base, params=params).status_code, status)
+            self.assertEqual(len(calls), 1)
+
+    def test_file_content_upstream_failures_are_mapped_before_headers(self):
+        for status, expected in ((404, 404), (500, 502), (200, 502)):
+            upstream = HttpUpstream(transport=httpx.MockTransport(lambda _: httpx.Response(status, headers={"content-length": "100"})))
+            with TestClient(create_api_app(self.root, upstream, state_root=Path(self.state.name))) as client:
+                response = client.get("/api/v1/domains/wuwa-pc/versions/1.0.0/file-content", params={"path": "root.exe"})
+                self.assertEqual(response.status_code, expected)
+
+    def test_file_content_closes_upstream_when_downstream_disconnects(self):
+        import asyncio
+        class Blocks(httpx.AsyncByteStream):
+            closed = False
+            async def __aiter__(self):
+                yield b"hello"
+            async def aclose(self):
+                self.closed = True
+        stream = Blocks()
+        upstream = HttpUpstream(transport=httpx.MockTransport(lambda _: httpx.Response(200, headers={"content-length": "5"}, stream=stream)))
+        application = create_api_app(self.root, upstream, state_root=Path(self.state.name))
+        endpoint = next(route.endpoint for route in application.routes if getattr(route, "path", "").endswith("/file-content"))
+        async def exercise():
+            response = await endpoint("wuwa-pc", "1.0.0", "root.exe")
+            async def receive():
+                await asyncio.Event().wait()
+            async def send(message):
+                if message["type"] == "http.response.body":
+                    raise OSError("client disconnected")
+            try:
+                await response({"type": "http", "asgi": {"spec_version": "2.4"}}, receive, send)
+            except Exception:
+                pass
+            self.assertTrue(stream.closed)
+        asyncio.run(exercise())
+
+    def test_file_content_closes_client_even_when_response_close_raises(self):
+        import asyncio
+        from unittest.mock import AsyncMock
+        response = httpx.Response(200, content=b"hello")
+        response.aclose = AsyncMock(side_effect=RuntimeError("close failed"))
+        client = type("Client", (), {"aclose": AsyncMock()})()
+        upstream = type("Upstream", (), {"open_file": AsyncMock(return_value=(response, client))})()
+        application = create_api_app(self.root, upstream, state_root=Path(self.state.name))
+        endpoint = next(route.endpoint for route in application.routes if getattr(route, "path", "").endswith("/file-content"))
+        async def exercise():
+            result = await endpoint("wuwa-pc", "1.0.0", "root.exe")
+            async def receive():
+                await asyncio.Event().wait()
+            async def send(_message):
+                pass
+            with self.assertRaises(RuntimeError):
+                await result({"type": "http", "asgi": {"spec_version": "2.4"}}, receive, send)
+            response.aclose.assert_awaited_once()
+            client.aclose.assert_awaited_once()
+        asyncio.run(exercise())
+
     def test_non_http_upstream_does_not_reuse_chunk_manifest_cache(self):
         chunk_file_detail(self.chunk_doc, "game", self.upstream, "Game/Bin/a.dat")
         chunk_content(self.chunk_doc, "game", "chunk-a", self.upstream)
@@ -1110,6 +1324,68 @@ class CheckedInContractTests(unittest.TestCase):
 
 
 class HttpUpstreamTests(unittest.TestCase):
+    def test_open_file_closes_client_even_when_rejected_response_close_raises(self):
+        import asyncio
+        from unittest.mock import AsyncMock
+        response = httpx.Response(404)
+        response.aclose = AsyncMock(side_effect=RuntimeError("close failed"))
+        client = type("Client", (), {"aclose": AsyncMock(), "send": AsyncMock(return_value=response), "build_request": lambda *_args, **_kwargs: httpx.Request("GET", "https://syncstation.manjuu.com/files/a")})()
+        async def exercise():
+            with patch("backend.manifest_readers.httpx.AsyncClient", return_value=client):
+                with self.assertRaises(RuntimeError):
+                    await HttpUpstream().open_file("https://syncstation.manjuu.com/files/a", allowed_hosts=frozenset({"syncstation.manjuu.com"}), expected_size=5)
+            response.aclose.assert_awaited_once()
+            client.aclose.assert_awaited_once()
+        asyncio.run(exercise())
+
+    def test_file_stream_is_bounded_and_closed_on_finish_or_disconnect(self):
+        import asyncio
+        class Blocks(httpx.AsyncByteStream):
+            closed = False
+            reads = 0
+            async def __aiter__(self):
+                for block in (b"ab", b"cd"):
+                    self.reads += 1
+                    yield block
+            async def aclose(self):
+                self.closed = True
+        async def exercise(early):
+            stream = Blocks()
+            upstream = HttpUpstream(transport=httpx.MockTransport(lambda _: httpx.Response(200, headers={"content-length": "4"}, stream=stream)))
+            response, client = await upstream.open_file("https://syncstation.manjuu.com/files/a", allowed_hosts=frozenset({"syncstation.manjuu.com"}), expected_size=4)
+            self.assertEqual(stream.reads, 0)
+            result = []
+            async for block in response.aiter_raw():
+                result.append(block)
+                if early:
+                    break
+            await response.aclose()
+            await client.aclose()
+            self.assertTrue(stream.closed)
+            self.assertTrue(client.is_closed)
+            self.assertEqual(b"".join(result), b"ab" if early else b"abcd")
+        asyncio.run(exercise(False))
+        asyncio.run(exercise(True))
+
+    def test_file_stream_checks_official_hosts_redirects_and_lengths_before_body(self):
+        import asyncio
+        async def exercise():
+            allowed = frozenset({"syncstation.manjuu.com"})
+            for url in ("http://syncstation.manjuu.com/files/a", "https://127.0.0.1/files/a", "https://evil.example/files/a", "https://user@syncstation.manjuu.com/files/a"):
+                with self.assertRaises(ManifestUpstream):
+                    await HttpUpstream().open_file(url, allowed_hosts=allowed, expected_size=4)
+            for location in ("https://evil.example/files/a", "https://127.0.0.1/files/a", "/other/a", "/files/%2e%2e/private/a", "/files/a?token=x"):
+                with self.assertRaises(ManifestUpstream):
+                    await HttpUpstream(transport=httpx.MockTransport(lambda _: httpx.Response(302, headers={"location": location}))).open_file("https://syncstation.manjuu.com/files/a", allowed_hosts=allowed, expected_size=4)
+            for status, headers, error in ((404, {}, ManifestNotFound), (206, {}, ManifestUpstream), (200, {"content-length": "5"}, ManifestUpstream), (200, {"content-encoding": "gzip"}, ManifestUpstream)):
+                with self.assertRaises(error):
+                    await HttpUpstream(transport=httpx.MockTransport(lambda _: httpx.Response(status, headers=headers))).open_file("https://syncstation.manjuu.com/files/a", allowed_hosts=allowed, expected_size=4)
+            def timeout(request):
+                raise httpx.ReadTimeout("timeout", request=request)
+            with self.assertRaises(ManifestTimeout):
+                await HttpUpstream(transport=httpx.MockTransport(timeout)).open_file("https://syncstation.manjuu.com/files/a", allowed_hosts=allowed, expected_size=4)
+        asyncio.run(exercise())
+
     def test_head_date_cache_is_bounded_expires_and_caches_unknown(self):
         calls = []
         def handler(request):
@@ -1293,6 +1569,58 @@ class HttpUpstreamTests(unittest.TestCase):
             variant["manifests"][0]["manifest_download"]["url_suffix"] = f"?v={index}"
             list_chunk_files(variant, "game", upstream)
         self.assertLessEqual(len(upstream._chunk_manifest_cache), 8)
+
+    def test_chunk_pages_do_not_copy_cached_chunks_and_do_not_expose_cache(self):
+        document, manifest_body, _ = chunk_fixture()
+        upstream = HttpUpstream(transport=httpx.MockTransport(lambda _: httpx.Response(200, content=manifest_body)))
+        list_chunk_files(document, "game", upstream)
+
+        class CopyTrap(list):
+            def __deepcopy__(self, memo):
+                raise AssertionError("page copied hidden chunk data")
+
+        cached = next(iter(upstream._chunk_manifest_cache.values()))
+        for file in cached.files:
+            file["chunks"] = CopyTrap(file["chunks"])
+        for q in (None, ".dat"):
+            page = list_chunk_files(document, "game", upstream, path="Game/Bin", q=q, limit=1)
+            self.assertEqual(len(page["items"]), 1)
+            self.assertNotIn("chunks", page["items"][0])
+            page["items"][0]["path"] = "mutated"
+            self.assertNotEqual(list_chunk_files(document, "game", upstream, path="Game/Bin", q=q, limit=1)["items"][0]["path"], "mutated")
+
+        copied_paths = []
+
+        class CountedFile(dict):
+            def items(self):
+                copied_paths.append(self["path"])
+                return super().items()
+
+        with patch("backend.manifest_readers._chunk_manifest_data") as read:
+            read.return_value.files = tuple(CountedFile(file) for file in cached.files)
+            read.return_value.file_time = None
+            for q in (None, ".dat"):
+                copied_paths.clear()
+                page = list_chunk_files(document, "game", upstream, q=q, limit=1)
+                self.assertEqual(len(copied_paths), 0 if page["items"][0].get("type") == "directory" else 1)
+
+    def test_chunk_cache_byte_budget_evicts_and_skips_oversized_entries(self):
+        document, manifest_body, _ = chunk_fixture()
+        upstream = HttpUpstream(transport=httpx.MockTransport(lambda _: httpx.Response(200, content=manifest_body)))
+        list_chunk_files(document, "game", upstream)
+        entry_bytes = upstream._chunk_manifest_cache_bytes
+        self.assertGreater(entry_bytes, 0)
+        with patch("backend.manifest_readers.MAX_CHUNK_MANIFEST_CACHE_BYTES", entry_bytes):
+            variant = copy.deepcopy(document)
+            variant["manifests"][0]["manifest_download"]["url_suffix"] = "?v=another"
+            list_chunk_files(variant, "game", upstream)
+        self.assertEqual(len(upstream._chunk_manifest_cache), 1)
+        self.assertLessEqual(upstream._chunk_manifest_cache_bytes, entry_bytes)
+        oversized = HttpUpstream(transport=httpx.MockTransport(lambda _: httpx.Response(200, content=manifest_body)))
+        with patch("backend.manifest_readers.MAX_CHUNK_MANIFEST_CACHE_BYTES", 1):
+            self.assertEqual(list_chunk_files(document, "game", oversized)["total"], 2)
+        self.assertEqual(len(oversized._chunk_manifest_cache), 0)
+        self.assertEqual(oversized._chunk_manifest_cache_bytes, 0)
 
     def test_range_success_validates_headers_and_body(self):
         def handler(request: httpx.Request) -> httpx.Response:

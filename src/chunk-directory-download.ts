@@ -41,7 +41,7 @@ export interface ChunkDirectoryDownloadResult {
   bytes: number;
 }
 
-interface PlannedFile {
+export interface PlannedFile {
   identity: string;
   detail: ChunkFileDetail;
   path: string;
@@ -73,7 +73,7 @@ function isMissingEntry(error: unknown): boolean {
   return hasErrorName(error, "NotFoundError");
 }
 
-function safePath(path: string): { path: string; key: string; segments: string[]; keys: string[] } {
+export function safePath(path: string): { path: string; key: string; segments: string[]; keys: string[] } {
   if (!path || path.startsWith("/") || path.includes("\\") || path.includes("\0")) {
     throw new ChunkDirectoryDownloadError(`不安全的文件路径：${path || "(empty)"}`);
   }
@@ -113,11 +113,11 @@ function requiredMd5(detail: ChunkFileDetail): string {
   return value;
 }
 
-function planFileConflicts(files: PlannedFile[], signal: AbortSignal): PlannedFile[] {
+function fileConflictPlanner(signal: AbortSignal): { add(file: PlannedFile): void; files(): PlannedFile[] } {
   const byPath = new Map<string, PlannedFile>();
   const directories = new Set<string>();
 
-  for (const file of files) {
+  const add = (file: PlannedFile): void => {
     throwIfAborted(signal);
     const parsed = safePath(file.detail.path);
     const size = file.detail.size;
@@ -125,14 +125,12 @@ function planFileConflicts(files: PlannedFile[], signal: AbortSignal): PlannedFi
       throw new ChunkDirectoryDownloadError(`文件 ${parsed.path} 的大小无效`);
     }
     const md5 = requiredMd5(file.detail);
-    const normalizedDetail: ChunkFileDetail = { ...file.detail, path: parsed.path, hash: md5, md5 };
-    const normalized: PlannedFile = { ...file, detail: normalizedDetail, path: parsed.path, size, md5 };
     const previous = byPath.get(parsed.key);
     if (previous) {
       if (previous.size !== size || previous.md5 !== md5) {
         throw new ChunkDirectoryDownloadError(`组件文件路径冲突且内容不同：${parsed.path}`);
       }
-      continue;
+      return;
     }
 
     for (let depth = 1; depth < parsed.keys.length; depth++) {
@@ -144,13 +142,20 @@ function planFileConflicts(files: PlannedFile[], signal: AbortSignal): PlannedFi
     if (directories.has(parsed.key)) {
       throw new ChunkDirectoryDownloadError(`文件与目录路径冲突：${parsed.path}`);
     }
-    byPath.set(parsed.key, normalized);
+    const normalizedDetail: ChunkFileDetail = { ...file.detail, path: parsed.path, hash: md5, md5 };
+    byPath.set(parsed.key, { ...file, detail: normalizedDetail, path: parsed.path, size, md5 });
     for (let depth = 1; depth < parsed.keys.length; depth++) {
       directories.add(parsed.keys.slice(0, depth).join("/"));
     }
-  }
+  };
 
-  return [...byPath.values()];
+  return { add, files: () => [...byPath.values()] };
+}
+
+export function planFileConflicts(files: PlannedFile[], signal: AbortSignal): PlannedFile[] {
+  const planner = fileConflictPlanner(signal);
+  for (const file of files) planner.add(file);
+  return planner.files();
 }
 
 async function collectIdentity(
@@ -158,8 +163,10 @@ async function collectIdentity(
   version: string,
   identity: string,
   signal: AbortSignal,
-): Promise<PlannedFile[]> {
-  const files: PlannedFile[] = [];
+  add: (file: PlannedFile) => void,
+): Promise<void> {
+  let fileCount = 0;
+  let actualSize = 0;
   const seenCursors = new Set<string>();
   let cursor: string | null = null;
   let expectedTotal: number | null = null;
@@ -198,24 +205,22 @@ async function collectIdentity(
       if (!detail || typeof detail.path !== "string" || detail.identity !== page.identity) {
         throw new ChunkDirectoryDownloadError(`身份 ${identity} 返回了无效的文件详情`);
       }
-      files.push({ identity: page.identity, detail, path: detail.path, size: detail.size, md5: "" });
+      add({ identity: page.identity, detail, path: detail.path, size: detail.size, md5: "" });
+      fileCount++;
+      actualSize += detail.size;
+      if (!Number.isSafeInteger(actualSize)) throw new ChunkDirectoryDownloadError(`身份 ${identity} 的目录计划总大小超出安全整数范围`);
     }
-    if (files.length > page.total) {
+    if (fileCount > page.total) {
       throw new ChunkDirectoryDownloadError(`身份 ${identity} 返回的文件数超过计划总数`);
     }
     if (page.next_cursor === null) {
-      if (files.length !== page.total) {
+      if (fileCount !== page.total) {
         throw new ChunkDirectoryDownloadError(`身份 ${identity} 的目录计划未返回完整文件清单`);
       }
-      const actualSize = files.reduce((sum, file) => {
-        const next = sum + file.detail.size;
-        if (!Number.isSafeInteger(next)) throw new ChunkDirectoryDownloadError(`身份 ${identity} 的目录计划总大小超出安全整数范围`);
-        return next;
-      }, 0);
       if (actualSize !== page.total_size) {
         throw new ChunkDirectoryDownloadError(`身份 ${identity} 的目录计划总大小与文件清单不一致`);
       }
-      return files;
+      return;
     }
     if (seenCursors.has(page.next_cursor)) {
       throw new ChunkDirectoryDownloadError(`身份 ${identity} 的目录计划游标重复`);
@@ -225,7 +230,7 @@ async function collectIdentity(
   }
 }
 
-async function createFreshDirectory(
+export async function createFreshDirectory(
   root: ChunkDirectoryHandle,
   baseName: string,
   signal: AbortSignal,
@@ -260,7 +265,7 @@ async function createFreshDirectory(
   throw new ChunkDirectoryDownloadError(`无法创建新的下载目录（已尝试 ${MAX_DIRECTORY_NAME_ATTEMPTS} 个名称）`);
 }
 
-async function createParentDirectories(
+export async function createParentDirectories(
   root: ChunkDirectoryHandle,
   segments: string[],
   signal: AbortSignal,
@@ -284,11 +289,11 @@ export async function downloadChunkDirectory(
   }
 
   report({ stage: "preparing", completedFiles: 0, totalFiles: 0, completedBytes: 0, totalBytes: 0, currentPath: null });
-  const planned: PlannedFile[] = [];
+  const planner = fileConflictPlanner(signal);
   for (const identity of [...new Set(identities)]) {
-    planned.push(...await collectIdentity(domainId, version, identity, signal));
+    await collectIdentity(domainId, version, identity, signal, planner.add);
   }
-  const files = planFileConflicts(planned, signal);
+  const files = planner.files();
   const totalBytes = files.reduce((sum, file) => {
     const next = sum + file.size;
     if (!Number.isSafeInteger(next)) throw new ChunkDirectoryDownloadError("目录总大小超过安全整数范围");

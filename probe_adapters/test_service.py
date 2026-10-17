@@ -38,7 +38,7 @@ class ProbeServiceTests(unittest.TestCase):
         self.assertEqual(result["reason"], "retired_official_host")
         self.assertIsNone(result["http_code"])
 
-    def test_bh3_archive_range_failure_uses_head_metadata_without_faking_http_code(self):
+    def test_bh3_archive_403_range_failure_preserves_response_without_head(self):
         url = "https://bundle.bh3.com/public/Android/archived.apk"
         error = ProbeError("archived", returncode=56, status=403, final_url=url,
                            headers={}, body=b"<Error><Code>InvalidObjectState</Code></Error>")
@@ -47,15 +47,17 @@ class ProbeServiceTests(unittest.TestCase):
             return_value=(200, {"content-length": "123", "x-oss-storage-class": "Archive"}, url),
         ) as head_probe:
             result = probe(url, vendor="mihoyo", game_id="bh3", expected_size=123)
-        head_probe.assert_called_once_with(url, 10)
+        head_probe.assert_not_called()
         self.assertFalse(result["available"])
         self.assertEqual(result["reason"], "oss_archive_not_restored")
-        self.assertEqual(result["metadata_http_code"], 200)
-        self.assertIsNone(result["http_code"])
+        self.assertIsNone(result["metadata_http_code"])
+        self.assertEqual(result["http_code"], 403)
+        self.assertEqual(result["source_kind"], "official_storage_metadata")
+        self.assertEqual(result["transport_returncode"], 56)
 
     def test_non_bh3_range_failure_does_not_use_head(self):
         url = "https://autopatchcn.yuanshen.com/game.apk"
-        error = ProbeError("failed", returncode=56, status=403, final_url=url)
+        error = ProbeError("failed", returncode=56, final_url=url)
         with patch("probe_adapters.service.probe_url", side_effect=error), patch("probe_adapters.service.probe_head") as head_probe:
             with self.assertRaises(ProbeError):
                 probe(url, vendor="mihoyo", game_id="hk4e")
@@ -107,9 +109,36 @@ class ProbeServiceTests(unittest.TestCase):
             result = probe(url, vendor="mihoyo", game_id="bh3")
         self.assertIs(result["available"], True)
 
-    def test_plain_403_and_html_challenge_remain_unknown(self):
+    def test_plain_403_is_unavailable_across_apk_and_pc_adapters(self):
         cases = (
-            ("https://static.benghuai.com/Download/v9_7/game.apk", 403, {}, b"Forbidden", "mihoyo", "bh2"),
+            ("https://static.benghuai.com/Download/v9_7/game.apk", "mihoyo", "bh2", None),
+            ("https://autopatchcn.yuanshen.com/game.apk", "mihoyo", "hk4e", None),
+            ("https://bundle.bh3.com/public/Android/game.apk", "mihoyo", "bh3", None),
+            ("https://ak.hycdn.cn/apk/202007081730-1150-token/game.apk", "hypergryph", "arknights", None),
+            ("https://mirrors-package-mc.aki-game.com/client/download/token/game.apk", "kuro", "wuwa", None),
+            ("https://autopatchcn.yuanshen.com/client/game.zip", "mihoyo", "hk4e", "windows"),
+            ("https://bundle.bh3.com/ptpublic/rel/x/PC/BH3_v6.6.0_hash.7z", "mihoyo", "bh3", "windows"),
+        )
+        for url, vendor, game_id, platform in cases:
+            for transport_error in (False, True):
+                observation = ProbeObservation(403, {}, url, b"Forbidden", bytes_received=9, body=b"Forbidden")
+                error = ProbeError("failed", returncode=56, status=403, final_url=url, prefix=b"Forbidden", body=b"Forbidden")
+                with self.subTest(url=url, transport_error=transport_error), patch(
+                    "probe_adapters.service.probe_url",
+                    side_effect=error if transport_error else None,
+                    return_value=observation,
+                ), patch("probe_adapters.service.probe_head") as head_probe:
+                    result = probe(url, vendor=vendor, game_id=game_id, platform=platform)
+                head_probe.assert_not_called()
+                self.assertIs(result["available"], False)
+                self.assertEqual(result["http_code"], 403)
+                self.assertEqual(result["reason"], "HTTP 403")
+                self.assertEqual(result["source_kind"], "live_probe")
+                self.assertEqual(result["transport_returncode"], 56 if transport_error else 0)
+
+    def test_html_challenge_and_401_remain_unknown(self):
+        cases = (
+            ("https://static.benghuai.com/Download/v9_7/game.apk", 401, {}, b"Unauthorized", "mihoyo", "bh2"),
             (
                 "https://mirrors-package-mc.aki-game.com/client/download/token/game.apk",
                 200,
@@ -169,12 +198,11 @@ class ProbeServiceTests(unittest.TestCase):
         self.assertEqual(result["etag"], "etag-value")
         self.assertEqual(result["file_time"], "2026-08-03T07:53:01Z")
 
-    def test_only_404_and_410_are_definitely_unavailable(self) -> None:
+    def test_403_404_and_410_are_definitely_unavailable(self) -> None:
         url = "https://static.benghuai.com/Download/v9_7/game.apk"
-        with patch("probe_adapters.service.probe_url", return_value=(404, {}, url, b"")):
-            self.assertIs(probe(url, vendor="mihoyo", game_id="bh2")["available"], False)
-        with patch("probe_adapters.service.probe_url", return_value=(403, {}, url, b"")):
-            self.assertIsNone(probe(url, vendor="mihoyo", game_id="bh2")["available"])
+        for status in (403, 404, 410):
+            with self.subTest(status=status), patch("probe_adapters.service.probe_url", return_value=(status, {}, url, b"")):
+                self.assertIs(probe(url, vendor="mihoyo", game_id="bh2")["available"], False)
 
     def test_mihoyo_autopatch_rejects_a_successful_plain_text_placeholder(self) -> None:
         url = "https://autopatchcn.bhsr.com/client/cn/token/gw_An/StarRail_1.5.0.apk"

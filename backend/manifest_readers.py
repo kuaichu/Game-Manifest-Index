@@ -11,6 +11,7 @@ import copy
 import hashlib
 import json
 import re
+import sys
 import threading
 import time
 from collections import OrderedDict
@@ -20,7 +21,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from typing import Any, Protocol, Sequence
-from urllib.parse import quote, urljoin, urlsplit
+from urllib.parse import quote, unquote, urljoin, urlsplit
 
 import httpx
 import zstandard
@@ -32,8 +33,30 @@ MAX_MANIFEST_BYTES = 64 * 1024 * 1024
 MAX_MANIFEST_DECOMPRESSED_BYTES = 128 * 1024 * 1024
 MAX_CHUNK_BYTES = 64 * 1024 * 1024
 MAX_CHUNK_MANIFEST_CACHE_ENTRIES = 8
+MAX_CHUNK_MANIFEST_CACHE_BYTES = 64 * 1024 * 1024
 MAX_FILE_TIME_CACHE_ENTRIES = 64
 FILE_TIME_CACHE_TTL = 600
+
+
+def _retained_size(value: Any) -> int:
+    """Estimate retained Python object bytes, counting shared objects only once."""
+    seen: set[int] = set()
+
+    def size(item: Any) -> int:
+        identity = id(item)
+        if identity in seen:
+            return 0
+        seen.add(identity)
+        total = sys.getsizeof(item)
+        if isinstance(item, Mapping):
+            return total + sum(size(key) + size(value) for key, value in item.items())
+        if isinstance(item, (tuple, list, set, frozenset)):
+            return total + sum(size(value) for value in item)
+        return total
+
+    return size(value)
+
+
 OFFICIAL_SOPHON_HOSTS = frozenset(
     {
         "autopatchcn.yuanshen.com",
@@ -69,6 +92,10 @@ class ManifestUpstream(ManifestError):
 
 
 class Upstream(Protocol):
+    async def open_file(
+        self, url: str, *, allowed_hosts: frozenset[str], expected_size: int,
+    ) -> tuple[httpx.Response, httpx.AsyncClient]: ...
+
     def get_bytes(
         self,
         url: str,
@@ -123,6 +150,8 @@ class HttpUpstream:
         self.max_redirects = max_redirects
         self.transport = transport
         self._chunk_manifest_cache: OrderedDict[str, _ChunkManifestData] = OrderedDict()
+        self._chunk_manifest_cache_sizes: dict[str, int] = {}
+        self._chunk_manifest_cache_bytes = 0
         self._chunk_manifest_inflight: dict[str, Future[_ChunkManifestData]] = {}
         self._chunk_manifest_lock = threading.Lock()
         self._file_time_cache: OrderedDict[tuple[str, frozenset[str]], tuple[float, str | None]] = OrderedDict()
@@ -200,16 +229,23 @@ class HttpUpstream:
             return pending.result()
         try:
             value = loader()
+            value_bytes = _retained_size((value.files, value.chunk_sizes, value.total_size, value.file_time))
         except BaseException as error:
             with self._chunk_manifest_lock:
                 self._chunk_manifest_inflight.pop(key, None)
                 pending.set_exception(error)
             raise
         with self._chunk_manifest_lock:
-            self._chunk_manifest_cache[key] = value
-            self._chunk_manifest_cache.move_to_end(key)
-            while len(self._chunk_manifest_cache) > MAX_CHUNK_MANIFEST_CACHE_ENTRIES:
-                self._chunk_manifest_cache.popitem(last=False)
+            if value_bytes <= MAX_CHUNK_MANIFEST_CACHE_BYTES:
+                self._chunk_manifest_cache[key] = value
+                self._chunk_manifest_cache_sizes[key] = value_bytes
+                self._chunk_manifest_cache_bytes += value_bytes
+                while (
+                    len(self._chunk_manifest_cache) > MAX_CHUNK_MANIFEST_CACHE_ENTRIES
+                    or self._chunk_manifest_cache_bytes > MAX_CHUNK_MANIFEST_CACHE_BYTES
+                ):
+                    evicted, _ = self._chunk_manifest_cache.popitem(last=False)
+                    self._chunk_manifest_cache_bytes -= self._chunk_manifest_cache_sizes.pop(evicted)
             self._chunk_manifest_inflight.pop(key, None)
             pending.set_result(value)
         return value
@@ -273,6 +309,62 @@ class HttpUpstream:
         except httpx.HTTPError as error:
             raise ManifestUpstream("官方资源请求失败") from error
         raise ManifestUpstream("官方资源请求失败")
+
+    async def open_file(
+        self, url: str, *, allowed_hosts: frozenset[str], expected_size: int,
+    ) -> tuple[httpx.Response, httpx.AsyncClient]:
+        """Open a full official file without buffering it. The caller owns both closes."""
+        _validated_https_url(url, allowed_hosts)
+        if type(expected_size) is not int or expected_size < 0:
+            raise ManifestUpstream("官方文件大小无效")
+        original = urlsplit(url)
+        path_prefix = original.path.rsplit("/", 1)[0] + "/"
+        current = url
+        client = httpx.AsyncClient(timeout=self.timeout, follow_redirects=False, transport=self.transport, trust_env=False)
+        response = None
+        try:
+            for redirect_count in range(self.max_redirects + 1):
+                request = client.build_request("GET", current, headers={"Accept": "application/octet-stream", "Accept-Encoding": "identity"})
+                response = await client.send(request, stream=True)
+                if response.status_code in {301, 302, 303, 307, 308}:
+                    location = response.headers.get("location")
+                    if redirect_count >= self.max_redirects or not location:
+                        raise ManifestUpstream("官方资源重定向无效")
+                    target = urljoin(current, location)
+                    _validated_https_url(target, allowed_hosts)
+                    parsed = urlsplit(target)
+                    decoded = parsed.path
+                    for _ in range(3):
+                        decoded = unquote(decoded)
+                    if parsed.query != original.query or not parsed.path.startswith(path_prefix) or "\\" in decoded or any(part in {".", ".."} for part in decoded.split("/")):
+                        raise ManifestUpstream("官方资源重定向越界")
+                    await response.aclose()
+                    current = target
+                    continue
+                if response.status_code in {404, 410}:
+                    raise ManifestNotFound("官方资源不存在")
+                if response.status_code != 200:
+                    raise ManifestUpstream("官方完整文件请求失败")
+                if response.headers.get("content-encoding", "identity").lower() not in {"", "identity"}:
+                    raise ManifestUpstream("官方文件编码无效")
+                length = response.headers.get("content-length")
+                if length is not None and (not length.isdigit() or int(length) != expected_size):
+                    raise ManifestUpstream("官方文件长度不匹配")
+                return response, client
+            raise ManifestUpstream("官方资源请求失败")
+        except BaseException as error:
+            import anyio
+            with anyio.CancelScope(shield=True):
+                try:
+                    if response is not None:
+                        await response.aclose()
+                finally:
+                    await client.aclose()
+            if isinstance(error, httpx.TimeoutException):
+                raise ManifestTimeout("官方资源请求超时") from error
+            if isinstance(error, httpx.HTTPError):
+                raise ManifestUpstream("官方资源请求失败") from error
+            raise
 
     def get_range(
         self,
@@ -350,7 +442,7 @@ def _page(items: Sequence[dict[str, Any]], limit: int, cursor: str | None) -> tu
 
 
 def _directory_page(
-    files: list[dict[str, Any]], path: str, q: str | None, limit: int, cursor: str | None
+    files: Sequence[dict[str, Any]], path: str, q: str | None, limit: int, cursor: str | None
 ) -> dict[str, Any]:
     path = strict_relative_posix(path, allow_empty=True)
     prefix = path + "/" if path else ""
@@ -384,18 +476,18 @@ def _directory_page(
             child["file_count"] += 1
             child["size"] += item["size"]
         else:
-            children[child_path] = {"type": "file", **{key: value for key, value in item.items() if key != "chunks"}}
-    ordered = sorted(children.values(), key=lambda item: (item["name"].casefold(), item["name"], item["type"]))
+            children[child_path] = item
+    ordered = sorted(children.values(), key=lambda item: (item["name"].casefold(), item["name"], item.get("type", "file")))
     page, next_cursor = _page(ordered, limit, cursor)
     return {
         "path": path,
         "q": None,
-        "items": page,
+        "items": [{"type": "file", **{key: value for key, value in item.items() if key != "chunks"}} for item in page],
         "total": len(ordered),
         "next_cursor": next_cursor,
         "totals": {
             "files": sum(item.get("file_count", 1) for item in ordered),
-            "directories": sum(item["type"] == "directory" for item in ordered),
+            "directories": sum(item.get("type") == "directory" for item in ordered),
             "size": sum(item.get("size", 0) for item in ordered),
         },
     }
@@ -668,7 +760,7 @@ def list_chunk_files(
 ) -> dict[str, Any]:
     item = _find_chunk_entry(document, identity)
     data = _chunk_manifest_data(item, upstream)
-    result = _directory_page(copy.deepcopy(list(data.files)), path, q, limit, cursor)
+    result = _directory_page(data.files, path, q, limit, cursor)
     result["identity"] = item.get("matching_field") or (item.get("manifest") or {}).get("id")
     result["fetch_mode"] = "upstream_manifest"
     result["file_time"] = data.file_time

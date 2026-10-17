@@ -66,6 +66,8 @@ def _availability(artifact: Mapping[str, Any]) -> bool | None:
     current = urls[0].get("current")
     if not isinstance(current, Mapping):
         return None
+    if current.get("http_code") == 403:
+        return False
     state = current.get("state")
     return True if state == "available" else False if state == "unavailable" else None
 

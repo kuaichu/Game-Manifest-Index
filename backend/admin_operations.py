@@ -8,13 +8,14 @@ from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
 from threading import Event, RLock, Thread
+from time import monotonic
 from typing import Any, Callable
 from uuid import uuid4
 
 from backend.activity_store import ActivityStore
 from backend.admin_probe import ADMIN_PROBE_LOCK, AdminProbeDataError, CandidateFilter, candidates, probe_records, selected_records
 from backend.api_contract import PROBE_EVIDENCE_TTL, _probe_checked_at
-from backend.admin_state import AdminStateError, AdminStateStore
+from backend.admin_state import AdminStateError, AdminStateStore, BoundedItems
 from backend.indexes import rebuild_index
 from backend.telegram_notify import notify_operation
 from url_adapters.service import DISCOVERERS, PC_DISCOVERERS, discover_games
@@ -22,6 +23,8 @@ from url_adapters.service import DISCOVERERS, PC_DISCOVERERS, discover_games
 
 Clock = Callable[[], datetime]
 LOGGER = logging.getLogger(__name__)
+MAX_JOB_LOGS = 256
+PROGRESS_SAVE_INTERVAL = 1.0
 JOB_FIELDS = {
     "job_id", "status", "phase", "actions", "game_ids", "scope",
     "completed", "total", "phase_completed", "phase_total", "succeeded", "failed",
@@ -134,7 +137,10 @@ def _valid_job_snapshot(value: dict[str, Any]) -> bool:
     current = value.get("current")
     logs = value.get("logs")
     return (
-        set(value) == JOB_FIELDS
+        set(value) - {"log_offset"} == JOB_FIELDS
+        and isinstance(value.get("log_offset", 0), int)
+        and not isinstance(value.get("log_offset", 0), bool)
+        and value.get("log_offset", 0) >= 0
         and isinstance(value.get("job_id"), str) and 0 < len(value["job_id"]) <= 128
         and value.get("status") in {"running", "cancelling", "cancelled", "finished", "failed"}
         and value.get("phase") in {None, "discover", "probe"}
@@ -174,6 +180,7 @@ class OperationManager:
         self._job: dict[str, Any] | None = None
         self._thread: Thread | None = None
         self._manual_probe_active = False
+        self._last_progress_save = float("-inf")
         self._restore()
 
     def _restore(self) -> None:
@@ -183,19 +190,22 @@ class OperationManager:
             return
         if not isinstance(value, dict) or not _valid_job_snapshot(value):
             return
+        self._job = value
+        self._trim_logs()
+        if isinstance(value.get("result"), dict):
+            self._bound_result(value["result"])
         if value.get("status") in {"running", "cancelling"}:
             value["status"] = "failed"
             value["phase"] = None
             value["finished_at"] = _timestamp(self.clock)
             value["current"] = None
             value["error"] = "operation_interrupted_by_restart"
-            value.setdefault("logs", []).append("服务重启，未完成任务已标记失败")
-            self.store.write("latest_operation", value)
-        self._job = value
+            self._log("服务重启，未完成任务已标记失败")
+            self._save()
 
     def _save(self) -> None:
         if self._job is not None:
-            value = deepcopy(self._job)
+            value = dict(self._job)
             value.pop("_phase_failed", None)
             self.store.write("latest_operation", value)
 
@@ -205,11 +215,14 @@ class OperationManager:
         value = deepcopy(self._job)
         value.pop("_phase_failed", None)
         logs = value.get("logs") if isinstance(value.get("logs"), list) else []
-        value["log_total"] = len(logs)
+        offset = value.get("log_offset", 0)
+        value["log_total"] = offset + len(logs)
+        value["log_offset"] = offset
         if after is not None:
-            if after < 0 or after > len(logs):
+            if after < 0 or after > value["log_total"]:
                 raise ValueError("log cursor out of range")
-            value["logs"] = logs[after:]
+            after = max(after, offset)
+            value["logs"] = logs[after - offset:]
             value["log_offset"] = after
         return value
 
@@ -233,6 +246,7 @@ class OperationManager:
             if self._manual_probe_active or self._job is not None and self._job.get("status") in {"running", "cancelling"}:
                 raise RuntimeError("operation_already_running")
             self._cancel = Event()
+            self._last_progress_save = float("-inf")
             candidate_filter = None
             started_at = None
             records = selected_records(self.data_root, game_ids, scope) if "probe" in actions else []
@@ -303,6 +317,29 @@ class OperationManager:
         if self._job is not None:
             logs = self._job.setdefault("logs", [])
             logs.append(str(message)[:500])
+            self._trim_logs()
+
+    def _trim_logs(self) -> None:
+        if self._job is not None:
+            logs = self._job.setdefault("logs", [])
+            removed = max(0, len(logs) - MAX_JOB_LOGS)
+            if removed:
+                del logs[:removed]
+                self._job["log_offset"] = self._job.get("log_offset", 0) + removed
+
+    @staticmethod
+    def _bound_result(result: dict[str, Any]) -> None:
+        for name in ("discover", "probe"):
+            summary = result.get(name)
+            if not isinstance(summary, dict) or not isinstance(summary.get("items"), list):
+                continue
+            details = BoundedItems()
+            for item in summary["items"]:
+                details.append(item)
+            previous_total = summary.get("items_total")
+            if summary.get("items_truncated") and isinstance(previous_total, int) and not isinstance(previous_total, bool):
+                details.total = max(details.total, previous_total)
+            summary.update(details.result())
 
     def _phase(self, job_id: str, name: str, base: int, total: int) -> None:
         with self._lock:
@@ -344,10 +381,13 @@ class OperationManager:
                     head += f" {item['kind']}"
                 self._log(f"{head} {self._probe_outcome(item)}")
             else:
-                outcome = "成功" if item.get("ok") else f"失败:{item.get('error') or 'unknown'}"
+                outcome = "成功" if item.get("ok") else "失败:discovery_failed"
                 self._log(f"[{phase}/{platform}] {target} {outcome}")
             try:
-                self._save()
+                now = monotonic()
+                if now - self._last_progress_save >= PROGRESS_SAVE_INTERVAL:
+                    self._last_progress_save = now
+                    self._save()
             except AdminStateError:
                 warning = "状态快照保存失败，任务继续运行"
                 if warning not in self._job.setdefault("logs", []):
@@ -527,13 +567,14 @@ class OperationManager:
                 return
             discover = result.get("discover") if isinstance(result.get("discover"), dict) else {}
             probe = result.get("probe") if isinstance(result.get("probe"), dict) else {}
-            completed = len(discover.get("items", [])) + int(probe.get("checked", 0) or 0)
+            completed = int(discover.get("succeeded", 0) or 0) + int(discover.get("failed", 0) or 0) + int(probe.get("checked", 0) or 0)
             failed = int(discover.get("failed", 0) or 0) + int(probe.get("failed", 0) or 0)
             self._job.update({"status": status, "phase": None, "completed": completed,
                               "succeeded": completed - failed, "failed": failed,
                               "finished_at": _timestamp(self.clock), "result": result,
                               "error": error, "current": None})
             self._job.pop("_phase_failed", None)
+            self._bound_result(result)
             self._log("任务已取消" if status == "cancelled" else "任务完成" if status == "finished" else "任务失败")
             self._save()
             # An unavailable notification projection has no verified updates;

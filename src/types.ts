@@ -444,6 +444,9 @@ export interface DiscoverResultSummary {
   cancelled?: boolean;
   skipped?: number;
   unsupported?: number;
+  items_truncated?: boolean;
+  items_omitted?: number;
+  items_total?: number;
   items: DiscoverResultItem[];
 }
 
@@ -472,6 +475,9 @@ export interface ProbeResultSummary {
   failed: number;
   cancelled?: boolean;
   checked_urls?: number;
+  items_truncated?: boolean;
+  items_omitted?: number;
+  items_total?: number;
   items: ProbeResultItem[];
 }
 
@@ -491,6 +497,7 @@ export interface AdminOperationJob {
   game_ids: string[];
   scope?: OperationPlatformScope | null;
   log_total?: number;
+  log_offset?: number;
   completed: number;
   total: number;
   phase_completed: number;

@@ -3,7 +3,7 @@ import sys
 import unittest
 from unittest.mock import patch
 
-from url_adapters.common import endpoint, version_from_url, read_small, AdapterError
+from url_adapters.common import endpoint, version_from_url, read_small, curl, AdapterError
 
 
 class CommonAdapterTests(unittest.TestCase):
@@ -51,6 +51,13 @@ class CommonAdapterTests(unittest.TestCase):
             text=True,
         )
         self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_curl_subprocess_timeout_is_bounded_and_sanitized(self):
+        with patch("url_adapters.common.subprocess.run", side_effect=subprocess.TimeoutExpired("curl https://private.test/secret", 12)) as run:
+            with self.assertRaisesRegex(AdapterError, "curl 超时") as raised:
+                curl(["https://private.test/secret"], 7)
+        self.assertEqual(run.call_args.kwargs["timeout"], 12)
+        self.assertNotIn("private.test", str(raised.exception))
 
 
 if __name__ == "__main__":

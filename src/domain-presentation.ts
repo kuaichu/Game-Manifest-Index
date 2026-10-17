@@ -507,7 +507,8 @@ export function artifactUrlStateCounts(artifact: Artifact): Record<AvailabilityS
   }
   for (const candidate of artifact.urls) {
     const verified = candidate.evidence_status === "verified" && candidate.current?.evidence_status === "verified";
-    counts[verified ? candidate.current?.state || "unknown" : "unknown"] += 1;
+    const forbidden = candidate.current?.state === "unavailable" && candidate.current.reason === "HTTP 403";
+    counts[verified || forbidden ? candidate.current?.state || "unknown" : "unknown"] += 1;
   }
   return counts;
 }

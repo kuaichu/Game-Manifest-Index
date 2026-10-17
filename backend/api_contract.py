@@ -12,6 +12,7 @@ import json
 import os
 import re
 import stat
+from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -21,6 +22,8 @@ from urllib.parse import urlsplit
 from fastapi import FastAPI, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response
+from starlette.responses import StreamingResponse
+from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from backend import catalog_admin
@@ -212,6 +215,26 @@ class DomainData:
     records: tuple[dict[str, Any], ...]
 
 
+def _index_entry_matches(item: dict[str, Any], record: dict[str, Any] | None, platform: str) -> bool:
+    expected = index_entry(record, platform) if record is not None else None
+    if expected is None or set(item) != set(expected):
+        return False
+    if item == expected:
+        return True
+    if any(item[key] != value for key, value in expected.items() if key != "available"):
+        return False
+    # Accept only the exact pre-403-policy summary of this canonical record.
+    # This keeps historical indexes readable without rewriting server data.
+    legacy_record = deepcopy(record)
+    for artifact in legacy_record.get("artifacts", []):
+        for candidate in artifact.get("urls", []):
+            current = candidate.get("current")
+            if isinstance(current, dict) and current.get("http_code") == 403:
+                del current["http_code"]
+    legacy = index_entry(legacy_record, platform)
+    return legacy != expected and item == legacy
+
+
 class ApiContract:
     def __init__(self, data_root: Path, upstream: Any | None = None, state_root: Path | None = None) -> None:
         self.data_root = Path(data_root)
@@ -345,10 +368,7 @@ class ApiContract:
             fail(500, "index_mismatch", "版本索引与记录不一致")
         for item in entries:
             record = by_version.get(item["version"])
-            expected_entry = index_entry(record, "windows") if record is not None else None
-            if expected_entry is None or set(item) != set(expected_entry) or any(
-                item.get(key) != value for key, value in expected_entry.items()
-            ):
+            if not _index_entry_matches(item, record, "windows"):
                 fail(500, "index_mismatch", "版本索引摘要不匹配")
         indexed = set(indexed_versions)
         ordered = [by_version[version] for version in indexed_versions]
@@ -359,6 +379,9 @@ class ApiContract:
         return DomainData(vendor, game_id, "pc", "windows", domain_id, directory, tuple(ordered))
 
     def inventory(self) -> dict[str, DomainData]:
+        return self._inventory()
+
+    def _inventory(self, requested_domain: str | None = None) -> dict[str, DomainData]:
         if not _ordinary(self.data_root, directory=True):
             fail(500, "data_root_invalid", "数据目录不可用")
         result: dict[str, DomainData] = {}
@@ -375,12 +398,14 @@ class ApiContract:
                 if not _ordinary(game_root, directory=True):
                     fail(500, "unsafe_data_path", "数据目录不安全")
                 for disk_platform, platform in PLATFORMS:
+                    domain_id = f"{game_id}-{'android' if platform == 'android' else 'pc'}"
+                    if requested_domain is not None and domain_id != requested_domain:
+                        continue
                     directory = game_root / disk_platform
                     if not _present(directory):
                         continue
                     if not _ordinary(directory, directory=True):
                         fail(500, "unsafe_data_path", "数据目录不安全")
-                    domain_id = f"{game_id}-{'android' if platform == 'android' else 'pc'}"
                     if domain_id in result:
                         fail(500, "duplicate_domain", "归档域归属冲突")
                     index_path = directory / "index.json"
@@ -480,8 +505,7 @@ class ApiContract:
                     for item in entries:
                         if item["version"] not in by_version:
                             fail(500, "index_mismatch", "版本索引指向缺失记录")
-                        expected_entry = index_entry(by_version[item["version"]], platform)
-                        if expected_entry is None or set(item) != set(expected_entry) or any(item.get(key) != value for key, value in expected_entry.items()):
+                        if not _index_entry_matches(item, by_version[item["version"]], platform):
                             fail(500, "index_mismatch", "版本索引摘要不匹配")
                     unindexed_versions = [version for version in visible_versions if version not in set(indexed_versions)]
                     records = [by_version[version] for version in indexed_versions + sorted(unindexed_versions, key=_version_key, reverse=True)]
@@ -501,6 +525,8 @@ class ApiContract:
                 *nondefault_pc_domains(vendor, game_id),
                 *catalog_admin.configured_nondefault_pc_domains(self.data_root, vendor, game_id),
             ):
+                if requested_domain is not None and domain_id != requested_domain:
+                    continue
                 domain_config = self._catalog_domains().get(domain_id)
                 if domain_config is not None and domain_config.get("is_enabled") is False:
                     continue
@@ -518,7 +544,7 @@ class ApiContract:
 
     def domain(self, domain_id: str) -> DomainData:
         _safe_component(domain_id, not_found=True)
-        domain = self.inventory().get(domain_id)
+        domain = self._inventory(domain_id).get(domain_id)
         if domain is None:
             fail(404, "domain_not_found", "归档域不存在")
         return domain
@@ -667,6 +693,8 @@ def _public_current(current: Any, *, rotation_eligible: bool = True) -> dict[str
     state = current.get("state") if current.get("state") in AVAILABILITY_STATES else "unknown"
     checked_at = current.get("checked_at") if isinstance(current.get("checked_at"), str) else None
     http_code = current.get("http_code") if isinstance(current.get("http_code"), int) and not isinstance(current.get("http_code"), bool) else None
+    if http_code == 403:
+        state = "unavailable"
     probe = _probe_checked_at(current)
     now = _utc_now()
     evidence_status = "unverified"
@@ -777,7 +805,9 @@ def _artifact_state(artifact: dict[str, Any]) -> str:
             if current is None:
                 continue
             evidence_status = current["evidence_status"]
-        if evidence_status != "verified":
+        if evidence_status != "verified" and not (
+            current.get("state") == "unavailable" and current.get("reason") == "HTTP 403"
+        ):
             continue
         state = current.get("state")
         if state in AVAILABILITY_STATES:
@@ -818,7 +848,7 @@ def _artifact_availability(artifact: dict[str, Any], *, scheduled_indices: set[t
             continue
         else:
             code = candidate["current"].get("http_code")
-            if code in {401, 403}:
+            if code == 401:
                 reason = f"上游拒绝访问（HTTP {code}）"
             elif code in {200, 206}:
                 reason = f"已响应，但未取得有效文件证据（HTTP {code}）"
@@ -855,7 +885,7 @@ def _public_version(record: dict[str, Any]) -> dict[str, Any]:
     candidate = next((item for item in artifact.get("urls", []) if isinstance(item, dict) and _safe_public_url(item.get("url"))), {})
     current = candidate.get("current") if isinstance(candidate, dict) and isinstance(candidate.get("current"), dict) else {}
     checksum = artifact.get("checksum") if isinstance(artifact.get("checksum"), dict) else {}
-    state = current.get("state")
+    state = (_public_current(current) or {}).get("state")
     return {
         "vendor": record["vendor"],
         "game_id": record["game_id"],
@@ -1616,6 +1646,48 @@ def create_api_app(data_root: Path, upstream: Any | None = None, *, state_root: 
             return {"source": "package", "fetch_mode": "checked_in_manifest", "identity": str(_stable_id(artifact["artifact_id"])), **local_file_detail(document, base_urls, path)}
         except ManifestError as error:
             raise _manifest_error(error) from error
+
+    @app.get("/api/v1/domains/{domain_id}/versions/{version}/file-content")
+    async def version_file_content(domain_id: str, version: str, path: str, source: str = "package", identity: str = "game") -> Response:
+        if source != "package":
+            fail(400, "bad_source", "完整文件下载仅支持 package 来源")
+        # Resolve from the existing authenticated metadata; clients cannot supply URLs.
+        detail = await run_in_threadpool(version_file, domain_id, version, path, source, identity)
+        domain = service().domain(domain_id)
+        allowed_hosts = PACKAGE_HOSTS_BY_GAME.get(domain.game_id, frozenset()) if domain.vendor == "mihoyo" else LOCAL_OFFICIAL_HOSTS.get(domain.vendor, frozenset())
+        url = detail.get("download_url")
+        if not isinstance(url, str) or not allowed_hosts:
+            fail(404, "file_not_found", "文件没有可下载的官方直链")
+        try:
+            upstream_response, client = await service().upstream.open_file(url, allowed_hosts=allowed_hosts, expected_size=detail["size"])
+        except ManifestError as error:
+            raise _manifest_error(error) from error
+
+        async def body():
+            received = 0
+            async for block in upstream_response.aiter_raw(64 * 1024):
+                received += len(block)
+                if received > detail["size"]:
+                    raise ManifestUpstream("官方文件长度不匹配")
+                yield block
+            if received != detail["size"]:
+                raise ManifestUpstream("官方文件响应不完整")
+
+        class FileResponse(StreamingResponse):
+            async def __call__(self, scope, receive, send):
+                try:
+                    await super().__call__(scope, receive, send)
+                finally:
+                    # Disconnect cancellation must not interrupt connection cleanup.
+                    import anyio
+                    with anyio.CancelScope(shield=True):
+                        try:
+                            await upstream_response.aclose()
+                        finally:
+                            await client.aclose()
+
+        headers = {"Content-Length": str(detail["size"]), "Cache-Control": "no-store", "X-Accel-Buffering": "no"}
+        return FileResponse(body(), status_code=200, headers=headers, media_type="application/octet-stream")
 
     @app.get("/api/v1/domains/{domain_id}/versions/{version}/chunk-manifests/{identity}/files")
     def chunk_files_route(

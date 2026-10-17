@@ -599,6 +599,55 @@ describe("AdminView capability alignment", () => {
     }
   });
 
+  it("resumes compacted logs with the absolute cursor and keeps a bounded terminal", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let calls = 0;
+    let app: ReturnType<typeof createApp> | undefined;
+    try {
+      const mounted = await mountResumedOperation(() => {
+        calls += 1;
+        return operationJob({
+          status: "running", phase: "probe", finished_at: null,
+          result: null,
+          log_offset: calls === 1 ? 744 : 1000,
+          log_total: calls === 1 ? 1000 : 1010,
+          logs: Array.from({ length: calls === 1 ? 256 : 10 }, (_, index) => `audit-log-${(calls === 1 ? 744 : 1000) + index}`),
+        });
+      });
+      app = mounted.app;
+      expect(vi.mocked(adminApi.operationStatus).mock.calls[1]?.[3]).toBe(1000);
+      buttonByText(mounted.root, "监控").click();
+      await flushUpdates();
+      expect(mounted.root.querySelectorAll(".terminal-row").length).toBeLessThanOrEqual(256);
+      expect(mounted.root.textContent).toContain("audit-log-1009");
+      expect(mounted.root.textContent).not.toContain("audit-log-744");
+    } finally {
+      app?.unmount();
+      vi.useRealTimers();
+    }
+  });
+
+  it("explains when probe details are bounded while keeping the complete totals", async () => {
+    vi.spyOn(adminApi, "operationStatus").mockResolvedValue(operationJob({
+      result: { actions: ["probe"], game_ids: ["demo"], probe: {
+        checked: 5000, available: 5000, unavailable: 0, unknown: 0, failed: 0,
+        items_truncated: true, items_total: 5000, items_omitted: 4999,
+        items: [{ game_id: "demo", version: "1.0.0", ok: true, available: true }],
+      } },
+    }) as never);
+    sessionStorage.setItem("game-manifest-index-web-operation-job-v1", "probe-job-1");
+    const { app, root } = await mountAdmin("windows");
+    try {
+      buttonByText(root, "监控").click();
+      await flushUpdates();
+      expect(root.textContent).toContain("本次探活共 5000 条结果，下方保留 1 条明细");
+      expect(root.textContent).toContain("上方统计包含全部结果");
+      expect(buttonByText(root, "✓ 可用 (5000)")).toBeTruthy();
+    } finally {
+      app.unmount();
+    }
+  });
+
   it("sends a fresh availability invalidation after every successful direct version probe", async () => {
     vi.spyOn(window, "confirm").mockReturnValue(true);
     const events: CustomEvent[] = [];

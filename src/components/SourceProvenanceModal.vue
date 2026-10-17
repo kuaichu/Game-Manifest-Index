@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from "vue";
 import { gameIcons } from "../game-icons";
+import { useModalScrollLock } from "../composables/useModalScrollLock";
 
 interface GameProvenance {
   id: string;
@@ -207,11 +208,11 @@ const GAME_PROVENANCE_LIST: GameProvenance[] = [
     },
     pcSource: {
       channel: "鹰角启动器官方 API + 历史记录",
-      description: "最新 PC 完整包从官方 API 自动采集并保留下载签名；历史包、补丁及运行时资源保留原有来源。",
+      description: "最新 PC 完整包从官方 API 自动采集，下载地址使用官方 OSS 稳定链接；历史包和补丁保留原有来源。",
       upstreamProject: "鹰角启动器官方 API",
       upstreamUrl: "https://launcher.hypergryph.com/api/proxy/batch_proxy",
     },
-    officialHosts: ["beyond.hycdn.cn"],
+    officialHosts: ["beyond.hycdn.cn", "beyond-prod.oss-cn-shanghai.aliyuncs.com"],
   },
   {
     id: "nte",
@@ -297,18 +298,17 @@ function handleKeydown(e: KeyboardEvent): void {
   }
 }
 
+useModalScrollLock(() => props.open);
+
 watch(
   () => props.open,
   (isOpen) => {
     if (isOpen) {
-      document.body.style.overflow = "hidden";
       nextTick(() => {
         if (props.activeGameId && activeCardRef.value) {
           activeCardRef.value.scrollIntoView({ behavior: "smooth", block: "nearest" });
         }
       });
-    } else {
-      document.body.style.overflow = "";
     }
   }
 );
@@ -319,7 +319,6 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener("keydown", handleKeydown);
-  document.body.style.overflow = "";
 });
 </script>
 

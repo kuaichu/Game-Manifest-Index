@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { useModalScrollLock } from "../composables/useModalScrollLock";
 import type { ArchiveDomain, VersionSummary } from "../types";
 import { artifactCountForMode, artifactKindForMode, availabilityStatesForMode, buildVersionBadges, displayVersionLabel, versionSupportsMode } from "../domain-presentation";
 import { versionFamily } from "../version-grouping";
@@ -285,7 +286,6 @@ function atomicBadges(row: {
       }
     }
     const labels: Record<string, string> = {
-      "上游拒绝访问（HTTP 403）": "访问受限",
       "上游拒绝访问（HTTP 401）": "访问受限",
       "没有可探活的下载 URL": "无探活链接",
       "探活证据已过期": "证据过期",
@@ -361,21 +361,7 @@ function updateMobileStatus() {
   isMobile.value = typeof window !== "undefined" && window.innerWidth <= 860;
 }
 
-watch(
-  () => open.value && isMobile.value,
-  (shouldLock) => {
-    if (typeof document !== "undefined") {
-      if (shouldLock) {
-        document.body.style.overflow = "hidden";
-        document.body.style.touchAction = "none";
-      } else {
-        document.body.style.overflow = "";
-        document.body.style.touchAction = "";
-      }
-    }
-  },
-  { immediate: true },
-);
+useModalScrollLock(() => open.value && isMobile.value);
 
 onMounted(() => {
   updateMobileStatus();
@@ -385,10 +371,6 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-  if (typeof document !== "undefined") {
-    document.body.style.overflow = "";
-    document.body.style.touchAction = "";
-  }
   window.removeEventListener("resize", updateMobileStatus);
   document.removeEventListener("click", onDocumentClick);
   document.removeEventListener("keydown", onKey);

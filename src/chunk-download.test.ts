@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { chunkUrl, MAX_BROWSER_SYNTHESIS_SIZE, saveBlob, synthesizeChunkFile, writeChunkFile, type ChunkWritableSink } from "./chunk-download";
+import { appendHashBytes, chunkUrl, MAX_BROWSER_SYNTHESIS_SIZE, saveBlob, synthesizeChunkFile, writeChunkFile, type ChunkWritableSink } from "./chunk-download";
 import type { ChunkFileDetail } from "./types";
 
 const recipe = { url_prefix: "https://cdn.example/chunks", url_suffix: "?v=1", compression: 0, encryption: 0 };
@@ -24,7 +24,7 @@ describe("chunk-download", () => {
     expect(() => chunkUrl({ ...recipe, url_prefix: "http://cdn.example/x" }, "a")).toThrow();
   });
 
-  it("assembles raw chunks by offset and never exceeds four workers", async () => {
+  it("assembles raw chunks by offset", async () => {
     const d = await detail(true); const calls: string[] = [];
     vi.stubGlobal("fetch", vi.fn(async (url: string) => { calls.push(url); return response(url.includes("A") ? new TextEncoder().encode("hello") : new TextEncoder().encode("world")); }));
     const blob = await synthesizeChunkFile(d, new AbortController().signal);
@@ -52,7 +52,7 @@ describe("chunk-download", () => {
   it("rejects layout, HTTP, abort, and oversized metadata before unsafe work", async () => {
     const d = await detail(true); const fetchMock = vi.fn(async () => response(new Uint8Array(5))); vi.stubGlobal("fetch", fetchMock);
     await expect(synthesizeChunkFile({ ...d, size: 11 }, new AbortController().signal)).rejects.toThrow("未覆盖"); expect(fetchMock).not.toHaveBeenCalled();
-    await expect(synthesizeChunkFile({ ...d, size: MAX_BROWSER_SYNTHESIS_SIZE + 1 }, new AbortController().signal)).rejects.toThrow("512 MiB");
+    await expect(synthesizeChunkFile({ ...d, size: MAX_BROWSER_SYNTHESIS_SIZE + 1 }, new AbortController().signal)).rejects.toThrow("64 MiB");
     const httpFetch = vi.fn(async () => new Response("no", { status: 404 })); vi.stubGlobal("fetch", httpFetch);
     await expect(synthesizeChunkFile(d, new AbortController().signal)).rejects.toThrow("HTTP 404");
     const controller = new AbortController(); controller.abort(); httpFetch.mockClear(); await expect(synthesizeChunkFile(d, controller.signal)).rejects.toThrow(); expect(httpFetch).not.toHaveBeenCalled();
@@ -72,25 +72,40 @@ describe("chunk-download", () => {
     saveBlob(new Blob(["x"]), "x", 50); expect(click).toHaveBeenCalled(); expect(revoke).not.toHaveBeenCalled(); vi.advanceTimersByTime(50); expect(revoke).toHaveBeenCalledWith("blob:test"); vi.useRealTimers();
   });
 
-  it("aborts active workers on one failure and does not start the queued fifth chunk", async () => {
+  it("keeps only one fallback chunk in flight and stops queued chunks after failure", async () => {
     const chunks = await Promise.all(Array.from({ length: 5 }, async (_, index) => {
       const byte = new Uint8Array([65 + index]);
       return { name: `chunk-${index}`, hash: await md5(byte), offset: index, size: 1, size_decompressed: 1 };
     }));
     const d: ChunkFileDetail = { identity: "game", name: "five.bin", path: "five.bin", size: 5, hash: await md5(new Uint8Array([65, 66, 67, 68, 69])), chunk_download: recipe, chunks };
-    const started: string[] = []; const signals: AbortSignal[] = [];
-    vi.stubGlobal("fetch", vi.fn((url: string, init?: RequestInit) => {
-      const name = url.split("/").pop() || ""; started.push(name); const signal = init?.signal as AbortSignal; signals.push(signal);
+    const started: string[] = [];
+    let finishFirst!: (response: Response) => void;
+    vi.stubGlobal("fetch", vi.fn((url: string) => {
+      const name = url.split("/").pop() || ""; started.push(name);
       if (name.startsWith("chunk-1")) return Promise.resolve(new Response("bad", { status: 503 }));
-      return new Promise<Response>((_, reject) => {
-        const fail = () => reject(new DOMException("Aborted", "AbortError"));
-        if (signal.aborted) fail(); else signal.addEventListener("abort", fail, { once: true });
-      });
+      return new Promise<Response>((resolve) => { finishFirst = resolve; });
     }));
-    await expect(synthesizeChunkFile(d, new AbortController().signal)).rejects.toThrow("HTTP 503");
-    expect(started.map((name) => name.split("?")[0])).toEqual(expect.arrayContaining(["chunk-0", "chunk-1", "chunk-2", "chunk-3"]));
-    expect(started.map((name) => name.split("?")[0])).not.toContain("chunk-4");
-    expect(signals.filter((signal) => signal.aborted)).toHaveLength(4);
+    const work = synthesizeChunkFile(d, new AbortController().signal);
+    const rejected = expect(work).rejects.toThrow("HTTP 503");
+    await vi.waitFor(() => expect(started).toHaveLength(1));
+    finishFirst(response(new Uint8Array([65])));
+    await rejected;
+    expect(started.map((name) => name.split("?")[0])).toEqual(["chunk-0", "chunk-1"]);
+  });
+
+  it("hashes exact subviews in bounded blocks without including adjacent bytes", async () => {
+    const { default: SparkMD5 } = await import("spark-md5");
+    const backing = new Uint8Array(2 * 1024 * 1024 + 31).fill(7);
+    const view = backing.subarray(11, backing.length - 9);
+    view.fill(19);
+    const expected = await md5(view);
+    const append = vi.spyOn(SparkMD5.ArrayBuffer.prototype, "append");
+    const hash = new SparkMD5.ArrayBuffer();
+    appendHashBytes(hash, view);
+    expect(hash.end()).toBe(expected);
+    expect(append).toHaveBeenCalledTimes(3);
+    expect(append.mock.calls.every(([buffer]) => buffer.byteLength <= 1024 * 1024)).toBe(true);
+    hash.destroy();
   });
 });
 
@@ -122,9 +137,10 @@ describe("writeChunkFile", () => {
 
   it("accepts a file over 512 MiB without allocating the whole file before fetch", async () => {
     const d = await detail(true);
-    const large: ChunkFileDetail = { ...d, size: MAX_BROWSER_SYNTHESIS_SIZE + 1, chunks: [
-      { ...d.chunks![0], size: MAX_BROWSER_SYNTHESIS_SIZE, size_decompressed: MAX_BROWSER_SYNTHESIS_SIZE },
-      { ...d.chunks![1], offset: MAX_BROWSER_SYNTHESIS_SIZE, size: 1, size_decompressed: 1 },
+    const chunkLimit = 512 * 1024 * 1024;
+    const large: ChunkFileDetail = { ...d, size: chunkLimit + 1, chunks: [
+      { ...d.chunks![0], size: chunkLimit, size_decompressed: chunkLimit },
+      { ...d.chunks![1], offset: chunkLimit, size: 1, size_decompressed: 1 },
     ] };
     const fetchMock = vi.fn(async () => new Response("unavailable", { status: 503 })); vi.stubGlobal("fetch", fetchMock);
     const sink = writable(); const signal = new AbortController().signal;
@@ -140,7 +156,7 @@ describe("writeChunkFile", () => {
       { ...d, size: 11, chunks: [d.chunks![0], { ...d.chunks![1], offset: 6 }] },
       { ...d, chunks: [d.chunks![0], { ...d.chunks![1], offset: 4 }] },
       { ...d, chunks: [{ ...d.chunks![0], size: 1.5 }, d.chunks![1]] },
-      { ...d, size: MAX_BROWSER_SYNTHESIS_SIZE + 1, chunks: [{ ...d.chunks![0], size_decompressed: MAX_BROWSER_SYNTHESIS_SIZE + 1 }] },
+      { ...d, size: 512 * 1024 * 1024 + 1, chunks: [{ ...d.chunks![0], size_decompressed: 512 * 1024 * 1024 + 1 }] },
     ];
     for (const item of invalid) {
       const sink = writable();
