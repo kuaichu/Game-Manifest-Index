@@ -6,13 +6,13 @@ import time
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from fastapi.testclient import TestClient
 
 from backend.activity_store import ActivityStore
 from backend.app import create_app
-from backend.admin_probe import stable_url_id
+from backend.admin_probe import _record_unavailable_transition, stable_url_id
 from backend.indexes import rebuild_index
 from backend.schema_v2 import artifact_id, validate_v2_record
 from backend.version_store import write_v2_record
@@ -270,6 +270,28 @@ class ActivityHistoryTests(unittest.TestCase):
         events = client.get("/api/v1/games/hk4e/activity").json()["items"]
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0]["type"], "version_unavailable")
+
+    def test_unavailable_transition_keeps_old_observations_as_its_baseline(self):
+        from copy import deepcopy
+
+        now = datetime.now(timezone.utc)
+        old = (now - timedelta(hours=21)).isoformat(timespec="seconds").replace("+00:00", "Z")
+        latest = now.isoformat(timespec="seconds").replace("+00:00", "Z")
+        before = make_record("android", "1.0.0", [
+            url_candidate("https://example.invalid/previously-gone.apk", state="unavailable", checked_at=old),
+            url_candidate("https://example.invalid/last-available.apk", state="available", checked_at=old),
+        ])
+        after = deepcopy(before)
+        after["artifacts"][0]["urls"][1]["current"] = {
+            "state": "unavailable", "http_code": 404, "checked_at": latest,
+        }
+        activity = Mock()
+        _record_unavailable_transition(before, after, activity)
+        activity.append.assert_called_once()
+        self.assertEqual(activity.append.call_args.kwargs["event_type"], "version_unavailable")
+        activity.reset_mock()
+        _record_unavailable_transition(after, after, activity)
+        activity.append.assert_not_called()
 
     def test_activity_write_failure_does_not_fail_persisted_probe(self):
         checked_at = (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat(timespec="seconds").replace("+00:00", "Z")

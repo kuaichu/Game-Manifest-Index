@@ -31,6 +31,7 @@ from backend.manifest_readers import (
     list_chunk_files,
 )
 from backend.schema_v2 import artifact_id
+from backend.storage_locks import DATA_LOCK
 
 # Fixed clock for probe-evidence freshness assertions; never the real system date.
 FROZEN_NOW = datetime(2026, 8, 29, 12, 0, 0, tzinfo=timezone.utc)
@@ -766,6 +767,60 @@ class TemporaryContractTests(unittest.TestCase):
         self.assertEqual(summary["artifact_kinds"]["apk"]["availability_states"], {"available": 0, "unavailable": 0, "unknown": 1})
         self.assertEqual(available_page["items"], [])
         self.assertEqual([item["name"] for item in unknown_page["items"]], ["common.apk"])
+
+    def test_version_detail_availability_agrees_with_primary_artifact_evidence(self):
+        for stamp, expected in (
+            ("2026-08-29T01:00:00Z", True),
+            ("2026-08-20T00:00:00Z", None),
+            ("2026-08-29T13:00:00Z", None),
+            (None, None),
+        ):
+            with self.subTest(checked_at=stamp):
+                current = {"state": "available", "http_code": 206}
+                if stamp is not None:
+                    current["checked_at"] = stamp
+                write_record(self.root, record("mihoyo", "hk4e", "android", "6.1.2", [
+                    artifact("common.apk", kind="apk", current=current),
+                ]))
+                rebuild_indexes(self.root)
+                with patch("backend.api_contract._utc_now", lambda: FROZEN_NOW):
+                    detail = self.get("/api/v1/domains/hk4e-android/versions/6.1.2").json()
+                    resource = self.get("/api/v1/domains/hk4e-android/versions/6.1.2/artifacts").json()["items"][0]
+                self.assertIs(detail["status"]["available"], expected)
+                expected_state = "available" if expected is True else "unknown"
+                self.assertEqual(resource["availability"]["state"], expected_state)
+
+    def test_inventory_waits_for_record_and_index_writer_to_finish(self):
+        entered, release, reading = threading.Event(), threading.Event(), threading.Event()
+        index = self.root / "mihoyo" / "hk4e" / "android" / "index.json"
+        original = index.read_bytes()
+
+        def write():
+            with DATA_LOCK:
+                try:
+                    index.write_bytes(b"{incomplete")
+                    entered.set()
+                    if not release.wait(5):
+                        raise AssertionError("test writer was not released")
+                finally:
+                    index.write_bytes(original)
+
+        def read():
+            reading.set()
+            return ApiContract(self.root, state_root=Path(self.state.name)).domain("hk4e-android")
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            writer = pool.submit(write)
+            try:
+                self.assertTrue(entered.wait(2))
+                reader = pool.submit(read)
+                self.assertTrue(reading.wait(2))
+                with self.assertRaises(TimeoutError):
+                    reader.result(timeout=0.1)
+            finally:
+                release.set()
+            writer.result(timeout=2)
+            self.assertEqual(reader.result(timeout=2).domain_id, "hk4e-android")
 
     def test_future_checked_at_is_not_verified(self):
         write_record(self.root, record("mihoyo", "hk4e", "android", "6.2.0", [

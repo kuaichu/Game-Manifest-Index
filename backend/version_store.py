@@ -1,8 +1,4 @@
-"""Safe persistence for canonical schema v2 version records.
-
-This writer intentionally does not rebuild the legacy index.json.  Existing
-readers still consume that index and the v2 trial must remain isolated.
-"""
+"""Safe canonical writes and coordinated record/index commits."""
 
 from __future__ import annotations
 
@@ -11,11 +7,14 @@ import os
 import stat
 import tempfile
 from collections.abc import Mapping
+from contextlib import contextmanager
 from copy import deepcopy
 from pathlib import Path
+from threading import local
 from typing import Any
 
 from backend.catalog_admin import is_configured_nondefault_pc_domain
+from backend import indexes
 from backend.schema_v2 import RECORD_IDENTITY_FIELDS, record_identity, validate_v2_record
 from backend.domain_registry import is_nondefault_pc_domain
 from backend.storage_locks import DATA_LOCK, data_file_lock
@@ -23,6 +22,9 @@ from backend.storage_locks import DATA_LOCK, data_file_lock
 
 class VersionStoreError(ValueError):
     """Raised when a v2 record cannot be safely written."""
+
+
+_TRANSACTIONS = local()
 
 
 def _safe_component(value: Any, field: str) -> str:
@@ -240,6 +242,90 @@ def _persist_v2_record_locked(
     return _write_v2_record_locked(updated, root, target, overwrite=True)
 
 
+def _file_snapshot(path: Path) -> bytes | None:
+    try:
+        info = os.lstat(path)
+    except FileNotFoundError:
+        return None
+    if _is_reparse_or_link(path, info.st_mode) or not stat.S_ISREG(info.st_mode):
+        raise VersionStoreError(f"事务目标不是普通文件：{path}")
+    return path.read_bytes()
+
+
+def _restore_snapshot(path: Path, content: bytes | None) -> None:
+    if content is None:
+        path.unlink(missing_ok=True)
+        return
+    descriptor, temporary = tempfile.mkstemp(prefix=path.name + ".restore.", dir=path.parent)
+    try:
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(content)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        Path(temporary).unlink(missing_ok=True)
+
+
+@contextmanager
+def record_index_transaction(record: Mapping[str, Any], root: Path):
+    """Commit one canonical record and its domain index under shared data locks.
+
+    The body may read/edit/delete the target or call write/persist helpers. The
+    outermost transaction for this record rebuilds the index once. Exceptions
+    restore both original files before releasing locks; this is not a crash or
+    power-loss journal. Never perform network work inside this context.
+
+    A matching legacy record left untouched by persist retains its legacy index.
+    Different records sharing an index cannot nest: commit them separately.
+    """
+    validate_v2_record(record)
+    root = Path(root)
+    with DATA_LOCK:
+        _prepare_output_root(root)
+        with data_file_lock(root):
+            target = v2_record_path(record, root)
+            _prepare_v2_target_directory_locked(root, target)
+            index = indexes.index_path(root, record["vendor"], record["game_id"], record["platform"], record["domain_id"])
+            active = getattr(_TRANSACTIONS, "active", None)
+            if active is None:
+                active = _TRANSACTIONS.active = {}
+            key, index_key = target.resolve(), index.resolve()
+            if key in active:
+                yield target
+                return
+            if index_key in active.values():
+                raise VersionStoreError("同一索引下的不同记录不能嵌套事务")
+            before = {target: _file_snapshot(target), index: _file_snapshot(index)}
+            active[key] = index_key
+            try:
+                yield target
+                # Legacy compatibility is deliberately a no-op, including its
+                # old index. Every v2 commit, even an unchanged one, refreshes it.
+                legacy_noop = False
+                if before[target] is not None and _file_snapshot(target) == before[target]:
+                    try:
+                        original = json.loads(before[target])
+                        legacy_noop = isinstance(original, dict) and "schema_version" not in original
+                    except (UnicodeError, json.JSONDecodeError):
+                        pass
+                if not legacy_noop:
+                    indexes.rebuild_index(root, record["vendor"], record["game_id"], record["platform"], record["domain_id"])
+            except BaseException as error:
+                failures = []
+                for path, content in before.items():
+                    try:
+                        if _file_snapshot(path) != content:
+                            _restore_snapshot(path, content)
+                    except Exception as restore_error:
+                        failures.append(restore_error)
+                if failures:
+                    raise VersionStoreError("记录/索引恢复失败，存储不可用，需要人工恢复") from error
+                raise
+            finally:
+                del active[key]
+
+
 def persist_v2_record(
     record: Mapping[str, Any], output_root: Path, *,
     preserve_artifacts: bool = False,
@@ -247,7 +333,7 @@ def persist_v2_record(
     preserve_provenance: bool = False,
     preserve_url_current: bool = False,
 ) -> Path:
-    """Persist a record, optionally retaining selected existing v2 fields.
+    """Persist a record and rebuild its index as one recoverable commit.
 
     Preservation happens inside both storage locks and is deliberately limited
     to fields whose producers can run independently.  This is not a generic
@@ -264,18 +350,16 @@ def persist_v2_record(
             raise TypeError(f"{name} 必须显式使用 bool")
     root = Path(output_root)
     target = v2_record_path(record, root)
-    with DATA_LOCK:
-        _prepare_output_root(root)
-        with data_file_lock(root):
-            return _persist_v2_record_locked(
-                record,
-                root,
-                target,
-                preserve_artifacts=preserve_artifacts,
-                preserve_references=preserve_references,
-                preserve_provenance=preserve_provenance,
-                preserve_url_current=preserve_url_current,
-            )
+    with record_index_transaction(record, root):
+        return _persist_v2_record_locked(
+            record,
+            root,
+            target,
+            preserve_artifacts=preserve_artifacts,
+            preserve_references=preserve_references,
+            preserve_provenance=preserve_provenance,
+            preserve_url_current=preserve_url_current,
+        )
 
 
 def write_v2_record(
@@ -301,6 +385,7 @@ __all__ = [
     "VersionStoreError",
     "legacy_identity_matches",
     "persist_v2_record",
+    "record_index_transaction",
     "v2_record_path",
     "write_v2_record",
 ]

@@ -64,6 +64,7 @@ from backend.mihoyo_package_files import (
     package_files as mihoyo_package_files,
 )
 from backend.schema_v2 import SchemaValidationError, artifact_identity_key, validate_v2_record
+from backend.storage_locks import DATA_LOCK
 from url_adapters.service import DISCOVERERS, PC_DISCOVERERS
 
 
@@ -382,6 +383,12 @@ class ApiContract:
         return self._inventory()
 
     def _inventory(self, requested_domain: str | None = None) -> dict[str, DomainData]:
+        # Writers publish canonical records and their index under this lock.
+        # Keep validation in the same read window as the files it describes.
+        with DATA_LOCK:
+            return self._inventory_unlocked(requested_domain)
+
+    def _inventory_unlocked(self, requested_domain: str | None = None) -> dict[str, DomainData]:
         if not _ordinary(self.data_root, directory=True):
             fail(500, "data_root_invalid", "数据目录不可用")
         result: dict[str, DomainData] = {}
@@ -882,10 +889,19 @@ def _public_version(record: dict[str, Any]) -> dict[str, Any]:
             "file_time": record.get("file_time") if isinstance(record.get("file_time"), str) else None,
             "status": {"http_code": None, "available": None, "last_checked_at": None},
         }
-    candidate = next((item for item in artifact.get("urls", []) if isinstance(item, dict) and _safe_public_url(item.get("url"))), {})
+    candidate_index, candidate = next(
+        ((index, item) for index, item in enumerate(artifact.get("urls", []))
+         if isinstance(item, dict) and _safe_public_url(item.get("url"))),
+        (None, {}),
+    )
     current = candidate.get("current") if isinstance(candidate, dict) and isinstance(candidate.get("current"), dict) else {}
     checksum = artifact.get("checksum") if isinstance(artifact.get("checksum"), dict) else {}
-    state = (_public_current(current) or {}).get("state")
+    artifact_index = next(index for index, item in enumerate(record["artifacts"]) if item is artifact)
+    scheduled_indices = _scheduled_probe_indices(record)
+    public_current = _public_current(
+        current, rotation_eligible=scheduled_indices is None or (artifact_index, candidate_index) in scheduled_indices,
+    )
+    state = _artifact_state({"urls": [{"current": public_current}]})
     return {
         "vendor": record["vendor"],
         "game_id": record["game_id"],

@@ -12,6 +12,7 @@ from unittest.mock import Mock, patch
 from fastapi.testclient import TestClient
 
 from backend.admin_state import AdminStateError, AdminStateStore
+from backend.admin_operations import OperationBusyError
 from backend.app import create_app
 from backend.indexes import rebuild_index
 from backend.probe_scheduler import APSchedulerTimer, ProbeScheduler
@@ -123,7 +124,7 @@ class SchedulerTests(unittest.TestCase):
         self.advance(hours=1)
         self.operations.start.assert_not_called()
         self.operations.latest.return_value = {"status": "finished"}
-        self.operations.start.side_effect = RuntimeError("operation_already_running")
+        self.operations.start.side_effect = OperationBusyError("operation_already_running")
         self.scheduler.tick()
         self.assertEqual(self.scheduler.status()["next_run_at"], "2026-09-14T01:00:00Z")
         self.operations.start.side_effect = None
@@ -162,6 +163,19 @@ class SchedulerTests(unittest.TestCase):
         self.advance(hours=1)
         self.assertIsNone(self.scheduler.status()["error"])
         self.assertEqual(self.operations.start.call_count, 2)
+
+    def test_storage_start_failure_is_visible_instead_of_busy(self):
+        self.enable()
+        self.scheduler.start()
+        self.operations.start.side_effect = AdminStateError("private storage path")
+        with self.assertLogs("backend.probe_scheduler", level="ERROR"):
+            self.advance(hours=1)
+        self.assertEqual(self.scheduler.status()["error"], "scheduled_probe_start_failed")
+        self.assertEqual(self.scheduler.status()["next_run_at"], "2026-09-14T02:00:00Z")
+        self.operations.start.side_effect = None
+        self.advance(hours=1)
+        self.assertEqual(self.operations.start.call_count, 2)
+        self.assertIsNone(self.scheduler.status()["error"])
 
     def test_stopped_timer_cannot_launch_work(self):
         self.enable()

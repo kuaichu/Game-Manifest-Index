@@ -265,13 +265,15 @@ def _domain(record: dict[str, Any]) -> tuple[str, str, str, str]:
 def _verified_current_state(candidate: dict[str, Any], state: str, now: datetime) -> bool:
     # api_contract imports this module for scheduled candidates, so load its
     # evidence parser only when a completed probe is being persisted.
-    from backend.api_contract import PROBE_EVIDENCE_TTL, _probe_checked_at
+    from backend.api_contract import _probe_checked_at
 
     current = candidate.get("current")
     if not isinstance(current, dict) or current.get("state") != state:
         return False
     checked = _probe_checked_at(current)
-    return checked is not None and checked[1] <= now and now - checked[1] < PROBE_EVIDENCE_TTL
+    # Freshness controls scheduling/display, not whether a known state changed.
+    # Normal rounds recheck available URLs only after that freshness expires.
+    return checked is not None and checked[1] <= now
 
 
 def _has_url_state(record: dict[str, Any], state: str, now: datetime, *, every: bool) -> bool:

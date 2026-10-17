@@ -220,6 +220,7 @@ export interface AdminCatalog {
 }
 
 export interface AdminEditableArtifact {
+  artifact_id?: string;
   kind: string;
   name: string;
   part: number;
@@ -264,6 +265,7 @@ export interface AdminEditableVersionResult extends AdminImportResult {
 }
 
 export interface ManualArtifactPayload {
+  artifact_id?: string;
   kind: string;
   name: string;
   part: number;
