@@ -13,10 +13,9 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from backend.schema_v2 import artifact_id, record_identity, validate_v2_record
-from backend.storage_locks import DATA_LOCK, data_file_lock
 from backend.version_store import (
-    VersionStoreError, _persist_v2_record_locked, _prepare_output_root,
-    _prepare_v2_target_directory_locked, _read_existing_record, v2_record_path,
+    VersionStoreError, _persist_v2_record_locked, _read_existing_record,
+    record_index_transaction,
 )
 from url_adapters.common import AdapterError, curl, print_error
 
@@ -223,19 +222,17 @@ def discover_collection(collection: HypergryphPackageCollection, output_root: Pa
     record = organize(collection)  # Fail all metadata validation before touching storage.
     root = Path(output_root)
     try:
-        with DATA_LOCK:
-            _prepare_output_root(root)
-            target = v2_record_path(record, root)
-            with data_file_lock(root):
-                _prepare_v2_target_directory_locked(root, target)
-                try:
-                    existing = _read_existing_record(target)
-                except FileNotFoundError:
-                    existing = None
-                if existing is not None:
-                    record = _merge_existing(record, existing)
-                return _persist_v2_record_locked(record, root, target, preserve_references=True,
-                                                 preserve_provenance=True, preserve_url_current=True)
+        with record_index_transaction(record, root) as target:
+            try:
+                existing = _read_existing_record(target)
+            except FileNotFoundError:
+                existing = None
+            if existing is not None:
+                record = _merge_existing(record, existing)
+            return _persist_v2_record_locked(
+                record, root, target, preserve_references=True,
+                preserve_provenance=True, preserve_url_current=True,
+            )
     except (VersionStoreError, OSError, ValueError) as error:
         raise AdapterError(str(error)) from error
 
