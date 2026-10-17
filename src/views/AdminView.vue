@@ -119,6 +119,7 @@ let probePollTimer: number | null = null;
 const newGame = ref(false);
 const newDomain = ref(false);
 interface EditableArtifactDraft {
+  artifact_id?: string;
   kind: string;
   name: string;
   part: number;
@@ -484,6 +485,7 @@ function artifactDraftFromPayload(item: any, idx: number): EditableArtifactDraft
       ? item.attributes
       : {};
   return {
+    artifact_id: typeof item.artifact_id === "string" ? item.artifact_id : undefined,
     kind: String(item.kind || "file").trim(),
     name: String(item.name || "").trim(),
     part: Number(item.part) || idx + 1,
@@ -546,6 +548,7 @@ function normalizeArtifactPayloadFromJson(item: any, idx: number): ManualArtifac
     }
   }
   return {
+    artifact_id: typeof item.artifact_id === "string" ? item.artifact_id : undefined,
     kind: String(item.kind || "file").trim(),
     name: String(item.name || `part_${idx + 1}`).trim(),
     part: Number(item.part) || idx + 1,
@@ -572,6 +575,7 @@ function buildArtifactsPayload(): ManualArtifactPayload[] {
 
   return editableDraft.value.artifacts.map((art, idx) => {
     return {
+      artifact_id: art.artifact_id,
       kind: art.kind.trim() || "file",
       name: art.name.trim() || `part_${idx + 1}`,
       part: Number(art.part) || idx + 1,
@@ -2722,6 +2726,7 @@ async function loadEditableVersion(domainId = selectedDomainId.value, version = 
   try {
     const data = await adminApi.editableVersion(domainId, version, token.value.trim());
     const editableArtifactsPayload = (data.artifacts || []).map((art) => ({
+      artifact_id: art.artifact_id,
       kind: art.kind || "file",
       name: art.name || "",
       part: art.part,
@@ -2736,6 +2741,7 @@ async function loadEditableVersion(domainId = selectedDomainId.value, version = 
       })),
     }));
     const rawArtifacts = (data.artifacts || []).map((art, idx) => artifactDraftFromPayload({
+      artifact_id: art.artifact_id,
       kind: art.kind || "file",
       name: art.name || "",
       part: art.part ?? (idx + 1),

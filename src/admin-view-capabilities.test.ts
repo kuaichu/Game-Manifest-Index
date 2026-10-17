@@ -77,6 +77,7 @@ function mockAdminApi(platform: "android" | "windows", pcAvailability: "availabl
         attributes: { channel: "official", version_code: null },
         is_visible: true,
         artifacts: [{
+          artifact_id: "a1_pc_fixture",
           kind: "package",
           name: "pkg_1.zip",
           part: 1,
@@ -365,6 +366,7 @@ describe("AdminView capability alignment", () => {
     const payload = vi.mocked(adminApi.updateEditableVersion).mock.calls[0][2];
     expect(payload.file_path).toBeUndefined();
     expect(payload.artifacts?.[0]).toMatchObject({
+      artifact_id: "a1_pc_fixture",
       kind: "package",
       name: "pkg_1_v2.zip",
       attributes: {
@@ -374,6 +376,35 @@ describe("AdminView capability alignment", () => {
       },
     });
     app.unmount();
+  });
+
+  it("preserves artifact ownership through JSON and visual editing", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const { app, root } = await mountAdmin("windows");
+    try {
+      buttonByText(root, "版本").click();
+      await flushUpdates();
+      buttonByText(root, "JSON").click();
+      await flushUpdates();
+      const editor = root.querySelector<HTMLTextAreaElement>(".pc-json-editor textarea");
+      if (!editor) throw new Error("Artifact JSON editor not found");
+      const artifacts = JSON.parse(editor.value);
+      expect(artifacts[0].artifact_id).toBe("a1_pc_fixture");
+      artifacts[0].name = "edited-in-json.zip";
+      editor.value = JSON.stringify(artifacts);
+      editor.dispatchEvent(new Event("input"));
+      await flushUpdates();
+      buttonByText(root, "列表").click();
+      await flushUpdates();
+      buttonByText(root, "保存更改").click();
+      await flushUpdates();
+      const payload = vi.mocked(adminApi.updateEditableVersion).mock.calls[0][2];
+      expect(payload.artifacts?.[0]).toMatchObject({
+        artifact_id: "a1_pc_fixture", name: "edited-in-json.zip",
+      });
+    } finally {
+      app.unmount();
+    }
   });
 
   it("keeps edit and create URL filename inference behavior aligned", async () => {
