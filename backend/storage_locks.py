@@ -4,17 +4,41 @@ from contextlib import contextmanager
 import os
 import stat
 from pathlib import Path
-from threading import RLock
+from threading import RLock, local
 
 
 DATA_LOCK = RLock()
 CACHE_LOCK = RLock()
 RETENTION_LOCK = RLock()
+_HELD_DATA_LOCKS = local()
 
 
 @contextmanager
 def data_file_lock(data_root: Path):
-    """Serialize data commits across processes using one persistent lock file."""
+    """Serialize commits, allowing one thread to compose operations on one root.
+
+    The outer call owns the OS lock. Nested store/index/catalog helpers on the
+    same thread reuse it, without weakening locking for other threads/processes.
+    Callers continue to acquire DATA_LOCK before entering a data transaction.
+    """
+    key = os.path.normcase(os.path.abspath(data_root))
+    held = getattr(_HELD_DATA_LOCKS, "roots", None)
+    if held is None:
+        held = _HELD_DATA_LOCKS.roots = set()
+    if key in held:
+        yield
+        return
+    with _data_file_lock(Path(data_root)):
+        held.add(key)
+        try:
+            yield
+        finally:
+            held.remove(key)
+
+
+@contextmanager
+def _data_file_lock(data_root: Path):
+    """Acquire and release the OS lock once for the outermost caller."""
     data_root = Path(data_root)
     try:
         root_stat = os.lstat(data_root)
