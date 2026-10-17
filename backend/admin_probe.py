@@ -10,6 +10,7 @@ import re
 import stat
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from copy import deepcopy
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from threading import RLock
@@ -20,10 +21,8 @@ from backend.activity_store import ActivityStore
 from backend.admin_state import BoundedItems
 from backend.catalog_admin import configured_nondefault_pc_domains, is_configured_nondefault_pc_domain
 from backend.domain_registry import is_nondefault_pc_domain, nondefault_pc_domains
-from backend.indexes import rebuild_index
-from backend.schema_v2 import validate_v2_record
-from backend.storage_locks import DATA_LOCK
-from backend.version_store import persist_v2_record
+from backend.schema_v2 import record_identity, validate_v2_record
+from backend.version_store import persist_v2_record, record_index_transaction
 from probe_adapters.common import ProbeError
 from probe_adapters.service import apply_result as default_apply_result
 from probe_adapters.service import probe as default_probe
@@ -247,19 +246,55 @@ def _public_result(requested_url: str, result: dict[str, Any] | None, error: Exc
     }
 
 
-def _run_probe(record: dict[str, Any], artifact_index: int, url_index: int, artifact: dict[str, Any], url: str, timeout: int, probe_fn: ProbeCallable) -> dict[str, Any]:
+def _candidate_identity(candidate: dict[str, Any]) -> dict[str, Any]:
+    return {key: deepcopy(value) for key, value in candidate.items() if key != "current"}
+
+
+def _artifact_metadata(artifact: dict[str, Any]) -> dict[str, Any]:
+    return {key: deepcopy(value) for key, value in artifact.items() if key != "urls"}
+
+
+@dataclass(frozen=True)
+class _ProbeSelection:
+    record: dict[str, Any]
+    identity: dict[str, str]
+    artifact_id: str
+    artifact: dict[str, Any]
+    candidate: dict[str, Any]
+    provenance: Any
+
+    def resolve(self, latest: dict[str, Any]) -> tuple[int, int]:
+        """Rebind list positions only when ownership and probe inputs still match."""
+        if record_identity(latest) != self.identity or latest.get("provenance") != self.provenance:
+            raise ValueError("probe record identity changed")
+        for ai, artifact in enumerate(latest["artifacts"]):
+            if artifact["artifact_id"] != self.artifact_id:
+                continue
+            if _artifact_metadata(artifact) != self.artifact:
+                break
+            matches = [
+                ui for ui, candidate in enumerate(artifact["urls"])
+                if _candidate_identity(candidate) == self.candidate
+            ]
+            if len(matches) == 1:
+                return ai, matches[0]
+            break
+        raise ValueError("probe target changed before commit")
+
+
+def _run_probe(record: dict[str, Any], artifact_index: int, url_index: int, artifact: dict[str, Any], url: str, timeout: int, probe_fn: ProbeCallable) -> tuple[_ProbeSelection, dict[str, Any]]:
+    selection = _ProbeSelection(
+        record, record_identity(record), artifact["artifact_id"],
+        _artifact_metadata(artifact),
+        _candidate_identity(record["artifacts"][artifact_index]["urls"][url_index]),
+        deepcopy(record.get("provenance")),
+    )
     result = probe_fn(
         url, vendor=record.get("vendor"), game_id=record.get("game_id"),
         platform=record.get("platform"), timeout=timeout,
         expected_size=_expected_size(artifact), context=_context(artifact),
     )
-    return {**result, "target_url": url, "artifact_index": artifact_index, "url_index": url_index}
-
-
-def _domain(record: dict[str, Any]) -> tuple[str, str, str, str]:
-    return (
-        record["vendor"], record["game_id"], record["platform"], record["domain_id"],
-    )
+    return selection, {**result, "target_url": url, "artifact_index": artifact_index, "url_index": url_index}
 
 
 def _verified_current_state(candidate: dict[str, Any], state: str, now: datetime) -> bool:
@@ -315,16 +350,29 @@ def _record_unavailable_transition(before: dict[str, Any], after: dict[str, Any]
 
 
 def _apply_and_persist(
-    root: Path, path: Path, result: dict[str, Any], apply_fn: ApplyCallable,
+    root: Path, path: Path, selection: _ProbeSelection, result: dict[str, Any], apply_fn: ApplyCallable,
     *, activity_store: ActivityStore | None = None,
 ) -> dict[str, Any]:
-    # All admin mutations share one process boundary; VersionStore supplies
-    # the cross-process lock and preserves the existing is_visible field.
-    with ADMIN_PROBE_LOCK, DATA_LOCK:
-        latest = json.loads(path.read_text(encoding="utf-8"))
-        validate_v2_record(latest)
-        updated = apply_fn(latest, result)
-        persist_v2_record(updated, root)
+    with ADMIN_PROBE_LOCK:
+        with record_index_transaction(selection.record, root):
+            latest = json.loads(path.read_text(encoding="utf-8"))
+            validate_v2_record(latest)
+            ai, ui = selection.resolve(latest)
+            updated = apply_fn(deepcopy(latest), {**result, "artifact_index": ai, "url_index": ui})
+            # Copy only the selected path; do not clone the entire archive just
+            # to prove an adapter left all other fields untouched.
+            expected = {**latest, "artifacts": list(latest["artifacts"])}
+            expected_artifact = {**latest["artifacts"][ai], "urls": list(latest["artifacts"][ai]["urls"])}
+            expected_artifact["urls"][ui] = {
+                **latest["artifacts"][ai]["urls"][ui],
+                "current": updated["artifacts"][ai]["urls"][ui]["current"],
+            }
+            expected["artifacts"][ai] = expected_artifact
+            if updated != expected:
+                raise ValueError("probe changed fields outside the selected URL current")
+            persist_v2_record(updated, root)
+        # Activity describes a completed commit, never a write rolled back by
+        # an index failure. Its own persistence must not fail the probe.
         if activity_store is not None:
             try:
                 _record_unavailable_transition(latest, updated, activity_store)
@@ -362,10 +410,8 @@ def probe_public_url(root: Path, url: str, artifact_url_id: int, timeout: int, *
     if target != url:
         raise ValueError("artifact_url_id does not identify the supplied URL")
     try:
-        result = _run_probe(record, ai, ui, artifact, target, timeout, probe_fn)
-        _apply_and_persist(root, path, result, apply_fn, activity_store=activity_store)
-        with ADMIN_PROBE_LOCK:
-            rebuild_index(root, *_domain(record))
+        selection, result = _run_probe(record, ai, ui, artifact, target, timeout, probe_fn)
+        _apply_and_persist(root, path, selection, result, apply_fn, activity_store=activity_store)
     except (ProbeError, OSError, TypeError, ValueError) as error:
         return _public_result(url, None, error, persisted=False, artifact_url_id=artifact_url_id)
     return _public_result(url, result, None, persisted=True, artifact_url_id=artifact_url_id)
@@ -379,14 +425,13 @@ def _filtered_candidates(record: dict[str, Any], candidate_filter: CandidateFilt
 
 
 def _probe_record(root: Path, path: Path, record: dict[str, Any], timeout: int, probe_fn: ProbeCallable, apply_fn: ApplyCallable, cancelled: Callable[[], bool], candidate_filter: CandidateFilter | None = None, activity_store: ActivityStore | None = None):
-    current = deepcopy(record)
     for ai, ui, artifact, candidate in _filtered_candidates(record, candidate_filter):
         if cancelled():
             break
         url = candidate["url"]
         try:
-            result = _run_probe(current, ai, ui, artifact, url, timeout, probe_fn)
-            current = _apply_and_persist(root, path, result, apply_fn, activity_store=activity_store)
+            selection, result = _run_probe(record, ai, ui, artifact, url, timeout, probe_fn)
+            _apply_and_persist(root, path, selection, result, apply_fn, activity_store=activity_store)
             item = _public_result(url, result, None, persisted=True)
         except (ProbeError, OSError, TypeError, ValueError) as error:
             item = _public_result(url, None, error, persisted=False)
@@ -421,9 +466,8 @@ def probe_records(root: Path, records: list[tuple[Path, dict[str, Any]]], timeou
     details = BoundedItems()
     counts = {"checked": 0, "available": 0, "unavailable": 0, "unknown": 0, "failed": 0}
     result_lock = RLock()
-    affected: set[tuple[str, str, str, str]] = set()
 
-    def consume(record: dict[str, Any], item: dict[str, Any]) -> None:
+    def consume(item: dict[str, Any]) -> None:
         with result_lock:
             counts["checked"] += 1
             counts["available"] += int(item.get("available") is True)
@@ -431,8 +475,6 @@ def probe_records(root: Path, records: list[tuple[Path, dict[str, Any]]], timeou
             counts["unknown"] += int(bool(item.get("ok")) and item.get("available") is None)
             counts["failed"] += int(not item.get("ok"))
             details.append(item)
-            if item.get("ok"):
-                affected.add(_domain(record))
             if progress:
                 progress(item, counts["checked"], total)
 
@@ -454,7 +496,7 @@ def probe_records(root: Path, records: list[tuple[Path, dict[str, Any]]], timeou
 
     def run_record(path: Path, record: dict[str, Any]) -> None:
         for item in record_outcomes(path, record):
-            consume(record, item)
+            consume(item)
 
     worker_count = max(1, min(workers, len(records) or 1))
     remaining = iter(records)
@@ -471,9 +513,6 @@ def probe_records(root: Path, records: list[tuple[Path, dict[str, Any]]], timeou
             completed, futures = wait(futures, return_when=FIRST_COMPLETED)
             for future in completed:
                 future.result()
-    for vendor, game_id, platform, domain_id in affected:
-        with ADMIN_PROBE_LOCK:
-            rebuild_index(root, vendor, game_id, platform, domain_id)
     return {
         **counts, "selected": total,
         "available_urls": counts["available"],

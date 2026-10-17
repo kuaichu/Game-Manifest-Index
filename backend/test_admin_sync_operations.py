@@ -18,7 +18,7 @@ from backend.admin_state import AdminStateError, AdminStateStore
 from backend.app import create_app
 from backend.indexes import rebuild_index
 from backend.schema_v2 import artifact_id, validate_v2_record
-from backend.version_store import write_v2_record
+from backend.version_store import persist_v2_record, write_v2_record
 from probe_adapters.service import apply_result
 from url_adapters.service import DISCOVERERS, PC_DISCOVERERS
 
@@ -460,7 +460,7 @@ class OperationTests(AdminFixture):
         new_url = "https://autopatchcn.yuanshen.com/game-2.apk"
         def discovery(game_ids, root, timeout, workers, **kwargs):
             events.append(("discover", list(game_ids), kwargs["scope"], timeout, workers))
-            write_v2_record(record("android", version="2.0.0", artifacts=[artifact("game-2.apk", [new_url])]), root)
+            persist_v2_record(record("android", version="2.0.0", artifacts=[artifact("game-2.apk", [new_url])]), root)
             item = {"game_id": "hk4e", "platform": "android", "ok": True, "new": True, "version": "2.0.0"}
             kwargs["progress"](item, 1, 1)
             return {"items": [item]}
@@ -771,16 +771,6 @@ class OperationTests(AdminFixture):
         ).json()
         logs = self.wait(client, started["job_id"])["logs"]
         self.assertIn("[discover/android] hk4e 成功", logs)
-
-    def test_discovery_rebuilds_each_domain_once(self):
-        second = record("android", version="2.0.0")
-        write_v2_record(second, self.data)
-        rebuild_index(self.data, "mihoyo", "hk4e", "android")
-        manager = OperationManager(AdminStateStore(self.state), self.data, probe_fn=fake_probe)
-        items = [{"game_id": "hk4e", "platform": "android", "ok": True}]
-        with patch("backend.admin_operations.rebuild_index") as rebuild:
-            manager._rebuild_discovered(items)
-        rebuild.assert_called_once_with(self.data, "mihoyo", "hk4e", "android")
 
 
 if __name__ == "__main__":

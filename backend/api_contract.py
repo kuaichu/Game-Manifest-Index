@@ -1643,8 +1643,9 @@ def create_api_app(data_root: Path, upstream: Any | None = None, *, state_root: 
         except ManifestError as error:
             raise _manifest_error(error) from error
 
-    @app.get("/api/v1/domains/{domain_id}/versions/{version}/file")
-    def version_file(domain_id: str, version: str, path: str, source: str = "auto", identity: str = "game") -> dict[str, Any]:
+    def resolve_version_file(
+        domain_id: str, version: str, path: str, source: str, identity: str,
+    ) -> tuple[dict[str, Any], DomainData]:
         try:
             strict_relative_posix(path)
         except ManifestBadRequest as error:
@@ -1652,24 +1653,28 @@ def create_api_app(data_root: Path, upstream: Any | None = None, *, state_root: 
         selected, domain, record, payload = selected_source(domain_id, version, source, identity)
         try:
             if selected == "chunk":
-                return {"source": "chunk", **chunk_file_detail(payload, identity, service().upstream, path)}
+                return {"source": "chunk", **chunk_file_detail(payload, identity, service().upstream, path)}, domain
             if selected == "mihoyo_package":
                 return mihoyo_package_file_detail(
                     service().state_root, record, record["game_id"], record["version"], identity, path,
                     service().upstream,
-                )
+                ), domain
             artifact, document, base_urls = payload
-            return {"source": "package", "fetch_mode": "checked_in_manifest", "identity": str(_stable_id(artifact["artifact_id"])), **local_file_detail(document, base_urls, path)}
+            return {"source": "package", "fetch_mode": "checked_in_manifest", "identity": str(_stable_id(artifact["artifact_id"])), **local_file_detail(document, base_urls, path)}, domain
         except ManifestError as error:
             raise _manifest_error(error) from error
+
+    @app.get("/api/v1/domains/{domain_id}/versions/{version}/file")
+    def version_file(domain_id: str, version: str, path: str, source: str = "auto", identity: str = "game") -> dict[str, Any]:
+        detail, _domain = resolve_version_file(domain_id, version, path, source, identity)
+        return detail
 
     @app.get("/api/v1/domains/{domain_id}/versions/{version}/file-content")
     async def version_file_content(domain_id: str, version: str, path: str, source: str = "package", identity: str = "game") -> Response:
         if source != "package":
             fail(400, "bad_source", "完整文件下载仅支持 package 来源")
         # Resolve from the existing authenticated metadata; clients cannot supply URLs.
-        detail = await run_in_threadpool(version_file, domain_id, version, path, source, identity)
-        domain = service().domain(domain_id)
+        detail, domain = await run_in_threadpool(resolve_version_file, domain_id, version, path, source, identity)
         allowed_hosts = PACKAGE_HOSTS_BY_GAME.get(domain.game_id, frozenset()) if domain.vendor == "mihoyo" else LOCAL_OFFICIAL_HOSTS.get(domain.vendor, frozenset())
         url = detail.get("download_url")
         if not isinstance(url, str) or not allowed_hosts:

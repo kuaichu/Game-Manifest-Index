@@ -132,7 +132,7 @@ class ProbeWindowTests(unittest.TestCase):
 
         records = [(Path(str(number)), {}) for number in range(20)]
         progress = []
-        with patch("backend.admin_probe.ThreadPoolExecutor", ImmediatePool), patch("backend.admin_probe.wait", window_wait), patch("backend.admin_probe._filtered_candidates", return_value=[None] * 3), patch("backend.admin_probe._probe_record", probe), patch("backend.admin_probe._domain", return_value=("v", "g", "android", "g")), patch("backend.admin_probe.rebuild_index") as rebuild, patch("backend.admin_probe.BoundedItems", side_effect=lambda: BoundedItems(512)):
+        with patch("backend.admin_probe.ThreadPoolExecutor", ImmediatePool), patch("backend.admin_probe.wait", window_wait), patch("backend.admin_probe._filtered_candidates", return_value=[None] * 3), patch("backend.admin_probe._probe_record", probe), patch("backend.admin_probe.BoundedItems", side_effect=lambda: BoundedItems(512)):
             result = probe_records(Path("unused"), records, 5, 2, progress=lambda item, done, total: progress.append((done, total)))
         self.assertEqual(len(submissions), 20)
         self.assertEqual(max(window_sizes), 2)
@@ -140,7 +140,6 @@ class ProbeWindowTests(unittest.TestCase):
         self.assertEqual(progress[-1], (60, 60))
         self.assertTrue(result["items_truncated"])
         self.assertEqual(result["items_total"], 60)
-        rebuild.assert_called_once()
 
     def test_cancel_does_not_submit_remaining_records(self):
         cancelled = False
@@ -154,7 +153,7 @@ class ProbeWindowTests(unittest.TestCase):
             nonlocal cancelled
             cancelled = True
 
-        with patch("backend.admin_probe._filtered_candidates", return_value=[None]), patch("backend.admin_probe._probe_record", probe), patch("backend.admin_probe._domain", return_value=("v", "g", "android", "g")), patch("backend.admin_probe.rebuild_index"):
+        with patch("backend.admin_probe._filtered_candidates", return_value=[None]), patch("backend.admin_probe._probe_record", probe):
             result = probe_records(Path("unused"), [(Path(str(n)), {}) for n in range(100)], 5, 1, cancelled=lambda: cancelled, progress=progress)
         self.assertEqual(len(calls), 1)
         self.assertEqual(result["checked"], 1)
@@ -167,7 +166,7 @@ class ProbeWindowTests(unittest.TestCase):
 
         record = {"game_id": "hk4e", "version": "1.0", "platform": "android"}
         candidates = [(n, 0, {"kind": "apk"}, {"url": "https://example.test/app.apk"}) for n in range(3)]
-        with patch("backend.admin_probe._filtered_candidates", return_value=candidates), patch("backend.admin_probe._probe_record", probe), patch("backend.admin_probe._domain", return_value=("v", "g", "android", "g")), patch("backend.admin_probe.rebuild_index"):
+        with patch("backend.admin_probe._filtered_candidates", return_value=candidates), patch("backend.admin_probe._probe_record", probe):
             result = probe_records(Path("unused"), [(Path("1"), record)], 5, 1)
         self.assertEqual((result["checked"], result["available"], result["failed"]), (3, 1, 2))
         self.assertEqual([item.get("artifact_index") for item in result["items"]], [None, 1, 2])
@@ -177,7 +176,7 @@ class ProbeWindowTests(unittest.TestCase):
         def probe(*args):
             yield {"ok": True, "available": True}
 
-        with patch("backend.admin_probe._filtered_candidates", return_value=[None]), patch("backend.admin_probe._probe_record", probe), patch("backend.admin_probe._domain", return_value=("v", "g", "android", "g")):
+        with patch("backend.admin_probe._filtered_candidates", return_value=[None]), patch("backend.admin_probe._probe_record", probe):
             with self.assertRaisesRegex(RuntimeError, "callback failed"):
                 probe_records(Path("unused"), [(Path("1"), {})], 5, 1,
                               progress=lambda *args: (_ for _ in ()).throw(RuntimeError("callback failed")))

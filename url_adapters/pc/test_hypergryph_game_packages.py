@@ -6,6 +6,8 @@ from pathlib import Path
 from unittest.mock import patch
 from urllib.parse import urlsplit
 
+from backend import indexes
+from backend.api_contract import ApiContract
 from backend.schema_v2 import artifact_id, validate_v2_record
 from backend.version_store import persist_v2_record
 from url_adapters.common import AdapterError
@@ -64,7 +66,36 @@ class HypergryphPackageTests(unittest.TestCase):
                     self.assertEqual(artifact["artifact_id"], artifact_id(original_artifact, record))
                 path = hg.discover_collection(collection, Path(tmp))
                 self.assertEqual(path, Path(tmp) / "hypergryph" / game / "pc" / (record["version"] + ".json"))
-                self.assertFalse((path.parent / "index.json").exists())
+                index = json.loads((path.parent / "index.json").read_text(encoding="utf-8"))
+                self.assertEqual([item["version"] for item in index["versions"]], [record["version"]])
+                domain = ApiContract(Path(tmp), state_root=Path(tmp) / "state").domain(game + "-pc")
+                self.assertEqual([item["version"] for item in domain.records], [record["version"]])
+
+    def test_index_failure_rolls_back_new_and_existing_package_records(self):
+        for existing in (False, True):
+            with self.subTest(existing=existing), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                collection = fixture()
+                record = hg.organize(collection)
+                path = root / "hypergryph" / collection.game_id / "pc" / (record["version"] + ".json")
+                index = path.parent / "index.json"
+                if existing:
+                    persist_v2_record(record, root)
+                    for pack in packs(collection):
+                        pack["md5"] = "e" * 32
+                original_record = path.read_bytes() if existing else None
+                original_index = index.read_bytes() if existing else None
+                rebuild = indexes.rebuild_index
+
+                def fail_after_index_commit(*args, **kwargs):
+                    rebuild(*args, **kwargs)
+                    raise OSError("injected index publication failure")
+
+                with patch.object(indexes, "rebuild_index", side_effect=fail_after_index_commit):
+                    with self.assertRaises(AdapterError):
+                        hg.discover_collection(collection, root)
+                self.assertEqual(path.read_bytes() if path.exists() else None, original_record)
+                self.assertEqual(index.read_bytes() if index.exists() else None, original_index)
 
     def test_collect_posts_official_request_and_limits_transport(self):
         for game in hg.GAMES:
