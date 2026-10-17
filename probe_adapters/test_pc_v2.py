@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from backend.schema_v2 import artifact_id
 from probe_adapters.common import ProbeError
-from probe_adapters.service import PCRecordCompatibilityError, apply_pc_v2_result, apply_result, pc_v2_current_from_result, probe
+from probe_adapters.service import PCRecordCompatibilityError, apply_pc_v2_result, pc_v2_current_from_result, probe
 
 
 def record():
@@ -119,7 +119,7 @@ class PCV2Tests(unittest.TestCase):
                   "reason": "ignored", "confidence": "ignored", "md5": "ignored",
                   "metadata_http_code": 200, "expected_size": 99, "bytes_received": 16,
                   "file_time": "ignored", "source_kind": "ignored", "transport_returncode": 0}
-        updated = apply_result(value, result)
+        updated = apply_pc_v2_result(value, result)
         self.assertEqual(value, original)
         current = updated["artifacts"][0]["urls"][1]["current"]
         self.assertEqual(set(current), {"state", "http_code", "checked_at", "response_size", "etag", "crc64", "last_modified", "final_url"})

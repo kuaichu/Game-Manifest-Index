@@ -22,14 +22,14 @@ from backend.admin_state import BoundedItems
 from backend.catalog_admin import configured_nondefault_pc_domains, is_configured_nondefault_pc_domain
 from backend.domain_registry import is_nondefault_pc_domain, nondefault_pc_domains
 from backend.schema_v2 import record_identity, validate_v2_record
-from backend.version_store import persist_v2_record, record_index_transaction
+from backend.version_store import record_index_transaction, write_v2_record
 from probe_adapters.common import ProbeError
-from probe_adapters.service import apply_result as default_apply_result
+from probe_adapters.service import current_from_result as default_current
 from probe_adapters.service import probe as default_probe
 
 
 ProbeCallable = Callable[..., dict[str, Any]]
-ApplyCallable = Callable[[dict[str, Any], dict[str, Any]], dict[str, Any]]
+CurrentCallable = Callable[[dict[str, str], str, dict[str, Any]], dict[str, Any]]
 CandidateFilter = Callable[[dict[str, Any], int, int, dict[str, Any], dict[str, Any]], bool]
 ADMIN_PROBE_LOCK = RLock()
 LOGGER = logging.getLogger(__name__)
@@ -294,7 +294,7 @@ def _run_probe(record: dict[str, Any], artifact_index: int, url_index: int, arti
         platform=record.get("platform"), timeout=timeout,
         expected_size=_expected_size(artifact), context=_context(artifact),
     )
-    return selection, {**result, "target_url": url, "artifact_index": artifact_index, "url_index": url_index}
+    return selection, result
 
 
 def _verified_current_state(candidate: dict[str, Any], state: str, now: datetime) -> bool:
@@ -349,36 +349,28 @@ def _record_unavailable_transition(before: dict[str, Any], after: dict[str, Any]
     )
 
 
-def _apply_and_persist(
-    root: Path, path: Path, selection: _ProbeSelection, result: dict[str, Any], apply_fn: ApplyCallable,
+def _commit_probe(
+    root: Path, path: Path, selection: _ProbeSelection, result: dict[str, Any], current_fn: CurrentCallable,
     *, activity_store: ActivityStore | None = None,
-) -> dict[str, Any]:
+) -> None:
+    # Conversion cannot access archive contents or choose a different target.
+    current = current_fn(dict(selection.identity), selection.candidate["url"], deepcopy(result))
     with ADMIN_PROBE_LOCK:
         with record_index_transaction(selection.record, root):
             latest = json.loads(path.read_text(encoding="utf-8"))
             validate_v2_record(latest)
             ai, ui = selection.resolve(latest)
-            updated = apply_fn(deepcopy(latest), {**result, "artifact_index": ai, "url_index": ui})
-            # Copy only the selected path; do not clone the entire archive just
-            # to prove an adapter left all other fields untouched.
-            expected = {**latest, "artifacts": list(latest["artifacts"])}
-            expected_artifact = {**latest["artifacts"][ai], "urls": list(latest["artifacts"][ai]["urls"])}
-            expected_artifact["urls"][ui] = {
-                **latest["artifacts"][ai]["urls"][ui],
-                "current": updated["artifacts"][ai]["urls"][ui]["current"],
-            }
-            expected["artifacts"][ai] = expected_artifact
-            if updated != expected:
-                raise ValueError("probe changed fields outside the selected URL current")
-            persist_v2_record(updated, root)
-        # Activity describes a completed commit, never a write rolled back by
-        # an index failure. Its own persistence must not fail the probe.
+            updated = {**latest, "artifacts": list(latest["artifacts"])}
+            artifact = {**latest["artifacts"][ai], "urls": list(latest["artifacts"][ai]["urls"])}
+            artifact["urls"][ui] = {**artifact["urls"][ui], "current": current}
+            updated["artifacts"][ai] = artifact
+            write_v2_record(updated, root, overwrite=True)
+        # Publish activity only after the record and index have committed.
         if activity_store is not None:
             try:
                 _record_unavailable_transition(latest, updated, activity_store)
             except Exception:  # activity history cannot fail a completed probe
                 LOGGER.warning("Could not persist version-unavailable activity", exc_info=True)
-        return updated
 
 
 def locate_public_url(root: Path, artifact_url_id: int) -> tuple[Path, dict[str, Any], int, int, dict[str, Any], str]:
@@ -405,13 +397,13 @@ def probe_direct(url: str, timeout: int, *, probe_fn: ProbeCallable = default_pr
     return _public_result(url, result, None, persisted=False)
 
 
-def probe_public_url(root: Path, url: str, artifact_url_id: int, timeout: int, *, probe_fn: ProbeCallable = default_probe, apply_fn: ApplyCallable = default_apply_result, activity_store: ActivityStore | None = None) -> dict[str, Any]:
+def probe_public_url(root: Path, url: str, artifact_url_id: int, timeout: int, *, probe_fn: ProbeCallable = default_probe, current_fn: CurrentCallable = default_current, activity_store: ActivityStore | None = None) -> dict[str, Any]:
     path, record, ai, ui, artifact, target = locate_public_url(root, artifact_url_id)
     if target != url:
         raise ValueError("artifact_url_id does not identify the supplied URL")
     try:
         selection, result = _run_probe(record, ai, ui, artifact, target, timeout, probe_fn)
-        _apply_and_persist(root, path, selection, result, apply_fn, activity_store=activity_store)
+        _commit_probe(root, path, selection, result, current_fn, activity_store=activity_store)
     except (ProbeError, OSError, TypeError, ValueError) as error:
         return _public_result(url, None, error, persisted=False, artifact_url_id=artifact_url_id)
     return _public_result(url, result, None, persisted=True, artifact_url_id=artifact_url_id)
@@ -424,14 +416,14 @@ def _filtered_candidates(record: dict[str, Any], candidate_filter: CandidateFilt
     return [item for item in values if candidate_filter(record, *item)]
 
 
-def _probe_record(root: Path, path: Path, record: dict[str, Any], timeout: int, probe_fn: ProbeCallable, apply_fn: ApplyCallable, cancelled: Callable[[], bool], candidate_filter: CandidateFilter | None = None, activity_store: ActivityStore | None = None):
+def _probe_record(root: Path, path: Path, record: dict[str, Any], timeout: int, probe_fn: ProbeCallable, current_fn: CurrentCallable, cancelled: Callable[[], bool], candidate_filter: CandidateFilter | None = None, activity_store: ActivityStore | None = None):
     for ai, ui, artifact, candidate in _filtered_candidates(record, candidate_filter):
         if cancelled():
             break
         url = candidate["url"]
         try:
             selection, result = _run_probe(record, ai, ui, artifact, url, timeout, probe_fn)
-            _apply_and_persist(root, path, selection, result, apply_fn, activity_store=activity_store)
+            _commit_probe(root, path, selection, result, current_fn, activity_store=activity_store)
             item = _public_result(url, result, None, persisted=True)
         except (ProbeError, OSError, TypeError, ValueError) as error:
             item = _public_result(url, None, error, persisted=False)
@@ -460,7 +452,7 @@ def selected_records(root: Path, game_ids: list[str], scope: str, *, domain_id: 
     return result
 
 
-def probe_records(root: Path, records: list[tuple[Path, dict[str, Any]]], timeout: int, workers: int, *, probe_fn: ProbeCallable = default_probe, apply_fn: ApplyCallable = default_apply_result, progress: Callable[[dict[str, Any], int, int], None] | None = None, cancelled: Callable[[], bool] | None = None, candidate_filter: CandidateFilter | None = None, activity_store: ActivityStore | None = None) -> dict[str, Any]:
+def probe_records(root: Path, records: list[tuple[Path, dict[str, Any]]], timeout: int, workers: int, *, probe_fn: ProbeCallable = default_probe, current_fn: CurrentCallable = default_current, progress: Callable[[dict[str, Any], int, int], None] | None = None, cancelled: Callable[[], bool] | None = None, candidate_filter: CandidateFilter | None = None, activity_store: ActivityStore | None = None) -> dict[str, Any]:
     is_cancelled = cancelled or (lambda: False)
     total = sum(len(_filtered_candidates(record, candidate_filter)) for _, record in records)
     details = BoundedItems()
@@ -481,7 +473,7 @@ def probe_records(root: Path, records: list[tuple[Path, dict[str, Any]]], timeou
     def record_outcomes(path: Path, record: dict[str, Any]):
         done = 0
         try:
-            for item in _probe_record(root, path, record, timeout, probe_fn, apply_fn, is_cancelled, candidate_filter, activity_store):
+            for item in _probe_record(root, path, record, timeout, probe_fn, current_fn, is_cancelled, candidate_filter, activity_store):
                 done += 1
                 yield item
         except Exception as error:  # isolate one corrupt/custom adapter record

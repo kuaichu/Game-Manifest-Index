@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from backend.schema_v2 import artifact_id
 from probe_adapters.common import ProbeError, ProbeObservation
-from probe_adapters.service import apply_result, probe
+from probe_adapters.service import current_from_result, probe
 
 
 def v2_record() -> dict:
@@ -217,50 +217,44 @@ class ProbeServiceTests(unittest.TestCase):
         self.assertEqual(result["size"], 3)
         self.assertIs(result["available"], False)
 
-    def test_apply_result_only_updates_probe_owned_fields(self) -> None:
-        record = v2_record()
-        updated = apply_result(record, {
+    def test_current_projection_ignores_non_probe_fields(self):
+        identity = {"vendor": "mihoyo", "game_id": "hk4e", "platform": "android"}
+        current = current_from_result(identity, "https://example.test/old.apk", {
             "url": "https://example.test/final.apk", "size": 123,
             "etag": "etag", "crc64": "crc", "md5": "md5",
             "http_code": 206, "available": True, "checked_at": "2026-08-24T00:00:00Z",
-            "file_time": "2026-08-03T00:00:00Z",
-            "target_url": "https://example.test/old.apk",
+            "file_time": "2026-08-03T00:00:00Z", "reason": "ignored", "confidence": "ignored",
         })
-        current = updated["artifacts"][0]["urls"][0]["current"]
-        self.assertEqual(updated["artifacts"][0]["urls"][0]["url"], "https://example.test/old.apk")
-        self.assertEqual(current["state"], "available")
-        self.assertEqual(current["response_size"], 123)
-        self.assertEqual(current["final_url"], "https://example.test/final.apk")
-        self.assertEqual(updated["file_time"], "manual-date")
-        self.assertNotIn("url", updated)
-        self.assertNotIn("status", updated)
+        self.assertEqual(current, {
+            "state": "available", "response_size": 123,
+            "etag": "etag", "crc64": "crc", "http_code": 206,
+            "checked_at": "2026-08-24T00:00:00Z", "final_url": "https://example.test/final.apk",
+        })
 
-    def test_apply_result_requires_exact_target_and_preserves_record(self):
-        record = v2_record()
-        original = deepcopy(record)
-        result = {"target_url": "https://example.test/old.apk", "url": "https://example.test/old.apk",
-                  "available": True, "http_code": 200, "checked_at": "2026-08-24T00:00:00Z",
-                  "observed_size": 9, "size": 8, "md5": "bad", "reason": "x", "confidence": "low"}
-        updated = apply_result(record, result)
-        current = updated["artifacts"][0]["urls"][0]["current"]
-        self.assertEqual(current["response_size"], 9)
-        self.assertNotIn("md5", current)
-        self.assertNotIn("reason", current)
-        self.assertNotIn("confidence", current)
-        self.assertEqual(record, original)
-        self.assertEqual(updated["artifacts"][0]["artifact_id"], original["artifacts"][0]["artifact_id"])
-        with self.assertRaises(Exception):
-            apply_result(record, {**result, "target_url": "https://example.test/missing.apk"})
+    def test_current_projection_preserves_inputs_and_prefers_observed_size(self):
+        identity = {"vendor": "mihoyo", "game_id": "hk4e", "platform": "android"}
+        target = "https://example.test/old.apk"
+        result = {"url": target, "available": True, "observed_size": 9, "size": 8}
+        original = deepcopy(result)
+        current = current_from_result(identity, target, result)
+        self.assertEqual(current, {"state": "available", "response_size": 9})
+        self.assertEqual(result, original)
 
-    def test_apply_result_falls_back_to_size_when_observed_size_is_none(self):
-        record = v2_record()
-        updated = apply_result(record, {"target_url": "https://example.test/old.apk", "url": "https://example.test/old.apk",
-                                        "available": True, "observed_size": None, "size": 8})
-        self.assertEqual(updated["artifacts"][0]["urls"][0]["current"]["response_size"], 8)
+    def test_current_projection_falls_back_to_size_when_observed_size_is_none(self):
+        current = current_from_result({"platform": "android"}, "https://example.test/old.apk", {
+            "available": True, "observed_size": None, "size": 8,
+        })
+        self.assertEqual(current["response_size"], 8)
 
-    def test_legacy_record_writeback_is_rejected(self):
-        with self.assertRaises(Exception):
-            apply_result({"platform": "android", "url": "x"}, {"target_url": "x"})
+    def test_current_projection_rejects_invalid_boundary_inputs(self):
+        for identity, target, result in (
+            ({"platform": "legacy"}, "https://example.test/a.apk", {}),
+            ({"platform": "android"}, "", {}),
+            ({"platform": "android"}, "https://example.test/a.apk", None),
+        ):
+            with self.subTest(identity=identity, target=target, result=result):
+                with self.assertRaises(ProbeError):
+                    current_from_result(identity, target, result)
 
 
 if __name__ == "__main__":

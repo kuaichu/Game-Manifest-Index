@@ -17,7 +17,7 @@ from backend.admin_probe import probe_records, selected_records
 from backend.indexes import rebuild_index
 from backend.schema_v2 import artifact_id, validate_v2_record
 from backend.version_store import write_v2_record
-from probe_adapters.service import apply_result
+from probe_adapters.service import current_from_result
 
 
 NOW = datetime(2026, 9, 14, 12, 0, tzinfo=timezone.utc)
@@ -108,7 +108,7 @@ class ScheduledProbeEngineTests(unittest.TestCase):
             calls.append(url.rsplit("/", 1)[-1])
             return _probe(url, **kwargs)
 
-        manager = OperationManager(AdminStateStore(self.state), self.data, probe_fn=probe, apply_fn=apply_result, clock=lambda: NOW)
+        manager = OperationManager(AdminStateStore(self.state), self.data, probe_fn=probe, current_fn=current_from_result, clock=lambda: NOW)
         started = manager.start(["probe"], ["hk4e"], "android", 5, 1, scheduled_mode="normal")
         finished = self._wait(manager)
         self.assertEqual(started["phase_total"], 5)
@@ -138,7 +138,7 @@ class ScheduledProbeEngineTests(unittest.TestCase):
             calls.append((kwargs["platform"], url.rsplit("/", 1)[-1]))
             return _probe(url, **kwargs)
 
-        manager = OperationManager(AdminStateStore(self.state), self.data, probe_fn=probe, apply_fn=apply_result, clock=lambda: NOW)
+        manager = OperationManager(AdminStateStore(self.state), self.data, probe_fn=probe, current_fn=current_from_result, clock=lambda: NOW)
         manager.start(["probe"], ["hk4e"], "all", 5, 2, scheduled_mode="full")
         finished = self._wait(manager)
         self.assertEqual(finished["result"]["probe"]["selected"], 4)
@@ -168,7 +168,7 @@ class ScheduledProbeEngineTests(unittest.TestCase):
 
         manager = OperationManager(AdminStateStore(self.state), self.data,
                                    discovery=discovery, probe_fn=probe,
-                                   apply_fn=apply_result, clock=lambda: NOW)
+                                   current_fn=current_from_result, clock=lambda: NOW)
         manager.start(["discover", "probe"], ["hk4e"], "android", 5, 1,
                       scheduled_mode="normal")
         finished = self._wait(manager)
@@ -198,7 +198,7 @@ class ScheduledProbeEngineTests(unittest.TestCase):
 
         manager = OperationManager(AdminStateStore(self.state), self.data,
                                    discovery=failing_discovery, probe_fn=probe,
-                                   apply_fn=apply_result, clock=lambda: NOW)
+                                   current_fn=current_from_result, clock=lambda: NOW)
         manager.start(["discover", "probe"], ["hk4e"], "android", 5, 1,
                       scheduled_mode="normal")
         finished = self._wait(manager)
@@ -230,7 +230,7 @@ class ScheduledProbeEngineTests(unittest.TestCase):
 
         manager = OperationManager(AdminStateStore(self.state), self.data,
                                    discovery=discovery, probe_fn=probe,
-                                   apply_fn=apply_result, clock=lambda: NOW)
+                                   current_fn=current_from_result, clock=lambda: NOW)
         manager.start(["discover", "probe"], ["hk4e"], "pc", 5, 1,
                       scheduled_mode="normal")
         finished = self._wait(manager)
@@ -262,7 +262,7 @@ class ScheduledProbeEngineTests(unittest.TestCase):
             return {**_probe(url, **kwargs), "http_code": 404, "available": False, "reason": "HTTP 404"}
 
         manager = OperationManager(AdminStateStore(self.state), self.data,
-                                   probe_fn=probe, apply_fn=apply_result, clock=lambda: NOW)
+                                   probe_fn=probe, current_fn=current_from_result, clock=lambda: NOW)
         manager.start(["probe"], ["hk4e"], "android", 5, 1, scheduled_mode="full")
         first = self._wait(manager)
         self.assertEqual(first["result"]["probe"]["unavailable"], 1)
@@ -303,7 +303,7 @@ class ScheduledProbeEngineTests(unittest.TestCase):
             gate.wait(2)
             return _probe(url, **kwargs)
 
-        manager = OperationManager(AdminStateStore(self.state), self.data, probe_fn=slow_probe, apply_fn=apply_result, clock=lambda: NOW)
+        manager = OperationManager(AdminStateStore(self.state), self.data, probe_fn=slow_probe, current_fn=current_from_result, clock=lambda: NOW)
         with self.assertRaises(ValueError):
             manager.start(["discover"], ["hk4e"], "android", 5, 1, scheduled_mode="normal")
         manager.start(["probe"], ["hk4e"], "android", 5, 1, scheduled_mode="full")

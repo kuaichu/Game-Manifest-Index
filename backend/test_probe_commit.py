@@ -11,7 +11,7 @@ from backend.api_contract import ApiContract
 from backend.admin_probe import probe_public_url, probe_records, selected_records, stable_url_id
 from backend.indexes import rebuild_index
 from backend.schema_v2 import artifact_id, record_identity
-from probe_adapters.service import apply_result
+from probe_adapters.service import current_from_result
 from backend.test_admin_sync_operations import artifact, fake_probe, record
 from backend.version_store import write_v2_record
 
@@ -104,21 +104,112 @@ class ProbeCommitTests(unittest.TestCase):
         self.assertEqual((path.read_bytes(), index.read_bytes()), before)
         self.assertIn("hk4e-android", ApiContract(self.root, state_root=self.root / "state").inventory())
 
-    def test_in_place_apply_cannot_change_other_owned_fields(self):
+    def test_converter_receives_only_detached_identity_and_evidence(self):
         value = record("android")
         path = self.store(value)
-        before = path.read_bytes()
         target = value["artifacts"][0]["urls"][0]["url"]
+        evidence = fake_probe(target)
 
-        def changes_extra_fields(current, result):
-            updated = apply_result(current, result)
-            current.update(updated)
-            current["provenance"]["source_name"] = "unrelated rewrite"
+        def modifies_inputs(identity, target_url, result):
+            self.assertEqual(identity, record_identity(value))
+            self.assertEqual(target_url, target)
+            self.assertNotIn("artifacts", identity)
+            self.assertNotIn("provenance", identity)
+            current = current_from_result(identity, target_url, result)
+            identity["vendor"] = "replacement"
+            result["available"] = False
             return current
 
         result = probe_public_url(
             self.root, target, stable_url_id(value["artifacts"][0]["artifact_id"], 0, target),
-            1, probe_fn=fake_probe, apply_fn=changes_extra_fields,
+            1, probe_fn=lambda *a, **k: evidence, current_fn=modifies_inputs,
         )
-        self.assertFalse(result["persisted"])
-        self.assertEqual(path.read_bytes(), before)
+        self.assertTrue(result["persisted"])
+        self.assertTrue(evidence["available"])
+        saved = json.loads(path.read_bytes())
+        current = saved["artifacts"][0]["urls"][0].pop("current")
+        self.assertEqual(current["state"], "available")
+        self.assertEqual(saved, value)
+
+    def test_invalid_current_cannot_change_record_or_index(self):
+        value = record("android")
+        path = self.store(value)
+        index = path.parent / "index.json"
+        before = path.read_bytes(), index.read_bytes()
+        target = value["artifacts"][0]["urls"][0]["url"]
+        for current in ({"state": "available", "provenance": {}}, {"state": "invalid"}, None):
+            with self.subTest(current=current):
+                result = probe_public_url(
+                    self.root, target, stable_url_id(value["artifacts"][0]["artifact_id"], 0, target),
+                    1, probe_fn=fake_probe, current_fn=lambda *args: current,
+                )
+                self.assertFalse(result["persisted"])
+                self.assertEqual((path.read_bytes(), index.read_bytes()), before)
+
+    def test_same_url_in_different_artifacts_updates_only_selected_target(self):
+        for platform in ("android", "windows"):
+            with self.subTest(platform=platform):
+                url = "https://autopatchcn.yuanshen.com/shared.zip"
+                kind = "apk" if platform == "android" else "package"
+                value = record(platform, artifacts=[
+                    artifact("first.zip", [url], kind=kind),
+                    artifact("second.zip", [url], kind=kind),
+                ])
+                path = self.store(value)
+                selected = value["artifacts"][1]
+                result = probe_public_url(
+                    self.root, url, stable_url_id(selected["artifact_id"], 0, url),
+                    1, probe_fn=fake_probe,
+                )
+                self.assertTrue(result["persisted"])
+                saved = json.loads(path.read_bytes())
+                self.assertNotIn("current", saved["artifacts"][0]["urls"][0])
+                self.assertEqual(saved["artifacts"][1]["urls"][0]["current"]["state"], "available")
+
+    def test_reordered_url_candidates_keep_identity_and_latest_unrelated_edits(self):
+        for platform in ("android", "windows"):
+            with self.subTest(platform=platform):
+                url = "https://autopatchcn.yuanshen.com/shared.zip"
+                kind = "apk" if platform == "android" else "package"
+                value = record(platform, artifacts=[artifact("game.zip", [url, url], kind=kind)])
+                path = self.store(value)
+                selected = value["artifacts"][0]
+
+                def reordered_during_probe(target, **kwargs):
+                    changed = copy.deepcopy(value)
+                    changed["artifacts"][0]["urls"].reverse()
+                    changed["is_visible"] = False
+                    changed["file_time"] = "2026-09-01T00:00:00Z"
+                    self.store(changed)
+                    return fake_probe(target, **kwargs)
+
+                result = probe_public_url(
+                    self.root, url, stable_url_id(selected["artifact_id"], 0, url),
+                    1, probe_fn=reordered_during_probe,
+                )
+                self.assertTrue(result["persisted"])
+                saved = json.loads(path.read_bytes())
+                self.assertFalse(saved["is_visible"])
+                self.assertEqual(saved["file_time"], "2026-09-01T00:00:00Z")
+                candidates = saved["artifacts"][0]["urls"]
+                self.assertNotIn("current", candidates[0])
+                self.assertEqual(candidates[1]["priority"], 0)
+                self.assertEqual(candidates[1]["current"]["state"], "available")
+
+    def test_batch_updates_repeated_urls_independently(self):
+        url = "https://autopatchcn.yuanshen.com/shared.apk"
+        value = record("android", artifacts=[artifact("first.apk", [url]), artifact("second.apk", [url])])
+        path = self.store(value)
+        calls = []
+
+        def different_results(target, **kwargs):
+            calls.append(target)
+            return {**fake_probe(target, **kwargs), "available": len(calls) == 1}
+
+        result = probe_records(
+            self.root, selected_records(self.root, ["hk4e"], "android"),
+            1, 1, probe_fn=different_results,
+        )
+        self.assertEqual((result["checked"], result["failed"]), (2, 0))
+        saved = json.loads(path.read_bytes())
+        self.assertEqual([a["urls"][0]["current"]["state"] for a in saved["artifacts"]], ["available", "unavailable"])

@@ -10,10 +10,9 @@ from urllib.parse import unquote, urlsplit
 
 from backend.android_record_compat import (
     AndroidRecordCompatibilityError,
-    apply_android_v2_result,
-    is_android_v2_record,
+    android_v2_current_from_result,
 )
-from backend.schema_v2 import SchemaValidationError, validate_v2_record
+from backend.schema_v2 import validate_v2_record
 from probe_adapters.common import (
     ProbeError,
     ProbeObservation,
@@ -241,18 +240,22 @@ def _static_result(
     }
 
 
-def apply_result(record: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]:
-    if isinstance(record, dict) and record.get("platform") == "windows":
-        try:
-            return apply_pc_v2_result(record, result)
-        except (PCRecordCompatibilityError, SchemaValidationError) as error:
-            raise ProbeError(str(error)) from error
-    if not is_android_v2_record(record):
-        raise ProbeError("APK 探活写回仅支持 schema_version=2 的 Android 记录")
+def current_from_result(
+    identity: dict[str, str], target_url: str, result: dict[str, Any],
+) -> dict[str, Any]:
+    """Project evidence into current; target selection and persistence belong to the caller."""
+    if not isinstance(result, dict):
+        raise ProbeError("探活结果必须是对象")
+    if not isinstance(target_url, str) or not target_url:
+        raise ProbeError("探活目标 URL 必须是非空字符串")
     try:
-        return apply_android_v2_result(record, result)
-    except AndroidRecordCompatibilityError as error:
+        if identity.get("platform") == "windows":
+            return pc_v2_current_from_result(identity, target_url, result)
+        if identity.get("platform") == "android":
+            return android_v2_current_from_result(result, target_url)
+    except (PCRecordCompatibilityError, AndroidRecordCompatibilityError) as error:
         raise ProbeError(str(error)) from error
+    raise ProbeError("探活状态仅支持 Android 或 Windows 平台")
 
 
 class PCRecordCompatibilityError(ValueError):
