@@ -12,6 +12,12 @@ export interface SiteChangelogDay {
 
 export const siteChangelog: SiteChangelogEntry[] = [
   {
+    id: "2026-10-17-game-icon-quality",
+    date: "2026-10-17",
+    title: "提升游戏图标清晰度",
+    body: "异环、战双帕弥什、明日方舟替换为官方高清图标，改善侧栏及数据动态在高分屏上的模糊显示。",
+  },
+  {
     id: "2026-10-13-memory-and-large-lists",
     date: "2026-10-13",
     title: "优化大清单浏览与下载",
