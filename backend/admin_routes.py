@@ -12,9 +12,9 @@ from typing import Any, Callable, Literal
 from fastapi import APIRouter, Body, Depends, Header, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
 
-from backend.admin_operations import OperationManager
+from backend.admin_operations import OperationBusyError, OperationManager, OperationStartError
 from backend.admin_probe import AdminProbeDataError, probe_direct, probe_public_url, probe_records, selected_records, valid_probe_url
-from backend.admin_state import AdminStateStore
+from backend.admin_state import AdminStateError, AdminStateStore
 from backend.api_contract import ApiContract, fail
 from backend import version_admin
 from probe_adapters.service import apply_result as default_apply
@@ -73,6 +73,7 @@ class AdminUrlPayload(AdminStrictModel):
 
 
 class AdminArtifactPayload(AdminStrictModel):
+    artifact_id: str | None = None
     kind: str
     name: str
     part: int = 1
@@ -171,6 +172,7 @@ def create_admin_router(
     router = APIRouter(prefix="/api/v1/admin")
     probe_status_lock = RLock()
     manual_probe_status: dict[str, Any] = {"status": "idle", "mode": "normal", "started_at": None, "finished_at": None, "family": "all", "log": []}
+    manual_probe_previous_job_id: str | None = None
 
     def now() -> str:
         value = clock() if clock is not None else datetime.now(timezone.utc)
@@ -179,17 +181,25 @@ def create_admin_router(
         return value.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
     def manual_start(family: str) -> None:
+        nonlocal manual_probe_previous_job_id
         try:
             operations.begin_manual_probe()
-        except RuntimeError:
+        except OperationBusyError:
             fail(409, "operation_already_running", "已有运维任务正在执行")
+        try:
+            previous_job_id = operations.latest()["job_id"]
+        except KeyError:
+            previous_job_id = None
         with probe_status_lock:
+            manual_probe_previous_job_id = previous_job_id
             manual_probe_status.update({"status": "running", "started_at": now(), "finished_at": None, "family": family, "log": ["开始同步探活"]})
 
-    def manual_finish() -> None:
+    def manual_finish(failed: bool) -> None:
         with probe_status_lock:
+            # Keep the legacy idle/running/finished vocabulary; failures belong
+            # in the request result and log rather than a new status enum.
             manual_probe_status.update({"status": "finished", "finished_at": now()})
-            manual_probe_status["log"].append("同步探活完成")
+            manual_probe_status["log"].append("同步探活失败" if failed else "同步探活完成")
         operations.end_manual_probe()
 
     def auth(authorization: str | None = Header(default=None)) -> None:
@@ -258,10 +268,13 @@ def create_admin_router(
     @router.post("/probe/url", dependencies=protected)
     def probe_url(payload: ProbeOne) -> dict[str, Any]:
         manual_start("single")
+        failed = True
         try:
-            return one(payload)
+            result = one(payload)
+            failed = not result.get("ok")
+            return result
         finally:
-            manual_finish()
+            manual_finish(failed)
 
     @router.post("/probe/urls", dependencies=protected)
     def probe_urls(payload: ProbeMany) -> dict[str, Any]:
@@ -272,11 +285,13 @@ def create_admin_router(
             fail(422, "invalid_artifact_url_ids", "artifact_url_ids 必须与 urls 一一对应且不重复")
         value_timeout = timeout(payload.timeout)
         manual_start("many")
+        failed = True
         try:
             items = [one(ProbeOne(url=url, timeout=value_timeout, artifact_url_id=ids[index] if ids is not None else None)) for index, url in enumerate(payload.urls)]
+            failed = any(not item.get("ok") for item in items)
             return {"items": items}
         finally:
-            manual_finish()
+            manual_finish(failed)
 
     @router.post("/domains/{domain_id}/versions/{version}/probe", dependencies=protected)
     def probe_version(domain_id: str, version: str) -> dict[str, Any]:
@@ -289,14 +304,16 @@ def create_admin_router(
         if not records:
             fail(404, "version_not_found", "版本不存在")
         manual_start(domain_id)
+        failed = True
         try:
             summary = probe_records(
                 data_root, records, 10, 1, probe_fn=probe_fn, apply_fn=apply_fn,
                 activity_store=activity_store,
             )
+            failed = summary.get("failed", 0) > 0
             return {"domain_id": domain_id, "version": version, "summary": summary}
         finally:
-            manual_finish()
+            manual_finish(failed)
 
     def operation_targets(payload: OperationPayload) -> tuple[list[str], list[str]]:
         actions = [name for name in ("discover", "probe") if name in payload.actions]
@@ -326,8 +343,12 @@ def create_admin_router(
             actions = ["discover", "probe"]
         try:
             return operations.start(actions, games, payload.scope, payload.timeout, payload.workers)
-        except RuntimeError:
+        except OperationBusyError:
             fail(409, "operation_already_running", "已有运维任务正在执行")
+        except AdminStateError:
+            fail(503, "admin_state_unavailable", "运维状态暂时无法保存，请稍后重试")
+        except OperationStartError:
+            fail(503, "operation_start_failed", "运维任务启动失败，请稍后重试")
         except AdminProbeDataError:
             fail(500, "corrupt_data", "归档数据损坏")
 
@@ -396,10 +417,17 @@ def create_admin_router(
     @router.get("/probe/status", dependencies=protected)
     def probe_status() -> dict[str, Any]:
         job = latest_or_none()
+        with probe_status_lock:
+            manual = dict(manual_probe_status)
+            previous_job_id = manual_probe_previous_job_id
+        if manual["status"] == "running" or (
+            manual["status"] != "idle"
+            and (job is None or job["job_id"] == previous_job_id)
+        ):
+            return manual
         is_probe = bool(job and (job.get("phase") == "probe" or isinstance(job.get("result"), dict) and job["result"].get("probe") is not None))
         if not is_probe:
-            with probe_status_lock:
-                return dict(manual_probe_status)
+            return manual
         status = "running" if job["status"] in {"running", "cancelling"} else "finished"
         return {"status": status, "mode": "normal", "started_at": job["started_at"], "finished_at": job["finished_at"], "family": job.get("scope", "all"), "log": job.get("logs", [])[-150:]}
 

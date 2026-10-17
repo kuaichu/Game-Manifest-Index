@@ -10,7 +10,7 @@ from typing import Callable, Protocol
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from backend.admin_operations import OperationManager, utc_now
+from backend.admin_operations import OperationBusyError, OperationManager, utc_now
 from backend.admin_state import AdminStateError, AdminStateStore
 from url_adapters.service import DISCOVERERS, PC_DISCOVERERS
 
@@ -198,7 +198,7 @@ class ProbeScheduler:
                 ["discover", "probe"], sorted(set(DISCOVERERS) | set(PC_DISCOVERERS)),
                 "all", 10, 8, scheduled_mode=schedule["mode"],
             )
-        except RuntimeError:
+        except OperationBusyError:
             # A manual request may win between latest() and start().
             self.store.write("probe_scheduler", runtime)
             self._runtime = runtime

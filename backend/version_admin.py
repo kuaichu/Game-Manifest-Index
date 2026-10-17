@@ -6,6 +6,9 @@ import copy
 import json
 import os
 import stat
+import tempfile
+from contextlib import contextmanager
+from functools import wraps
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -24,10 +27,10 @@ from backend.api_contract import (
 from backend import catalog_admin
 from backend.catalog_admin import CatalogConfigError
 from backend.domain_registry import is_nondefault_pc_domain, nondefault_pc_domains
-from backend.indexes import rebuild_index
+from backend.indexes import index_path, rebuild_index
 from backend.schema_v2 import artifact_id, validate_v2_record
 from backend.storage_locks import DATA_LOCK, data_file_lock
-from backend.version_store import write_v2_record
+from backend.version_store import v2_record_path, write_v2_record
 
 
 IDENTITY_FIELDS = ("vendor", "game_id", "domain_id", "platform", "channel", "version")
@@ -359,6 +362,31 @@ def _normalize_artifact(
     return artifact
 
 
+def _normalize_edited_artifacts(
+    raw_artifacts: list[Mapping[str, Any]], old: Mapping[str, Any], identity: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    """Resolve ownership using the old identity, never the submitted list position."""
+    old_by_id = {item["artifact_id"]: item for item in old["artifacts"]}
+    used: set[str] = set()
+    result = []
+    for raw in raw_artifacts:
+        previous_id = raw.get("artifact_id")
+        if previous_id is not None:
+            if not isinstance(previous_id, str) or previous_id not in old_by_id:
+                fail(422, "validation_error", "artifact_id 不属于当前版本")
+        else:
+            # Older clients omit artifact_id. Normalize only to compute the full
+            # canonical identity; URL, checksum and list order are not identities.
+            previous_id = _normalize_artifact(raw, _record_identity(old))["artifact_id"]
+        previous = old_by_id.get(previous_id)
+        if previous is not None:
+            if previous_id in used:
+                fail(422, "validation_error", "artifact_id 重复")
+            used.add(previous_id)
+        result.append(_normalize_artifact(raw, identity, old=previous))
+    return result
+
+
 def _apply_primary_compatibility(payload: Mapping[str, Any], artifacts: list[dict[str, Any]]) -> None:
     if not artifacts:
         return
@@ -477,6 +505,7 @@ def editable_projection(record: Mapping[str, Any]) -> dict[str, Any]:
         ]
         artifacts.append(
             {
+                "artifact_id": artifact["artifact_id"],
                 "kind": artifact["kind"],
                 "name": artifact["name"],
                 "part": artifact.get("part", 1),
@@ -641,6 +670,15 @@ def _catalog_index(root: Path) -> tuple[dict[str, Any], dict[str, Any]]:
     )
 
 
+def _catalog_mutation(function):
+    @wraps(function)
+    def mutate(root: Path, *args, **kwargs):
+        with DATA_LOCK, data_file_lock(root):
+            return function(root, *args, **kwargs)
+    return mutate
+
+
+@_catalog_mutation
 def create_game(root: Path, payload: Mapping[str, Any]) -> dict[str, Any]:
     config = _catalog_config(root)
     games, _ = _catalog_index(root)
@@ -655,6 +693,7 @@ def create_game(root: Path, payload: Mapping[str, Any]) -> dict[str, Any]:
     return _admin_game_projection({**game, "version_count": 0, "latest_version": None})
 
 
+@_catalog_mutation
 def update_game(root: Path, game_id: str, payload: Mapping[str, Any]) -> dict[str, Any]:
     if not _safe_component(game_id):
         fail(404, "game_not_found", "游戏不存在")
@@ -684,6 +723,7 @@ def update_game(root: Path, game_id: str, payload: Mapping[str, Any]) -> dict[st
     return catalog_projection(root)["games"][[item["id"] for item in catalog_projection(root)["games"]].index(game_id)]
 
 
+@_catalog_mutation
 def delete_game(root: Path, game_id: str) -> None:
     if not _safe_component(game_id):
         fail(404, "game_not_found", "游戏不存在")
@@ -699,6 +739,7 @@ def delete_game(root: Path, game_id: str) -> None:
     catalog_admin.save_config(root, config)
 
 
+@_catalog_mutation
 def create_domain(root: Path, payload: Mapping[str, Any]) -> dict[str, Any]:
     config = _catalog_config(root)
     games, domains = _catalog_index(root)
@@ -720,6 +761,7 @@ def create_domain(root: Path, payload: Mapping[str, Any]) -> dict[str, Any]:
     return _admin_domain_projection({**domain, "capability_contract": {}, "version_count": 0, "latest_version": None, "source_current_version": None, "catalog_version_count": 0})
 
 
+@_catalog_mutation
 def update_domain(root: Path, domain_id: str, payload: Mapping[str, Any]) -> dict[str, Any]:
     if not _safe_component(domain_id):
         fail(404, "domain_not_found", "归档域不存在")
@@ -750,6 +792,7 @@ def update_domain(root: Path, domain_id: str, payload: Mapping[str, Any]) -> dic
     return catalog["domains"][[item["id"] for item in catalog["domains"]].index(domain_id)]
 
 
+@_catalog_mutation
 def delete_domain(root: Path, domain_id: str) -> None:
     if not _safe_component(domain_id):
         fail(404, "domain_not_found", "归档域不存在")
@@ -770,20 +813,65 @@ def delete_domain(root: Path, domain_id: str) -> None:
     catalog_admin.save_config(root, config)
 
 
+def _restore_file(path: Path, content: bytes | None) -> None:
+    if content is None:
+        path.unlink(missing_ok=True)
+        return
+    descriptor, temporary = tempfile.mkstemp(prefix=path.name + ".restore.", dir=path.parent)
+    try:
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(content)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        Path(temporary).unlink(missing_ok=True)
+
+
+@contextmanager
+def _record_index_mutation(root: Path, record: Mapping[str, Any]):
+    """Restore both files when a running admin mutation fails.
+
+    The caller holds the shared data locks from reading through commit/rollback.
+    This protects Python exceptions, not process termination or power failure.
+    """
+    paths = (
+        v2_record_path(record, root),
+        index_path(root, record["vendor"], record["game_id"], record["platform"], record["domain_id"]),
+    )
+    before = {}
+    for path in paths:
+        if _exists_or_link(path):
+            if not _ordinary(path):
+                fail(500, "unsafe_data_path", "归档文件不安全")
+            before[path] = path.read_bytes()
+        else:
+            before[path] = None
+    try:
+        yield
+    except Exception:
+        for path, content in before.items():
+            current = path.read_bytes() if path.exists() else None
+            if current != content:
+                _restore_file(path, content)
+        raise
+
+
 def create_version(root: Path, domain_id: str, payload: Mapping[str, Any]) -> dict[str, Any]:
-    with ADMIN_PROBE_LOCK:
+    with ADMIN_PROBE_LOCK, DATA_LOCK, data_file_lock(root):
         record = build_manual_record(root, domain_id, payload)
-        write_v2_record(record, root)
-        rebuild_index(
-            root, record["vendor"], record["game_id"], record["platform"], record["domain_id"],
-        )
+        with _record_index_mutation(root, record):
+            write_v2_record(record, root)
+            rebuild_index(
+                root, record["vendor"], record["game_id"], record["platform"], record["domain_id"],
+            )
         return record
 
 
 def update_version(
     root: Path, domain_id: str, version: str, payload: Mapping[str, Any],
 ) -> tuple[dict[str, Any], bool]:
-    with ADMIN_PROBE_LOCK:
+    with ADMIN_PROBE_LOCK, DATA_LOCK, data_file_lock(root):
         old, _, _ = read_record(root, domain_id, version)
         updated = copy.deepcopy(old)
         attributes = payload.get("attributes") if isinstance(payload.get("attributes"), Mapping) else {}
@@ -800,14 +888,7 @@ def update_version(
 
         if payload.get("artifacts") is not None:
             identity = _record_identity(updated)
-            updated["artifacts"] = [
-                _normalize_artifact(
-                    raw,
-                    identity,
-                    old=old["artifacts"][index] if index < len(old.get("artifacts", [])) else None,
-                )
-                for index, raw in enumerate(payload["artifacts"])
-            ]
+            updated["artifacts"] = _normalize_edited_artifacts(payload["artifacts"], old, identity)
         _apply_primary_compatibility(payload, updated["artifacts"])
         identity = _record_identity(updated)
         for artifact in updated["artifacts"]:
@@ -819,32 +900,34 @@ def update_version(
             fail(422, "validation_error", "版本记录校验失败")
         changed = updated != old
         if changed:
-            write_v2_record(updated, root, overwrite=True)
-            rebuild_index(
-                root, updated["vendor"], updated["game_id"], updated["platform"], updated["domain_id"],
-            )
+            with _record_index_mutation(root, updated):
+                write_v2_record(updated, root, overwrite=True)
+                rebuild_index(
+                    root, updated["vendor"], updated["game_id"], updated["platform"], updated["domain_id"],
+                )
         return updated, changed
 
 
 def set_visibility(root: Path, domain_id: str, version: str, visible: bool) -> bool:
-    with ADMIN_PROBE_LOCK:
+    with ADMIN_PROBE_LOCK, DATA_LOCK, data_file_lock(root):
         record, _, _ = read_record(root, domain_id, version)
         updated = copy.deepcopy(record)
         updated["is_visible"] = visible
         if updated != record:
-            write_v2_record(updated, root, overwrite=True)
-            rebuild_index(
-                root, updated["vendor"], updated["game_id"], updated["platform"], updated["domain_id"],
-            )
+            with _record_index_mutation(root, updated):
+                write_v2_record(updated, root, overwrite=True)
+                rebuild_index(
+                    root, updated["vendor"], updated["game_id"], updated["platform"], updated["domain_id"],
+                )
         return visible
 
 
 def delete_version(root: Path, domain_id: str, version: str) -> None:
-    with ADMIN_PROBE_LOCK:
-        with DATA_LOCK, data_file_lock(root):
-            _, path, identity = read_record(root, domain_id, version)
+    with ADMIN_PROBE_LOCK, DATA_LOCK, data_file_lock(root):
+        record, path, identity = read_record(root, domain_id, version)
+        with _record_index_mutation(root, record):
             path.unlink()
-        rebuild_index(root, identity[0], identity[1], identity[2], domain_id)
+            rebuild_index(root, identity[0], identity[1], identity[2], domain_id)
 
 
 __all__ = [

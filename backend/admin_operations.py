@@ -32,6 +32,14 @@ JOB_FIELDS = {
 }
 
 
+class OperationBusyError(RuntimeError):
+    """The shared admin execution slot is already reserved."""
+
+
+class OperationStartError(RuntimeError):
+    """The operation worker could not be started."""
+
+
 def _version_key(value: str) -> tuple:
     parts = re.findall(r"\d+|[A-Za-z]+", value)
     return tuple((0, int(part)) if part.isdigit() else (1, part.lower()) for part in parts)
@@ -244,7 +252,7 @@ class OperationManager:
             raise ValueError("invalid_scheduled_mode")
         with self._lock:
             if self._manual_probe_active or self._job is not None and self._job.get("status") in {"running", "cancelling"}:
-                raise RuntimeError("operation_already_running")
+                raise OperationBusyError("operation_already_running")
             self._cancel = Event()
             self._last_progress_save = float("-inf")
             candidate_filter = None
@@ -274,11 +282,26 @@ class OperationManager:
             }
             if scheduled_mode is not None:
                 self._log(f"自动探活任务 scheduled_mode={scheduled_mode}")
-            self._save()
             job_id = self._job["job_id"]
-            thread = Thread(target=self._run, args=(job_id, actions, game_ids, scope, timeout, workers, candidate_filter, scheduled_mode), daemon=True)
+            try:
+                self._save()
+                thread = Thread(target=self._run, args=(job_id, actions, game_ids, scope, timeout, workers, candidate_filter, scheduled_mode), daemon=True)
+                thread.start()
+            except Exception as error:
+                # A failed launch must release the slot even when the state
+                # store is unavailable. Never expose a worker that did not start.
+                self._job.update(status="failed", phase=None,
+                                 finished_at=_timestamp(self.clock), current=None,
+                                 error="operation_start_failed")
+                self._log("任务启动失败")
+                try:
+                    self._save()
+                except AdminStateError:
+                    LOGGER.error("Could not persist failed operation startup")
+                if isinstance(error, AdminStateError):
+                    raise
+                raise OperationStartError("operation_start_failed") from error
             self._thread = thread
-            thread.start()
             return self._view()
 
     def shutdown(self, timeout: float = 30) -> bool:
@@ -295,7 +318,7 @@ class OperationManager:
         """Reserve the same execution slot used by background probe jobs."""
         with self._lock:
             if self._manual_probe_active or self._job is not None and self._job.get("status") in {"running", "cancelling"}:
-                raise RuntimeError("operation_already_running")
+                raise OperationBusyError("operation_already_running")
             self._manual_probe_active = True
 
     def end_manual_probe(self) -> None:
@@ -587,4 +610,4 @@ class OperationManager:
             LOGGER.warning("Telegram notification failed: request_error")
 
 
-__all__ = ["OperationManager", "utc_now"]
+__all__ = ["OperationBusyError", "OperationManager", "OperationStartError", "utc_now"]
