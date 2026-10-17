@@ -652,6 +652,21 @@ def _chunk_manifest_cache_key(
     return hashlib.sha256(material).hexdigest()
 
 
+def _decode_manifest(body: bytes) -> bytes:
+    """Bound both frame-size and unknown-size zstd output before allocation."""
+    try:
+        declared = zstandard.frame_content_size(body)
+        if declared > MAX_MANIFEST_DECOMPRESSED_BYTES:
+            raise ManifestUpstream("Manifest 解压后过大")
+        # zstandard only applies max_output_size to unknown-size frames.
+        # Known-size frames are bounded by the header check above.
+        return zstandard.ZstdDecompressor().decompress(
+            body, max_output_size=MAX_MANIFEST_DECOMPRESSED_BYTES,
+        )
+    except (zstandard.ZstdError, ValueError) as error:
+        raise ManifestUpstream("Manifest 解压失败") from error
+
+
 def _chunk_manifest_data(item: Mapping[str, Any], upstream: Upstream) -> _ChunkManifestData:
     manifest = item.get("manifest")
     recipe = item.get("manifest_download")
@@ -675,10 +690,7 @@ def _chunk_manifest_data(item: Mapping[str, Any], upstream: Upstream) -> _ChunkM
             max_bytes=MAX_MANIFEST_BYTES,
             expected_size=expected_compressed,
         )
-        try:
-            raw = zstandard.ZstdDecompressor().decompress(body, max_output_size=MAX_MANIFEST_DECOMPRESSED_BYTES + 1) if recipe.get("compression", 0) == 1 else body
-        except (zstandard.ZstdError, ValueError) as error:
-            raise ManifestUpstream("Manifest 解压失败") from error
+        raw = _decode_manifest(body) if recipe.get("compression", 0) == 1 else body
         if len(raw) > MAX_MANIFEST_DECOMPRESSED_BYTES:
             raise ManifestUpstream("Manifest 解压后过大")
         checksum = manifest.get("checksum")

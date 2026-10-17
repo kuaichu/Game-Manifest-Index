@@ -1226,6 +1226,40 @@ class TemporaryContractTests(unittest.TestCase):
                 response = client.get("/api/v1/domains/wuwa-pc/versions/1.0.0/file-content", params={"path": "root.exe"})
                 self.assertEqual(response.status_code, expected)
 
+    def test_file_content_resolves_domain_once_off_the_event_loop(self):
+        import asyncio
+        from unittest.mock import AsyncMock
+
+        upstream = type("Upstream", (), {"open_file": AsyncMock(side_effect=ManifestNotFound("fixture"))})()
+        application = create_api_app(self.root, upstream, state_root=Path(self.state.name))
+        contract = application.state.contract
+        endpoint = next(route.endpoint for route in application.routes if getattr(route, "path", "").endswith("/file-content"))
+        original_domain = contract.domain
+        domain_threads = []
+
+        async def exercise():
+            heartbeat = threading.Event()
+
+            def resolve(domain_id):
+                domain_threads.append(threading.get_ident())
+                # A threadpool metadata read leaves the loop free to run this.
+                heartbeat.clear()
+                asyncio.run_coroutine_threadsafe(mark_heartbeat(), loop)
+                self.assertTrue(heartbeat.wait(1), "file metadata read blocked the event loop")
+                return original_domain(domain_id)
+
+            async def mark_heartbeat():
+                heartbeat.set()
+
+            loop = asyncio.get_running_loop()
+            with patch.object(contract, "domain", side_effect=resolve):
+                with self.assertRaises(ApiFault):
+                    await endpoint("wuwa-pc", "1.0.0", "root.exe")
+            self.assertEqual(len(domain_threads), 1)
+            self.assertNotEqual(domain_threads[0], threading.get_ident())
+
+        asyncio.run(exercise())
+
     def test_file_content_closes_upstream_when_downstream_disconnects(self):
         import asyncio
         class Blocks(httpx.AsyncByteStream):
@@ -1379,6 +1413,53 @@ class CheckedInContractTests(unittest.TestCase):
 
 
 class HttpUpstreamTests(unittest.TestCase):
+    def test_manifest_decoding_preserves_frame_validation_at_the_budget(self):
+        from backend.manifest_readers import _decode_manifest
+        raw = b"bounded manifest fixture"
+        for known_size in (True, False):
+            with self.subTest(known_size=known_size):
+                body = zstandard.ZstdCompressor(write_content_size=known_size).compress(raw)
+                with patch("backend.manifest_readers.MAX_MANIFEST_DECOMPRESSED_BYTES", len(raw)):
+                    self.assertEqual(_decode_manifest(body), raw)
+                    with self.assertRaises(ManifestUpstream):
+                        _decode_manifest(body[:-1])
+                    # Preserve the existing first-frame policy for trailing input.
+                    self.assertEqual(_decode_manifest(body + b"trailing"), raw)
+                    self.assertEqual(_decode_manifest(body + body), raw)
+
+    def test_manifest_known_size_is_rejected_before_decoding_past_budget(self):
+        import backend.manifest_readers as readers
+        document, body, _ = chunk_fixture()
+        raw_size = zstandard.frame_content_size(body)
+        upstream = HttpUpstream(transport=httpx.MockTransport(lambda _: httpx.Response(200, content=body)))
+        class GuardedDecoder:
+            def decompress(self, *args, **kwargs):
+                raise AssertionError("known oversized frame was decompressed")
+
+        with patch.object(readers, "MAX_MANIFEST_DECOMPRESSED_BYTES", raw_size - 1), patch.object(readers.zstandard, "ZstdDecompressor", return_value=GuardedDecoder()):
+            with self.assertRaises(ManifestUpstream):
+                list_chunk_files(document, "game", upstream)
+
+    def test_manifest_unknown_size_decoding_stops_at_budget(self):
+        import backend.manifest_readers as readers
+        document, body, _ = chunk_fixture()
+        raw = zstandard.ZstdDecompressor().decompress(body)
+        body = zstandard.ZstdCompressor(write_content_size=False).compress(raw)
+        self.assertEqual(zstandard.frame_content_size(body), -1)
+        document["manifests"][0]["manifest"]["compressed_size"] = len(body)
+        upstream = HttpUpstream(transport=httpx.MockTransport(lambda _: httpx.Response(200, content=body)))
+        decoder = zstandard.ZstdDecompressor()
+        budget = len(raw) - 1
+        self_outer = self
+        class GuardedDecoder:
+            def decompress(self, *args, **kwargs):
+                self_outer.assertEqual(kwargs["max_output_size"], budget)
+                return decoder.decompress(*args, **kwargs)
+
+        with patch.object(readers, "MAX_MANIFEST_DECOMPRESSED_BYTES", budget), patch.object(readers.zstandard, "ZstdDecompressor", return_value=GuardedDecoder()):
+            with self.assertRaises(ManifestUpstream):
+                list_chunk_files(document, "game", upstream)
+
     def test_open_file_closes_client_even_when_rejected_response_close_raises(self):
         import asyncio
         from unittest.mock import AsyncMock

@@ -6,8 +6,6 @@ import copy
 import json
 import os
 import stat
-import tempfile
-from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
 from typing import Any, Mapping
@@ -27,10 +25,9 @@ from backend.api_contract import (
 from backend import catalog_admin
 from backend.catalog_admin import CatalogConfigError
 from backend.domain_registry import is_nondefault_pc_domain, nondefault_pc_domains
-from backend.indexes import index_path, rebuild_index
 from backend.schema_v2 import artifact_id, validate_v2_record
 from backend.storage_locks import DATA_LOCK, data_file_lock
-from backend.version_store import v2_record_path, write_v2_record
+from backend.version_store import record_index_transaction, write_v2_record
 
 
 IDENTITY_FIELDS = ("vendor", "game_id", "domain_id", "platform", "channel", "version")
@@ -813,58 +810,11 @@ def delete_domain(root: Path, domain_id: str) -> None:
     catalog_admin.save_config(root, config)
 
 
-def _restore_file(path: Path, content: bytes | None) -> None:
-    if content is None:
-        path.unlink(missing_ok=True)
-        return
-    descriptor, temporary = tempfile.mkstemp(prefix=path.name + ".restore.", dir=path.parent)
-    try:
-        with os.fdopen(descriptor, "wb") as stream:
-            stream.write(content)
-            stream.flush()
-            os.fsync(stream.fileno())
-        os.replace(temporary, path)
-    finally:
-        Path(temporary).unlink(missing_ok=True)
-
-
-@contextmanager
-def _record_index_mutation(root: Path, record: Mapping[str, Any]):
-    """Restore both files when a running admin mutation fails.
-
-    The caller holds the shared data locks from reading through commit/rollback.
-    This protects Python exceptions, not process termination or power failure.
-    """
-    paths = (
-        v2_record_path(record, root),
-        index_path(root, record["vendor"], record["game_id"], record["platform"], record["domain_id"]),
-    )
-    before = {}
-    for path in paths:
-        if _exists_or_link(path):
-            if not _ordinary(path):
-                fail(500, "unsafe_data_path", "归档文件不安全")
-            before[path] = path.read_bytes()
-        else:
-            before[path] = None
-    try:
-        yield
-    except Exception:
-        for path, content in before.items():
-            current = path.read_bytes() if path.exists() else None
-            if current != content:
-                _restore_file(path, content)
-        raise
-
-
 def create_version(root: Path, domain_id: str, payload: Mapping[str, Any]) -> dict[str, Any]:
     with ADMIN_PROBE_LOCK, DATA_LOCK, data_file_lock(root):
         record = build_manual_record(root, domain_id, payload)
-        with _record_index_mutation(root, record):
+        with record_index_transaction(record, root):
             write_v2_record(record, root)
-            rebuild_index(
-                root, record["vendor"], record["game_id"], record["platform"], record["domain_id"],
-            )
         return record
 
 
@@ -899,12 +849,9 @@ def update_version(
         except ValueError:
             fail(422, "validation_error", "版本记录校验失败")
         changed = updated != old
-        if changed:
-            with _record_index_mutation(root, updated):
+        with record_index_transaction(updated, root):
+            if changed:
                 write_v2_record(updated, root, overwrite=True)
-                rebuild_index(
-                    root, updated["vendor"], updated["game_id"], updated["platform"], updated["domain_id"],
-                )
         return updated, changed
 
 
@@ -913,21 +860,17 @@ def set_visibility(root: Path, domain_id: str, version: str, visible: bool) -> b
         record, _, _ = read_record(root, domain_id, version)
         updated = copy.deepcopy(record)
         updated["is_visible"] = visible
-        if updated != record:
-            with _record_index_mutation(root, updated):
+        with record_index_transaction(updated, root):
+            if updated != record:
                 write_v2_record(updated, root, overwrite=True)
-                rebuild_index(
-                    root, updated["vendor"], updated["game_id"], updated["platform"], updated["domain_id"],
-                )
         return visible
 
 
 def delete_version(root: Path, domain_id: str, version: str) -> None:
     with ADMIN_PROBE_LOCK, DATA_LOCK, data_file_lock(root):
-        record, path, identity = read_record(root, domain_id, version)
-        with _record_index_mutation(root, record):
+        record, path, _ = read_record(root, domain_id, version)
+        with record_index_transaction(record, root):
             path.unlink()
-            rebuild_index(root, identity[0], identity[1], identity[2], domain_id)
 
 
 __all__ = [

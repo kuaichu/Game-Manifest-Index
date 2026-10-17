@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from backend.schema_v2 import artifact_id
 from probe_adapters.common import ProbeError
-from probe_adapters.service import PCRecordCompatibilityError, apply_pc_v2_result, apply_result, probe
+from probe_adapters.service import PCRecordCompatibilityError, apply_pc_v2_result, pc_v2_current_from_result, probe
 
 
 def record():
@@ -119,7 +119,7 @@ class PCV2Tests(unittest.TestCase):
                   "reason": "ignored", "confidence": "ignored", "md5": "ignored",
                   "metadata_http_code": 200, "expected_size": 99, "bytes_received": 16,
                   "file_time": "ignored", "source_kind": "ignored", "transport_returncode": 0}
-        updated = apply_result(value, result)
+        updated = apply_pc_v2_result(value, result)
         self.assertEqual(value, original)
         current = updated["artifacts"][0]["urls"][1]["current"]
         self.assertEqual(set(current), {"state", "http_code", "checked_at", "response_size", "etag", "crc64", "last_modified", "final_url"})
@@ -137,6 +137,18 @@ class PCV2Tests(unittest.TestCase):
             current = apply_pc_v2_result(value, result)["artifacts"][0]["urls"][0]["current"]
             self.assertEqual(current["state"], "available" if available is True else "unavailable" if available is False else "unknown")
             self.assertNotIn("final_url", current)
+
+    def test_current_conversion_needs_only_identity_and_evidence(self):
+        identity = {"vendor": "mihoyo", "game_id": "hk4e", "platform": "windows"}
+        original = deepcopy(identity)
+        url = "https://autopatchcn.yuanshen.com/client/game.zip"
+        result = {"url": url, "available": True, "http_code": 206, "size": 12}
+        self.assertEqual(pc_v2_current_from_result(identity, url, result), {
+            "state": "available", "http_code": 206, "response_size": 12,
+        })
+        self.assertEqual(identity, original)
+        with self.assertRaises(PCRecordCompatibilityError):
+            pc_v2_current_from_result(identity, url, {**result, "url": "https://evil.test/game.zip"})
 
     def test_apply_rejects_bad_indexes_target_and_metadata(self):
         value = record()

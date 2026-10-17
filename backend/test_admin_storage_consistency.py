@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from backend import catalog_admin, version_admin
+from backend import catalog_admin, indexes, version_admin
 from backend.api_contract import ApiContract, ApiFault
 from backend.app import create_app
 from backend.indexes import rebuild_index
@@ -123,7 +123,7 @@ class AdminStorageConsistencyTests(unittest.TestCase):
             path = write_v2_record(record, root)
             rebuild_index(root, "mihoyo", "hk4e", "android")
             before = path.read_bytes()
-            with patch.object(version_admin, "rebuild_index", side_effect=OSError("index commit failed")):
+            with patch.object(indexes, "rebuild_index", side_effect=OSError("index commit failed")):
                 with self.assertRaises(OSError):
                     version_admin.set_visibility(root, "hk4e-android", "1.0.0", False)
             self.assertEqual(path.read_bytes(), before)
@@ -138,13 +138,13 @@ class AdminStorageConsistencyTests(unittest.TestCase):
                 path = write_v2_record(make_record(), root)
                 index = rebuild_index(root, "mihoyo", "hk4e", "android")
                 original_record, original_index = path.read_bytes(), index.read_bytes()
-                rebuild = version_admin.rebuild_index
+                rebuild = indexes.rebuild_index
 
                 def fail_after_index_write(*args):
                     rebuild(*args)
                     raise OSError("failed after replacing the index")
 
-                with patch.object(version_admin, "rebuild_index", side_effect=fail_after_index_write):
+                with patch.object(indexes, "rebuild_index", side_effect=fail_after_index_write):
                     with self.assertRaises(OSError):
                         if action == "create":
                             version_admin.create_version(root, "hk4e-android", manual_payload())
@@ -155,4 +155,23 @@ class AdminStorageConsistencyTests(unittest.TestCase):
                 self.assertEqual(path.read_bytes(), original_record)
                 self.assertEqual(index.read_bytes(), original_index)
                 self.assertFalse((path.parent / "2.0.0.json").exists())
+                self.assertIn("hk4e-android", ApiContract(root, state_root=root / "state").inventory())
+
+    def test_noop_edits_repair_missing_index_without_rewriting_record(self):
+        for action in ("edit", "visibility"):
+            with self.subTest(action=action), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                path = write_v2_record(make_record(), root)
+                index = rebuild_index(root, "mihoyo", "hk4e", "android")
+                before = path.read_bytes()
+                index.unlink()
+                with patch.object(version_admin, "write_v2_record", wraps=write_v2_record) as write:
+                    if action == "edit":
+                        _, changed = version_admin.update_version(root, "hk4e-android", "1.0.0", {})
+                        self.assertFalse(changed)
+                    else:
+                        self.assertTrue(version_admin.set_visibility(root, "hk4e-android", "1.0.0", True))
+                    write.assert_not_called()
+                self.assertEqual(path.read_bytes(), before)
+                self.assertTrue(index.exists())
                 self.assertIn("hk4e-android", ApiContract(root, state_root=root / "state").inventory())

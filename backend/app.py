@@ -14,7 +14,7 @@ from starlette.concurrency import run_in_threadpool
 from backend.admin_routes import create_admin_router
 from backend.api_contract import PROBE_EVIDENCE_TTL, create_api_app
 from backend.probe_scheduler import ProbeScheduler, TimerAdapter
-from probe_adapters.service import apply_result, probe
+from probe_adapters.service import current_from_result, probe
 from url_adapters.service import discover_games
 
 
@@ -30,7 +30,7 @@ def create_app(
     admin_token: str | None | object = _UNSET,
     discovery: Callable[..., dict[str, Any]] = discover_games,
     probe_fn: Callable[..., dict[str, Any]] = probe,
-    apply_fn: Callable[..., dict[str, Any]] = apply_result,
+    current_fn: Callable[..., dict[str, Any]] = current_from_result,
     clock=None,
     scheduler_timer: TimerAdapter | None = None,
 ):
@@ -51,7 +51,7 @@ def create_app(
     router, operations, store = create_admin_router(
         data_root=Path(configured), state_root=Path(state), token=token,
         contract=app.state.contract, discovery=discovery,
-        probe_fn=probe_fn, apply_fn=apply_fn, clock=clock,
+        probe_fn=probe_fn, current_fn=current_fn, clock=clock,
     )
     app.include_router(router)
     app.state.admin_operations = operations
