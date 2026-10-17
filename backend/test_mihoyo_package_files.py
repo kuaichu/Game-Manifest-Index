@@ -4,9 +4,11 @@ import hashlib
 import json
 import struct
 import tempfile
+import threading
 import unittest
 import zipfile
 import zlib
+from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 from pathlib import Path
 from unittest.mock import patch
@@ -302,6 +304,48 @@ class MihoyoPackageFilesTests(unittest.TestCase):
         cache_files[0].write_text("{broken", encoding="utf-8")
         broken = client.get("/api/v1/domains/hk4e-pc/versions/5.5.0/files", params={"source": "package"})
         self.assertEqual((broken.status_code, broken.json()["error"]["code"]), (500, "corrupt_manifest"))
+
+    def test_package_directory_totals_include_nested_files(self):
+        url = "https://autopatchcn.yuanshen.com/release/Game.zip"
+        value = self.record("hk4e", "5.5.0", [self.package("hk4e", "5.5.0", url)])
+        raw = b"\n".join(json.dumps({"remoteName": path, "fileSize": size, "md5": "a" * 32}).encode()
+                         for path, size in (("Game/a", 2), ("Game/b", 3), ("root", 7)))
+        page = package_module.list_files(self.state_root, value, "hk4e", "5.5.0", upstream=PackageUpstream(direct=raw))
+        self.assertEqual(page["totals"], {"files": 3, "directories": 1, "size": 12})
+
+    def test_slow_package_does_not_block_another_cached_version(self):
+        raw = b'{"remoteName":"Game.exe","fileSize":1,"md5":"' + b"a" * 32 + b'"}\n'
+        entered, release = threading.Event(), threading.Event()
+
+        class SlowUpstream(PackageUpstream):
+            def get_bytes(self, url, **kwargs):
+                if "/slow/" in url:
+                    entered.set()
+                    if not release.wait(5):
+                        raise AssertionError("test upstream was not released")
+                return super().get_bytes(url, **kwargs)
+
+        upstream = SlowUpstream(direct=raw)
+        fast = self.record("hk4e", "5.5.0", [self.package("hk4e", "5.5.0", "https://autopatchcn.yuanshen.com/fast/Game.zip")])
+        slow = self.record("hk4e", "5.6.0", [self.package("hk4e", "5.6.0", "https://autopatchcn.yuanshen.com/slow/Game.zip")])
+
+        def read(value):
+            return package_module.list_files(self.state_root, value, "hk4e", value["version"], upstream=upstream)
+
+        read(fast)
+        read(fast)  # Verify the disk entry and warm the memory cache.
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            loading = pool.submit(read, slow)
+            try:
+                self.assertTrue(entered.wait(2))
+                same_package = pool.submit(read, slow)
+                cached = pool.submit(read, fast)
+                self.assertEqual(cached.result(timeout=1)["total"], 1)
+            finally:
+                release.set()
+            self.assertEqual(loading.result(timeout=2)["total"], 1)
+            self.assertEqual(same_package.result(timeout=2)["total"], 1)
+        self.assertEqual(len(upstream.calls), 2)  # One fetch for each cache key.
 
     def test_cache_schema_mismatch_fails_explicitly(self):
         url = "https://autopatchcn.yuanshen.com/client_app/download/pc_zip/release/YuanShen.zip"

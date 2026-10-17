@@ -34,7 +34,6 @@ from backend.manifest_readers import (
     _retained_size,
     strict_relative_posix,
 )
-from backend.storage_locks import CACHE_LOCK
 
 
 MAX_CENTRAL_BYTES = 16 * 1024 * 1024
@@ -629,7 +628,9 @@ def _load_files(state_root: Path, record: Mapping[str, Any], game_id: str, versi
     cache = _cache_dir(Path(state_root), game_id, version, groups)
     index_path, raw_path = cache / "files.json", cache / "pkg_version"
     lock = _lock_for(str(cache))
-    with CACHE_LOCK, lock:
+    # Coordinate readers/writers of this entry without holding up independent
+    # packages during network requests. Shared memory state has its own guard.
+    with lock:
         fingerprint = _cache_fingerprint(index_path, raw_path)
         cache_key = str(cache.absolute())
         with _VERIFIED_CACHE_GUARD:
@@ -737,7 +738,7 @@ def _directory_page(files: list[dict[str, Any]], path: str, q: str | None, limit
     return {
         "path": path, "q": q, "items": [{key: value for key, value in item.items() if key != "chunks"} for item in page],
         "total": len(selected), "next_cursor": next_cursor,
-        "totals": {"files": sum(item.get("type") == "file" for item in selected), "directories": sum(item.get("type") == "directory" for item in selected), "size": sum(item.get("size", 0) for item in selected)},
+        "totals": {"files": sum(item.get("file_count", 1) for item in selected), "directories": sum(item.get("type") == "directory" for item in selected), "size": sum(item.get("size", 0) for item in selected)},
     }
 
 
