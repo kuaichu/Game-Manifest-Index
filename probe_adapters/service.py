@@ -1,8 +1,7 @@
-"""Probe an existing direct URL and merge probe-owned fields into a record."""
+"""Probe an existing direct URL and project evidence into current fields."""
 
 from __future__ import annotations
 
-from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -10,10 +9,8 @@ from urllib.parse import unquote, urlsplit
 
 from backend.android_record_compat import (
     AndroidRecordCompatibilityError,
-    apply_android_v2_result,
-    is_android_v2_record,
+    android_v2_current_from_result,
 )
-from backend.schema_v2 import SchemaValidationError, validate_v2_record
 from probe_adapters.common import (
     ProbeError,
     ProbeObservation,
@@ -241,46 +238,36 @@ def _static_result(
     }
 
 
-def apply_result(record: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]:
-    if isinstance(record, dict) and record.get("platform") == "windows":
-        try:
-            return apply_pc_v2_result(record, result)
-        except (PCRecordCompatibilityError, SchemaValidationError) as error:
-            raise ProbeError(str(error)) from error
-    if not is_android_v2_record(record):
-        raise ProbeError("APK 探活写回仅支持 schema_version=2 的 Android 记录")
+def current_from_result(
+    identity: dict[str, str], target_url: str, result: dict[str, Any],
+) -> dict[str, Any]:
+    """Project evidence into current; target selection and persistence belong to the caller."""
+    if not isinstance(result, dict):
+        raise ProbeError("探活结果必须是对象")
+    if not isinstance(target_url, str) or not target_url:
+        raise ProbeError("探活目标 URL 必须是非空字符串")
     try:
-        return apply_android_v2_result(record, result)
-    except AndroidRecordCompatibilityError as error:
+        if identity.get("platform") == "windows":
+            return pc_v2_current_from_result(identity, target_url, result)
+        if identity.get("platform") == "android":
+            return android_v2_current_from_result(result, target_url)
+    except (PCRecordCompatibilityError, AndroidRecordCompatibilityError) as error:
         raise ProbeError(str(error)) from error
+    raise ProbeError("探活状态仅支持 Android 或 Windows 平台")
 
 
 class PCRecordCompatibilityError(ValueError):
     """A Windows v2 record/result cannot be represented safely."""
 
 
-def apply_pc_v2_result(record: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]:
+def pc_v2_current_from_result(
+    identity: dict[str, str], target_url: str, result: dict[str, Any],
+) -> dict[str, Any]:
+    """Convert PC evidence without receiving or rewriting archive contents."""
     if not isinstance(result, dict):
         raise PCRecordCompatibilityError("PC 探活结果必须是对象")
-    if record.get("schema_version") != 2 or record.get("platform") != "windows":
-        raise PCRecordCompatibilityError("PC 探活写回仅支持 schema_version=2 的 Windows 记录")
-    target_url = result.get("target_url")
     if not isinstance(target_url, str) or not target_url:
         raise PCRecordCompatibilityError("PC 探活结果缺少 target_url")
-    validate_v2_record(record)
-    updated = deepcopy(record)
-    artifact_index = result.get("artifact_index")
-    url_index = result.get("url_index")
-    if (not isinstance(artifact_index, int) or isinstance(artifact_index, bool) or artifact_index < 0
-            or not isinstance(url_index, int) or isinstance(url_index, bool) or url_index < 0):
-        raise PCRecordCompatibilityError("PC 探活结果缺少有效 artifact_index/url_index")
-    try:
-        artifact = updated["artifacts"][artifact_index]
-        candidate = artifact["urls"][url_index]
-    except (IndexError, KeyError, TypeError):
-        raise PCRecordCompatibilityError("PC 探活结果索引超出记录范围") from None
-    if not isinstance(artifact, dict) or not isinstance(candidate, dict) or candidate.get("url") != target_url:
-        raise PCRecordCompatibilityError("schema v2 PC 探活结果与索引目标 URL 不一致")
     available = result.get("available")
     if available is not None and not isinstance(available, bool):
         raise PCRecordCompatibilityError("PC 探活结果 available 必须是 boolean 或 null")
@@ -322,10 +309,8 @@ def apply_pc_v2_result(record: dict[str, Any], result: dict[str, Any]) -> dict[s
             if (parsed_final.scheme not in {"http", "https"} or parsed_final.username is not None
                     or parsed_final.password is not None or parsed_final.query or parsed_final.fragment):
                 raise ValueError("unsafe URL")
-            adapter_for(record.get("vendor"), record.get("game_id"), final_url, "windows")
+            adapter_for(identity.get("vendor"), identity.get("game_id"), final_url, "windows")
         except (ProbeError, ValueError) as error:
             raise PCRecordCompatibilityError("PC 探活结果 final_url 不属于原记录允许的官方适配器") from error
         current["final_url"] = final_url
-    candidate["current"] = current
-    validate_v2_record(updated)
-    return updated
+    return current

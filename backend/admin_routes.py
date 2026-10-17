@@ -17,7 +17,7 @@ from backend.admin_probe import AdminProbeDataError, probe_direct, probe_public_
 from backend.admin_state import AdminStateError, AdminStateStore
 from backend.api_contract import ApiContract, fail
 from backend import version_admin
-from probe_adapters.service import apply_result as default_apply
+from probe_adapters.service import current_from_result as default_current
 from probe_adapters.service import probe as default_probe
 from url_adapters.service import DISCOVERERS, PC_DISCOVERERS
 
@@ -157,13 +157,13 @@ def create_admin_router(
     *, data_root: Path, state_root: Path, token: str | None,
     contract: ApiContract, discovery: Callable[..., dict[str, Any]],
     probe_fn: Callable[..., dict[str, Any]] = default_probe,
-    apply_fn: Callable[..., dict[str, Any]] = default_apply,
+    current_fn: Callable[..., dict[str, Any]] = default_current,
     clock=None,
 ) -> tuple[APIRouter, OperationManager, AdminStateStore]:
     store = AdminStateStore(state_root)
     activity_store = contract.activity_store
     manager_kwargs = {
-        "discovery": discovery, "probe_fn": probe_fn, "apply_fn": apply_fn,
+        "discovery": discovery, "probe_fn": probe_fn, "current_fn": current_fn,
         "activity_store": activity_store,
     }
     if clock is not None:
@@ -254,7 +254,7 @@ def create_admin_router(
         try:
             return probe_public_url(
                 data_root, payload.url, payload.artifact_url_id, value_timeout,
-                probe_fn=probe_fn, apply_fn=apply_fn, activity_store=activity_store,
+                probe_fn=probe_fn, current_fn=current_fn, activity_store=activity_store,
             )
         except KeyError:
             fail(404, "artifact_url_not_found", "artifact_url_id 不存在")
@@ -307,7 +307,7 @@ def create_admin_router(
         failed = True
         try:
             summary = probe_records(
-                data_root, records, 10, 1, probe_fn=probe_fn, apply_fn=apply_fn,
+                data_root, records, 10, 1, probe_fn=probe_fn, current_fn=current_fn,
                 activity_store=activity_store,
             )
             failed = summary.get("failed", 0) > 0

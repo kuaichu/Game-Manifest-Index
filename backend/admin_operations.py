@@ -174,13 +174,13 @@ def _valid_job_snapshot(value: dict[str, Any]) -> bool:
 
 
 class OperationManager:
-    def __init__(self, store: AdminStateStore, data_root: Path, *, discovery: Callable[..., dict[str, Any]] = discover_games, probe_fn: Callable[..., dict[str, Any]] | None = None, apply_fn: Callable[..., dict[str, Any]] | None = None, clock: Clock = utc_now, activity_store: ActivityStore | None = None) -> None:
+    def __init__(self, store: AdminStateStore, data_root: Path, *, discovery: Callable[..., dict[str, Any]] = discover_games, probe_fn: Callable[..., dict[str, Any]] | None = None, current_fn: Callable[..., dict[str, Any]] | None = None, clock: Clock = utc_now, activity_store: ActivityStore | None = None) -> None:
         self.store = store
         self.data_root = Path(data_root)
         self.activity_store = activity_store or ActivityStore(store.root)
         self.discovery = discovery
         self.probe_fn = probe_fn
-        self.apply_fn = apply_fn
+        self.current_fn = current_fn
         self.clock = clock
         self._lock = RLock()
         self._cancel = Event()
@@ -551,8 +551,8 @@ class OperationManager:
                     kwargs["candidate_filter"] = candidate_filter
                 if self.probe_fn is not None:
                     kwargs["probe_fn"] = self.probe_fn
-                if self.apply_fn is not None:
-                    kwargs["apply_fn"] = self.apply_fn
+                if self.current_fn is not None:
+                    kwargs["current_fn"] = self.current_fn
                 kwargs["activity_store"] = self.activity_store
                 result["probe"] = probe_records(self.data_root, records, timeout, workers, **kwargs)
                 for item in result["probe"].get("items", []):

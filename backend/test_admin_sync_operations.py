@@ -19,7 +19,7 @@ from backend.app import create_app
 from backend.indexes import rebuild_index
 from backend.schema_v2 import artifact_id, validate_v2_record
 from backend.version_store import persist_v2_record, write_v2_record
-from probe_adapters.service import apply_result
+from probe_adapters.service import current_from_result
 from url_adapters.service import DISCOVERERS, PC_DISCOVERERS
 
 
@@ -235,7 +235,7 @@ class ProbeTests(AdminFixture):
         selected = selected_records(self.data, ["endfield"], "pc")
         self.assertEqual([record["domain_id"] for _, record in selected], ["endfield-resources"])
         summary = probe_records(
-            self.data, selected, 5, 1, probe_fn=tracking, apply_fn=apply_result,
+            self.data, selected, 5, 1, probe_fn=tracking, current_fn=current_from_result,
         )
         self.assertEqual((summary["selected"], summary["checked"]), (0, 0))
         self.assertEqual(calls, [])
@@ -364,7 +364,7 @@ class ProbeTests(AdminFixture):
         def tracking(url, **kwargs):
             calls.append(url)
             return fake_probe(url, **kwargs)
-        summary = probe_records(self.data, selected_records(self.data, ["hk4e"], "pc"), 5, 8, probe_fn=tracking, apply_fn=apply_result)
+        summary = probe_records(self.data, selected_records(self.data, ["hk4e"], "pc"), 5, 8, probe_fn=tracking, current_fn=current_from_result)
         self.assertEqual(summary["checked"], 3)
         saved = json.loads((self.data / "mihoyo/hk4e/pc/1.0.0.json").read_text())
         self.assertEqual([url["current"]["state"] for art in saved["artifacts"] for url in art["urls"]], ["available"] * 3)
@@ -392,14 +392,14 @@ class ProbeTests(AdminFixture):
         def tracking(url, **kwargs):
             observed[url] = kwargs.get("expected_size")
             return fake_probe(url, **kwargs)
-        probe_records(self.data, selected_records(self.data, ["hk4e"], "pc"), 5, 2, probe_fn=tracking, apply_fn=apply_result)
+        probe_records(self.data, selected_records(self.data, ["hk4e"], "pc"), 5, 2, probe_fn=tracking, current_fn=current_from_result)
         self.assertEqual(observed["https://autopatchcn.yuanshen.com/archive.zip"], archive["artifacts"][0]["size"])
         self.assertIsNone(observed["https://autopatchcn.yuanshen.com/index.json"])
 
     def test_android_multi_url_and_hidden_flag_are_preserved(self):
         value = record("android", version="2.0.0", artifacts=[artifact("two.apk", ["https://autopatchcn.yuanshen.com/one.apk", "https://autopatchcn.yuanshen.com/two.apk"])], visible=False)
         write_v2_record(value, self.data)
-        summary = probe_records(self.data, selected_records(self.data, ["hk4e"], "android", version="2.0.0"), 5, 4, probe_fn=fake_probe, apply_fn=apply_result)
+        summary = probe_records(self.data, selected_records(self.data, ["hk4e"], "android", version="2.0.0"), 5, 4, probe_fn=fake_probe, current_fn=current_from_result)
         self.assertEqual(summary["checked"], 2)
         saved = json.loads((self.data / "mihoyo/hk4e/android/2.0.0.json").read_text())
         self.assertFalse(saved["is_visible"])
@@ -423,7 +423,7 @@ class ProbeTests(AdminFixture):
             if "fail" in url:
                 raise ValueError("failed")
             return fake_probe(url, **kwargs)
-        summary = probe_records(self.data, selected_records(self.data, ["hk4e"], "pc"), 5, 2, probe_fn=partial, apply_fn=apply_result)
+        summary = probe_records(self.data, selected_records(self.data, ["hk4e"], "pc"), 5, 2, probe_fn=partial, current_fn=current_from_result)
         self.assertEqual((summary["failed"], summary["available"]), (1, 1))
         saved = json.loads((self.data / "mihoyo/hk4e/pc/1.0.0.json").read_text())
         self.assertNotIn("current", saved["artifacts"][0]["urls"][0])
@@ -445,11 +445,11 @@ class ProbeTests(AdminFixture):
     def test_record_level_failure_accounts_for_every_selected_candidate(self):
         value = record("windows", artifacts=[artifact("pair.zip", ["https://autopatchcn.yuanshen.com/a.zip", "https://autopatchcn.yuanshen.com/b.zip"], kind="package")])
         write_v2_record(value, self.data)
-        def broken_apply(record_value, result):
-            raise RuntimeError("apply failed")
+        def broken_current(identity, target_url, result):
+            raise RuntimeError("current failed")
         summary = probe_records(
             self.data, selected_records(self.data, ["hk4e"], "pc"), 5, 1,
-            probe_fn=fake_probe, apply_fn=broken_apply,
+            probe_fn=fake_probe, current_fn=broken_current,
         )
         self.assertEqual((summary["selected"], summary["checked"], summary["failed"]), (2, 2, 2))
 
