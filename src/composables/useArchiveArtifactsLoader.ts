@@ -8,7 +8,11 @@ export interface ArchiveArtifactLoadContext {
   gameId: string;
   selectedVersion: string;
   mode: string;
+  artifactPage: number;
+  artifactPageSize: number;
   domainGameId?: string;
+  domainKind?: string;
+  domainHasPackageManifest?: boolean;
   domainAdapter?: string;
   versionsDomainId: string;
   hasSelectedVersion: boolean;
@@ -34,6 +38,7 @@ export interface ArchiveArtifactsLoaderOptions {
 export interface ArchiveArtifactsLoaderState {
   artifacts: Ref<Artifact[]>;
   nextCursor: Ref<string | null>;
+  total: Ref<number | null>;
   loadingMore: Ref<boolean>;
   error: Ref<Error | null>;
   loadArtifacts: (append: boolean) => Promise<void>;
@@ -51,12 +56,19 @@ function versionRecordState(record: VersionRecord): "available" | "unavailable" 
 
 function versionRecordArtifact(record: VersionRecord, id: number): Artifact {
   const state = versionRecordState(record);
-  const verified = record.status.http_code !== null && record.status.last_checked_at !== null;
+  // A completed unavailable result may have no HTTP status code (for example
+  // when an archived object is known not to be downloadable).
+  const verified = record.status.last_checked_at !== null
+    && (record.status.http_code !== null || record.status.available !== null);
   const checksumType = record.checksum.md5 ? "md5" : record.checksum.crc64 ? "crc64" : null;
   const checksumValue = record.checksum.md5 || record.checksum.crc64;
+  let reason = record.status.http_code === null ? "无有效探测结果" : `HTTP ${record.status.http_code}`;
+  if (verified && record.status.http_code === null) {
+    reason = state === "unavailable" ? "探活判定不可用" : "探活判定可用";
+  }
   const current = {
     state,
-    reason: record.status.http_code === null ? "无有效探测结果" : `HTTP ${record.status.http_code}`,
+    reason,
     confidence: state === "unknown" ? "low" as const : "high" as const,
     retained: false,
     checked_at: record.status.last_checked_at,
@@ -98,6 +110,7 @@ function versionRecordArtifact(record: VersionRecord, id: number): Artifact {
 export function useArchiveArtifactsLoader(options: ArchiveArtifactsLoaderOptions): ArchiveArtifactsLoaderState {
   const artifacts = ref<Artifact[]>([]);
   const nextCursor = ref<string | null>(null);
+  const total = ref<number | null>(null);
   const loadingMore = ref(false);
   const error = ref<Error | null>(null);
   let artifactController: AbortController | null = null;
@@ -132,6 +145,7 @@ export function useArchiveArtifactsLoader(options: ArchiveArtifactsLoaderOptions
       if (context.mode === "chunks") {
         artifacts.value = [];
         nextCursor.value = null;
+        total.value = null;
         const [chunkResult, artifactResult] = await Promise.allSettled([
           options.loadChunkState(context, request.signal, isCurrent),
           api.artifacts(
@@ -150,15 +164,23 @@ export function useArchiveArtifactsLoader(options: ArchiveArtifactsLoaderOptions
         }
         return;
       }
-      if (context.mode === "files" && context.domainAdapter === "hoyo") {
+      const isGenericFileManifest = context.mode === "files"
+        && context.domainAdapter === "generic"
+        && context.domainKind === "files"
+        && context.domainHasPackageManifest === true;
+      if (context.mode === "files" && (context.domainAdapter === "hoyo" || isGenericFileManifest)) {
         artifacts.value = [];
         nextCursor.value = null;
-        await options.loadChunkState(context, request.signal, isCurrent);
+        total.value = null;
+        if (context.domainAdapter === "hoyo") {
+          await options.loadChunkState(context, request.signal, isCurrent);
+        }
         return;
       }
       if (context.mode === "legacy") {
         artifacts.value = [];
         nextCursor.value = null;
+        total.value = null;
         const loadedLeads = await api.leads(context.domainId, request.signal);
         if (!isCurrent()) return;
         options.setLeads(loadedLeads);
@@ -168,6 +190,7 @@ export function useArchiveArtifactsLoader(options: ArchiveArtifactsLoaderOptions
       if (context.mode === "compare" || context.usesRemoteTree) {
         artifacts.value = [];
         nextCursor.value = null;
+        total.value = null;
         return;
       }
       if (context.usesArtifactTree) {
@@ -180,6 +203,7 @@ export function useArchiveArtifactsLoader(options: ArchiveArtifactsLoaderOptions
         if (!isCurrent()) return;
         artifacts.value = loadedArtifacts;
         nextCursor.value = null;
+        total.value = loadedArtifacts.length;
         return;
       }
       const baseVersion = context.selectedVersion;
@@ -200,6 +224,7 @@ export function useArchiveArtifactsLoader(options: ArchiveArtifactsLoaderOptions
         if (!isCurrent()) return;
         artifacts.value = loaded;
         nextCursor.value = null;
+        total.value = loaded.length;
         return;
       }
       if (channelTargets.length > 1) {
@@ -234,17 +259,22 @@ export function useArchiveArtifactsLoader(options: ArchiveArtifactsLoaderOptions
         context.domainId,
         context.selectedVersion,
         {
-          cursor: append ? nextCursor.value : null,
+          cursor: append
+            ? nextCursor.value
+            : context.artifactPage > 1
+              ? String((context.artifactPage - 1) * context.artifactPageSize)
+              : null,
           query: context.searchableMode ? context.query : "",
           state: context.availabilityState,
           kind: artifactKindForMode(context.mode),
-          limit: 50,
+          limit: context.artifactPageSize,
         },
         request.signal,
       );
       if (!isCurrent()) return;
       artifacts.value = append ? [...artifacts.value, ...page.items] : page.items;
       nextCursor.value = page.next_cursor;
+      total.value = page.total ?? null;
     } catch (reason) {
       if (!isCurrent() || isAbortError(reason)) return;
       error.value = reason instanceof Error ? reason : new Error(String(reason));
@@ -253,5 +283,5 @@ export function useArchiveArtifactsLoader(options: ArchiveArtifactsLoaderOptions
     }
   }
 
-  return { artifacts, nextCursor, loadingMore, error, loadArtifacts, invalidate, dispose: invalidate };
+  return { artifacts, nextCursor, total, loadingMore, error, loadArtifacts, invalidate, dispose: invalidate };
 }

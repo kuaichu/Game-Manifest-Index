@@ -96,6 +96,20 @@ class PCV2Tests(unittest.TestCase):
             with self.assertRaises(ProbeError):
                 probe(source, vendor="mihoyo", game_id="hk4e", platform="windows")
 
+    def test_bh3_403_range_failure_keeps_http_code_without_head(self):
+        source = "https://autopatchcn.bh3.com/client/game.7z"
+        error = ProbeError("reset", returncode=56, status=403, final_url=source)
+        with patch("probe_adapters.service.probe_url", side_effect=error), patch(
+            "probe_adapters.service.probe_head",
+        ) as head_probe:
+            result = probe(source, vendor="mihoyo", game_id="bh3", platform="windows")
+        head_probe.assert_not_called()
+        self.assertIs(result["available"], False)
+        self.assertEqual(result["http_code"], 403)
+        self.assertEqual(result["reason"], "HTTP 403")
+        self.assertEqual(result["source_kind"], "live_probe")
+        self.assertIsNone(result["metadata_http_code"])
+
     def test_apply_exact_target_preserves_everything_else_and_allowed_current(self):
         value = record()
         original = deepcopy(value)

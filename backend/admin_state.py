@@ -14,6 +14,36 @@ from typing import Any, Mapping
 
 
 MAX_STATE_BYTES = 2 * 1024 * 1024
+MAX_RESULT_ITEM_BYTES = 512 * 1024
+
+
+class BoundedItems:
+    """Keep complete result items within a byte budget, with explicit omissions."""
+
+    def __init__(self, budget: int = MAX_RESULT_ITEM_BYTES) -> None:
+        self.budget = budget
+        self.items: list[dict[str, Any]] = []
+        self.total = 0
+        self._bytes = 2
+
+    def append(self, item: dict[str, Any]) -> None:
+        self.total += 1
+        if self.total != len(self.items) + 1:
+            return
+        size = len(json.dumps(item, ensure_ascii=False, separators=(",", ":")).encode("utf-8")) + 1
+        # Preserve a prefix so displayed detail order remains meaningful.
+        if self._bytes + size <= self.budget:
+            self.items.append(item)
+            self._bytes += size
+
+    def result(self) -> dict[str, Any]:
+        value: dict[str, Any] = {"items": self.items}
+        if self.total > len(self.items):
+            value.update(items_truncated=True, items_total=self.total,
+                         items_omitted=self.total - len(self.items))
+        return value
+
+
 DEFAULT_SCHEDULES = {
     "sync": {"enabled": False, "times": []},
     "probe": {"enabled": False, "interval_hours": 24, "mode": "normal"},
@@ -68,7 +98,7 @@ class AdminStateStore:
         self._lock = RLock()
 
     def _path(self, name: str) -> Path:
-        if name not in {"schedules", "latest_operation"}:
+        if name not in {"schedules", "latest_operation", "probe_scheduler"}:
             raise ValueError("unknown admin state document")
         directory = _ensure_directory(self.root / "admin")
         return directory / f"{name}.json"
@@ -161,4 +191,4 @@ class AdminStateStore:
         return deepcopy(schedules[name])
 
 
-__all__ = ["AdminStateError", "AdminStateStore", "DEFAULT_SCHEDULES", "MAX_STATE_BYTES"]
+__all__ = ["AdminStateError", "AdminStateStore", "BoundedItems", "DEFAULT_SCHEDULES", "MAX_STATE_BYTES"]

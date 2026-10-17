@@ -11,6 +11,7 @@ import os
 import stat
 import tempfile
 from collections.abc import Mapping
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
@@ -168,11 +169,31 @@ def _prepare_v2_target_directory_locked(root: Path, target: Path) -> Path:
     return current
 
 
+def _preserve_missing_url_currents(existing: Mapping[str, Any], artifacts: list[dict[str, Any]]) -> None:
+    observations: dict[tuple[str, str, str], dict[str, Any]] = {}
+    for artifact in existing.get("artifacts", []):
+        if not isinstance(artifact, dict) or not isinstance(artifact.get("artifact_id"), str):
+            continue
+        for candidate in artifact.get("urls", []):
+            if isinstance(candidate, dict) and isinstance(candidate.get("current"), dict):
+                observations[(artifact["artifact_id"], candidate.get("source_kind"), candidate.get("url"))] = candidate["current"]
+    for artifact in artifacts:
+        if not isinstance(artifact, dict) or not isinstance(artifact.get("artifact_id"), str):
+            continue
+        for candidate in artifact.get("urls", []):
+            if not isinstance(candidate, dict):
+                continue
+            current = observations.get((artifact["artifact_id"], candidate.get("source_kind"), candidate.get("url")))
+            if current is not None:
+                candidate["current"] = deepcopy(current)
+
+
 def _persist_v2_record_locked(
     record: Mapping[str, Any], root: Path, target: Path, *,
     preserve_artifacts: bool = False,
     preserve_references: bool = False,
     preserve_provenance: bool = False,
+    preserve_url_current: bool = False,
 ) -> Path:
     """Persist one record while preserving selected fields from an existing v2 record."""
     _prepare_v2_target_directory_locked(root, target)
@@ -203,6 +224,9 @@ def _persist_v2_record_locked(
     updated = dict(record)
     if preserve_artifacts:
         updated["artifacts"] = existing["artifacts"]
+    elif preserve_url_current:
+        updated["artifacts"] = deepcopy(record["artifacts"])
+        _preserve_missing_url_currents(existing, updated["artifacts"])
     if preserve_references:
         updated["references"] = existing["references"]
     if preserve_provenance and "provenance" in existing:
@@ -221,6 +245,7 @@ def persist_v2_record(
     preserve_artifacts: bool = False,
     preserve_references: bool = False,
     preserve_provenance: bool = False,
+    preserve_url_current: bool = False,
 ) -> Path:
     """Persist a record, optionally retaining selected existing v2 fields.
 
@@ -233,6 +258,7 @@ def persist_v2_record(
         ("preserve_artifacts", preserve_artifacts),
         ("preserve_references", preserve_references),
         ("preserve_provenance", preserve_provenance),
+        ("preserve_url_current", preserve_url_current),
     ):
         if not isinstance(value, bool):
             raise TypeError(f"{name} 必须显式使用 bool")
@@ -248,6 +274,7 @@ def persist_v2_record(
                 preserve_artifacts=preserve_artifacts,
                 preserve_references=preserve_references,
                 preserve_provenance=preserve_provenance,
+                preserve_url_current=preserve_url_current,
             )
 
 

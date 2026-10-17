@@ -16,6 +16,7 @@ from backend.android_record_compat import (
 from backend.schema_v2 import SchemaValidationError, validate_v2_record
 from probe_adapters.common import (
     ProbeError,
+    ProbeObservation,
     classify_oss_archive_response,
     content_md5,
     content_size,
@@ -55,7 +56,18 @@ def probe(
     if static is not None:
         return _static_result(adapter, url, platform, expected_size, static)
     try:
-        observation = probe_url(url, timeout)
+        try:
+            observation = probe_url(url, timeout)
+        except ProbeError as error:
+            if error.status != 403:
+                raise
+            # An HTTP 403 already establishes unavailability, even when the
+            # transport fails while reading its response body.
+            observation = ProbeObservation(
+                403, error.headers, error.final_url or url, error.prefix,
+                transport_returncode=error.returncode,
+                bytes_received=len(error.body or error.prefix), body=error.body,
+            )
         status, headers, final_url, prefix = observation
         transport_returncode = getattr(observation, "transport_returncode", 0)
         bytes_received = getattr(observation, "bytes_received", len(prefix))
@@ -116,7 +128,7 @@ def probe(
     else:
         adapter = adapter_for(vendor, game_id, final_url, platform)
         final_static = getattr(adapter, "preflight", None)
-        if final_static:
+        if final_static and status != 403:
             decision = final_static(
                 final_url, platform=platform, vendor=vendor, game_id=game_id, context=context,
             )
@@ -127,7 +139,9 @@ def probe(
     observed_size = content_size(status, headers)
     response_decision = classify_oss_archive_response(status, headers, response_body)
     availability = getattr(adapter, "availability", None)
-    if 'fallback_decision' in locals():
+    if status == 403:
+        available = False
+    elif 'fallback_decision' in locals():
         available = fallback_decision["available"]
     elif response_decision is not None:
         available = response_decision["available"]

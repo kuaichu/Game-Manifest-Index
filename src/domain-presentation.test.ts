@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ArchiveDomain, Artifact, AvailabilityCurrent, VersionSummary } from "./types";
-import { artifactActionLabel, archiveSourceLabel, artifactKindForMode, artifactUrlStateCounts, availabilityStatesForMode, availableArchiveModes, availabilityLabel, buildArchiveOverview, buildSyncStatusPresentation, buildVersionBadges, distributionProfile, domainActionSupport, domainFeatureSupport, domainFieldSupport, domainModeLabel, fileTimestampEvidence, hoyoArtifactCardPresentation, isAvailabilityActionable, preferredArtifactAction, preferredDomainArtifactAction , displayVersionLabel } from "./domain-presentation";
+import { artifactActionLabel, archiveSourceLabel, artifactKindForMode, artifactUrlStateCounts, availabilityStatesForMode, availableArchiveModes, availabilityLabel, buildArchiveOverview, buildSyncStatusPresentation, buildVersionBadges, distributionProfile, domainActionSupport, domainFeatureSupport, domainFieldSupport, domainModeLabel, fileTimestampEvidence, hoyoArtifactCardPresentation, isAvailabilityActionable, preferredArtifactAction, preferredDomainArtifactAction, repairMojibake, displayVersionLabel, routeVersionLabel, versionSupportsMode } from "./domain-presentation";
 
 describe("WuWa historical provenance presentation", () => {
   it("labels the real 3.5.3 migration summary as archived community data", () => {
@@ -63,6 +63,11 @@ function artifact(
 }
 
 describe("domain presentation", () => {
+  it("repairs UTF-8 labels that were decoded as Latin-1", () => {
+    expect(repairMojibake("æ¸¸æèµæº-å¤ç½")).toBe("游戏资源-外网");
+    expect(repairMojibake("English")).toBe("English");
+  });
+
   it("uses one vocabulary and stable capability order", () => {
     const hoyo = domain("hoyo", ["packages", "patches", "chunks", "archive"], "hk4e");
     const android = domain("android", ["apk"], "hk4e", "android");
@@ -70,6 +75,15 @@ describe("domain presentation", () => {
     expect(domainModeLabel(hoyo, "patches")).toBe("更新补丁");
     expect(domainModeLabel(domain("aethergazer-resources", ["resources"], "aethergazer"), "resources")).toBe("运行时资源");
     expect(availableArchiveModes([android, hoyo]).map((item) => item.capability)).toEqual(["packages", "patches", "chunks", "apk"]);
+  });
+
+  it("treats a generic file-manifest package as a browsable files mode", () => {
+    const manjuu = domain("generic", ["packages", "files", "archive"], "azurpromilia");
+    manjuu.kind = "files";
+    const item = summary({
+      artifact_kinds: { package: { count: 645, size: 142235777925, availability_states: { unknown: 645 } } },
+    });
+    expect(versionSupportsMode(item, "files", manjuu.adapter)).toBe(true);
   });
 
   it("deduplicates compare mode across multiple domains of the same game", () => {
@@ -415,6 +429,28 @@ describe("domain presentation", () => {
     })).toEqual({ available: 1, unavailable: 1, unknown: 2 });
   });
 
+  it("retains server probe evidence when an HTTP download URL is not published", () => {
+    expect(artifactUrlStateCounts({
+      id: 1, kind: "apk", name: "legacy.apk", part: 1, size: 1,
+      checksum_type: null, checksum_value: null, attributes: {}, urls: [],
+      availability: { state: "unavailable", reason: "" },
+    })).toEqual({ available: 0, unavailable: 1, unknown: 0 });
+  });
+
+  it("counts terminal HTTP 403 as unavailable without upgrading its probe evidence", () => {
+    const forbidden = availability({
+      state: "unavailable", reason: "HTTP 403", evidence_status: "unverified",
+      checked_at: null, observed_at: null, source_kind: "canonical_current",
+    });
+    expect(artifactUrlStateCounts(artifact([
+      { id: 1, url: "https://a.example/game.bin", priority: 0, source_kind: "official", current: forbidden },
+      { id: 2, url: "https://b.example/game.bin", priority: 1, source_kind: "official", current: availability() },
+      { id: 3, url: "https://c.example/game.bin", priority: 2, source_kind: "official", current: availability({ state: "unknown", reason: "HTTP 401", evidence_status: "unverified" }) },
+      { id: 4, url: "https://d.example/game.bin", priority: 3, source_kind: "official", current: availability({ state: "unavailable", reason: "HTTP 404", evidence_status: "unverified" }) },
+    ]))).toEqual({ available: 1, unavailable: 1, unknown: 2 });
+    expect(forbidden.evidence_status).toBe("unverified");
+  });
+
   it("drives WuWa split, provider and action rendering from the capability contract", () => {
     const current = domain("generic", ["files", "patches", "archive", "compare"], "capability-game");
     current.capability_contract = {
@@ -601,6 +637,12 @@ describe("displayVersionLabel", () => {
     expect(displayVersionLabel("4.4.0")).toBe("4.4.0");
   });
 
+  it("pads two-segment numeric versions for a consistent public label", () => {
+    expect(displayVersionLabel("4.8")).toBe("4.8.0");
+    expect(displayVersionLabel("3.2@mihoyo")).toBe("3.2.0");
+    expect(displayVersionLabel("3.2", { display_version: "3.2" })).toBe("3.2.0");
+  });
+
   it("prefers the backend display_version attribute", () => {
     expect(displayVersionLabel("1.2.0@mihoyo", { display_version: "1.2.0", channel: "mihoyo" })).toBe("1.2.0");
   });
@@ -608,6 +650,16 @@ describe("displayVersionLabel", () => {
   it("keeps plain versions untouched", () => {
     expect(displayVersionLabel("2.7.6.1", null)).toBe("2.7.6.1");
     expect(displayVersionLabel("1.6.0", { channel: "gw" })).toBe("1.6.0");
+    expect(displayVersionLabel("4.8-beta", null)).toBe("4.8-beta");
+  });
+});
+
+describe("routeVersionLabel", () => {
+  it("normalizes public route labels while preserving channel suffixes", () => {
+    expect(routeVersionLabel("4.8")).toBe("4.8.0");
+    expect(routeVersionLabel("3.2@mihoyo")).toBe("3.2.0@mihoyo");
+    expect(routeVersionLabel("4.8.0")).toBe("4.8.0");
+    expect(routeVersionLabel("2.7.6.1")).toBe("2.7.6.1");
   });
 });
 

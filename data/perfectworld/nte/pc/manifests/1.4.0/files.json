@@ -1,0 +1,280 @@
+{
+  "schema_version": 1,
+  "vendor": "perfectworld",
+  "game_id": "nte",
+  "domain_id": "nte-pc",
+  "platform": "windows",
+  "version": "1.4.0",
+  "files": [
+    {
+      "dest": "Client/WindowsNoEditor/Engine/Binaries/ThirdParty/CEF3/Win64/libcef.dll",
+      "md5": "3a1cb9e5814c6a22261824396f79b55d",
+      "size": 153114624,
+      "object": "3/3a1cb9e5814c6a22261824396f79b55d.153114624"
+    },
+    {
+      "dest": "Client/WindowsNoEditor/Engine/Plugins/Runtime/Nvidia/DLSS/Binaries/ThirdParty/Win64/nvngx_dlss.dll",
+      "md5": "a30d0cfbec9d48dcd5f314aea1bde86d",
+      "size": 54778992,
+      "object": "a/a30d0cfbec9d48dcd5f314aea1bde86d.54778992"
+    },
+    {
+      "dest": "Client/WindowsNoEditor/HT/Binaries/Win64/HTGame.exe",
+      "md5": "bf60743f6373f5761bf86e9aeb8e7b23",
+      "size": 272579168,
+      "object": "b/bf60743f6373f5761bf86e9aeb8e7b23.272579168"
+    },
+    {
+      "dest": "Client/WindowsNoEditor/HT/Content/Movies/FFMpeg/advert/Preview_1.mp4",
+      "md5": "74f5236a11eef97217611f96632684fb",
+      "size": 254158072,
+      "object": "7/74f5236a11eef97217611f96632684fb.254158072"
+    },
+    {
+      "dest": "Client/WindowsNoEditor/HT/Content/Movies/FFMpeg/advert/Preview_2.mp4",
+      "md5": "a6fb75d321049b8020d2d8c80e69b13d",
+      "size": 108337766,
+      "object": "a/a6fb75d321049b8020d2d8c80e69b13d.108337766"
+    },
+    {
+      "dest": "Client/WindowsNoEditor/HT/Content/Movies/FFMpeg/advert/advert_2.mp4",
+      "md5": "42ce9077a6ea2f8a1d6ea8b9fd1a3370",
+      "size": 77267299,
+      "object": "4/42ce9077a6ea2f8a1d6ea8b9fd1a3370.77267299"
+    },
+    {
+      "dest": "Client/WindowsNoEditor/HT/Content/Paks/pakchunk0-Windows.pak",
+      "md5": "3e977689a81f6fb716268ea285c1c7c0",
+      "size": 6864216866,
+      "object": "3/3e977689a81f6fb716268ea285c1c7c0.6864216866"
+    },
+    {
+      "dest": "Client/WindowsNoEditor/HT/Content/Paks/pakchunk0-Windows.ucas",
+      "md5": "f804b8cd1bede4c1e6b385cf7fe9ffc1",
+      "size": 539490928,
+      "object": "f/f804b8cd1bede4c1e6b385cf7fe9ffc1.539490928"
+    },
+    {
+      "dest": "Client/WindowsNoEditor/HT/Content/Paks/pakchunk1-Windows.ucas",
+      "md5": "12b8dc9f289b09bd361c345daa7fa357",
+      "size": 1955547776,
+      "object": "1/12b8dc9f289b09bd361c345daa7fa357.1955547776"
+    },
+    {
+      "dest": "Client/WindowsNoEditor/HT/Content/Paks/pakchunk2-Windows.pak",
+      "md5": "e34abd424d7c2206d74407fcbecf970d",
+      "size": 334636129,
+      "object": "e/e34abd424d7c2206d74407fcbecf970d.334636129"
+    },
+    {
+      "dest": "Client/WindowsNoEditor/HT/Content/Paks/pakchunk2-Windows.ucas",
+      "md5": "e26f5511f3a388b2b172459989896a4e",
+      "size": 2016571744,
+      "object": "e/e26f5511f3a388b2b172459989896a4e.2016571744"
+    },
+    {
+      "dest": "Client/WindowsNoEditor/HT/Content/Paks/pakchunk3-Windows.pak",
+      "md5": "d93d9775a83f8ebee602270e0b4eec66",
+      "size": 1925908043,
+      "object": "d/d93d9775a83f8ebee602270e0b4eec66.1925908043"
+    },
+    {
+      "dest": "Client/WindowsNoEditor/HT/Content/Paks/pakchunk3-Windows.ucas",
+      "md5": "3377299149bea559764ad3990c4692f4",
+      "size": 11221990016,
+      "object": "3/3377299149bea559764ad3990c4692f4.11221990016"
+    },
+    {
+      "dest": "Client/WindowsNoEditor/HT/Content/Paks/pakchunk4-Windows.ucas",
+      "md5": "ca6ea7d7aef5423c52df9c4334dc3ccc",
+      "size": 5740585168,
+      "object": "c/ca6ea7d7aef5423c52df9c4334dc3ccc.5740585168"
+    },
+    {
+      "dest": "Client/WindowsNoEditor/HT/Content/Paks/pakchunk5-Windows.ucas",
+      "md5": "3df92cbc09522522a9d964cfb31c54d7",
+      "size": 2150419968,
+      "object": "3/3df92cbc09522522a9d964cfb31c54d7.2150419968"
+    },
+    {
+      "dest": "Client/WindowsNoEditor/HT/Content/PatchPaks/pakchunk0-Windows_0_P.pak",
+      "md5": "d5007a6ed0820e69303ffe97cf1f5664",
+      "size": 8576995013,
+      "object": "d/d5007a6ed0820e69303ffe97cf1f5664.8576995013"
+    },
+    {
+      "dest": "Client/WindowsNoEditor/HT/Content/PatchPaks/pakchunk0-Windows_0_P.ucas",
+      "md5": "00daa8a2fd2b5df229cac88c17eaaa00",
+      "size": 697811552,
+      "object": "0/00daa8a2fd2b5df229cac88c17eaaa00.697811552"
+    },
+    {
+      "dest": "Client/WindowsNoEditor/HT/Content/PatchPaks/pakchunk1-Windows_0_P.ucas",
+      "md5": "ff137ad5039770a4bb3724a3eaa7f366",
+      "size": 1398860816,
+      "object": "f/ff137ad5039770a4bb3724a3eaa7f366.1398860816"
+    },
+    {
+      "dest": "Client/WindowsNoEditor/HT/Content/PatchPaks/pakchunk101-Windows_0_P.pak",
+      "md5": "9ab966e9cac07d5526adf20e88b7b80b",
+      "size": 582967204,
+      "object": "9/9ab966e9cac07d5526adf20e88b7b80b.582967204"
+    },
+    {
+      "dest": "Client/WindowsNoEditor/HT/Content/PatchPaks/pakchunk102-Windows_0_P.pak",
+      "md5": "01e0e1de7e4f11366f5eaacb7128bd2e",
+      "size": 628137565,
+      "object": "0/01e0e1de7e4f11366f5eaacb7128bd2e.628137565"
+    },
+    {
+      "dest": "Client/WindowsNoEditor/HT/Content/PatchPaks/pakchunk103-Windows_0_P.pak",
+      "md5": "046d0b1809157d867d92c939cffec191",
+      "size": 623045722,
+      "object": "0/046d0b1809157d867d92c939cffec191.623045722"
+    },
+    {
+      "dest": "Client/WindowsNoEditor/HT/Content/PatchPaks/pakchunk104-Windows_0_P.pak",
+      "md5": "2120b05e1a1a437c9a5ae22eda5859b7",
+      "size": 734116607,
+      "object": "2/2120b05e1a1a437c9a5ae22eda5859b7.734116607"
+    },
+    {
+      "dest": "Client/WindowsNoEditor/HT/Content/PatchPaks/pakchunk2-Windows_0_P.ucas",
+      "md5": "329de218f7cf72ca04f3343d92a9b01e",
+      "size": 2536577168,
+      "object": "3/329de218f7cf72ca04f3343d92a9b01e.2536577168"
+    },
+    {
+      "dest": "Client/WindowsNoEditor/HT/Content/PatchPaks/pakchunk3-Windows_0_P.pak",
+      "md5": "04927d0eb6f4bc9ee6acfeda9d24e5bd",
+      "size": 1166835106,
+      "object": "0/04927d0eb6f4bc9ee6acfeda9d24e5bd.1166835106"
+    },
+    {
+      "dest": "Client/WindowsNoEditor/HT/Content/PatchPaks/pakchunk3-Windows_0_P.ucas",
+      "md5": "683b78bcc152d51b81bd282ad07325a0",
+      "size": 14242097520,
+      "object": "6/683b78bcc152d51b81bd282ad07325a0.14242097520"
+    },
+    {
+      "dest": "Client/WindowsNoEditor/HT/Content/PatchPaks/pakchunk4-Windows_0_P.ucas",
+      "md5": "cbbc9be1de47d2bf741cd942255cb206",
+      "size": 12683977680,
+      "object": "c/cbbc9be1de47d2bf741cd942255cb206.12683977680"
+    },
+    {
+      "dest": "Client/WindowsNoEditor/HT/Content/PatchPaks/pakchunk5-Windows_0_P.ucas",
+      "md5": "59ecd72f115267dbab76e5d353131c08",
+      "size": 4001452288,
+      "object": "5/59ecd72f115267dbab76e5d353131c08.4001452288"
+    },
+    {
+      "dest": "Client/WindowsNoEditor/HT/Content/TagPatchPaks/pakchunk104-Windows.pak",
+      "md5": "26af84f276c5171f5b234f09c254c914",
+      "size": 897901982,
+      "object": "2/26af84f276c5171f5b234f09c254c914.897901982"
+    },
+    {
+      "dest": "Client/WindowsNoEditor/HT/Content/TagPatchPaks/pakchunk103-Windows.pak",
+      "md5": "fa3901a1e0f1c6b964de85ea6b838b3d",
+      "size": 868142072,
+      "object": "f/fa3901a1e0f1c6b964de85ea6b838b3d.868142072"
+    },
+    {
+      "dest": "Client/WindowsNoEditor/HT/Content/TagPatchPaks/pakchunk102-Windows.pak",
+      "md5": "5db38b62a75ccfcb96a6adf7ded4904f",
+      "size": 813618494,
+      "object": "5/5db38b62a75ccfcb96a6adf7ded4904f.813618494"
+    },
+    {
+      "dest": "Client/WindowsNoEditor/HT/Content/TagPatchPaks/pakchunk101-Windows.pak",
+      "md5": "237c128cdef26c594dcf427c85c8d2bd",
+      "size": 904732307,
+      "object": "2/237c128cdef26c594dcf427c85c8d2bd.904732307"
+    }
+  ],
+  "patch_objects": [
+    {
+      "oldfile": "2e799350afd693f52344d31334890e92.1029178274",
+      "newfile": "04927d0eb6f4bc9ee6acfeda9d24e5bd.1166835106",
+      "patch": "dca0f1b159af03c6d30fad2866210a14.165330401",
+      "object": "d/dca0f1b159af03c6d30fad2866210a14.165330401",
+      "v": "e20600",
+      "size": 165330401
+    },
+    {
+      "oldfile": "2a8da9bbad123a7141be7e12912694ae.658511488",
+      "newfile": "00daa8a2fd2b5df229cac88c17eaaa00.697811552",
+      "patch": "3dedebc4922823f63a8f37d84e7b7254.67371600",
+      "object": "3/3dedebc4922823f63a8f37d84e7b7254.67371600",
+      "v": "e20600",
+      "size": 67371600
+    },
+    {
+      "oldfile": "8e6627ca389b8e8b3cfe868585db49e7.1366418144",
+      "newfile": "ff137ad5039770a4bb3724a3eaa7f366.1398860816",
+      "patch": "4e5b9df8ce4120e5a07424f46ab08bd7.136041493",
+      "object": "4/4e5b9df8ce4120e5a07424f46ab08bd7.136041493",
+      "v": "e20600",
+      "size": 136041493
+    },
+    {
+      "oldfile": "d1e5628e59f31c75c46eec1caaf07fc6.266286688",
+      "newfile": "bf60743f6373f5761bf86e9aeb8e7b23.272579168",
+      "patch": "8d054d6bae3172fdf1164b79e2621bd4.131800353",
+      "object": "8/8d054d6bae3172fdf1164b79e2621bd4.131800353",
+      "v": "e20600",
+      "size": 131800353
+    },
+    {
+      "oldfile": "d23a0af4d03a56d59730212fcd211bb4.3982361216",
+      "newfile": "59ecd72f115267dbab76e5d353131c08.4001452288",
+      "patch": "edd23bb03977bb672ba8977bb3866528.209808649",
+      "object": "e/edd23bb03977bb672ba8977bb3866528.209808649",
+      "v": "e20600",
+      "size": 209808649
+    },
+    {
+      "oldfile": "328d0fad8ecdcfda74ddb52298d6cd21.2187246928",
+      "newfile": "329de218f7cf72ca04f3343d92a9b01e.2536577168",
+      "patch": "81daf59ae4aed7c91fc259198c37d30c.457856943",
+      "object": "8/81daf59ae4aed7c91fc259198c37d30c.457856943",
+      "v": "e20600",
+      "size": 457856943
+    },
+    {
+      "oldfile": "1d3446594131b45cfcffcbaf4645e9e9.11069623056",
+      "newfile": "cbbc9be1de47d2bf741cd942255cb206.12683977680",
+      "patch": "7a5076d635f8503f9ec5392abe83927a.2515733112",
+      "object": "7/7a5076d635f8503f9ec5392abe83927a.2515733112",
+      "v": "e20600",
+      "size": 2515733112
+    },
+    {
+      "oldfile": "7b21d912a74a4f5d149b0626df3485ff.8057225141",
+      "newfile": "d5007a6ed0820e69303ffe97cf1f5664.8576995013",
+      "patch": "86833b12f775c222629781fd09a42bad.571833015",
+      "object": "8/86833b12f775c222629781fd09a42bad.571833015",
+      "v": "e20600",
+      "size": 571833015
+    },
+    {
+      "oldfile": "379797c80e3bc04a2873c3bf9f04be93.11453950592",
+      "newfile": "683b78bcc152d51b81bd282ad07325a0.14242097520",
+      "patch": "c83e8dd0388307e275c3f1124b1a6286.8733480254",
+      "object": "c/c83e8dd0388307e275c3f1124b1a6286.8733480254",
+      "v": "e20600",
+      "size": 8733480254
+    }
+  ],
+  "config": {
+    "version": "1.4.0",
+    "res_size": 85026871655,
+    "reslist_response_size": 22187
+  },
+  "provenance": {
+    "source_kind": "manual",
+    "source_name": "Perfect World PatcherSDK historical ResList backfill",
+    "source_url": "https://yhcdn1.wmupd.com/clientRes/PC_140/Version/Windows/version/1.4.0/ResList.bin.zip"
+  }
+}

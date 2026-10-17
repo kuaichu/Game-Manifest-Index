@@ -5,13 +5,31 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any, Mapping
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, urlunsplit
 
 from backend.schema_v2 import normalize_legacy_record, validate_v2_record
 
 
 class HypergryphApkOrganizationError(ValueError):
     """Raised when a Hypergryph APK observation is not a valid v2 record."""
+
+
+def _canonical_endfield_apk_url(game_id: str, value: str) -> str:
+    parsed = urlsplit(value)
+    if (
+        game_id == "endfield"
+        and parsed.hostname == "beyond.hycdn.cn"
+        and "/Android/" in parsed.path
+        and parsed.path.lower().endswith(".apk")
+    ):
+        return urlunsplit((
+            "https",
+            "beyond-prod.oss-cn-shanghai.aliyuncs.com",
+            parsed.path,
+            "",
+            "",
+        ))
+    return value
 
 
 @dataclass(frozen=True)
@@ -75,11 +93,14 @@ def organize_hypergryph_apk(collection: HypergryphApkCollection) -> dict[str, An
         raise HypergryphApkOrganizationError("Hypergryph APK 必须恰好包含一个 URL candidate")
 
     candidate = urls[0]
-    candidate["url"] = final_url
+    canonical_url = _canonical_endfield_apk_url(source["game_id"], final_url)
+    candidate["url"] = canonical_url
     candidate["provider"] = "hypergryph"
     candidate["source_kind"] = "official"
     candidate["priority"] = 0
-    current = dict(candidate.get("current") or {})
+    # A signed launcher URL and the stable vendor OSS URL are different URL
+    # candidates. Do not carry probe evidence from the former onto the latter.
+    current = {} if canonical_url != final_url else dict(candidate.get("current") or {})
     current["state"] = "available"
     if status.get("http_code") is not None:
         current["http_code"] = status["http_code"]
@@ -95,7 +116,10 @@ def organize_hypergryph_apk(collection: HypergryphApkCollection) -> dict[str, An
             current["etag"] = checksum["etag"]
         if checksum.get("crc64") is not None:
             current["crc64"] = checksum["crc64"]
-    candidate["current"] = current
+    if canonical_url == final_url:
+        candidate["current"] = current
+    else:
+        candidate.pop("current", None)
     output["references"] = []
     validate_v2_record(output)
     return output

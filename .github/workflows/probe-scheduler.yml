@@ -1,0 +1,39 @@
+name: Probe scheduler compatibility
+
+on:
+  pull_request:
+    paths:
+      - 'backend/**'
+      - 'probe_adapters/**'
+      - 'url_adapters/**'
+      - '.github/workflows/probe-scheduler.yml'
+  push:
+    branches: [integration/v5, backend/probe-scheduler]
+    paths:
+      - 'backend/**'
+      - 'probe_adapters/**'
+      - 'url_adapters/**'
+      - '.github/workflows/probe-scheduler.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scheduler:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: python -m pip install -r backend/requirements.txt
+      - name: Test timer, persistence, dispatch and existing operations
+        run: python -m unittest backend.test_probe_scheduler backend.test_scheduled_probe_engine backend.test_admin_sync_operations

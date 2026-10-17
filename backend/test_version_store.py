@@ -237,9 +237,35 @@ class VersionStoreTests(unittest.TestCase):
             self.assertEqual(stored["references"], existing["references"])
             self.assertEqual(stored["provenance"], refreshed["provenance"])
 
+    def test_persist_can_preserve_probe_current_for_matching_pc_urls(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            existing = record("windows")
+            first = existing["artifacts"][0]["urls"][0]
+            first["current"] = {"state": "available", "checked_at": "2026-09-23T00:00:00Z"}
+            second = {**first, "url": "https://example.test/alternate.zip", "priority": 1,
+                      "current": {"state": "unavailable", "checked_at": "2026-09-23T01:00:00Z"}}
+            existing["artifacts"][0]["urls"].append(second)
+            persist_v2_record(existing, root)
+
+            refreshed = record("windows")
+            refreshed["artifacts"][0]["urls"] = [
+                {"url": second["url"], "provider": "mihoyo", "source_kind": "official", "priority": 0},
+                {**refreshed["artifacts"][0]["urls"][0], "priority": 1,
+                 "current": {"state": "unknown", "checked_at": "2026-09-24T00:00:00Z"}},
+                {"url": "https://example.test/new.zip", "provider": "mihoyo", "source_kind": "official", "priority": 2},
+            ]
+            path = persist_v2_record(refreshed, root, preserve_url_current=True)
+            urls = json.loads(path.read_text(encoding="utf-8"))["artifacts"][0]["urls"]
+            self.assertEqual(urls[0]["current"], second["current"])
+            self.assertEqual(urls[1]["current"], first["current"])
+            self.assertNotIn("current", urls[2])
+            self.assertNotIn("current", refreshed["artifacts"][0]["urls"][0])
+
+
     def test_persist_preservation_flags_require_bool(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            for name in ("preserve_artifacts", "preserve_references", "preserve_provenance"):
+            for name in ("preserve_artifacts", "preserve_references", "preserve_provenance", "preserve_url_current"):
                 with self.subTest(name=name), self.assertRaisesRegex(TypeError, name):
                     persist_v2_record(record(), Path(directory), **{name: 1})
 

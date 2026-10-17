@@ -188,9 +188,11 @@ def probe_head(url: str, timeout: int = 10) -> tuple[int, dict[str, str], str]:
         "-w", write_out, url,
     ]
     try:
-        result = subprocess.run(command, capture_output=True, check=False)
+        result = subprocess.run(command, capture_output=True, check=False, timeout=timeout + 5)
     except FileNotFoundError as exc:
         raise ProbeError("系统中没有找到 curl") from exc
+    except subprocess.TimeoutExpired as exc:
+        raise ProbeError(f"HEAD curl 超时（{timeout + 5} 秒）") from exc
     output = result.stdout.decode("latin-1", errors="replace")
     status, headers, final_url = _parse_curl_metadata(output)
     if result.returncode != 0:

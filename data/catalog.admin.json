@@ -1,0 +1,54 @@
+{
+  "games": {
+    "azurpromilia": {
+      "id": "azurpromilia",
+      "name": "蓝色星原：旅谣",
+      "sub_name": "Azur Promilia",
+      "platform": "windows",
+      "icon_source": "builtin:azurpromilia",
+      "is_enabled": true,
+      "sort_order": 12,
+      "vendor": "manjuu"
+    },
+    "abc": {
+      "id": "abc",
+      "name": "崩坏：因缘精灵",
+      "sub_name": "Honkai: Nexus Anima",
+      "platform": "windows",
+      "icon_source": "builtin:abc",
+      "is_enabled": true,
+      "sort_order": 12,
+      "vendor": "mihoyo"
+    }
+  },
+  "domains": {
+    "azurpromilia-pc": {
+      "id": "azurpromilia-pc",
+      "game_id": "azurpromilia",
+      "kind": "files",
+      "platform": "windows",
+      "capabilities": [
+        "packages",
+        "files",
+        "archive"
+      ],
+      "adapter": "generic",
+      "is_enabled": true,
+      "sort_order": 0,
+      "vendor": "manjuu"
+    },
+    "abc-pc": {
+      "id": "abc-pc",
+      "game_id": "abc",
+      "kind": "files",
+      "platform": "windows",
+      "capabilities": [
+        "files"
+      ],
+      "adapter": "generic",
+      "is_enabled": true,
+      "sort_order": 0,
+      "vendor": "mihoyo"
+    }
+  }
+}

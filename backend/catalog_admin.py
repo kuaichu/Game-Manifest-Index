@@ -15,7 +15,7 @@ from backend.storage_locks import DATA_LOCK, data_file_lock
 
 CATALOG_CONFIG_NAME = "catalog.admin.json"
 SAFE_COMPONENT = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
-VENDORS = ("mihoyo", "hypergryph", "kuro", "perfectworld")
+VENDORS = ("mihoyo", "hypergryph", "kuro", "perfectworld", "manjuu")
 DOMAIN_KINDS = frozenset({"apk", "packages", "patches", "chunks", "files", "resources", "mixed"})
 CAPABILITIES = frozenset({"apk", "packages", "patches", "chunks", "files", "resources", "archive", "compare"})
 

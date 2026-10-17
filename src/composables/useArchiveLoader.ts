@@ -1,8 +1,27 @@
 import { ref, type Ref } from "vue";
 import type { RouteLocationNormalizedLoaded, Router } from "vue-router";
 import { api, isAbortError } from "../api";
-import { displayVersionLabel, versionSupportsMode } from "../domain-presentation";
+import { displayVersionLabel, routeVersionLabel, versionSupportsMode } from "../domain-presentation";
 import type { ArchiveDomain, Game, VersionSummary } from "../types";
+
+export function domainRouteLabel(gameId: string, domain: ArchiveDomain): string {
+  if (domain.id === `${gameId}-pc`) return "pc";
+  if (domain.id === `${gameId}-android`) return "android";
+  return domain.id;
+}
+
+export function resolveRouteDomain(gameId: string, requested: string, domains: ArchiveDomain[]): ArchiveDomain | undefined {
+  const candidates = domains.filter((item) => item.game_id === gameId);
+  const exact = candidates.find((item) => item.id === requested);
+  if (exact) return exact;
+  if (requested !== "pc" && requested !== "android") return undefined;
+  const primary = candidates.find((item) => item.id === `${gameId}-${requested}`);
+  if (primary) return primary;
+  const platformDomains = candidates.filter((item) => requested === "pc"
+    ? ["pc", "windows"].includes(item.platform?.toLowerCase())
+    : item.platform?.toLowerCase() === "android");
+  return platformDomains.length === 1 ? platformDomains[0] : undefined;
+}
 
 export interface ArchiveLoaderOptions {
   route: RouteLocationNormalizedLoaded;
@@ -84,20 +103,17 @@ export function useArchiveLoader(options: ArchiveLoaderOptions): ArchiveLoaderSt
       if (!isCurrent()) return;
       domains.value = loadedDomains;
       const rawRequestedDomain = String(options.route.params.domainId || "");
-      const aliasDomain = rawRequestedDomain === "pc"
-        ? loadedDomains.find((item) => item.id === `${targetGame}-pc` || item.platform?.toLowerCase() === "windows")?.id
-        : rawRequestedDomain === "android"
-          ? loadedDomains.find((item) => item.id === `${targetGame}-android` || item.platform?.toLowerCase() === "android")?.id
-          : undefined;
-      const requestedDomain = aliasDomain || rawRequestedDomain;
-      if (requestedDomain && !loadedDomains.some((item) => item.id === requestedDomain)) {
+      const requestedDomain = resolveRouteDomain(targetGame, rawRequestedDomain, loadedDomains);
+      if (rawRequestedDomain && !requestedDomain) {
         versions.value = [];
-        scopedNotFound.value = `归档域 ${requestedDomain} 不属于 ${targetGame}。`;
+        scopedNotFound.value = `归档域 ${rawRequestedDomain} 不属于 ${targetGame}。`;
         return;
       }
-      const targetDomain = requestedDomain || preferredDomain(loadedDomains)?.id;
-      if (!targetDomain) return;
+      const targetDomainRow = requestedDomain || preferredDomain(loadedDomains);
+      if (!targetDomainRow) return;
+      const targetDomain = targetDomainRow.id;
       registryTargetDomain.value = targetDomain;
+      const targetRouteDomain = domainRouteLabel(targetGame, targetDomainRow);
       const loadedVersions = await api.versions(targetDomain, request.signal);
       if (!isCurrent()) return;
       versions.value = loadedVersions;
@@ -108,7 +124,6 @@ export function useArchiveLoader(options: ArchiveLoaderOptions): ArchiveLoaderSt
         requestedMode = "files";
         requestedVersion = String(options.route.query.version || "");
       }
-      const targetDomainRow = loadedDomains.find((item) => item.id === targetDomain);
       const hasRequestedMode = Boolean(requestedMode && targetDomainRow?.capabilities.includes(requestedMode));
       const targetMode = hasRequestedMode ? requestedMode : targetDomainRow?.capabilities[0];
       if (!targetMode) return;
@@ -117,11 +132,15 @@ export function useArchiveLoader(options: ArchiveLoaderOptions): ArchiveLoaderSt
       const modeVersions = scopesHoYoVersions
         ? loadedVersions.filter((item) => versionSupportsMode(item, targetMode, targetDomainRow?.adapter))
         : loadedVersions;
+      const requestedDisplayVersion = displayVersionLabel(requestedVersion);
       const matchedVersion = modeVersions.find(
-        (item) => item.version === requestedVersion || displayVersionLabel(item.version, item.attributes) === requestedVersion,
+        (item) => item.version === requestedVersion
+          || routeVersionLabel(item.version) === requestedVersion
+          || displayVersionLabel(item.version, item.attributes) === requestedDisplayVersion,
       )?.version;
       const targetVersion = matchedVersion || modeVersions[0]?.version || loadedVersions[0]?.version;
       if (!targetVersion) return;
+      const targetRouteVersion = routeVersionLabel(targetVersion);
       const requestedCompareFrom = String(options.route.query.from || "");
       const targetIndex = loadedVersions.findIndex((item) => item.version === targetVersion);
       const fallbackCompareFrom =
@@ -144,17 +163,22 @@ export function useArchiveLoader(options: ArchiveLoaderOptions): ArchiveLoaderSt
         if (options.route.query.identity) cleanQuery.identity = String(options.route.query.identity);
         if (options.route.query.path) cleanQuery.path = String(options.route.query.path);
       }
+      const compareFromItem = loadedVersions.find(
+        (item) => item.version === requestedCompareFrom
+          || routeVersionLabel(item.version) === requestedCompareFrom
+          || displayVersionLabel(item.version, item.attributes) === displayVersionLabel(requestedCompareFrom),
+      );
       const validCompareFrom =
-        requestedCompareFrom !== targetVersion && loadedVersions.some((item) => item.version === requestedCompareFrom)
-          ? requestedCompareFrom
+        compareFromItem && compareFromItem.version !== targetVersion
+          ? compareFromItem.version
           : fallbackCompareFrom;
-      if (targetMode === "compare" && validCompareFrom) cleanQuery.from = validCompareFrom;
+      if (targetMode === "compare" && validCompareFrom) cleanQuery.from = routeVersionLabel(validCompareFrom);
       const queryChanged = JSON.stringify(options.route.query) !== JSON.stringify(cleanQuery);
-      if (!requestedGame || !requestedDomain || requestedVersion !== targetVersion || requestedMode !== targetMode || queryChanged) {
+      if (!requestedGame || rawRequestedDomain !== targetRouteDomain || requestedVersion !== targetRouteVersion || requestedMode !== targetMode || queryChanged) {
         if (!isCurrent()) return;
         await options.router.replace({
           name: "archive",
-          params: { gameId: targetGame, domainId: targetDomain, version: targetVersion, mode: targetMode },
+          params: { gameId: targetGame, domainId: targetRouteDomain, version: targetRouteVersion, mode: targetMode },
           query: cleanQuery,
         });
       }

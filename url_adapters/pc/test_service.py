@@ -21,6 +21,8 @@ class PCDiscoveryServiceTests(unittest.TestCase):
         "tof": ("perfectworld", "tof-pc"),
         "p5x": ("perfectworld", "p5x-pc"),
         "nte": ("perfectworld", "nte-pc"),
+        "arknights": ("hypergryph", "arknights-pc"),
+        "endfield": ("hypergryph", "endfield-pc"),
     }
 
     @classmethod
@@ -90,8 +92,8 @@ class PCDiscoveryServiceTests(unittest.TestCase):
         path.write_text(json.dumps(record), encoding="utf-8")
         return path
 
-    def test_registry_is_exactly_eight_current_modules(self):
-        expected = {"hk4e", "hkrpg", "nap", "bh3", "wuwa", "tof", "p5x", "nte"}
+    def test_registry_includes_both_official_hypergryph_pc_collectors(self):
+        expected = {"hk4e", "hkrpg", "nap", "bh3", "wuwa", "tof", "p5x", "nte", "arknights", "endfield"}
         self.assertEqual(set(PC_DISCOVERERS), expected)
         for game_id, stages in PC_DISCOVERERS.items():
             names = [name for name, _ in stages]
@@ -106,7 +108,7 @@ class PCDiscoveryServiceTests(unittest.TestCase):
             for _, discoverer in stages:
                 self.assertNotIn("old", discoverer.__module__)
                 self.assertNotIn("legacy", discoverer.__module__)
-        self.assertEqual(discovery_task_count(list(PC_DISCOVERERS), "pc"), 8)
+        self.assertEqual(discovery_task_count(list(PC_DISCOVERERS), "pc"), 10)
 
     def test_mihoyo_same_version_stages_preserve_artifacts_and_references(self):
         calls = []

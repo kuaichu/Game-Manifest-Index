@@ -128,5 +128,23 @@ class NonMihoyoApkPipelineTests(unittest.TestCase):
             hypergryph_launcher_latest.collect("arknights", 3)
         self.assertIsNone(fetch.call_args.kwargs["platform"])
 
+    def test_endfield_signed_apk_url_is_canonicalized_to_vendor_oss(self) -> None:
+        signed = (
+            "https://beyond.hycdn.cn/6LL0KJuqHBVz33WK/1.4/package/1/1/Android/"
+            "1.4.3_N3kXcstgi31V2hpt/endfield-hg-1-1.4.3.apk?auth_key=expired"
+        )
+        output = organize_hypergryph_apk(
+            HypergryphApkCollection(
+                "https://launcher.example/endfield",
+                collected_record("endfield", "hypergryph", url=signed),
+            )
+        )
+        candidate = output["artifacts"][0]["urls"][0]
+        self.assertEqual(
+            candidate["url"],
+            "https://beyond-prod.oss-cn-shanghai.aliyuncs.com/6LL0KJuqHBVz33WK/1.4/package/1/1/Android/1.4.3_N3kXcstgi31V2hpt/endfield-hg-1-1.4.3.apk",
+        )
+        self.assertNotIn("current", candidate)
+
 if __name__ == "__main__":
     unittest.main()

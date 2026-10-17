@@ -332,6 +332,23 @@ export function hoyoLanguageLabel(value: unknown): string {
   return map[norm] || String(value || "语言未知");
 }
 
+/** Recover labels that were UTF-8 bytes decoded as Latin-1 upstream. */
+export function repairMojibake(value: unknown): string {
+  const text = String(value ?? "");
+  if (!/[\u00c2\u00c3\u00e2\u00e4\u00e5\u00e6\u00e7\u00e8\u00e9\u00ea\u00eb\u00ec\u00ed\u00ee\u00ef]/.test(text)) return text;
+  const bytes = new Uint8Array(text.length);
+  for (let index = 0; index < text.length; index += 1) {
+    const code = text.charCodeAt(index);
+    if (code > 0xff) return text;
+    bytes[index] = code;
+  }
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    return text;
+  }
+}
+
 export function formatBytes(value: number): string {
   if (!Number.isFinite(value) || value < 0) return "—";
   if (value < 1024) return `${value} B`;
@@ -376,8 +393,8 @@ export function hoyoArtifactCardPresentation(
   const packageType = String(artifact.attributes.package_type || "");
   const availability = artifactActionLabel(artifact);
   if (artifact.kind === "patch") {
-    const from = String(artifact.attributes.route_from || "未知版本");
-    const to = String(artifact.attributes.route_to || selectedVersion || "未知版本");
+    const from = displayVersionLabel(String(artifact.attributes.route_from || "未知版本"));
+    const to = displayVersionLabel(String(artifact.attributes.route_to || selectedVersion || "未知版本"));
     const route = `${from} -> ${to}`;
     const voice = component === "voice";
     const lang = voice && artifact.attributes.language ? hoyoLanguageLabel(artifact.attributes.language) : "";
@@ -475,15 +492,23 @@ export function versionSupportsMode(summary: VersionSummary, mode: string, adapt
   if (mode === "files" && adapter === "hoyo") {
     return Boolean(summary.attributes?.has_chunk) || Number(summary.artifact_kinds?.package?.count || 0) > 0;
   }
+  if (mode === "files" && adapter === "generic") {
+    return Number(summary.artifact_kinds?.package?.count || 0) > 0;
+  }
   const kind = artifactKindForMode(mode);
   return kind ? artifactCountForMode(summary, mode, adapter) > 0 : true;
 }
 
 export function artifactUrlStateCounts(artifact: Artifact): Record<AvailabilityState, number> {
   const counts: Record<AvailabilityState, number> = { available: 0, unavailable: 0, unknown: 0 };
+  if (artifact.urls.length === 0 && artifact.availability) {
+    counts[artifact.availability.state] = 1;
+    return counts;
+  }
   for (const candidate of artifact.urls) {
     const verified = candidate.evidence_status === "verified" && candidate.current?.evidence_status === "verified";
-    counts[verified ? candidate.current?.state || "unknown" : "unknown"] += 1;
+    const forbidden = candidate.current?.state === "unavailable" && candidate.current.reason === "HTTP 403";
+    counts[verified || forbidden ? candidate.current?.state || "unknown" : "unknown"] += 1;
   }
   return counts;
 }
@@ -565,7 +590,25 @@ export function displayVersionLabel(
   // The picker and headers show only the plain version number; channel
   // details live on the artifact cards in the download area.
   const raw = String((attributes && attributes.display_version) || version);
-  return raw.split("@")[0] || raw;
+  const plain = raw.split("@")[0] || raw;
+  // Some official Android catalogs publish versions as "major.minor",
+  // while their PC catalogs use "major.minor.patch". Keep the raw identity
+  // for record selection and API requests, but make the public label consistent.
+  const match = plain.match(/^(\d+)\.(\d+)$/);
+  return match ? `${match[1]}.${match[2]}.0` : plain;
+}
+
+/**
+ * Return the canonical public route label without dropping a channel suffix.
+ * The route may use this alias, while API calls continue to use the raw
+ * version stored in the record.
+ */
+export function routeVersionLabel(version: string): string {
+  const raw = String(version);
+  const [base, ...suffix] = raw.split("@");
+  const match = base.match(/^(\d+)\.(\d+)$/);
+  const normalized = match ? `${match[1]}.${match[2]}.0` : base;
+  return suffix.length ? `${normalized}@${suffix.join("@")}` : normalized;
 }
 
 
@@ -681,7 +724,7 @@ export function buildArchiveOverview(input: {
     ];
   } else if (domain.capabilities.includes("resources")) {
     moduleDetails = [
-      { label: "资源快照", value: String(attrs.resource_version || currentVersion) },
+      { label: "资源快照", value: displayVersionLabel(String(attrs.resource_version || currentVersion)) },
       { label: "主 / 初始", value: `${Number(attrs.main_file_count || 0).toLocaleString()} / ${Number(attrs.initial_file_count || 0).toLocaleString()}` },
       { label: "素材 / 语音", value: `${Number(attrs.asset_count || 0).toLocaleString()} / ${Number(attrs.voice_count || 0).toLocaleString()}` },
       { label: "Unity", value: String(attrs.unity_version || "—") },

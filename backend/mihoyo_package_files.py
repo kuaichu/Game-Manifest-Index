@@ -18,7 +18,9 @@ import struct
 import tempfile
 import threading
 import zlib
+from collections import OrderedDict
 from collections.abc import Mapping
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote, urlsplit, urlunsplit
@@ -29,6 +31,7 @@ from backend.manifest_readers import (
     ManifestNotFound,
     ManifestTimeout,
     ManifestUpstream,
+    _retained_size,
     strict_relative_posix,
 )
 from backend.storage_locks import CACHE_LOCK
@@ -43,6 +46,8 @@ MAX_TOTAL_RANGE_BYTES = 64 * 1024 * 1024
 MAX_FILES = 200_000
 TAIL_BYTES = 128 * 1024
 CACHE_SCHEMA_VERSION = 1
+MAX_VERIFIED_CACHE_ENTRIES = 8
+MAX_VERIFIED_CACHE_BYTES = 64 * 1024 * 1024
 
 SCATTERED_ROOTS = {
     "hk4e": "ScatteredFiles",
@@ -98,6 +103,38 @@ class PackageFilesCacheError(PackageFilesError):
 
 _LOCKS: dict[str, threading.Lock] = {}
 _LOCKS_GUARD = threading.Lock()
+_VERIFIED_CACHE: OrderedDict[str, tuple[Any, list[dict[str, Any]], dict[str, Any], int]] = OrderedDict()
+_VERIFIED_CACHE_GUARD = threading.Lock()
+_VERIFIED_CACHE_BYTES = 0
+
+
+def _cache_fingerprint(*paths: Path) -> tuple[tuple[int, ...], ...] | None:
+    result = []
+    for path in paths:
+        try:
+            info = os.lstat(path)
+        except OSError:
+            return None
+        if not stat.S_ISREG(info.st_mode) or stat.S_ISLNK(info.st_mode):
+            return None
+        result.append((info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns))
+    return tuple(result)
+
+
+def _remember_verified(key: str, fingerprint: Any, files: list[dict[str, Any]], meta: dict[str, Any]) -> None:
+    global _VERIFIED_CACHE_BYTES
+    retained = _retained_size((fingerprint, files, meta))
+    with _VERIFIED_CACHE_GUARD:
+        old = _VERIFIED_CACHE.pop(key, None)
+        if old is not None:
+            _VERIFIED_CACHE_BYTES -= old[3]
+        if retained > MAX_VERIFIED_CACHE_BYTES:
+            return
+        _VERIFIED_CACHE[key] = (fingerprint, files, meta, retained)
+        _VERIFIED_CACHE_BYTES += retained
+        while len(_VERIFIED_CACHE) > MAX_VERIFIED_CACHE_ENTRIES or _VERIFIED_CACHE_BYTES > MAX_VERIFIED_CACHE_BYTES:
+            _, evicted = _VERIFIED_CACHE.popitem(last=False)
+            _VERIFIED_CACHE_BYTES -= evicted[3]
 
 
 def _lock_for(key: str) -> threading.Lock:
@@ -467,7 +504,13 @@ class _ArchiveReader:
             raise PackageFilesUpstream("package local header 压缩方式不一致")
         body = self.read_archive(offset + 30 + name_len + extra_len, compressed)
         try:
-            result = zlib.decompress(body, -15) if method == 8 else body
+            if method == 8:
+                decoder = zlib.decompressobj(-15)
+                result = decoder.decompress(body, min(uncompressed, MAX_MEMBER_BYTES) + 1)
+                if len(result) > uncompressed or not decoder.eof:
+                    raise PackageFilesUpstream("package pkg_version 解压大小无效")
+            else:
+                result = body
         except zlib.error as error:
             raise PackageFilesUpstream("package pkg_version 解压失败") from error
         if len(result) != uncompressed or (zlib.crc32(result) & 0xFFFFFFFF) != entry["crc"]:
@@ -581,11 +624,21 @@ def _cache_dir(state_root: Path, game_id: str, version: str, groups: list[list[d
 
 
 def _load_files(state_root: Path, record: Mapping[str, Any], game_id: str, version: str, identity: str, upstream: Any) -> tuple[list[dict[str, Any]], int, dict[str, Any]]:
+    global _VERIFIED_CACHE_BYTES
     groups = _candidate_groups(record, game_id, version, identity)
     cache = _cache_dir(Path(state_root), game_id, version, groups)
     index_path, raw_path = cache / "files.json", cache / "pkg_version"
     lock = _lock_for(str(cache))
     with CACHE_LOCK, lock:
+        fingerprint = _cache_fingerprint(index_path, raw_path)
+        cache_key = str(cache.absolute())
+        with _VERIFIED_CACHE_GUARD:
+            verified = _VERIFIED_CACHE.get(cache_key)
+            if fingerprint is not None and verified is not None and verified[0] == fingerprint:
+                _VERIFIED_CACHE.move_to_end(cache_key)
+                return verified[1], 0, verified[2]
+            if verified is not None:
+                _VERIFIED_CACHE_BYTES -= _VERIFIED_CACHE.pop(cache_key)[3]
         both = _ordinary_cache_file(index_path) and _ordinary_cache_file(raw_path)
         either = index_path.exists() or raw_path.exists()
         if both:
@@ -612,7 +665,11 @@ def _load_files(state_root: Path, record: Mapping[str, Any], game_id: str, versi
                 ):
                     cached = _parse_pkg_version(raw_path.read_bytes(), download_base if mode == "official_scattered_files" else None)
                     if cached == files:
-                        return files, 0, {"fetch_mode": mode, "download_base": download_base}
+                        if fingerprint is None or fingerprint != _cache_fingerprint(index_path, raw_path):
+                            raise ValueError("cache changed during validation")
+                        meta = {"fetch_mode": mode, "download_base": download_base}
+                        _remember_verified(cache_key, fingerprint, files, meta)
+                        return files, 0, meta
             except (OSError, UnicodeError, json.JSONDecodeError, TypeError, ValueError, PackageFilesError):
                 pass
             raise PackageFilesCacheError("package 文件缓存损坏")
@@ -674,7 +731,7 @@ def _directory_page(files: list[dict[str, Any]], path: str, q: str | None, limit
                 child["file_count"] += 1
                 child["size"] += item["size"]
             else:
-                children[child_path] = {key: value for key, value in item.items() if key != "chunks"}
+                children[child_path] = item
         selected = sorted(children.values(), key=lambda item: (item["type"] != "directory", item["name"].casefold(), item["name"]))
     page, next_cursor = _page(selected, limit, cursor)
     return {
@@ -693,7 +750,7 @@ def list_files(state_root: Path, record: Mapping[str, Any], game_id: str, versio
 
 def package_files(state_root: Path, record: Mapping[str, Any], game_id: str, version: str, identity: str = "game", upstream: Any | None = None) -> list[dict[str, Any]]:
     files, _network_bytes, _meta = _load_files(Path(state_root), record, game_id, version, identity, upstream)
-    return files
+    return deepcopy(files)
 
 
 def file_detail(state_root: Path, record: Mapping[str, Any], game_id: str, version: str, identity: str, path: str, upstream: Any | None = None) -> dict[str, Any]:

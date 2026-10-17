@@ -17,9 +17,13 @@ import type {
   ArtifactTreePage,
   ComparePage,
   Game,
+  GameActivityEvent,
+  LatestProbeTime,
   ManualArtifactPayload,
   ManualVersionPayload,
   ProbeSchedule,
+  ProbeSchedulerStatus,
+  PublicProbeScheduleStatus,
   ProbeStatus,
   ProbeUrlResult,
   VersionRecord,
@@ -28,6 +32,7 @@ import type {
   ChunkManifestDetail,
   ChunkFilesPage,
   ChunkFileDetail,
+  ChunkDownloadPlanPage,
   RetentionConfig,
   RetentionRunResult,
   RetentionStatus,
@@ -124,6 +129,11 @@ export function chunkContentUrl(domainId: string, version: string, identity: str
   return apiUrl(`/domains/${encodeURIComponent(domainId)}/versions/${encodeURIComponent(version)}/chunk-content?${search.toString()}`);
 }
 
+export function fileContentUrl(domainId: string, version: string, identity: string, path: string): string {
+  const search = new URLSearchParams({ source: "package", identity, path });
+  return apiUrl(`/domains/${encodeURIComponent(domainId)}/versions/${encodeURIComponent(version)}/file-content?${search.toString()}`);
+}
+
 type VersionIndexItem = {
   version: string;
   updated_at: string | null;
@@ -154,6 +164,12 @@ function versionIndexSummary(item: VersionIndexItem, index: number): VersionSumm
 
 export const api = {
   games: (signal?: AbortSignal) => requestJson<Game[]>("/games", signal),
+  latestProbeTime: (signal?: AbortSignal) => requestJson<LatestProbeTime>("/probe/latest", signal),
+  probeScheduleStatus: (signal?: AbortSignal) => requestJson<PublicProbeScheduleStatus>("/probe/schedule-status", signal),
+  activity: (signal?: AbortSignal) =>
+    requestJson<{ items: GameActivityEvent[] }>("/activity?limit=20", signal),
+  gameActivity: (gameId: string, signal?: AbortSignal) =>
+    requestJson<{ items: GameActivityEvent[] }>(`/games/${encodeURIComponent(gameId)}/activity?limit=20`, signal),
   domains: (gameId: string, signal?: AbortSignal) =>
     requestJson<ArchiveDomain[]>(`/games/${encodeURIComponent(gameId)}/domains`, signal),
   versions: async (domainId: string, signal?: AbortSignal) => {
@@ -314,6 +330,22 @@ export const api = {
       `/domains/${encodeURIComponent(domainId)}/versions/${encodeURIComponent(version)}/chunk-manifests/${encodeURIComponent(identity)}/file?path=${encodeURIComponent(path)}`,
       signal,
     ),
+  chunkDownloadPlan: (
+    domainId: string,
+    version: string,
+    identity: string,
+    params?: { limit?: number; cursor?: string | null },
+    signal?: AbortSignal,
+  ) => {
+    const search = new URLSearchParams();
+    if (params?.limit) search.set("limit", String(params.limit));
+    if (params?.cursor) search.set("cursor", params.cursor);
+    const query = search.toString();
+    return requestJson<ChunkDownloadPlanPage>(
+      `/domains/${encodeURIComponent(domainId)}/versions/${encodeURIComponent(version)}/chunk-manifests/${encodeURIComponent(identity)}/download-plan${query ? `?${query}` : ""}`,
+      signal,
+    );
+  },
 };
 
 export const adminApi = {
@@ -383,6 +415,8 @@ export const adminApi = {
     requestJson<ProbeStatus>("/admin/probe/status", signal, { headers: adminApi.auth(token) }),
   probeSchedule: (token: string, signal?: AbortSignal) =>
     requestJson<ProbeSchedule>("/admin/probe/schedule", signal, { headers: adminApi.auth(token) }),
+  probeScheduler: (token: string, signal?: AbortSignal) =>
+    requestJson<ProbeSchedulerStatus>("/admin/probe/scheduler", signal, { headers: adminApi.auth(token) }),
   saveProbeSchedule: (payload: ProbeSchedule, token: string, signal?: AbortSignal) =>
     requestJson<ProbeSchedule>("/admin/probe/schedule", signal, { method: "PUT", headers: { ...adminApi.auth(token), "Content-Type": "application/json" }, body: JSON.stringify(payload) }),
   probeUrl: (url: string, token: string, timeout = 10, artifactUrlId?: number, signal?: AbortSignal) =>

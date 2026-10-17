@@ -458,7 +458,7 @@ def discover_collection(collection: KuroManifestCollection, output_root: Path) -
     except (OSError, ValueError) as error:
         raise AdapterError("无法安全写入 Kuro manifest") from error
     try:
-        return persist_v2_record(record, root, preserve_references=True)
+        return persist_v2_record(record, root, preserve_references=True, preserve_url_current=True)
     except (VersionStoreError, OSError) as error:
         raise AdapterError(str(error)) from error
 

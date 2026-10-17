@@ -2,25 +2,53 @@
 
 from __future__ import annotations
 
+import logging
+import re
 from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
 from threading import Event, RLock, Thread
+from time import monotonic
 from typing import Any, Callable
 from uuid import uuid4
 
-from backend.admin_probe import ADMIN_PROBE_LOCK, candidates, probe_records, selected_records
-from backend.admin_state import AdminStateError, AdminStateStore
+from backend.activity_store import ActivityStore
+from backend.admin_probe import ADMIN_PROBE_LOCK, AdminProbeDataError, CandidateFilter, candidates, probe_records, selected_records
+from backend.api_contract import PROBE_EVIDENCE_TTL, _probe_checked_at
+from backend.admin_state import AdminStateError, AdminStateStore, BoundedItems
 from backend.indexes import rebuild_index
+from backend.telegram_notify import notify_operation
 from url_adapters.service import DISCOVERERS, PC_DISCOVERERS, discover_games
 
 
 Clock = Callable[[], datetime]
+LOGGER = logging.getLogger(__name__)
+MAX_JOB_LOGS = 256
+PROGRESS_SAVE_INTERVAL = 1.0
 JOB_FIELDS = {
     "job_id", "status", "phase", "actions", "game_ids", "scope",
     "completed", "total", "phase_completed", "phase_total", "succeeded", "failed",
     "current", "started_at", "finished_at", "result", "error", "logs",
 }
+
+
+def _version_key(value: str) -> tuple:
+    parts = re.findall(r"\d+|[A-Za-z]+", value)
+    return tuple((0, int(part)) if part.isdigit() else (1, part.lower()) for part in parts)
+
+
+def _previous_versions(root: Path, game_ids: list[str], scope: str) -> dict[tuple[str, str], str]:
+    latest: dict[tuple[str, str], str] = {}
+    for _path, record in selected_records(root, game_ids, scope):
+        game_id = record.get("game_id")
+        platform = record.get("platform")
+        version = record.get("version")
+        if not all(isinstance(value, str) and value for value in (game_id, platform, version)):
+            continue
+        key = (game_id, platform)
+        if key not in latest or _version_key(version) > _version_key(latest[key]):
+            latest[key] = version
+    return latest
 
 
 def utc_now() -> datetime:
@@ -45,6 +73,63 @@ def _safe_discover_item(item: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _notification_discovery(items: list[dict[str, Any]], summary: dict[str, Any], previous: dict[tuple[str, str], str]) -> dict[str, Any]:
+    """Project successful new PC stages without changing the public result."""
+    updates: list[dict[str, Any]] = []
+    seen: set[tuple[str, str, str]] = set()
+    for item in items:
+        stages = item.get("stages")
+        sources = stages if item.get("platform") == "windows" and isinstance(stages, list) else [item]
+        for source in sources:
+            if not isinstance(source, dict) or source.get("ok") is not True or source.get("new") is not True:
+                continue
+            version = source.get("version")
+            if not isinstance(version, str) or not version or item.get("error") == "index_rebuild_failed":
+                continue
+            key = (item.get("game_id"), item.get("platform"), version)
+            if key in seen:
+                continue
+            seen.add(key)
+            update = {"game_id": key[0], "platform": key[1], "version": version, "ok": True, "new": True}
+            old = previous.get(key[:2])
+            if old is not None:
+                if _version_key(version) > _version_key(old):
+                    update["previous_version"] = old
+                else:
+                    update["archived"] = True
+            updates.append(update)
+    return {"items": updates, "failed": summary["failed"]}
+
+
+def _candidate_key(record: dict[str, Any], _artifact_index: int, _url_index: int, artifact: dict[str, Any], candidate: dict[str, Any]) -> tuple[str, ...]:
+    return (
+        record["vendor"], record["game_id"], record["domain_id"],
+        record["platform"], record["version"], artifact["artifact_id"],
+        candidate["url"],
+    )
+
+
+def _scheduled_candidate_filter(mode: str, now: datetime, known_urls: frozenset[tuple[str, ...]]) -> CandidateFilter:
+    def include(record: dict[str, Any], artifact_index: int, url_index: int, artifact: dict[str, Any], candidate: dict[str, Any]) -> bool:
+        # Historical URLs already in the archive are probed without changing their provenance.
+        # New URL discovery still uses only the registered official adapters.
+        if candidate.get("source_kind") not in {"official", "legacy"}:
+            return False
+        current = candidate.get("current")
+        if not isinstance(current, dict):
+            return current is None and _candidate_key(record, artifact_index, url_index, artifact, candidate) not in known_urls
+        if current.get("state") != "available":
+            return False
+        if mode == "full":
+            return True
+        checked = _probe_checked_at(current)
+        if checked is not None and checked[1] <= now and now - checked[1] < PROBE_EVIDENCE_TTL:
+            return False
+        return True
+
+    return include
+
+
 def _valid_job_snapshot(value: dict[str, Any]) -> bool:
     counters = ("completed", "total", "phase_completed", "phase_total", "succeeded", "failed")
     actions = value.get("actions")
@@ -52,7 +137,10 @@ def _valid_job_snapshot(value: dict[str, Any]) -> bool:
     current = value.get("current")
     logs = value.get("logs")
     return (
-        set(value) == JOB_FIELDS
+        set(value) - {"log_offset"} == JOB_FIELDS
+        and isinstance(value.get("log_offset", 0), int)
+        and not isinstance(value.get("log_offset", 0), bool)
+        and value.get("log_offset", 0) >= 0
         and isinstance(value.get("job_id"), str) and 0 < len(value["job_id"]) <= 128
         and value.get("status") in {"running", "cancelling", "cancelled", "finished", "failed"}
         and value.get("phase") in {None, "discover", "probe"}
@@ -79,9 +167,10 @@ def _valid_job_snapshot(value: dict[str, Any]) -> bool:
 
 
 class OperationManager:
-    def __init__(self, store: AdminStateStore, data_root: Path, *, discovery: Callable[..., dict[str, Any]] = discover_games, probe_fn: Callable[..., dict[str, Any]] | None = None, apply_fn: Callable[..., dict[str, Any]] | None = None, clock: Clock = utc_now) -> None:
+    def __init__(self, store: AdminStateStore, data_root: Path, *, discovery: Callable[..., dict[str, Any]] = discover_games, probe_fn: Callable[..., dict[str, Any]] | None = None, apply_fn: Callable[..., dict[str, Any]] | None = None, clock: Clock = utc_now, activity_store: ActivityStore | None = None) -> None:
         self.store = store
         self.data_root = Path(data_root)
+        self.activity_store = activity_store or ActivityStore(store.root)
         self.discovery = discovery
         self.probe_fn = probe_fn
         self.apply_fn = apply_fn
@@ -89,6 +178,9 @@ class OperationManager:
         self._lock = RLock()
         self._cancel = Event()
         self._job: dict[str, Any] | None = None
+        self._thread: Thread | None = None
+        self._manual_probe_active = False
+        self._last_progress_save = float("-inf")
         self._restore()
 
     def _restore(self) -> None:
@@ -98,19 +190,22 @@ class OperationManager:
             return
         if not isinstance(value, dict) or not _valid_job_snapshot(value):
             return
+        self._job = value
+        self._trim_logs()
+        if isinstance(value.get("result"), dict):
+            self._bound_result(value["result"])
         if value.get("status") in {"running", "cancelling"}:
             value["status"] = "failed"
             value["phase"] = None
             value["finished_at"] = _timestamp(self.clock)
             value["current"] = None
             value["error"] = "operation_interrupted_by_restart"
-            value.setdefault("logs", []).append("服务重启，未完成任务已标记失败")
-            self.store.write("latest_operation", value)
-        self._job = value
+            self._log("服务重启，未完成任务已标记失败")
+            self._save()
 
     def _save(self) -> None:
         if self._job is not None:
-            value = deepcopy(self._job)
+            value = dict(self._job)
             value.pop("_phase_failed", None)
             self.store.write("latest_operation", value)
 
@@ -120,11 +215,14 @@ class OperationManager:
         value = deepcopy(self._job)
         value.pop("_phase_failed", None)
         logs = value.get("logs") if isinstance(value.get("logs"), list) else []
-        value["log_total"] = len(logs)
+        offset = value.get("log_offset", 0)
+        value["log_total"] = offset + len(logs)
+        value["log_offset"] = offset
         if after is not None:
-            if after < 0 or after > len(logs):
+            if after < 0 or after > value["log_total"]:
                 raise ValueError("log cursor out of range")
-            value["logs"] = logs[after:]
+            after = max(after, offset)
+            value["logs"] = logs[after - offset:]
             value["log_offset"] = after
         return value
 
@@ -138,27 +236,71 @@ class OperationManager:
                 raise KeyError(job_id)
             return self._view(after)
 
-    def start(self, actions: list[str], game_ids: list[str], scope: str, timeout: int, workers: int) -> dict[str, Any]:
+    def start(self, actions: list[str], game_ids: list[str], scope: str, timeout: int, workers: int, *, scheduled_mode: str | None = None) -> dict[str, Any]:
+        if scheduled_mode is not None and (
+            scheduled_mode not in {"normal", "full"}
+            or actions not in (["probe"], ["discover", "probe"])
+        ):
+            raise ValueError("invalid_scheduled_mode")
         with self._lock:
-            if self._job is not None and self._job.get("status") in {"running", "cancelling"}:
+            if self._manual_probe_active or self._job is not None and self._job.get("status") in {"running", "cancelling"}:
                 raise RuntimeError("operation_already_running")
             self._cancel = Event()
-            discover_total = sum(len([g for g in game_ids if g in registry]) for registry in ((DISCOVERERS,) if scope == "android" else (PC_DISCOVERERS,) if scope == "pc" else (DISCOVERERS, PC_DISCOVERERS))) if "discover" in actions else 0
+            self._last_progress_save = float("-inf")
+            candidate_filter = None
+            started_at = None
             records = selected_records(self.data_root, game_ids, scope) if "probe" in actions else []
-            probe_total = sum(sum(1 for _ in candidates(record)) for _, record in records)
+            if scheduled_mode is not None:
+                selected_at = self.clock()
+                if selected_at.tzinfo is None:
+                    selected_at = selected_at.replace(tzinfo=timezone.utc)
+                selected_at = selected_at.astimezone(timezone.utc)
+                known_urls = frozenset(
+                    _candidate_key(record, *item)
+                    for _, record in records for item in candidates(record)
+                )
+                candidate_filter = _scheduled_candidate_filter(scheduled_mode, selected_at, known_urls)
+                started_at = selected_at.isoformat(timespec="seconds").replace("+00:00", "Z")
+            discover_total = sum(len([g for g in game_ids if g in registry]) for registry in ((DISCOVERERS,) if scope == "android" else (PC_DISCOVERERS,) if scope == "pc" else (DISCOVERERS, PC_DISCOVERERS))) if "discover" in actions else 0
+            probe_total = sum(sum(1 for candidate in candidates(record) if candidate_filter is None or candidate_filter(record, *candidate)) for _, record in records)
             self._job = {
                 "job_id": uuid4().hex[:16], "status": "running",
                 "phase": actions[0], "actions": list(actions), "game_ids": list(game_ids), "scope": scope,
                 "completed": 0, "total": discover_total + probe_total,
                 "phase_completed": 0, "phase_total": discover_total if actions[0] == "discover" else probe_total,
                 "succeeded": 0, "failed": 0, "current": None,
-                "started_at": _timestamp(self.clock), "finished_at": None,
+                "started_at": started_at or _timestamp(self.clock), "finished_at": None,
                 "result": None, "error": None, "logs": [f"任务启动 scope={scope}"],
             }
+            if scheduled_mode is not None:
+                self._log(f"自动探活任务 scheduled_mode={scheduled_mode}")
             self._save()
             job_id = self._job["job_id"]
-            Thread(target=self._run, args=(job_id, actions, game_ids, scope, timeout, workers), daemon=True).start()
+            thread = Thread(target=self._run, args=(job_id, actions, game_ids, scope, timeout, workers, candidate_filter, scheduled_mode), daemon=True)
+            self._thread = thread
+            thread.start()
             return self._view()
+
+    def shutdown(self, timeout: float = 30) -> bool:
+        with self._lock:
+            thread = self._thread
+            if thread is None:
+                return True
+            if self._job is not None and self._job.get("status") in {"running", "cancelling"}:
+                self._cancel.set()
+        thread.join(max(0.0, timeout))
+        return not thread.is_alive()
+
+    def begin_manual_probe(self) -> None:
+        """Reserve the same execution slot used by background probe jobs."""
+        with self._lock:
+            if self._manual_probe_active or self._job is not None and self._job.get("status") in {"running", "cancelling"}:
+                raise RuntimeError("operation_already_running")
+            self._manual_probe_active = True
+
+    def end_manual_probe(self) -> None:
+        with self._lock:
+            self._manual_probe_active = False
 
     def cancel(self, job_id: str) -> dict[str, Any]:
         with self._lock:
@@ -175,6 +317,29 @@ class OperationManager:
         if self._job is not None:
             logs = self._job.setdefault("logs", [])
             logs.append(str(message)[:500])
+            self._trim_logs()
+
+    def _trim_logs(self) -> None:
+        if self._job is not None:
+            logs = self._job.setdefault("logs", [])
+            removed = max(0, len(logs) - MAX_JOB_LOGS)
+            if removed:
+                del logs[:removed]
+                self._job["log_offset"] = self._job.get("log_offset", 0) + removed
+
+    @staticmethod
+    def _bound_result(result: dict[str, Any]) -> None:
+        for name in ("discover", "probe"):
+            summary = result.get(name)
+            if not isinstance(summary, dict) or not isinstance(summary.get("items"), list):
+                continue
+            details = BoundedItems()
+            for item in summary["items"]:
+                details.append(item)
+            previous_total = summary.get("items_total")
+            if summary.get("items_truncated") and isinstance(previous_total, int) and not isinstance(previous_total, bool):
+                details.total = max(details.total, previous_total)
+            summary.update(details.result())
 
     def _phase(self, job_id: str, name: str, base: int, total: int) -> None:
         with self._lock:
@@ -216,10 +381,13 @@ class OperationManager:
                     head += f" {item['kind']}"
                 self._log(f"{head} {self._probe_outcome(item)}")
             else:
-                outcome = "成功" if item.get("ok") else f"失败:{item.get('error') or 'unknown'}"
+                outcome = "成功" if item.get("ok") else "失败:discovery_failed"
                 self._log(f"[{phase}/{platform}] {target} {outcome}")
             try:
-                self._save()
+                now = monotonic()
+                if now - self._last_progress_save >= PROGRESS_SAVE_INTERVAL:
+                    self._last_progress_save = now
+                    self._save()
             except AdminStateError:
                 warning = "状态快照保存失败，任务继续运行"
                 if warning not in self._job.setdefault("logs", []):
@@ -249,11 +417,89 @@ class OperationManager:
                     if item.get("game_id") == game_id and item.get("platform") == platform:
                         item.update({"ok": False, "status": "failed", "error": "index_rebuild_failed"})
 
-    def _run(self, job_id: str, actions: list[str], game_ids: list[str], scope: str, timeout: int, workers: int) -> None:
+    def _record_discovery_events(
+        self, items: list[dict[str, Any]], game_ids: list[str], scope: str,
+        previous_versions: dict[tuple[str, str], str],
+    ) -> None:
+        try:
+            records = selected_records(self.data_root, game_ids, scope)
+        except (AdminProbeDataError, OSError, ValueError):
+            LOGGER.warning("Could not read discovered versions for activity history")
+            return
+        latest: dict[tuple[str, str], str] = {}
+        by_path: dict[Path, dict[str, Any]] = {}
+        for path, record in records:
+            key = (record.get("game_id"), record.get("platform"))
+            version = record.get("version")
+            if isinstance(key[0], str) and isinstance(key[1], str) and isinstance(version, str):
+                if key not in latest or _version_key(version) > _version_key(latest[key]):
+                    latest[key] = version
+            by_path[path.resolve()] = record
+
+        candidates_to_record: list[tuple[str, str, str, str]] = []
+        for item in items:
+            if item.get("error") == "index_rebuild_failed":
+                continue
+            game_id, platform = item.get("game_id"), item.get("platform")
+            if not isinstance(game_id, str) or platform not in {"android", "windows"}:
+                continue
+            previous = previous_versions.get((game_id, platform))
+            current_latest = latest.get((game_id, platform))
+            if previous is None or current_latest is None or _version_key(current_latest) <= _version_key(previous):
+                continue
+            paths: list[tuple[Any, Any]] = []
+            if platform == "android":
+                version = item.get("version")
+                if item.get("ok") is True and item.get("new") is True and version == current_latest:
+                    paths.append((version, item.get("path")))
+            else:
+                stages = item.get("stages")
+                if isinstance(stages, list):
+                    paths.extend(
+                        (stage.get("version"), stage.get("path"))
+                        for stage in stages
+                        if isinstance(stage, dict)
+                        and stage.get("ok") is True
+                        and stage.get("new") is True
+                        and stage.get("version") == current_latest
+                    )
+            for version, raw_path in paths:
+                if not isinstance(version, str) or not isinstance(raw_path, str):
+                    continue
+                record = by_path.get(Path(raw_path).resolve())
+                if (
+                    record is not None
+                    and record.get("game_id") == game_id
+                    and record.get("platform") == platform
+                    and record.get("version") == version
+                    and isinstance(record.get("domain_id"), str)
+                    and isinstance(record.get("provenance"), dict)
+                    and record["provenance"].get("source_kind") == "official_sync"
+                ):
+                    candidates_to_record.append((game_id, record["domain_id"], platform, version))
+
+        for game_id, domain_id, platform, version in dict.fromkeys(candidates_to_record):
+            try:
+                self.activity_store.append(
+                    game_id=game_id, domain_id=domain_id, platform=platform,
+                    version=version, event_type="version_update",
+                )
+            except Exception:  # noqa: BLE001 - history must not fail discovery
+                LOGGER.warning("Could not persist version-update activity", exc_info=True)
+
+    def _run(self, job_id: str, actions: list[str], game_ids: list[str], scope: str, timeout: int, workers: int, candidate_filter: CandidateFilter | None = None, scheduled_mode: str | None = None) -> None:
         result = {"actions": actions, "game_ids": game_ids, "scope": scope, "discover": None, "probe": None}
+        notification_discover = None
         completed = failed = 0
         try:
             if "discover" in actions:
+                previous_versions_known = True
+                try:
+                    previous_versions = _previous_versions(self.data_root, game_ids, scope)
+                except (AdminProbeDataError, OSError, ValueError):
+                    LOGGER.warning("Could not read previous versions for activity history")
+                    previous_versions = {}
+                    previous_versions_known = False
                 scopes = [scope] if scope != "all" else ["android", "pc"]
                 total = sum(len([game for game in game_ids if game in (DISCOVERERS if part == "android" else PC_DISCOVERERS)]) for part in scopes)
                 self._phase(job_id, "discover", completed, total)
@@ -272,26 +518,38 @@ class OperationManager:
                     raw_items.extend(summary.get("items", []))
                     offset += len(summary.get("items", []))
                 self._rebuild_discovered(raw_items)
+                try:
+                    self._record_discovery_events(raw_items, game_ids, scope, previous_versions)
+                except Exception:  # activity history must not fail discovery
+                    LOGGER.warning("Could not process version-update activity", exc_info=True)
                 safe_items = [_safe_discover_item(item) for item in raw_items]
                 result["discover"] = {"selected": total, "succeeded": sum(item["ok"] for item in safe_items), "failed": sum(not item["ok"] for item in safe_items), "new_versions": sum(item["new"] for item in safe_items), "cancelled": self._cancel.is_set(), "items": safe_items}
+                try:
+                    if previous_versions_known:
+                        notification_discover = _notification_discovery(raw_items, result["discover"], previous_versions)
+                except Exception:  # notification preparation must not fail discovery
+                    LOGGER.warning("Telegram notification preparation failed: request_error")
                 completed += len(safe_items)
                 failed += result["discover"]["failed"]
             if self._cancel.is_set():
-                self._finish(job_id, "cancelled", result)
+                self._finish(job_id, "cancelled", result, scheduled_mode=scheduled_mode, notification_discover=notification_discover)
                 return
             if "probe" in actions:
                 records = selected_records(self.data_root, game_ids, scope)
-                probe_total = sum(sum(1 for _ in candidates(record)) for _, record in records)
+                probe_total = sum(sum(1 for candidate in candidates(record) if candidate_filter is None or candidate_filter(record, *candidate)) for _, record in records)
                 with self._lock:
                     if self._job and self._job["job_id"] == job_id:
                         self._job["total"] = completed + probe_total
                         self._job["_phase_failed"] = 0
                 self._phase(job_id, "probe", completed, probe_total)
                 kwargs: dict[str, Any] = {"progress": lambda item, done, total: self._progress(job_id, "probe", completed, failed, item, done, total), "cancelled": self._cancel.is_set}
+                if candidate_filter is not None:
+                    kwargs["candidate_filter"] = candidate_filter
                 if self.probe_fn is not None:
                     kwargs["probe_fn"] = self.probe_fn
                 if self.apply_fn is not None:
                     kwargs["apply_fn"] = self.apply_fn
+                kwargs["activity_store"] = self.activity_store
                 result["probe"] = probe_records(self.data_root, records, timeout, workers, **kwargs)
                 for item in result["probe"].get("items", []):
                     item.pop("url", None)
@@ -299,25 +557,34 @@ class OperationManager:
                         item["reason"] = "probe_result"
                 completed += result["probe"]["checked"]
                 failed += result["probe"]["failed"]
-            self._finish(job_id, "cancelled" if self._cancel.is_set() else "finished", result)
+            self._finish(job_id, "cancelled" if self._cancel.is_set() else "finished", result, scheduled_mode=scheduled_mode, notification_discover=notification_discover)
         except Exception as error:
-            self._finish(job_id, "failed", result, type(error).__name__)
+            self._finish(job_id, "failed", result, type(error).__name__, scheduled_mode=scheduled_mode, notification_discover=notification_discover)
 
-    def _finish(self, job_id: str, status: str, result: dict[str, Any], error: str | None = None) -> None:
+    def _finish(self, job_id: str, status: str, result: dict[str, Any], error: str | None = None, *, scheduled_mode: str | None = None, notification_discover: dict[str, Any] | None = None) -> None:
         with self._lock:
             if self._job is None or self._job["job_id"] != job_id:
                 return
             discover = result.get("discover") if isinstance(result.get("discover"), dict) else {}
             probe = result.get("probe") if isinstance(result.get("probe"), dict) else {}
-            completed = len(discover.get("items", [])) + int(probe.get("checked", 0) or 0)
+            completed = int(discover.get("succeeded", 0) or 0) + int(discover.get("failed", 0) or 0) + int(probe.get("checked", 0) or 0)
             failed = int(discover.get("failed", 0) or 0) + int(probe.get("failed", 0) or 0)
             self._job.update({"status": status, "phase": None, "completed": completed,
                               "succeeded": completed - failed, "failed": failed,
                               "finished_at": _timestamp(self.clock), "result": result,
                               "error": error, "current": None})
             self._job.pop("_phase_failed", None)
+            self._bound_result(result)
             self._log("任务已取消" if status == "cancelled" else "任务完成" if status == "finished" else "任务失败")
             self._save()
+            # An unavailable notification projection has no verified updates;
+            # the public projection omits archive classification and cannot substitute.
+            notification = deepcopy({"discover": notification_discover, "probe": result.get("probe")})
+            started_at, finished_at = self._job["started_at"], self._job["finished_at"]
+        try:
+            notify_operation(notification, started_at=started_at, finished_at=finished_at, scheduled=scheduled_mode is not None, status=status)
+        except Exception:  # notification must not change persisted job state or expose credentials
+            LOGGER.warning("Telegram notification failed: request_error")
 
 
 __all__ = ["OperationManager", "utc_now"]

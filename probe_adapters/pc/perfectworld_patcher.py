@@ -1,40 +1,14 @@
 """Probe policy for official Perfect World PC discovery URLs."""
-from urllib.parse import urlsplit
-from url_adapters.pc.perfectworld_patcher import PROFILES, VERSION_RE
+from url_adapters.pc.perfectworld_patcher import PROFILES, manifest_profile_for_url
 
 NAME = "perfectworld_patcher"
 URL_TIME = False
-_HOSTS = {p.host for p in PROFILES.values()}
 
 
 def matches(vendor: str | None, game_id: str | None, url: str) -> bool:
     if vendor and vendor != "perfectworld" or game_id and game_id not in PROFILES:
         return False
-    try:
-        p = urlsplit(url)
-        port = p.port
-    except ValueError:
-        return False
-    if (
-        p.scheme != "https"
-        or port not in (None, 443)
-        or p.username is not None
-        or p.password is not None
-        or p.query
-        or p.fragment
-    ):
-        return False
-    for profile in PROFILES.values():
-        if p.hostname != profile.host or (game_id and game_id != profile.game_id):
-            continue
-        config = profile.base_path + "/Version/Windows/config.xml"
-        if p.path == config:
-            return True
-        prefix = profile.base_path + "/Version/Windows/version/"
-        if p.path.startswith(prefix) and p.path.endswith("/ResList.bin.zip"):
-            version = p.path[len(prefix):-len("/ResList.bin.zip")]
-            return bool(VERSION_RE.fullmatch(version))
-    return False
+    return manifest_profile_for_url(url, game_id) is not None
 
 
 def availability(status: int, filename: str, prefix: bytes, **_: object) -> bool | None:

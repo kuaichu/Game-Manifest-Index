@@ -16,6 +16,20 @@ export interface Game {
   sort_order?: number;
 }
 
+export interface GameActivityEvent {
+  id: number;
+  game_id: string;
+  domain_id: string;
+  platform: string;
+  version: string;
+  type: "version_update" | "version_unavailable";
+  occurred_at: string;
+}
+
+export interface LatestProbeTime {
+  last_checked_at: string | null;
+}
+
 export interface ArchiveDomain {
   id: string;
   game_id: string;
@@ -54,8 +68,9 @@ export interface VersionSummary {
   packed_size: number;
   unpacked_size: number;
   artifact_count: number;
-  artifact_kinds: Record<string, { count: number; size: number; availability_states?: Record<string, number> }>;
+  artifact_kinds: Record<string, { count: number; size: number; availability_states?: Record<string, number>; availability_reasons?: Record<string, number> }>;
   availability_states: Record<string, number>;
+  availability_reasons?: Record<string, number>;
   attributes: Record<string, unknown>;
   provenance?: Record<string, unknown>;
   is_visible?: boolean;
@@ -119,11 +134,13 @@ export interface Artifact {
   checksum_value: string | null;
   attributes: Record<string, string | number | boolean | null>;
   urls: ArtifactUrl[];
+  availability?: { state: AvailabilityState; reason: string };
 }
 
 export interface ArtifactPage {
   items: Artifact[];
   next_cursor: string | null;
+  total?: number;
 }
 
 export interface ArtifactTreePage {
@@ -131,6 +148,9 @@ export interface ArtifactTreePage {
   folders: Array<{ name: string; path: string; artifact_count: number; total_size: number }>;
   items: Artifact[];
   next_cursor: string | null;
+  manifest_total_size?: number;
+  file_time?: string | null;
+  file_time_source?: "manifest" | "package";
   manifest_url?: string | null;
   manifest_urls?: string[];
   base_url?: string | null;
@@ -337,6 +357,27 @@ export interface ProbeSchedule {
   mode: "normal" | "full";
 }
 
+export interface ProbeSchedulerStatus {
+  driver: "apscheduler";
+  running: boolean;
+  enabled: boolean;
+  next_run_at: string | null;
+  last_started_at: string | null;
+  last_job_id: string | null;
+  error: string | null;
+}
+
+export interface PublicProbeScheduleStatus {
+  running: boolean;
+  enabled: boolean;
+  interval_hours: number | null;
+  mode: "normal" | "full" | null;
+  next_run_at: string | null;
+  last_started_at: string | null;
+  error: string | null;
+  evidence_ttl_hours: number;
+}
+
 export interface RetentionConfig {
   cache_days: number;
   observation_days: number;
@@ -403,6 +444,9 @@ export interface DiscoverResultSummary {
   cancelled?: boolean;
   skipped?: number;
   unsupported?: number;
+  items_truncated?: boolean;
+  items_omitted?: number;
+  items_total?: number;
   items: DiscoverResultItem[];
 }
 
@@ -413,6 +457,7 @@ export interface ProbeResultItem {
   available: boolean | null;
   adapter: string | null;
   error: string | null;
+  reason?: string | null;
   platform?: string | null;
   kind?: string | null;
   url?: string | null;
@@ -430,6 +475,9 @@ export interface ProbeResultSummary {
   failed: number;
   cancelled?: boolean;
   checked_urls?: number;
+  items_truncated?: boolean;
+  items_omitted?: number;
+  items_total?: number;
   items: ProbeResultItem[];
 }
 
@@ -449,6 +497,7 @@ export interface AdminOperationJob {
   game_ids: string[];
   scope?: OperationPlatformScope | null;
   log_total?: number;
+  log_offset?: number;
   completed: number;
   total: number;
   phase_completed: number;
@@ -561,6 +610,8 @@ export interface ChunkFilesTotals {
 }
 
 export interface ChunkFilesPage {
+  file_time?: string | null;
+  file_time_source?: "manifest" | "package";
   source?: string;
   fetch_mode?: string;
   identity: string;
@@ -572,6 +623,16 @@ export interface ChunkFilesPage {
   totals?: ChunkFilesTotals;
   network_bytes?: number;
   range_bytes?: number;
+}
+
+export interface FileTimeChange {
+  domainId: string;
+  version: string;
+  source: "package" | "chunk";
+  identity?: string;
+  fileTime: string | null;
+  timeSource?: "manifest" | "package";
+  loading?: boolean;
 }
 
 export interface ChunkFileChunkItem {
@@ -603,4 +664,12 @@ export interface ChunkFileDetail {
     encryption?: number;
     password?: string;
   };
+}
+
+export interface ChunkDownloadPlanPage {
+  identity: string;
+  items: ChunkFileDetail[];
+  total: number;
+  next_cursor: string | null;
+  total_size: number;
 }

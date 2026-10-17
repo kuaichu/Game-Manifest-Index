@@ -1,9 +1,45 @@
 import { createApp, h, nextTick } from "vue";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import VersionPicker from "./components/VersionPicker.vue";
 import type { ArchiveDomain, VersionSummary } from "./types";
 import { versionFamily } from "./version-grouping";
+
+describe("version picker page scroll lock", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    document.body.innerHTML = "";
+  });
+
+  it("locks only the mobile sheet, updates on resize and restores styles when closed", async () => {
+    vi.stubGlobal("innerWidth", 1200);
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const app = createApp(VersionPicker, { versions: [], modelValue: "", domain: null });
+    app.mount(host);
+    try {
+      (host.querySelector(".select-button") as HTMLButtonElement).click();
+      await nextTick();
+      expect(host.querySelector(".version-menu")).not.toBeNull();
+      expect(document.documentElement.style.overflow).toBe("");
+      expect(document.body.style.overflow).toBe("");
+
+      vi.stubGlobal("innerWidth", 600);
+      window.dispatchEvent(new Event("resize"));
+      await nextTick();
+      expect(document.body.querySelector(".mobile-version-sheet")).not.toBeNull();
+      expect(document.documentElement.style.overflow).toBe("hidden");
+      expect(document.body.style.overflow).toBe("hidden");
+
+      (document.body.querySelector(".sheet-close-btn") as HTMLButtonElement).click();
+      await nextTick();
+      expect(document.documentElement.style.overflow).toBe("");
+      expect(document.body.style.overflow).toBe("");
+    } finally {
+      app.unmount();
+    }
+  });
+});
 
 describe("version family labels", () => {
   it("keeps HoYo and WuWa major families while splitting NTE by release family", () => {
@@ -21,6 +57,87 @@ describe("version family labels", () => {
 
 describe("full-history version picker", () => {
   afterEach(() => { document.body.innerHTML = ""; });
+
+  it("displays two-segment versions with a patch suffix but emits the raw version", async () => {
+    const version: VersionSummary = {
+      version: "3.2", current_revision_id: 1, revision_count: 1,
+      observed_at: "2026-08-15T04:00:00Z", packed_size: 1, unpacked_size: 1,
+      artifact_count: 1, artifact_kinds: { apk: { count: 1, size: 1 } },
+      availability_states: {}, attributes: {}, provenance: {},
+    };
+    const domain: ArchiveDomain = {
+      id: "nap-android", game_id: "nap", platform: "android", kind: "apk",
+      adapter: "android", capabilities: ["apk"], version_count: 1, latest_version: "3.2",
+    };
+    let selected = "";
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const app = createApp({
+      render: () => h(VersionPicker, {
+        versions: [version], modelValue: version.version, domain,
+        onSelect: (value: string) => { selected = value; },
+      }),
+    });
+    app.mount(root);
+    expect(root.querySelector(".select-button")?.textContent).toContain("3.2.0");
+    (root.querySelector(".select-button") as HTMLButtonElement).click();
+    await nextTick();
+    expect(root.querySelector(".version-row")?.textContent).toContain("3.2.0");
+    (root.querySelector(".version-row") as HTMLButtonElement).click();
+    expect(selected).toBe("3.2");
+    app.unmount();
+  });
+
+  it.each([
+    ["上游拒绝访问（HTTP 401）", "访问受限"],
+    ["没有可探活的下载 URL", "无探活链接"],
+    ["探活证据已过期", "证据过期"],
+    ["已响应，但未取得有效文件证据（HTTP 200）", "未判定"],
+  ])("explains unresolved evidence: %s", async (reason, label) => {
+    const version: VersionSummary = {
+      version: "1.1.8", current_revision_id: 1, revision_count: 1, observed_at: null,
+      packed_size: 1, unpacked_size: 1, artifact_count: 1, attributes: {},
+      artifact_kinds: { apk: { count: 1, size: 1, availability_states: { unknown: 1 }, availability_reasons: { [reason]: 1 } } },
+      availability_states: { unknown: 1 }, availability_reasons: { [reason]: 1 },
+    };
+    const domain: ArchiveDomain = {
+      id: "endfield-android", game_id: "endfield", platform: "android", kind: "apk",
+      adapter: "android", capabilities: ["apk"], version_count: 1, latest_version: "1.1.8",
+    };
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const app = createApp({ render: () => h(VersionPicker, { versions: [version], modelValue: version.version, domain, mode: "apk" }) });
+    app.mount(root);
+    (root.querySelector(".select-button") as HTMLButtonElement).click();
+    await nextTick();
+    const badge = [...root.querySelectorAll(".version-row .cap")].find((item) => item.textContent === label);
+    expect(badge?.getAttribute("title")).toBe(reason);
+    expect(root.querySelector(".version-row .cap.green")).toBeNull();
+    app.unmount();
+  });
+
+  it("renders unavailable APK evidence as a red badge", async () => {
+    const version: VersionSummary = {
+      version: "1.1.8", current_revision_id: 1, revision_count: 1, observed_at: null,
+      packed_size: 1, unpacked_size: 1, artifact_count: 1, attributes: {},
+      artifact_kinds: { apk: { count: 1, size: 1, availability_states: { unavailable: 1 } } },
+      availability_states: { unavailable: 1 },
+    };
+    const domain: ArchiveDomain = {
+      id: "endfield-android", game_id: "endfield", platform: "android", kind: "apk",
+      adapter: "android", capabilities: ["apk"], version_count: 1, latest_version: "1.1.8",
+    };
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const app = createApp({ render: () => h(VersionPicker, { versions: [version], modelValue: version.version, domain, mode: "apk" }) });
+    app.mount(root);
+    (root.querySelector(".select-button") as HTMLButtonElement).click();
+    await nextTick();
+    expect(root.querySelector(".version-row .cap.red")?.textContent).toBe("不可用");
+    expect(root.querySelector(".version-row .cap.green")).toBeNull();
+    expect(root.querySelector(".version-row")?.textContent).not.toContain("访问受限");
+    app.unmount();
+  });
 
   it("renders and selects all 42 WuWa versions without eager artifact loading", async () => {
     const versions = Array.from({ length: 42 }, (_, index) => ({

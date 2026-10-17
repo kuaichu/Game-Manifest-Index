@@ -1,0 +1,39 @@
+{
+  "schema_version": 2,
+  "vendor": "mihoyo",
+  "game_id": "abc",
+  "domain_id": "abc-pc",
+  "platform": "windows",
+  "channel": "cbt2",
+  "version": "0.60.2",
+  "version_code": null,
+  "file_time": null,
+  "artifacts": [
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "file_manifest",
+      "name": "NexusAnima 0.60.2 CBT2 full file inventory",
+      "size": 24374639429,
+      "decompressed_size": 24374639429,
+      "manifest": {
+        "path": "manifests/0.60.2/sophon_files.json",
+        "base_urls": []
+      },
+      "urls": [],
+      "source": {
+        "source_kind": "manual",
+        "source_name": "HoYoPlay CBT2 launcher log and official Sophon manifest",
+        "source_url": "https://autopatchcn-beta.bhyyjl.com/sophon/signed/manifests/eigu4upkeyv4/20260706/0.60.2/U3kfso6oSon3/manifest_22e0c2f4ec8d4ce2_f313c6038abb22e0ac5d9532dfc5c63b"
+      },
+      "artifact_id": "a1_09642ae9c30b0c185f1eb114ce1e2f59"
+    }
+  ],
+  "references": [],
+  "provenance": {
+    "source_kind": "manual",
+    "source_name": "HoYoPlay CBT2 launcher log and official Sophon manifest",
+    "source_url": "https://autopatchcn-beta.bhyyjl.com/sophon/signed/manifests/eigu4upkeyv4/20260706/0.60.2/U3kfso6oSon3/manifest_22e0c2f4ec8d4ce2_f313c6038abb22e0ac5d9532dfc5c63b"
+  }
+}

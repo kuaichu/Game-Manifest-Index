@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { useModalScrollLock } from "../composables/useModalScrollLock";
 import type { ArchiveDomain, VersionSummary } from "../types";
 import { artifactCountForMode, artifactKindForMode, availabilityStatesForMode, buildVersionBadges, displayVersionLabel, versionSupportsMode } from "../domain-presentation";
 import { versionFamily } from "../version-grouping";
@@ -185,6 +186,7 @@ function isPatchVersion(version: string): boolean {
 interface AtomicBadge {
   label: string;
   tone: string;
+  title?: string;
 }
 
 function isRowUnavailable(row: {
@@ -274,6 +276,27 @@ function atomicBadges(row: {
     }
   }
 
+  if (Number(row.states.unknown || 0) > 0) {
+    const kind = props.mode === "files" ? "package" : props.mode ? artifactKindForMode(props.mode) : "";
+    const reasons = new Set<string>();
+    for (const item of props.versions.filter((item) => displayVersion(item) === row.base)) {
+      const details = kind ? item.artifact_kinds?.[kind]?.availability_reasons : item.availability_reasons;
+      for (const [reason, count] of Object.entries(details || {})) {
+        if (count > 0) reasons.add(reason);
+      }
+    }
+    const labels: Record<string, string> = {
+      "上游拒绝访问（HTTP 401）": "访问受限",
+      "没有可探活的下载 URL": "无探活链接",
+      "探活证据已过期": "证据过期",
+    };
+    for (const badge of result) {
+      if (badge.label === "未判定" || badge.label.startsWith("含未判定")) {
+        badge.title = [...reasons].join("；") || "尚无有效探活记录";
+        if (badge.label === "未判定" && reasons.size === 1) badge.label = labels[badge.title] || badge.label;
+      }
+    }
+  }
   return result;
 }
 
@@ -338,21 +361,7 @@ function updateMobileStatus() {
   isMobile.value = typeof window !== "undefined" && window.innerWidth <= 860;
 }
 
-watch(
-  () => open.value && isMobile.value,
-  (shouldLock) => {
-    if (typeof document !== "undefined") {
-      if (shouldLock) {
-        document.body.style.overflow = "hidden";
-        document.body.style.touchAction = "none";
-      } else {
-        document.body.style.overflow = "";
-        document.body.style.touchAction = "";
-      }
-    }
-  },
-  { immediate: true },
-);
+useModalScrollLock(() => open.value && isMobile.value);
 
 onMounted(() => {
   updateMobileStatus();
@@ -362,10 +371,6 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-  if (typeof document !== "undefined") {
-    document.body.style.overflow = "";
-    document.body.style.touchAction = "";
-  }
   window.removeEventListener("resize", updateMobileStatus);
   document.removeEventListener("click", onDocumentClick);
   document.removeEventListener("keydown", onKey);
@@ -445,6 +450,7 @@ onBeforeUnmount(() => {
                   :key="`${row.item.version}:${cap.label}`"
                   class="cap micro-cap"
                   :class="cap.tone"
+                  :title="cap.title"
                 >
                   {{ cap.label }}
                 </span>
@@ -530,6 +536,7 @@ onBeforeUnmount(() => {
                         :key="`${row.item.version}:${cap.label}`"
                         class="cap micro-cap"
                         :class="cap.tone"
+                        :title="cap.title"
                       >
                         {{ cap.label }}
                       </span>

@@ -9,7 +9,7 @@ from pathlib import Path
 from threading import RLock
 from typing import Any, Callable, Literal
 
-from fastapi import APIRouter, Body, Depends, Header, Query, Response
+from fastapi import APIRouter, Body, Depends, Header, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
 
 from backend.admin_operations import OperationManager
@@ -160,7 +160,11 @@ def create_admin_router(
     clock=None,
 ) -> tuple[APIRouter, OperationManager, AdminStateStore]:
     store = AdminStateStore(state_root)
-    manager_kwargs = {"discovery": discovery, "probe_fn": probe_fn, "apply_fn": apply_fn}
+    activity_store = contract.activity_store
+    manager_kwargs = {
+        "discovery": discovery, "probe_fn": probe_fn, "apply_fn": apply_fn,
+        "activity_store": activity_store,
+    }
     if clock is not None:
         manager_kwargs["clock"] = clock
     operations = OperationManager(store, data_root, **manager_kwargs)
@@ -175,6 +179,10 @@ def create_admin_router(
         return value.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
     def manual_start(family: str) -> None:
+        try:
+            operations.begin_manual_probe()
+        except RuntimeError:
+            fail(409, "operation_already_running", "已有运维任务正在执行")
         with probe_status_lock:
             manual_probe_status.update({"status": "running", "started_at": now(), "finished_at": None, "family": family, "log": ["开始同步探活"]})
 
@@ -182,6 +190,7 @@ def create_admin_router(
         with probe_status_lock:
             manual_probe_status.update({"status": "finished", "finished_at": now()})
             manual_probe_status["log"].append("同步探活完成")
+        operations.end_manual_probe()
 
     def auth(authorization: str | None = Header(default=None)) -> None:
         if not _valid_token(token):
@@ -217,10 +226,14 @@ def create_admin_router(
         return store.schedules()["probe"]
 
     @router.put("/probe/schedule", dependencies=protected)
-    def put_probe_schedule(payload: ProbeSchedule) -> dict[str, Any]:
+    def put_probe_schedule(payload: ProbeSchedule, request: Request) -> dict[str, Any]:
         if isinstance(payload.interval_hours, bool) or not 1 <= payload.interval_hours <= 168:
             fail(422, "invalid_probe_schedule", "interval_hours 必须在 1..168 之间")
-        return store.write_schedule("probe", payload.model_dump())
+        return request.app.state.probe_scheduler.configure(payload.model_dump())
+
+    @router.get("/probe/scheduler", dependencies=protected)
+    def get_probe_scheduler(request: Request) -> dict[str, Any]:
+        return request.app.state.probe_scheduler.status()
 
     def one(payload: ProbeOne) -> dict[str, Any]:
         if not valid_probe_url(payload.url):
@@ -229,7 +242,10 @@ def create_admin_router(
         if payload.artifact_url_id is None:
             return probe_direct(payload.url, value_timeout, probe_fn=probe_fn)
         try:
-            return probe_public_url(data_root, payload.url, payload.artifact_url_id, value_timeout, probe_fn=probe_fn, apply_fn=apply_fn)
+            return probe_public_url(
+                data_root, payload.url, payload.artifact_url_id, value_timeout,
+                probe_fn=probe_fn, apply_fn=apply_fn, activity_store=activity_store,
+            )
         except KeyError:
             fail(404, "artifact_url_not_found", "artifact_url_id 不存在")
         except LookupError:
@@ -274,7 +290,10 @@ def create_admin_router(
             fail(404, "version_not_found", "版本不存在")
         manual_start(domain_id)
         try:
-            summary = probe_records(data_root, records, 10, 1, probe_fn=probe_fn, apply_fn=apply_fn)
+            summary = probe_records(
+                data_root, records, 10, 1, probe_fn=probe_fn, apply_fn=apply_fn,
+                activity_store=activity_store,
+            )
             return {"domain_id": domain_id, "version": version, "summary": summary}
         finally:
             manual_finish()
@@ -303,6 +322,8 @@ def create_admin_router(
     @router.post("/operations/start", dependencies=protected)
     def start_operation(payload: OperationPayload) -> dict[str, Any]:
         actions, games = operation_targets(payload)
+        if actions == ["probe"]:
+            actions = ["discover", "probe"]
         try:
             return operations.start(actions, games, payload.scope, payload.timeout, payload.workers)
         except RuntimeError:

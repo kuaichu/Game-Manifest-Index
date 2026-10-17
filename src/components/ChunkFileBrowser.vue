@@ -1,17 +1,22 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { useModalScrollLock } from "../composables/useModalScrollLock";
 import { api, chunkContentUrl, isAbortError } from "../api";
-import { formatBytes, formatObservedDate, hoyoLanguageLabel } from "../domain-presentation";
-import { chunkUrl, ChunkDownloadError, MAX_BROWSER_SYNTHESIS_SIZE, saveBlob, synthesizeChunkFile, type ChunkDownloadProgress } from "../chunk-download";
+import { formatBytes, formatObservedDate, hoyoLanguageLabel, repairMojibake } from "../domain-presentation";
+import { chunkUrl, ChunkDownloadError, MAX_BROWSER_SYNTHESIS_SIZE, saveBlob, synthesizeChunkFile, writeChunkFile, type ChunkDownloadProgress } from "../chunk-download";
+import { downloadChunkDirectory, type DirectoryDownloadProgress } from "../chunk-directory-download";
+import { downloadSelectedFiles, selectedFileExport, selectedFilePlan, type SelectedFileContext } from "../selected-file-download";
 import type {
   ArchiveDomain,
   ChunkFileDetail,
   ChunkFileItem,
   ChunkFilesPage,
   ChunkManifestDetail,
+  ChunkManifestEntry,
   ChunkManifestSummaryItem,
   Game,
+  FileTimeChange,
   VersionSummary,
 } from "../types";
 
@@ -24,6 +29,10 @@ const props = defineProps<{
   versionSummary?: VersionSummary | null;
   chunkCollection?: ChunkManifestSummaryItem[];
   searchQuery?: string;
+}>();
+
+const emit = defineEmits<{
+  (e: "file-time-change", value: FileTimeChange): void;
 }>();
 
 const route = useRoute();
@@ -60,6 +69,8 @@ const currentPath = ref<string>("");
 const filePage = ref<ChunkFilesPage | null>(null);
 const loading = ref<boolean>(true);
 const loadingMore = ref<boolean>(false);
+const pageIndex = ref(0);
+const pageCursors = ref<Array<string | undefined>>([undefined]);
 const error = ref<string | null>(null);
 
 // Detect if package is unavailable / expired on CDN
@@ -101,11 +112,107 @@ const fileDetail = ref<ChunkFileDetail | null>(null);
 const fileDetailLoading = ref<boolean>(false);
 const fileDetailError = ref<string | null>(null);
 const showDetailModal = ref<boolean>(false);
+useModalScrollLock(() => showDetailModal.value);
 const toastMessage = ref<string>("");
 const downloadController = ref<AbortController | null>(null);
 const downloadProgress = ref<ChunkDownloadProgress | null>(null);
 const downloadError = ref<string | null>(null);
 const downloading = ref(false);
+const directoryPanelOpen = ref(false);
+const directoryIdentities = ref<string[]>([]);
+const directoryController = ref<AbortController | null>(null);
+const directoryProgress = ref<DirectoryDownloadProgress | null>(null);
+const directoryMessage = ref("");
+const directoryError = ref("");
+const directoryDownloading = ref(false);
+const selectedFiles = ref(new Map<string, number>());
+const selectedPaths = computed(() => [...selectedFiles.value.keys()]);
+const selectedController = ref<AbortController | null>(null);
+const selectedBusy = ref(false);
+const selectedProgress = ref<DirectoryDownloadProgress | null>(null);
+const selectedMessage = ref("");
+const selectedError = ref("");
+const loadedFiles = computed(() => filePage.value?.items.filter((item) => item.type !== "directory") || []);
+const selectedSize = computed(() => [...selectedFiles.value.values()].reduce((sum, size) => sum + size, 0));
+const allLoadedSelected = computed(() => loadedFiles.value.length > 0 && loadedFiles.value.every((item) => selectedFiles.value.has(item.path)));
+const anyDownloadBusy = computed(() => selectedBusy.value || downloading.value || directoryDownloading.value);
+
+function resetSelection(): void {
+  selectedController.value?.abort();
+  selectedController.value = null;
+  selectedBusy.value = false;
+  selectedFiles.value.clear();
+  selectedProgress.value = null;
+  selectedMessage.value = "";
+  selectedError.value = "";
+}
+
+function toggleSelected(item: ChunkFileItem): void {
+  if (selectedBusy.value) return;
+  if (selectedFiles.value.has(item.path)) selectedFiles.value.delete(item.path);
+  else selectedFiles.value.set(item.path, item.size || 0);
+}
+
+function toggleLoadedFiles(): void {
+  if (selectedBusy.value) return;
+  const clear = allLoadedSelected.value;
+  for (const item of loadedFiles.value) {
+    if (clear) selectedFiles.value.delete(item.path);
+    else selectedFiles.value.set(item.path, item.size || 0);
+  }
+}
+
+async function selectedAction(action: "download" | "copy" | "export"): Promise<void> {
+  if (anyDownloadBusy.value || !selectedPaths.value.length) return;
+  if (action === "download" && !canSaveDirectory.value) { selectedError.value = directoryUnavailableReason.value; return; }
+  const controller = new AbortController();
+  selectedController.value = controller;
+  selectedBusy.value = true;
+  selectedMessage.value = "";
+  selectedError.value = "";
+  selectedProgress.value = null;
+  const context: SelectedFileContext = { domainId: props.domainId, version: props.version, source: activeSource.value,
+    identity: selectedIdentity.value, paths: [...selectedPaths.value], signal: controller.signal, recipe: activeManifest.value?.chunk_download };
+  const isCurrent = () => selectedController.value === controller && !controller.signal.aborted;
+  try {
+    if (action === "download") {
+      const root = await (window as DownloadPickerWindow).showDirectoryPicker!({ mode: "readwrite" });
+      if (!isCurrent()) return;
+      const result = await downloadSelectedFiles({ ...context, root,
+        baseName: `${props.game?.id || props.domain?.game_id || props.domainId}-${context.version}-selected`,
+        onProgress: (progress) => { if (isCurrent()) selectedProgress.value = progress; } });
+      if (isCurrent()) selectedMessage.value = `已保存 ${result.files} 个文件（${formatBytes(result.bytes)}）到 ${result.directoryName}`;
+    } else {
+      const files = await selectedFilePlan(context);
+      if (!isCurrent()) return;
+      const output = selectedFileExport(context, files);
+      if (action === "copy") await navigator.clipboard.writeText(output.text);
+      else saveBlob(new Blob([output.text], { type: output.mime }), `selected-${context.version}.${output.extension}`);
+      if (isCurrent()) selectedMessage.value = `已${action === "copy" ? "复制" : "导出"} ${files.length} 个文件的${context.source === "chunk" ? "合成清单" : "官方直链"}`;
+    }
+  } catch (error) {
+    if (selectedController.value === controller) {
+      if (isAbortError(error)) selectedMessage.value = "操作已取消，已完成的文件保留在新建目录中。";
+      else selectedError.value = `${error instanceof Error ? error.message : "所选文件操作失败"}。已完成的文件会保留。`;
+    }
+  } finally {
+    if (selectedController.value === controller) { selectedController.value = null; selectedBusy.value = false; }
+  }
+}
+type DownloadPickerWindow = Window & {
+  showDirectoryPicker?: (options: { mode: "readwrite" }) => Promise<FileSystemDirectoryHandle>;
+  showSaveFilePicker?: (options: { suggestedName: string }) => Promise<FileSystemFileHandle>;
+};
+const directoryUnavailableReason = computed(() => {
+  if (typeof window === "undefined") return "当前环境无法选择本地目录。";
+  if (window.isSecureContext === false) return "当前页面不是安全上下文，请通过 HTTPS 打开本站后下载游戏目录。";
+  if (typeof (window as DownloadPickerWindow).showDirectoryPicker !== "function") {
+    return "当前浏览器未提供目录选择功能，请改用支持该功能的桌面 Chrome 或 Edge。";
+  }
+  return "";
+});
+const canSaveDirectory = computed(() => !directoryUnavailableReason.value);
+const canSaveFile = computed(() => typeof window !== "undefined" && typeof (window as DownloadPickerWindow).showSaveFilePicker === "function");
 
 let listController: AbortController | null = null;
 let detailController: AbortController | null = null;
@@ -120,21 +227,23 @@ function copyText(text: string, label: string): void {
   }, 2000);
 }
 
+function manifestLabel(manifest: ChunkManifestEntry): string {
+  const label = repairMojibake(manifest.category?.name || "").trim();
+  if (label && !/^(null|undefined)$/i.test(label)) return label;
+  if (manifest.component === "game") return "游戏主资源";
+  if (manifest.language) return `${hoyoLanguageLabel(manifest.language)}语音包`;
+  return `资源组件 ${manifest.matching_field || manifest.component}`;
+}
+
 // Identities available in this chunk manifest
 const identities = computed(() => {
   if (activeSource.value === "chunk" && props.chunkDetail?.manifests?.length) {
     const result: Array<{ key: string; label: string; component: string; count: number }> = [];
     for (const m of props.chunkDetail.manifests) {
       const key = m.matching_field || m.language || m.component;
-      let label = m.category?.name || "";
-      if (!label) {
-        if (m.component === "game") label = "游戏主资源";
-        else if (m.language) label = `${hoyoLanguageLabel(m.language)}语音包`;
-        else label = `${m.component} 组件`;
-      }
       result.push({
         key,
-        label,
+        label: manifestLabel(m),
         component: m.component,
         count: m.stats?.file_count || 0,
       });
@@ -143,6 +252,7 @@ const identities = computed(() => {
   }
   return [{ key: "game", label: "游戏主资源", component: "game", count: 0 }];
 });
+const selectedIdentityItem = computed(() => identities.value.find((item) => item.key === selectedIdentity.value));
 
 // Active Manifest Recipe for chunk downloading
 const activeManifest = computed(() => {
@@ -153,6 +263,18 @@ const activeManifest = computed(() => {
     ) || props.chunkDetail.manifests[0]
   );
 });
+
+const directoryComponents = computed(() => (props.chunkDetail?.manifests || []).map((manifest) => ({
+  key: manifest.matching_field || manifest.language || manifest.component,
+  label: manifestLabel(manifest),
+  size: manifest.stats?.uncompressed_size || 0,
+  supported: Boolean(manifest.chunk_download) && !Object.prototype.hasOwnProperty.call(manifest.chunk_download, "password") && (manifest.chunk_download?.encryption ?? 0) === 0 && [0, 1].includes(manifest.chunk_download?.compression ?? 0),
+})));
+const directorySize = computed(() => directoryComponents.value.filter((item) => directoryIdentities.value.includes(item.key)).reduce((sum, item) => sum + item.size, 0));
+
+watch(() => props.chunkDetail, () => {
+  if (!directoryDownloading.value) directoryIdentities.value = directoryComponents.value.filter((item) => item.supported).map((item) => item.key);
+}, { immediate: true });
 
 function chunkDownloadUrl(chunkName: string): string {
   const recipe = activeManifest.value?.chunk_download;
@@ -195,28 +317,38 @@ function syncRouteQuery(): void {
   }
 }
 
-async function loadFiles(path: string, append = false): Promise<void> {
+async function loadFiles(path: string, targetPage?: number): Promise<void> {
+  const context = { domainId: props.domainId, version: props.version, source: activeSource.value, identity: selectedIdentity.value };
+  const query = props.searchQuery;
   listController?.abort();
   const request = new AbortController();
   listController = request;
   const currentReq = ++requestId;
+  const isCurrent = () => currentReq === requestId && listController === request
+    && props.domainId === context.domainId && props.version === context.version
+    && activeSource.value === context.source && selectedIdentity.value === context.identity && props.searchQuery === query;
 
-  if (append) {
+  if (targetPage !== undefined) {
     loadingMore.value = true;
   } else {
+    resetSelection();
+    pageCursors.value = [undefined];
+    pageIndex.value = 0;
     loading.value = true;
+    emit("file-time-change", { ...context, fileTime: null, loading: true });
   }
   error.value = null;
 
   try {
-    const q = props.searchQuery?.trim() || undefined;
-    const cursor = append ? filePage.value?.next_cursor : undefined;
+    const q = query?.trim() || undefined;
+    const page = targetPage ?? 0;
+    const cursor = pageCursors.value[page];
     const res = await api.versionFiles(
-      props.domainId,
-      props.version,
+      context.domainId,
+      context.version,
       {
-        source: activeSource.value,
-        identity: selectedIdentity.value,
+        source: context.source,
+        identity: context.identity,
         path: path || undefined,
         q,
         limit: 100,
@@ -225,22 +357,20 @@ async function loadFiles(path: string, append = false): Promise<void> {
       request.signal,
     );
 
-    if (currentReq !== requestId) return;
+    if (!isCurrent()) return;
 
-    if (append && filePage.value) {
-      filePage.value = {
-        ...res,
-        items: [...filePage.value.items, ...res.items],
-      };
-    } else {
-      filePage.value = res;
-    }
+    filePage.value = res;
+    pageIndex.value = page;
+    pageCursors.value.length = page + 1;
+    if (res.next_cursor) pageCursors.value.push(res.next_cursor);
+    emit("file-time-change", { ...context, fileTime: res.file_time ?? null, timeSource: res.file_time_source });
     syncRouteQuery();
   } catch (err) {
-    if (isAbortError(err) || currentReq !== requestId) return;
+    if (isAbortError(err) || !isCurrent()) return;
     error.value = err instanceof Error ? err.message : "读取文件列表失败";
+    emit("file-time-change", { ...context, fileTime: null });
   } finally {
-    if (currentReq === requestId) {
+    if (isCurrent()) {
       loading.value = false;
       loadingMore.value = false;
     }
@@ -292,6 +422,7 @@ async function openFileDetail(item: ChunkFileItem): Promise<void> {
   detailController?.abort();
   const request = new AbortController();
   detailController = request;
+  const recipe = activeSource.value === "chunk" ? activeManifest.value?.chunk_download : undefined;
 
   try {
     const detail = await api.versionFileDetail(
@@ -304,7 +435,11 @@ async function openFileDetail(item: ChunkFileItem): Promise<void> {
       },
       request.signal,
     );
-    if (generation === detailGeneration) fileDetail.value = detail;
+    if (generation === detailGeneration) {
+      fileDetail.value = recipe && !detail.chunk_download
+        ? { ...detail, chunk_download: recipe }
+        : detail;
+    }
   } catch (err) {
     if (isAbortError(err) || generation !== detailGeneration) return;
     fileDetailError.value = err instanceof Error ? err.message : "获取文件明细失败";
@@ -327,9 +462,9 @@ function closeModal(): void {
 }
 
 async function downloadCompleteFile(): Promise<void> {
-  if (!fileDetail.value || downloading.value) return;
-  if (fileDetail.value.size > MAX_BROWSER_SYNTHESIS_SIZE) {
-    downloadError.value = "文件超过 512 MiB，暂不支持浏览器合成";
+  if (!fileDetail.value || anyDownloadBusy.value) return;
+  if (fileDetail.value.size > MAX_BROWSER_SYNTHESIS_SIZE && !canSaveFile.value) {
+    downloadError.value = "超过 64 MiB 的文件需要在桌面 Chrome 或 Edge 中直接保存到磁盘";
     return;
   }
   downloadController.value?.abort();
@@ -340,15 +475,66 @@ async function downloadCompleteFile(): Promise<void> {
   const chunks = fileDetail.value.chunks || [];
   downloadProgress.value = { completed: 0, total: chunks.length, receivedBytes: 0, totalBytes: chunks.reduce((sum, chunk) => sum + chunk.size, 0) };
   try {
-    const blob = await synthesizeChunkFile(fileDetail.value, controller.signal, (progress) => { downloadProgress.value = progress; }, (chunk) => chunkContentUrl(props.domainId, props.version, selectedIdentity.value, chunk.name));
     const filename = fileDetail.value.path.split("/").filter(Boolean).pop() || "download.bin";
-    saveBlob(blob, filename);
+    const detail = fileDetail.value;
+    const identity = selectedIdentity.value;
+    const domainId = props.domainId;
+    const version = props.version;
+    const onProgress = (progress: ChunkDownloadProgress) => { if (downloadController.value === controller) downloadProgress.value = progress; };
+    const urlForChunk = (chunk: NonNullable<ChunkFileDetail["chunks"]>[number]) => chunkContentUrl(domainId, version, identity, chunk.name);
+    if (canSaveFile.value) {
+      const handle = await (window as DownloadPickerWindow).showSaveFilePicker!({ suggestedName: filename });
+      if (controller.signal.aborted) return;
+      const writable = await handle.createWritable();
+      await writeChunkFile(detail, writable, controller.signal, onProgress, urlForChunk);
+    } else {
+      const blob = await synthesizeChunkFile(detail, controller.signal, onProgress, urlForChunk);
+      if (!controller.signal.aborted) saveBlob(blob, filename);
+    }
   } catch (err) {
-    if (!isAbortError(err)) downloadError.value = err instanceof ChunkDownloadError || err instanceof Error ? err.message : "完整文件合成失败";
+    if (downloadController.value === controller && !isAbortError(err)) downloadError.value = err instanceof ChunkDownloadError || err instanceof Error ? err.message : "完整文件合成失败";
   } finally {
     if (downloadController.value === controller) {
       downloadController.value = null;
       downloading.value = false;
+    }
+  }
+}
+
+async function downloadDirectory(): Promise<void> {
+  if (anyDownloadBusy.value || !directoryIdentities.value.length) return;
+  if (!canSaveDirectory.value) {
+    directoryError.value = directoryUnavailableReason.value;
+    return;
+  }
+  const controller = new AbortController();
+  directoryController.value = controller;
+  directoryDownloading.value = true;
+  directoryMessage.value = "";
+  directoryError.value = "";
+  directoryProgress.value = null;
+  const domainId = props.domainId;
+  const version = props.version;
+  const selected = [...directoryIdentities.value];
+  try {
+    const root = await (window as DownloadPickerWindow).showDirectoryPicker!({ mode: "readwrite" });
+    if (controller.signal.aborted) return;
+    const result = await downloadChunkDirectory({
+      domainId, version, identities: selected, root,
+      baseName: `${props.game?.id || props.domain?.game_id || domainId}-${version}`,
+      signal: controller.signal,
+      onProgress: (progress) => { if (directoryController.value === controller) directoryProgress.value = progress; },
+    });
+    if (directoryController.value === controller) directoryMessage.value = `已保存 ${result.files.toLocaleString()} 个文件（${formatBytes(result.bytes)}）到 ${result.directoryName}`;
+  } catch (error) {
+    if (directoryController.value === controller) {
+      if (isAbortError(error)) directoryMessage.value = directoryProgress.value ? "下载已取消，已完成的文件保留在所选目录中。" : "已取消选择目录。";
+      else directoryError.value = `${error instanceof Error ? error.message : "目录下载失败"}。已完成的文件会保留。`;
+    }
+  } finally {
+    if (directoryController.value === controller) {
+      directoryController.value = null;
+      directoryDownloading.value = false;
     }
   }
 }
@@ -384,6 +570,14 @@ function initFromRoute(): void {
 watch(
   () => [props.domainId, props.version],
   () => {
+    directoryController.value?.abort();
+    directoryController.value = null;
+    directoryDownloading.value = false;
+    directoryProgress.value = null;
+    directoryMessage.value = "";
+    directoryError.value = "";
+    closeModal();
+    directoryPanelOpen.value = false;
     initFromRoute();
     void loadFiles(currentPath.value);
   },
@@ -403,9 +597,12 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  requestId += 1;
   listController?.abort();
   detailController?.abort();
   downloadController.value?.abort();
+  directoryController.value?.abort();
+  selectedController.value?.abort();
   window.removeEventListener("keydown", onKeydown);
 });
 </script>
@@ -440,7 +637,21 @@ onBeforeUnmount(() => {
       <!-- 组件/语音包分类切换栏 (Chunk 模式多分类时展示) -->
       <div v-if="identities.length > 1" class="cfb-identities-row">
         <span class="cfb-toolbar-label">组件清单</span>
-        <div class="cfb-identity-chips">
+        <template v-if="identities.length > 8">
+          <select
+            class="cfb-identity-select"
+            aria-label="组件清单"
+            :value="selectedIdentity"
+            :title="selectedIdentityItem?.label"
+            @change="selectIdentity(($event.target as HTMLSelectElement).value)"
+          >
+            <option v-for="item in identities" :key="item.key" :value="item.key" :title="item.label">
+              {{ item.label }} · {{ item.count.toLocaleString() }} 个文件
+            </option>
+          </select>
+          <span class="cfb-identity-summary">{{ identities.length }} 个组件 · 当前 {{ (selectedIdentityItem?.count || 0).toLocaleString() }} 个文件</span>
+        </template>
+        <div v-else class="cfb-identity-chips">
           <button
             v-for="item in identities"
             :key="item.key"
@@ -455,7 +666,35 @@ onBeforeUnmount(() => {
           </button>
         </div>
       </div>
+      <button v-if="activeSource === 'chunk' && directoryComponents.length" class="tool-button cfb-directory-toggle" type="button" :aria-expanded="directoryPanelOpen" @click="directoryPanelOpen = !directoryPanelOpen">下载游戏目录</button>
     </div>
+
+    <section v-if="directoryPanelOpen" class="cfb-directory-download" aria-label="下载游戏目录">
+      <div class="cfb-directory-heading">
+        <strong>选择要下载的资源</strong>
+        <span>预计 {{ formatBytes(directorySize) }} · {{ directoryIdentities.length }} 个组件</span>
+      </div>
+      <p>重建所选清单中的全部文件，不受当前目录或搜索影响。输出为游戏文件目录，不包含安装程序。</p>
+      <div class="cfb-directory-components">
+        <label v-for="item in directoryComponents" :key="item.key">
+          <input v-model="directoryIdentities" type="checkbox" :value="item.key" :disabled="directoryDownloading || !item.supported" />
+          <span>{{ item.label }}</span><small>{{ item.supported ? formatBytes(item.size) : '暂不支持此格式' }}</small>
+        </label>
+      </div>
+      <p v-if="!canSaveDirectory" class="cfb-download-error">{{ directoryUnavailableReason }}</p>
+      <div class="cfb-directory-actions">
+        <button class="tool-button dl-btn" type="button" :disabled="!canSaveDirectory || anyDownloadBusy || !directoryIdentities.length" @click="downloadDirectory">{{ directoryDownloading ? '正在下载…' : '选择目录并下载' }}</button>
+        <button v-if="directoryDownloading" class="tool-button copy-btn" type="button" @click="directoryController?.abort()">取消下载</button>
+      </div>
+      <div v-if="directoryProgress" class="cfb-directory-progress" role="status">
+        <span>{{ directoryProgress.stage === 'preparing' ? '正在读取并校验清单…' : `${directoryProgress.completedFiles.toLocaleString()}/${directoryProgress.totalFiles.toLocaleString()} 个文件 · ${formatBytes(directoryProgress.completedBytes)}/${formatBytes(directoryProgress.totalBytes)}` }}</span>
+        <span v-if="directoryProgress.currentPath">{{ directoryProgress.currentPath }}</span>
+        <span v-if="directoryProgress.chunkProgress">当前文件：{{ directoryProgress.chunkProgress.completed }}/{{ directoryProgress.chunkProgress.total }} 块 · {{ formatBytes(directoryProgress.chunkProgress.receivedBytes) }}/{{ formatBytes(directoryProgress.chunkProgress.totalBytes) }}</span>
+      </div>
+      <p v-if="directoryMessage" role="status">{{ directoryMessage }}</p>
+      <p v-if="directoryError" class="cfb-download-error" role="alert">{{ directoryError }}</p>
+      <p>在所选目录下新建游戏子目录，不覆盖已有文件。保持此页面打开；取消或失败时保留已完成文件。</p>
+    </section>
 
     <!-- 面包屑导航与目录状态栏 -->
     <div class="cfb-navbar">
@@ -517,6 +756,25 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
+    <div v-if="!loading && !error && (loadedFiles.length || selectedFiles.size)" class="cfb-selected-toolbar">
+      <label><input type="checkbox" :checked="allLoadedSelected" :disabled="selectedBusy || !loadedFiles.length" @change="toggleLoadedFiles" />全选本页文件</label>
+      <span>已选 {{ selectedPaths.length }} 个文件 · {{ formatBytes(selectedSize) }}</span>
+      <button type="button" class="cfb-act-btn copy-act" :disabled="selectedBusy || !selectedPaths.length" @click="resetSelection">清空</button>
+      <button type="button" class="cfb-act-btn dl-act" :disabled="anyDownloadBusy || !selectedPaths.length || !canSaveDirectory" @click="selectedAction('download')">选择目录并下载所选文件</button>
+      <button type="button" class="cfb-act-btn copy-act" :disabled="anyDownloadBusy || !selectedPaths.length" @click="selectedAction('copy')">{{ activeSource === 'chunk' ? '复制合成清单' : '复制官方直链' }}</button>
+      <button type="button" class="cfb-act-btn copy-act" :disabled="anyDownloadBusy || !selectedPaths.length" @click="selectedAction('export')">{{ activeSource === 'chunk' ? '导出合成清单 JSON' : '导出官方直链列表' }}</button>
+      <button v-if="selectedBusy" type="button" class="cfb-act-btn copy-act" @click="selectedController?.abort()">取消</button>
+      <p>可跨页选择文件，全选只作用于本页，不包含文件夹；切换目录、搜索或资源组件后清空选择。下载在保存位置新建独立子目录，保留完整相对路径并校验大小和 MD5。</p>
+      <p v-if="!canSaveDirectory">{{ directoryUnavailableReason }} 仍可复制或导出{{ activeSource === 'chunk' ? '合成清单；Chunk 需要按配方合成，不是完整文件直链。' : '官方直链列表。' }}</p>
+      <p v-else-if="activeSource === 'chunk'">Chunk 文件按分块配方合成；导出的 JSON 是合成清单，不是完整文件下载链接。</p>
+      <div v-if="selectedProgress" class="cfb-directory-progress" role="status">
+        <span>{{ selectedProgress.stage === 'preparing' ? '读取所选文件详情…' : `已完成 ${selectedProgress.completedFiles} / ${selectedProgress.totalFiles} 个文件 · ${formatBytes(selectedProgress.completedBytes)} / ${formatBytes(selectedProgress.totalBytes)}` }}</span>
+        <span v-if="selectedProgress.currentPath">{{ selectedProgress.currentPath }} <template v-if="selectedProgress.chunkProgress">· {{ formatBytes(selectedProgress.chunkProgress.receivedBytes) }} / {{ formatBytes(selectedProgress.chunkProgress.totalBytes) }}</template></span>
+      </div>
+      <p v-if="selectedMessage" role="status">{{ selectedMessage }}</p>
+      <p v-if="selectedError" class="cfb-download-error" role="alert">{{ selectedError }}</p>
+    </div>
+
     <!-- 加载中状态 -->
     <div v-if="loading" class="cfb-state-box">
       <div class="cfb-spinner"></div>
@@ -539,7 +797,7 @@ onBeforeUnmount(() => {
     <div v-else-if="error" class="cfb-state-box cfb-error-box">
       <strong>文件目录读取失败</strong>
       <span>{{ error }}</span>
-      <button class="tool-button cfb-retry-btn" type="button" @click="loadFiles(currentPath)">
+      <button class="tool-button cfb-retry-btn" type="button" @click="loadFiles(currentPath, pageIndex)">
         重试
       </button>
     </div>
@@ -576,6 +834,7 @@ onBeforeUnmount(() => {
             <!-- 1. 名称列 -->
             <div class="cfb-col cfb-col-name">
               <div class="cfb-name-block">
+                <input v-if="item.type !== 'directory'" class="cfb-file-checkbox" type="checkbox" :aria-label="`选择 ${item.path}`" :checked="selectedFiles.has(item.path)" :disabled="selectedBusy" @click.stop @change="toggleSelected(item)" />
                 <span v-if="item.type === 'directory'" class="cfb-type-icon dir-icon">
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M3 6.5h6l2 2h10v9H3z" />
@@ -691,15 +950,17 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <!-- 分页加载按钮 -->
-      <div v-if="filePage?.next_cursor" class="cfb-pagination-bar">
+      <!-- Keep only one response page mounted, retaining selected paths across pages. -->
+      <div v-if="pageIndex > 0 || filePage?.next_cursor" class="cfb-pagination-bar">
+        <button type="button" class="cfb-prevpage-btn cfb-loadmore-btn" :disabled="loadingMore || pageIndex === 0" @click="loadFiles(currentPath, pageIndex - 1)">上一页</button>
+        <span>第 {{ pageIndex + 1 }} 页</span>
         <button
           type="button"
-          class="cfb-loadmore-btn"
-          :disabled="loadingMore"
-          @click="loadFiles(currentPath, true)"
+          class="cfb-nextpage-btn cfb-loadmore-btn"
+          :disabled="loadingMore || !filePage?.next_cursor"
+          @click="loadFiles(currentPath, pageIndex + 1)"
         >
-          {{ loadingMore ? '正在载入更多条目…' : '加载下一页文件' }}
+          {{ loadingMore ? '正在载入…' : '下一页文件' }}
         </button>
       </div>
     </div>
@@ -812,7 +1073,7 @@ onBeforeUnmount(() => {
             <!-- 情况 2: Chunk 物理分块列表 -->
             <div v-else-if="fileDetail?.chunks?.length || (fileDetail?.chunk_download && fileDetail.size === 0)" class="cfb-chunks-container">
               <div v-if="fileDetail?.chunk_download" class="cfb-complete-download">
-                <button type="button" class="tool-button dl-btn" :disabled="downloading" @click="downloadCompleteFile">
+                <button type="button" class="tool-button dl-btn" :disabled="anyDownloadBusy" @click="downloadCompleteFile">
                   {{ downloading ? '正在合成…' : '下载完整文件' }}
                 </button>
                 <button v-if="downloading" type="button" class="tool-button copy-btn" @click="downloadController?.abort()">取消</button>
@@ -1008,6 +1269,30 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.cfb-identity-select {
+  flex: 1 1 260px;
+  width: 100%;
+  min-width: 0;
+  max-width: 520px;
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 8px;
+  background: #0f172a;
+  color: #e2e8f0;
+  font: inherit;
+}
+
+.cfb-identity-select:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
+}
+
+.cfb-identity-summary {
+  color: #94a3b8;
+  font-size: 12px;
 }
 
 .cfb-chip {
@@ -1549,6 +1834,10 @@ onBeforeUnmount(() => {
   padding: 12px;
   display: flex;
   justify-content: center;
+  align-items: center;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 12px;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
@@ -1709,6 +1998,7 @@ onBeforeUnmount(() => {
 .cfb-modal-body {
   flex: 1;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 16px 20px;
 }
 
@@ -1789,6 +2079,43 @@ onBeforeUnmount(() => {
 }
 .cfb-download-progress { color: var(--muted); font-size: 11.5px; font-family: var(--font-mono); }
 .cfb-download-error { flex-basis: 100%; color: #fb7185; font-size: 12px; }
+
+.cfb-directory-toggle { align-self: flex-start; margin-inline-start: 14px; }
+.cfb-directory-download {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 18px;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 12px;
+  background: rgba(56, 189, 248, 0.04);
+}
+.cfb-directory-heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
+.cfb-directory-heading strong { color: #e2e8f0; font-size: 14px; }
+.cfb-directory-heading > span { color: #94a3b8; font-size: 12px; }
+.cfb-directory-download p { margin: 0; color: #94a3b8; font-size: 12px; line-height: 1.7; }
+.cfb-directory-download .cfb-download-error { color: #fb7185; }
+.cfb-directory-components { display: flex; flex-wrap: wrap; gap: 8px; }
+.cfb-directory-components label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 10px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 7px;
+  color: #e2e8f0;
+  font-size: 12px;
+}
+.cfb-directory-components input { accent-color: #38bdf8; }
+.cfb-directory-components small { color: #94a3b8; }
+.cfb-directory-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.cfb-directory-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
+.cfb-selected-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 14px; padding: 14px; border: 1px solid var(--line-soft); border-radius: 10px; color: #cbd5e1; font-size: 12px; }
+.cfb-selected-toolbar label { display: inline-flex; align-items: center; gap: 6px; }
+.cfb-selected-toolbar p, .cfb-selected-toolbar .cfb-directory-progress { flex-basis: 100%; margin: 0; line-height: 1.7; }
+.cfb-selected-toolbar button:disabled { opacity: 0.5; cursor: not-allowed; }
+.cfb-selected-toolbar input, .cfb-file-checkbox { accent-color: #38bdf8; }
+.cfb-directory-progress { display: grid; gap: 5px; color: #cbd5e1; font-size: 12px; overflow-wrap: anywhere; }
 
 .cfb-chunk-grid-header {
   display: grid;
@@ -1954,6 +2281,14 @@ onBeforeUnmount(() => {
     flex-direction: column;
     align-items: flex-start;
     gap: 6px;
+  }
+
+  .cfb-identity-select {
+    flex: none;
+  }
+
+  .cfb-directory-toggle {
+    margin-inline-start: 19px;
   }
 
   .cfb-identity-chips {

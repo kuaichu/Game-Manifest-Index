@@ -193,6 +193,21 @@ describe("API client", () => {
     expect(JSON.parse(options.body)).toEqual(payload);
   });
 
+  it("gets the authenticated probe scheduler status", async () => {
+    const status = {
+      driver: "apscheduler", running: true, enabled: true,
+      next_run_at: "2026-09-15T12:00:00Z", last_started_at: "2026-09-14T12:00:00Z",
+      last_job_id: "job-1", error: null,
+    };
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(status), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(adminApi.probeScheduler("admin-secret-token")).resolves.toEqual(status);
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toContain("/admin/probe/scheduler");
+    expect(options.headers.Authorization).toBe("Bearer admin-secret-token");
+  });
+
   it("uses authenticated retention config/run/status endpoints", async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({ cache_days: 30, observation_days: 90, interval_hours: 24 }), { status: 200 }))
@@ -418,5 +433,17 @@ describe("API client", () => {
     expect(url).toContain("/domains/hk4e-pc/versions/4.5.0/file");
     expect(url).toContain("source=package");
     expect(url).toContain("path=YuanShen.exe");
+  });
+
+  it("fetches a complete chunk download plan with pagination and cancellation", async () => {
+    const controller = new AbortController();
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ identity: "game", items: [], total: 0, next_cursor: null, total_size: 0 }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await api.chunkDownloadPlan("hk4e-pc", "7.1.0", "game", { limit: 500, cursor: "next page" }, controller.signal);
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toContain("/domains/hk4e-pc/versions/7.1.0/chunk-manifests/game/download-plan");
+    expect(url).toContain("limit=500");
+    expect(url).toContain("cursor=next+page");
+    expect(options.signal).toBe(controller.signal);
   });
 });

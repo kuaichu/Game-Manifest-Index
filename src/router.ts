@@ -22,7 +22,7 @@ export const router = createRouter({
       path: "/android/:gameId?",
       redirect: (to) => {
         const gameId = String(to.params.gameId || "nte");
-        return `/games/${encodeURIComponent(gameId)}/${encodeURIComponent(`${gameId}-android`)}`;
+        return `/games/${encodeURIComponent(gameId)}/android`;
       },
     },
     { path: "/games/:gameId/:domainId?/:version?/:mode?", name: "archive", component: ArchiveView },

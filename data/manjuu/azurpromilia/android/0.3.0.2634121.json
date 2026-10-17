@@ -1,0 +1,39 @@
+{
+  "schema_version": 2,
+  "vendor": "manjuu",
+  "game_id": "azurpromilia",
+  "domain_id": "azurpromilia-android",
+  "platform": "android",
+  "channel": "official",
+  "version": "0.3.0.2634121",
+  "version_code": null,
+  "file_time": "2026-08-26T07:29:44Z",
+  "provenance": {
+    "source_kind": "manual",
+    "source_name": "Manjuu official Android internal-test APK",
+    "source_url": "https://syncstation.manjuu.com/azurpromilia/android/c000/20260826152754_dhefqecywkreazfa/AzurPromilia_0.3.0.2634121_SC000_20260826152754_8b37.apk"
+  },
+  "artifacts": [
+    {
+      "kind": "apk",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "direct",
+      "name": "AzurPromilia_0.3.0.2634121_SC000_20260826152754_8b37.apk",
+      "urls": [
+        {
+          "url": "https://syncstation.manjuu.com/azurpromilia/android/c000/20260826152754_dhefqecywkreazfa/AzurPromilia_0.3.0.2634121_SC000_20260826152754_8b37.apk",
+          "provider": "manjuu",
+          "source_kind": "official",
+          "priority": 0
+        }
+      ],
+      "size": 1384742820,
+      "checksum": {
+        "crc64": "18123626472714408145"
+      },
+      "artifact_id": "a1_13b2bc23b26f55642f889f15439f4ddc"
+    }
+  ],
+  "references": []
+}

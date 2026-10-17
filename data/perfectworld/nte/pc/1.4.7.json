@@ -1,0 +1,60 @@
+{
+  "schema_version": 2,
+  "vendor": "perfectworld",
+  "game_id": "nte",
+  "domain_id": "nte-pc",
+  "platform": "windows",
+  "channel": "official",
+  "version": "1.4.7",
+  "version_code": null,
+  "file_time": null,
+  "artifacts": [
+    {
+      "kind": "package",
+      "component": "game",
+      "package_type": "full",
+      "delivery_mode": "file_manifest",
+      "name": "ResList.bin.zip",
+      "size": 87182758463,
+      "manifest": {
+        "path": "manifests/1.4.7/files.json",
+        "base_urls": [
+          {
+            "url": "https://yhcdn1.wmupd.com/clientRes/PC_140/Res/",
+            "provider": "perfectworld",
+            "source_kind": "official",
+            "priority": 0
+          }
+        ]
+      },
+      "urls": [
+        {
+          "url": "https://yhcdn1.wmupd.com/clientRes/PC_140/Version/Windows/version/1.4.7/ResList.bin.zip",
+          "provider": "perfectworld",
+          "source_kind": "official",
+          "priority": 0,
+          "current": {
+            "state": "available",
+            "http_code": 200,
+            "checked_at": "2026-09-30T18:12:37Z",
+            "response_size": 29291,
+            "etag": "f2b89ca4a97e9fa8a06f2146d5d05bb3",
+            "last_modified": "Thu, 24 Sep 2026 19:00:01 GMT"
+          }
+        }
+      ],
+      "source": {
+        "source_kind": "manual",
+        "source_name": "Perfect World PatcherSDK historical ResList backfill",
+        "source_url": "https://yhcdn1.wmupd.com/clientRes/PC_140/Version/Windows/version/1.4.7/ResList.bin.zip"
+      },
+      "artifact_id": "a1_51503d6538476b25f31f2500d3f31051"
+    }
+  ],
+  "references": [],
+  "provenance": {
+    "source_kind": "manual",
+    "source_name": "Perfect World PatcherSDK historical ResList backfill",
+    "source_url": "https://yhcdn1.wmupd.com/clientRes/PC_140/Version/Windows/version/1.4.7/ResList.bin.zip"
+  }
+}

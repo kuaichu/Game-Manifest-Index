@@ -10,6 +10,7 @@ import VersionPicker from "../components/VersionPicker.vue";
 import AvailabilityBadge from "../components/AvailabilityBadge.vue";
 import ChunkManifestView from "../components/ChunkManifestView.vue";
 import ChunkFileBrowser from "../components/ChunkFileBrowser.vue";
+import ArtifactPagination from "../components/ArtifactPagination.vue";
 import CustomSelect from "../components/CustomSelect.vue";
 import { copyTextToClipboard } from "../clipboard";
 import {
@@ -30,12 +31,16 @@ import {
   preferredArtifactAction,
   preferredDomainArtifactAction,
   displayVersionLabel,
+  routeVersionLabel,
   versionSupportsMode,
 } from "../domain-presentation";
 import { gameIcons } from "../game-icons";
+import { gameActivityTime, gameActivityTitle } from "../game-activity";
 import { publisherGroups } from "../game-meta";
 import SourceProvenanceModal from "../components/SourceProvenanceModal.vue";
-import { useArchiveLoader } from "../composables/useArchiveLoader";
+import SiteChangelogModal from "../components/SiteChangelogModal.vue";
+import ProbeScheduleInfo from "../components/ProbeScheduleInfo.vue";
+import { domainRouteLabel, resolveRouteDomain, useArchiveLoader } from "../composables/useArchiveLoader";
 import { useArchiveArtifactsLoader, type ArchiveArtifactsLoaderState, type ArchiveArtifactLoadContext } from "../composables/useArchiveArtifactsLoader";
 import type {
   ArchiveDomain,
@@ -44,6 +49,8 @@ import type {
   ChunkManifestDetail,
   ChunkManifestSummaryItem,
   Game,
+  GameActivityEvent,
+  FileTimeChange,
   VersionSummary,
 } from "../types";
 
@@ -51,6 +58,20 @@ const route = useRoute();
 const router = useRouter();
 const showProvenanceModal = ref(false);
 const provenanceOrigin = ref<{ x: number; y: number } | null>(null);
+const showSiteChangelog = ref(false);
+const siteChangelogOrigin = ref<{ x: number; y: number } | null>(null);
+const siteChangelogInitialTab = ref<"system" | "data">("system");
+const gameActivity = ref<GameActivityEvent[]>([]);
+let gameActivityController: AbortController | null = null;
+
+function openSiteChangelog(event: MouseEvent, tab: "system" | "data" = "system"): void {
+  const button = event.currentTarget as HTMLButtonElement;
+  const rect = button.getBoundingClientRect();
+  button.focus();
+  siteChangelogOrigin.value = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  siteChangelogInitialTab.value = tab;
+  showSiteChangelog.value = true;
+}
 
 function openProvenanceModal(event?: MouseEvent): void {
   if (event?.currentTarget) {
@@ -69,6 +90,14 @@ function openProvenanceModal(event?: MouseEvent): void {
 }
 
 const remoteTreeProbeTime = ref<string | null>(null);
+const remoteManifestSize = ref<{ domainId: string; version: string; kind: string; size: number | null } | null>(null);
+const browserFileTime = ref<FileTimeChange | null>(null);
+let manifestSizeController: AbortController | null = null;
+let manifestSizeGeneration = 0;
+const globalProbeTime = ref<string | null>(null);
+const probeTimeClock = ref(Date.now());
+const globalProbeLoaded = ref(false);
+let globalProbeController: AbortController | null = null;
 const chunkCollection = ref<ChunkManifestSummaryItem[]>([]);
 const chunkDetail = ref<ChunkManifestDetail | null>(null);
 const chunkLoading = ref(false);
@@ -84,6 +113,8 @@ const availabilityFilter = ref<"all" | "available" | "unavailable" | "unknown">(
 const toast = ref("");
 const selectedCategory = ref<string>("all");
 const chunkCategoryFilter = ref<string>("all");
+const artifactPage = ref(1);
+const artifactPageSize = ref(50);
 const SEARCHABLE_MODES = new Set(["apk", "chunks", "files", "packages", "patches"]);
 
 let archiveArtifactsLoader: ArchiveArtifactsLoaderState | null = null;
@@ -116,12 +147,44 @@ const {
 });
 
 const gameId = computed(() => String(route.params.gameId || ""));
-const domainId = computed(() => String(route.params.domainId || domains.value[0]?.id || ""));
-const selectedVersion = computed(() => String(route.params.version || versions.value[0]?.version || ""));
+async function loadGameActivity(): Promise<void> {
+  gameActivityController?.abort();
+  gameActivity.value = [];
+  if (!gameId.value || gameId.value === "abc") return;
+  const controller = new AbortController();
+  gameActivityController = controller;
+  try {
+    const response = await api.gameActivity(gameId.value, controller.signal);
+    if (!controller.signal.aborted) gameActivity.value = response.items;
+  } catch (error) {
+    if (!controller.signal.aborted && !isAbortError(error)) gameActivity.value = [];
+  }
+}
+
+watch(gameId, () => void loadGameActivity(), { immediate: true });
+watch(showSiteChangelog, (open) => {
+  if (open) void loadGameActivity();
+});
+const domainId = computed(() => {
+  const requested = String(route.params.domainId || "");
+  const matched = resolveRouteDomain(gameId.value, requested, domains.value);
+  return matched?.id || requested || domains.value[0]?.id || "";
+});
+const selectedVersion = computed(() => {
+  const requested = String(route.params.version || "");
+  const matched = versions.value.find(
+    (item) => item.version === requested || routeVersionLabel(item.version) === requested,
+  );
+  return matched?.version || requested || versions.value[0]?.version || "";
+});
 const mode = computed(() =>
   String(route.params.mode || domains.value.find((item) => item.id === domainId.value)?.capabilities[0] || ""),
 );
 const game = computed(() => games.value.find((item) => item.id === gameId.value) || null);
+const gameNames = computed(() => Object.fromEntries(games.value.map((item) => [
+  item.id,
+  /[\u3400-\u9fff]/.test(item.name) ? item.name : item.sub_name || item.name,
+])));
 const domain = computed(() => domains.value.find((item) => item.id === domainId.value) || null);
 const railGroups = computed(() => publisherGroups(games.value));
 const sidebarGameSearch = ref("");
@@ -190,8 +253,11 @@ async function switchCompareDomain(targetDomain: ArchiveDomain): Promise<void> {
 }
 const compareBaseVersion = computed(() => {
   const requested = String(route.query.from || "");
-  if (requested && requested !== selectedVersion.value && versions.value.some((item) => item.version === requested)) {
-    return requested;
+  const requestedItem = versions.value.find(
+    (item) => item.version === requested || routeVersionLabel(item.version) === requested,
+  );
+  if (requestedItem && requestedItem.version !== selectedVersion.value) {
+    return requestedItem.version;
   }
   const currentIndex = versions.value.findIndex((item) => item.version === selectedVersion.value);
   return versions.value[currentIndex + 1]?.version || compareBaseOptions.value[0]?.version || "";
@@ -201,6 +267,9 @@ function hasHoyoPackageFiles(summary: VersionSummary | null | undefined): boolea
 }
 const compareBaseSummary = computed(
   () => versions.value.find((item) => item.version === compareBaseVersion.value) || null,
+);
+const compareBaseDisplayVersion = computed(() =>
+  displayVersionLabel(compareBaseVersion.value, compareBaseSummary.value?.attributes),
 );
 const compareScope = computed<"artifacts" | "files">(() => {
   if (domain.value?.adapter === "perfectworld_patcher" || domain.value?.adapter === "nte" || domain.value?.adapter === "wuwa") {
@@ -212,20 +281,35 @@ const compareScope = computed<"artifacts" | "files">(() => {
   return "artifacts";
 });
 const searchableMode = computed(() => SEARCHABLE_MODES.has(mode.value));
+const isGenericFileManifestDomain = computed(() =>
+  domain.value?.kind === "files"
+  && domain.value?.adapter === "generic"
+  && Number(selectedSummary.value?.artifact_kinds?.package?.count || 0) > 0,
+);
+const usesChunkFileBrowser = computed(() => mode.value === "files" && (domain.value?.adapter === "hoyo" || isGenericFileManifestDomain.value));
 const isFileTreeMode = computed(
-  () => mode.value === "files" && ["patchersdk", "perfectworld_patcher", "wuwa", "hoyo"].includes(domain.value?.adapter || ""),
+  () => mode.value === "files" && (
+    ["patchersdk", "perfectworld_patcher", "wuwa", "hoyo"].includes(domain.value?.adapter || "")
+    || isGenericFileManifestDomain.value
+  ),
 );
 const usesArtifactTree = computed(() => isFileTreeMode.value && Boolean(query.value.trim()));
 const usesRemoteTree = computed(() => mode.value === "resources" || (isFileTreeMode.value && !query.value.trim()));
+watch(() => [domainId.value, selectedVersion.value, mode.value], () => { browserFileTime.value = null; }, { flush: "sync" });
 const exportArtifactKind = computed(() => artifactKindForMode(mode.value));
 const supportsArtifactField = (field: string) =>
   domainFieldSupport(domain.value, "artifact_fields", field) === "supported";
 const supportsDomainAction = (action: string) => domainActionSupport(domain.value, action);
+const isMetadataOnlyDomain = (candidate: ArchiveDomain | null) =>
+  candidate?.game_id === "azurpromilia"
+  && candidate.capability_contract?.live_probe === false
+  && candidate.capability_contract?.availability_source_kinds?.includes("metadata_inference");
 const canExportArtifacts = computed(() => mode.value !== "files" && mode.value !== "apk" && Boolean(exportArtifactKind.value));
 const canExportUrls = computed(
   () => canExportArtifacts.value && (supportsDomainAction("download") || supportsDomainAction("open") || supportsArtifactField("urls")),
 );
 const canFilterAvailability = computed(() => {
+  if (isMetadataOnlyDomain(domain.value)) return false;
   if (!supportsArtifactField("availability")) return false;
   if (!["apk", "packages", "patches"].includes(mode.value)) return false;
   const kind = exportArtifactKind.value;
@@ -234,7 +318,9 @@ const canFilterAvailability = computed(() => {
   return total > 1;
 });
 const availabilityStateForRequest = computed(() =>
-  mode.value === "files" || availabilityFilter.value === "all" ? undefined : availabilityFilter.value,
+  mode.value === "files" || availabilityFilter.value === "all" || isMetadataOnlyDomain(domain.value)
+    ? undefined
+    : availabilityFilter.value,
 );
 
 async function loadChunkState(
@@ -276,7 +362,11 @@ const loadedArchiveArtifacts = useArchiveArtifactsLoader({
     gameId: gameId.value,
     selectedVersion: selectedVersion.value,
     mode: mode.value,
+    artifactPage: artifactPage.value,
+    artifactPageSize: artifactPageSize.value,
     domainGameId: domain.value?.game_id,
+    domainKind: domain.value?.kind,
+    domainHasPackageManifest: isGenericFileManifestDomain.value,
     domainAdapter: domain.value?.adapter,
     versionsDomainId: versionsDomainId.value,
     hasSelectedVersion: versions.value.some((item) => item.version === selectedVersion.value),
@@ -298,13 +388,34 @@ const loadedArchiveArtifacts = useArchiveArtifactsLoader({
   },
 });
 archiveArtifactsLoader = loadedArchiveArtifacts;
-const { artifacts, nextCursor, loadingMore, error } = loadedArchiveArtifacts;
+const { artifacts, nextCursor, total: artifactTotal, loadingMore, error } = loadedArchiveArtifacts;
+
+function selectArtifactPage(page: number): void {
+  artifactPage.value = page;
+  void loadArtifacts(false);
+}
+
+function selectArtifactPageSize(pageSize: number): void {
+  artifactPageSize.value = pageSize;
+  artifactPage.value = 1;
+  void loadArtifacts(false);
+}
+
+watch(
+  () => [domainId.value, selectedVersion.value, mode.value, query.value, availabilityFilter.value],
+  (next, previous) => {
+    if (previous && next.some((value, index) => value !== previous[index])) artifactPage.value = 1;
+  },
+);
 
 const usesPreferredUrlPresentation = computed(
   () =>
     supportsArtifactField("urls") &&
     supportsArtifactField("availability") &&
     Boolean(domain.value?.capability_contract?.url_source_kinds?.includes("mirror")),
+);
+const suppressAvailabilityPresentation = computed(() =>
+  isMetadataOnlyDomain(domain.value),
 );
 const displayedAvailabilityFilters = computed(() => {
   const kind = exportArtifactKind.value;
@@ -338,6 +449,47 @@ const exportUrlsLabel = computed(() => {
 });
 
 const isWuwaFilesMode = computed(() => domain.value?.adapter === "wuwa" && mode.value === "files");
+const wuwaManifestSize = computed(() => {
+  const context = remoteManifestSize.value;
+  if (!isWuwaFilesMode.value || context?.domainId !== domainId.value
+    || context.version !== selectedVersion.value || context.kind !== "file") return null;
+  return context.size;
+});
+watch(
+  () => [domainId.value, selectedVersion.value, mode.value, usesArtifactTree.value, usesChunkFileBrowser.value],
+  () => {
+    manifestSizeController?.abort();
+    manifestSizeController = null;
+    const generation = ++manifestSizeGeneration;
+    // Search uses the local tree. Fetch metadata once when its remote browser is absent.
+    if (!usesArtifactTree.value || usesChunkFileBrowser.value) return;
+    const knownTime = browserFileTime.value?.domainId === domainId.value && browserFileTime.value?.version === selectedVersion.value
+      && !browserFileTime.value.loading;
+    if (knownTime && (!isWuwaFilesMode.value || wuwaManifestSize.value !== null)) return;
+    const context = { domainId: domainId.value, version: selectedVersion.value, kind: "file" };
+    const request = new AbortController();
+    manifestSizeController = request;
+    const isCurrent = () => manifestSizeController === request && manifestSizeGeneration === generation
+      && mode.value === "files" && usesArtifactTree.value && !usesChunkFileBrowser.value
+      && context.domainId === domainId.value && context.version === selectedVersion.value;
+    void api.artifactTree(context.domainId, context.version, { kind: "file", limit: 1 }, request.signal)
+      .then((result) => {
+        if (!isCurrent()) return;
+        onRemoteManifestSizeChange({ ...context, size: result.manifest_total_size ?? null });
+        onFileTimeChange({ domainId: context.domainId, version: context.version, source: "package", identity: "game", fileTime: result.file_time ?? null, timeSource: result.file_time_source });
+      })
+      .catch(() => {
+        if (isCurrent() && wuwaManifestSize.value === null) onRemoteManifestSizeChange({ ...context, size: null });
+        if (isCurrent()) onFileTimeChange({ domainId: context.domainId, version: context.version, source: "package", identity: "game", fileTime: null });
+      });
+  },
+  { immediate: true },
+);
+onBeforeUnmount(() => {
+  manifestSizeController?.abort();
+  manifestSizeController = null;
+  manifestSizeGeneration += 1;
+});
 const rawIndexMenuOpen = ref(false);
 const copiedManifestUrl = ref(false);
 const copiedBaseUrl = ref(false);
@@ -517,7 +669,7 @@ function chunkArtifactMatchesFilter(artifact: Artifact): boolean {
 
 const footerProbeArtifacts = computed(() => {
   if (mode.value === "chunks") return artifacts.value.filter(chunkArtifactMatchesFilter);
-  if (usesRemoteTree.value || (mode.value === "files" && domain.value?.adapter === "hoyo")) return [];
+  if (usesRemoteTree.value || (mode.value === "files" && (domain.value?.adapter === "hoyo" || isGenericFileManifestDomain.value))) return [];
   if (usesArtifactTree.value) return artifacts.value;
   if (["packages", "patches"].includes(mode.value) && usesPreferredUrlPresentation.value && domain.value?.adapter !== "wuwa") {
     return artifacts.value;
@@ -548,9 +700,9 @@ const panelEyebrow = computed(() => {
   return modeLabel(domain.value, mode.value);
 });
 const panelTitle = computed(() => {
-  if (mode.value === "compare") return `${selectedVersion.value} 版本对比`;
+  if (mode.value === "compare") return `${selectedDisplayVersion.value} 版本对比`;
   if (mode.value === "manifest") return "官方清单文件";
-  if (mode.value === "archive") return `${selectedVersion.value} 归档信息`;
+  if (mode.value === "archive") return `${selectedDisplayVersion.value} 归档信息`;
   if (mode.value === "legacy") return "候选线索";
   return `${selectedDisplayVersion.value} ${modeLabel(domain.value, mode.value)}`;
 });
@@ -621,18 +773,53 @@ const syncStatus = computed(() => {
   };
 });
 
+const fileTimeMetadata = computed(() => {
+  if (mode.value !== "files") return null;
+  const summary = selectedSummary.value;
+  const attrs = (summary?.attributes || {}) as Record<string, unknown>;
+  const current = browserFileTime.value;
+  const context = current?.domainId === domainId.value && current.version === selectedVersion.value ? current : null;
+  if (context?.loading) return null;
+  if (context && context.fileTime !== null) {
+    // Invalid explicit metadata must not fall back to an unrelated date.
+    return typeof context.fileTime === "string" && observedDate(context.fileTime) && context.timeSource
+      ? { value: context.fileTime, source: context.timeSource } : null;
+  }
+  // Version summaries describe the primary identity; voice components need their own response.
+  const identity = context?.identity || (usesChunkFileBrowser.value ? String(route.query.identity || "game") : "game");
+  if (identity !== "game") return null;
+  const source = context?.source || (route.query.source === "chunk" ? "chunk" :
+    usesChunkFileBrowser.value && !summary?.artifact_kinds?.package?.count && !summary?.artifact_kinds?.file?.count && summary?.artifact_kinds?.chunk?.count ? "chunk" : "package");
+  const expectedTimeSource = context?.timeSource || (source === "chunk" || !usesChunkFileBrowser.value || isGenericFileManifestDomain.value ? "manifest" : "package");
+  if (attrs.file_modified_at !== undefined && attrs.file_modified_at !== null) {
+    return typeof attrs.file_modified_at === "string" && observedDate(attrs.file_modified_at)
+      && attrs.file_time_source === expectedTimeSource
+      ? { value: attrs.file_modified_at, source: expectedTimeSource } : null;
+  }
+  if (expectedTimeSource === "manifest" && attrs.manifest_modified_at !== undefined && attrs.manifest_modified_at !== null) {
+    return typeof attrs.manifest_modified_at === "string" && observedDate(attrs.manifest_modified_at)
+      ? { value: attrs.manifest_modified_at, source: "manifest" } : null;
+  }
+  // NTE's existing source_updated_at contract means the official manifest Last-Modified.
+  if (domain.value?.game_id === "nte" && ["pc", "windows"].includes(domain.value.platform.toLowerCase())
+    && observedDate(summary?.source_updated_at)) return { value: summary!.source_updated_at!, source: "manifest" };
+  return null;
+});
+
 const versionMetaSummary = computed(() => {
   const summary = selectedSummary.value;
   const dom = domain.value;
   if (!summary || !dom) return [];
 
-  const items: Array<{ label: string; value: string; isMono?: boolean }> = [];
+  const items: Array<{ label: string; value: string; isMono?: boolean; title?: string }> = [];
 
-  // 1. 总大小 (仅多分卷/多文件时在顶部汇总展示，单文件不重复)
-  const kind = mode.value === "apk" ? "apk" : mode.value === "packages" ? "package" : mode.value === "patches" ? "patch" : "";
+  // WuWa's package and patch buckets include alternative update paths, not a file-list total.
+  const kind = ["apk", "packages", "patches", "files"].includes(mode.value) ? artifactKindForMode(mode.value) : "";
   const count = kind ? (summary.artifact_kinds?.[kind]?.count || 0) : (summary.artifact_count || 0);
   const size = kind ? (summary.artifact_kinds?.[kind]?.size || 0) : (summary.packed_size || 0);
-  if (size > 0 && count > 1) {
+  if (wuwaManifestSize.value !== null) {
+    items.push({ label: "总大小", value: formatBytes(wuwaManifestSize.value), isMono: true });
+  } else if (size > 0 && count > 1) {
     items.push({ label: "总大小", value: formatBytes(size), isMono: true });
   }
 
@@ -645,7 +832,17 @@ const versionMetaSummary = computed(() => {
   const apkFileTime = mode.value === "apk" ? summary.observed_at : null;
   const importedTime = summary.archived_at || summary.imported_at;
 
-  if (mode.value === "chunks" && manifestTime) {
+  if (mode.value === "files") {
+    const fileTime = fileTimeMetadata.value;
+    if (fileTime) {
+      items.push({
+        label: "文件时间", value: formatObservedDate(fileTime.value), isMono: true,
+        title: fileTime.source === "manifest"
+          ? "官方清单文件的最后修改时间（北京时间），不代表清单内每个文件的修改时间"
+          : "官方资源包的最后修改时间（北京时间）；分卷包取各分卷中最晚的修改时间，不代表资源包内每个文件的修改时间",
+      });
+    }
+  } else if (mode.value === "chunks" && manifestTime) {
     const formatted = formatObservedDate(manifestTime);
     if (formatted && formatted !== "不支持" && formatted !== "-") {
       items.push({ label: "Manifest 更新时间", value: formatted, isMono: true });
@@ -687,10 +884,12 @@ const versionMetaSummary = computed(() => {
 });
 
 const syncTimeText = computed(() => {
-  const time = latestLiveProbeTime(footerProbeArtifacts.value) || remoteTreeProbeTime.value;
+  const time = globalProbeLoaded.value
+    ? globalProbeTime.value
+    : latestLiveProbeTime(footerProbeArtifacts.value) || remoteTreeProbeTime.value;
   if (!time) return "";
   const formatted = formatObservedDate(time);
-  const rel = formatRelativeTime(time);
+  const rel = formatRelativeTime(time, probeTimeClock.value);
   return rel ? `${formatted} (${rel})` : formatted;
 });
 const currentVersionApiUrl = computed(() => {
@@ -698,13 +897,19 @@ const currentVersionApiUrl = computed(() => {
   if (mode.value === "chunks") {
     return apiUrl(`/domains/${encodeURIComponent(domainId.value)}/versions/${encodeURIComponent(selectedVersion.value)}/chunk-manifests`);
   }
-  if (mode.value === "files" && ["hoyo", "perfectworld_patcher"].includes(domain.value?.adapter || "")) {
+  if (mode.value === "files" && (["hoyo", "perfectworld_patcher"].includes(domain.value?.adapter || "") || isGenericFileManifestDomain.value)) {
     return apiUrl(`/domains/${encodeURIComponent(domainId.value)}/versions/${encodeURIComponent(selectedVersion.value)}/files`);
   }
   return apiUrl(`/domains/${encodeURIComponent(domainId.value)}/versions/${encodeURIComponent(selectedVersion.value)}`);
 });
 
 const provenanceSource = computed(() => {
+  if (gameId.value === "abc") {
+    const sourceUrl = selectedSummary.value?.provenance?.source_url;
+    if (typeof sourceUrl === "string" && sourceUrl.startsWith("https://autopatchcn-beta.bhyyjl.com/")) {
+      return { label: "米哈游官方 Sophon Manifest", href: sourceUrl };
+    }
+  }
   if (domain.value?.adapter === "hoyo") {
     return { label: "hoyo-files.amarea.cn", href: "https://hoyo-files.amarea.cn/" };
   }
@@ -737,9 +942,18 @@ function legacyArchiveUrl(lead: ArchiveLead): string | undefined {
 }
 
 async function navigate(params: Record<string, string>): Promise<void> {
-  const nextParams = { ...route.params, ...params };
+  const targetVersion = String(params.version || selectedVersion.value);
+  const targetDomain = params.domainId
+    ? domains.value.find((item) => item.id === params.domainId)
+    : undefined;
+  const routeDomain = targetDomain ? domainRouteLabel(gameId.value, targetDomain) : params.domainId;
+  const nextParams = {
+    ...route.params,
+    ...params,
+    ...(routeDomain ? { domainId: routeDomain } : {}),
+    ...(params.version ? { version: routeVersionLabel(params.version) } : {}),
+  } as Record<string, string>;
   const targetMode = String(nextParams.mode || mode.value);
-  const targetVersion = String(nextParams.version || selectedVersion.value);
   const nextQuery: Record<string, string> = {};
   if (SEARCHABLE_MODES.has(targetMode) && String(route.query.q || "").trim()) {
     nextQuery.q = String(route.query.q).trim();
@@ -876,7 +1090,7 @@ async function replaceQuery(name: "q" | "availability" | "from", value: string):
 }
 
 function updateCompareBase(value: string): void {
-  void replaceQuery("from", value);
+  void replaceQuery("from", routeVersionLabel(value));
 }
 function onCompareBaseChange(event: Event): void {
   updateCompareBase((event.target as HTMLSelectElement).value);
@@ -894,7 +1108,7 @@ watch(
     if (
       loading.value &&
       registryTargetGame.value === String(route.params.gameId || "") &&
-      registryTargetDomain.value === String(route.params.domainId || "")
+      registryTargetDomain.value === domainId.value
     ) return;
     void loadRegistry();
   },
@@ -974,12 +1188,32 @@ watch(
 );
 function onAvailabilityInvalidated(): void {
   void loadRegistry();
+  void loadGlobalProbeTime();
+}
+
+async function loadGlobalProbeTime(): Promise<void> {
+  probeTimeClock.value = Date.now();
+  globalProbeController?.abort();
+  const controller = new AbortController();
+  globalProbeController = controller;
+  try {
+    const result = await api.latestProbeTime(controller.signal);
+    if (!controller.signal.aborted) {
+      globalProbeTime.value = result.last_checked_at;
+      globalProbeLoaded.value = true;
+    }
+  } catch (error) {
+    // Keep the page-local timestamp as a compatibility fallback when an older
+    // API has not deployed the global probe endpoint yet.
+    if (!controller.signal.aborted && !isAbortError(error)) globalProbeLoaded.value = false;
+  }
 }
 function onAvailabilityStorageInvalidated(event: StorageEvent): void {
   if (event.key === "gmi-availability-invalidated-at" && event.newValue) onAvailabilityInvalidated();
 }
 onMounted(() => {
   loadRegistry();
+  void loadGlobalProbeTime();
   window.addEventListener("click", onWindowRawIndexClick);
   window.addEventListener("keydown", onWindowKeyDown);
   window.addEventListener("gmi-close-raw-index", onCloseRawIndex);
@@ -987,6 +1221,8 @@ onMounted(() => {
   window.addEventListener("storage", onAvailabilityStorageInvalidated);
 });
 onBeforeUnmount(() => {
+  gameActivityController?.abort();
+  globalProbeController?.abort();
   disposeArchiveLoader();
   if (searchTimer !== null) window.clearTimeout(searchTimer);
   window.removeEventListener("click", onWindowRawIndexClick);
@@ -1058,10 +1294,10 @@ function formatDate(value?: string | null): string {
     }, {});
   return `${parts.year}.${parts.month}.${parts.day} ${parts.hour}:${parts.minute}`;
 }
-function formatRelativeTime(value?: string | null): string {
+function formatRelativeTime(value?: string | null, now = Date.now()): string {
   const date = observedDate(value);
   if (!date) return "-";
-  const seconds = Math.max(0, Math.round((Date.now() - date.getTime()) / 1000));
+  const seconds = Math.max(0, Math.round((now - date.getTime()) / 1000));
   if (seconds < 60) return "刚刚";
   const minutes = Math.round(seconds / 60);
   if (minutes < 60) return `${minutes} 分钟前`;
@@ -1120,6 +1356,18 @@ async function onCopyChunkUrl(url: string, label = "链接"): Promise<void> {
 }
 function onRemoteTreeProbeTimeChange(value: string | null): void {
   remoteTreeProbeTime.value = value;
+}
+function onFileTimeChange(context: FileTimeChange): void {
+  if (mode.value !== "files" || context.domainId !== domainId.value || context.version !== selectedVersion.value) return;
+  browserFileTime.value = context;
+}
+function onRemoteManifestSizeChange(context: { domainId: string; version: string; kind: string; size: number | null }): void {
+  if (!isWuwaFilesMode.value || context.domainId !== domainId.value
+    || context.version !== selectedVersion.value || context.kind !== "file") return;
+  const size = context.size;
+  remoteManifestSize.value = {
+    ...context, size: typeof size === "number" && Number.isSafeInteger(size) && size >= 0 ? size : null,
+  };
 }
 function candidateUrl(artifact: Artifact, sourceKind: string) {
   return artifact.urls.find((item) => item.source_kind === sourceKind);
@@ -1295,7 +1543,7 @@ function chunkMatchingField(artifact: Artifact): string {
     <aside class="game-sidebar" aria-label="游戏导航">
       <div class="sidebar-header">
         <div class="sidebar-brand">
-          <div class="brand-badge">GMI</div>
+          <img class="brand-badge" src="/project-icon.svg" alt="GMI" />
           <div class="brand-info">
             <strong>游戏资源索引</strong>
             <span>Game Manifest Index</span>
@@ -1352,37 +1600,34 @@ function chunkMatchingField(artifact: Artifact): string {
         </div>
       </div>
 
-      <div class="sidebar-footer">
-        <a href="/admin" class="sidebar-admin-link">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="3" />
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-          </svg>
-          <span>管理后台</span>
-        </a>
-      </div>
     </aside>
     <main class="main-content">
       <header id="home" class="topbar">
         <div>
           <p class="kicker">Unofficial URL Archive</p>
-          <h1>{{ displayGameName || '游戏' }}官方 CDN 文件索引</h1>
+          <h1>{{ displayGameName || '游戏' }}官方文件索引</h1>
         </div>
-        <button
-          class="topbar-source-card"
-          type="button"
-          @click="openProvenanceModal($event)"
-          title="查看全量游戏数据来源与官方直链申明"
-        >
-          <span class="source-card-dot"></span>
-          <span class="source-card-val">数据与资源来源</span>
-          <svg class="source-card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="16" x2="12" y2="12" />
-            <line x1="12" y1="8" x2="12.01" y2="8" />
+        <button class="topbar-changelog" type="button" @click="openSiteChangelog($event)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <rect x="3" y="5" width="18" height="16" rx="2" />
+            <path d="M7 3v4M17 3v4M3 10h18M7 14h5" />
           </svg>
+          <span>更新日志</span>
+          <span class="topbar-changelog-arrow" aria-hidden="true">↗</span>
         </button>
       </header>
+      <section v-if="gameActivity.length" class="recent-activity" aria-label="最近资源变动">
+        <div class="recent-activity-heading">
+          <strong>最近资源变动</strong>
+          <button type="button" @click="openSiteChangelog($event, 'data')">查看全部</button>
+        </div>
+        <ol>
+          <li v-for="event in gameActivity.slice(0, 3)" :key="event.id">
+            <time :datetime="event.occurred_at">{{ gameActivityTime(event.occurred_at) }}</time>
+            <span>{{ gameActivityTitle(event, displayGameName) }}</span>
+          </li>
+        </ol>
+      </section>
       <section class="control-strip">
         <VersionPicker
           :versions="versions"
@@ -1390,7 +1635,7 @@ function chunkMatchingField(artifact: Artifact): string {
           :domain="domain"
           :mode="mode"
           :label-override="mode === 'legacy' ? '候选线索' : undefined"
-          :show-availability="mode !== 'files'"
+          :show-availability="mode !== 'files' && !suppressAvailabilityPresentation"
           @select="navigate({ version: $event })"
         />
         <div class="mode-field">
@@ -1423,7 +1668,7 @@ function chunkMatchingField(artifact: Artifact): string {
               <div class="panel-title-row">
                 <h2>{{ panelTitle }}</h2>
                 <div v-if="versionMetaSummary.length" class="panel-meta-inline">
-                  <span v-for="(item, idx) in versionMetaSummary" :key="item.label" class="meta-inline-item">
+                  <span v-for="(item, idx) in versionMetaSummary" :key="item.label" class="meta-inline-item" :title="item.title">
                     <span v-if="idx > 0" class="meta-dot">·</span>
                     <span class="meta-label">{{ item.label }}</span>
                     <span class="meta-value" :class="{ 'text-mono': item.isMono }">{{ item.value }}</span>
@@ -1690,13 +1935,13 @@ function chunkMatchingField(artifact: Artifact): string {
             </div>
             <div v-if="compareBaseVersion" class="compare-range-field">
               <span>对比范围</span>
-              <strong>{{ compareBaseVersion }} → {{ selectedVersion }}</strong>
+              <strong>{{ compareBaseDisplayVersion }} → {{ selectedDisplayVersion }}</strong>
             </div>
             <div v-if="compareBaseVersion" class="compare-base-field">
               <span>基准版本</span>
               <CustomSelect
                 :model-value="compareBaseVersion"
-                :options="compareBaseOptions.map((item) => ({ label: item.version, value: item.version }))"
+                :options="compareBaseOptions.map((item) => ({ label: displayVersionLabel(item.version, item.attributes), value: item.version }))"
                 size="small"
                 @change="updateCompareBase(String($event))"
               />
@@ -1723,16 +1968,14 @@ function chunkMatchingField(artifact: Artifact): string {
             <span>{{ formatBytes(artifact.size) }}</span>
             <code>{{ artifact.checksum_value || '—' }}</code>
           </div>
-          <button v-if="nextCursor" class="load-more" :disabled="loadingMore" @click="loadArtifacts(true)">
-            {{ loadingMore ? '读取中…' : '加载下一页' }}
-          </button>
+          <ArtifactPagination :page="artifactPage" :total="artifactTotal || 0" :page-size="artifactPageSize" :loading="loadingMore" @update:page="selectArtifactPage" @update:page-size="selectArtifactPageSize" />
         </div>
         <div v-else-if="mode === 'manifest'" class="empty">当前版本没有官方清单记录。</div>
         <div v-else-if="mode === 'chunks'" class="chunk-manifest-wrapper">
           <ChunkManifestView
             :domain="domain"
             :game="game"
-            :version="selectedVersion"
+            :version="selectedDisplayVersion"
             :chunk-detail="chunkDetail"
             :chunk-collection="chunkCollection"
             :artifacts="artifacts"
@@ -1743,7 +1986,7 @@ function chunkMatchingField(artifact: Artifact): string {
             @copy-url="onCopyChunkUrl"
           />
         </div>
-        <div v-else-if="mode === 'files' && domain?.adapter === 'hoyo'" class="chunk-file-browser-wrapper">
+        <div v-else-if="mode === 'files' && (domain?.adapter === 'hoyo' || isGenericFileManifestDomain)" class="chunk-file-browser-wrapper">
           <ChunkFileBrowser
             :domain="domain"
             :game="game"
@@ -1753,15 +1996,16 @@ function chunkMatchingField(artifact: Artifact): string {
             :version-summary="selectedSummary"
             :chunk-collection="chunkCollection"
             :search-query="query"
+            @file-time-change="onFileTimeChange"
           />
         </div>
-        <template v-if="!loading && !error && !['legacy', 'archive', 'compare', 'manifest', 'chunks'].includes(mode) && !(mode === 'files' && domain?.adapter === 'hoyo')">
+        <template v-if="!loading && !error && !['legacy', 'archive', 'compare', 'manifest', 'chunks'].includes(mode) && !(mode === 'files' && (domain?.adapter === 'hoyo' || isGenericFileManifestDomain))">
           <div v-if="usesRemoteTree && domain" class="remote-workspace">
             <template v-if="mode === 'resources' && selectedSummary">
               <div class="chunk-summary resource-summary">
                 <div>
                   <span>资源版本</span>
-                  <strong>{{ selectedSummary.attributes.resource_version || selectedVersion }}</strong>
+                  <strong>{{ displayVersionLabel(String(selectedSummary.attributes.resource_version || selectedVersion)) }}</strong>
                 </div>
                 <div>
                   <span>文件数</span>
@@ -1784,6 +2028,8 @@ function chunkMatchingField(artifact: Artifact): string {
               :availability-state="availabilityStateForRequest"
               :allow-actions="supportsDomainAction('open')"
               @probe-time-change="onRemoteTreeProbeTimeChange"
+              @manifest-size-change="onRemoteManifestSizeChange"
+              @file-time-change="onFileTimeChange"
             />
           </div>
           <div v-else-if="!displayedArtifacts.length" class="empty">
@@ -1843,12 +2089,15 @@ function chunkMatchingField(artifact: Artifact): string {
                     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
                     <span>复制资源文件根目录</span>
                   </button>
-                  <AvailabilityBadge :value="preferredArtifactAction(artifact)?.current || artifact.urls[0]?.current || null" />
+                  <AvailabilityBadge
+                    v-if="!suppressAvailabilityPresentation"
+                    :value="preferredArtifactAction(artifact)?.current || artifact.urls[0]?.current || null"
+                  />
                   <button
-                  v-if="preferredAvailableUrl(artifact, 'copy')"
-                  class="icon-button"
-                  @click="copyArtifactUrl(artifact)"
-                >
+                    v-if="preferredAvailableUrl(artifact, 'copy') || (suppressAvailabilityPresentation && rawArtifactUrl(artifact))"
+                    class="icon-button"
+                    @click="suppressAvailabilityPresentation ? copyUrl(rawArtifactUrl(artifact)) : copyArtifactUrl(artifact)"
+                  >
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <rect x="9" y="9" width="11" height="11" rx="2" />
                     <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
@@ -1895,7 +2144,7 @@ function chunkMatchingField(artifact: Artifact): string {
                   <span>下载</span>
                 </a>
                 <button
-                  v-else
+                  v-else-if="!suppressAvailabilityPresentation"
                   class="icon-button is-disabled is-locked"
                   disabled
                   type="button"
@@ -2011,9 +2260,7 @@ function chunkMatchingField(artifact: Artifact): string {
                 </button>
               </div>
             </article>
-            <button v-if="nextCursor" class="load-more" :disabled="loadingMore" @click="loadArtifacts(true)">
-              {{ loadingMore ? '读取中…' : '加载下一页' }}
-            </button>
+          <ArtifactPagination :page="artifactPage" :total="artifactTotal || 0" :page-size="artifactPageSize" :loading="loadingMore" @update:page="selectArtifactPage" @update:page-size="selectArtifactPageSize" />
           </div>
           <div v-else-if="mode === 'packages'" class="file-list package-list">
             <article v-for="(artifact, index) in displayedArtifacts" :key="artifact.id" class="file-card package-card">
@@ -2043,7 +2290,7 @@ function chunkMatchingField(artifact: Artifact): string {
                   <button v-if="baseUrlFor(artifact)" class="icon-button" type="button" @click="copyBaseUrl(artifact)"><span>复制资源文件根目录</span></button>
                 </template>
                 <template v-else>
-                <AvailabilityBadge :value="preferredArtifactAction(artifact)?.current || artifact.urls[0]?.current || null" />
+                <AvailabilityBadge v-if="!suppressAvailabilityPresentation" :value="preferredArtifactAction(artifact)?.current || artifact.urls[0]?.current || null" />
                 <button
                   v-if="preferredAvailableUrl(artifact, 'copy')"
                   class="icon-button"
@@ -2081,7 +2328,7 @@ function chunkMatchingField(artifact: Artifact): string {
                   <span>下载</span>
                 </a>
                 <button
-                  v-else
+                  v-else-if="!suppressAvailabilityPresentation"
                   class="icon-button is-disabled is-locked"
                   disabled
                   type="button"
@@ -2096,9 +2343,7 @@ function chunkMatchingField(artifact: Artifact): string {
                 </template>
               </div>
             </article>
-            <button v-if="nextCursor" class="load-more" :disabled="loadingMore" @click="loadArtifacts(true)">
-              {{ loadingMore ? '读取中…' : '加载下一页' }}
-            </button>
+          <ArtifactPagination :page="artifactPage" :total="artifactTotal || 0" :page-size="artifactPageSize" :loading="loadingMore" @update:page="selectArtifactPage" @update:page-size="selectArtifactPageSize" />
           </div>
           <div v-else-if="mode === 'patches' && usesPreferredUrlPresentation && domain?.adapter !== 'wuwa'" class="file-list patch-route-list endfield-list">
             <article v-for="(artifact, index) in displayedArtifacts" :key="artifact.id" class="file-card patch-route-card">
@@ -2188,9 +2433,7 @@ function chunkMatchingField(artifact: Artifact): string {
                 </button>
               </div>
             </article>
-            <button v-if="nextCursor" class="load-more" :disabled="loadingMore" @click="loadArtifacts(true)">
-              {{ loadingMore ? '读取中…' : '加载下一页' }}
-            </button>
+          <ArtifactPagination :page="artifactPage" :total="artifactTotal || 0" :page-size="artifactPageSize" :loading="loadingMore" @update:page="selectArtifactPage" @update:page-size="selectArtifactPageSize" />
           </div>
           <div v-else-if="mode === 'patches' && domain?.adapter === 'wuwa'" class="file-list patch-route-list">
             <article v-for="(artifact, index) in displayedArtifacts" :key="artifact.id" class="file-card patch-route-card">
@@ -2273,9 +2516,7 @@ function chunkMatchingField(artifact: Artifact): string {
                 </template>
               </div>
             </article>
-            <button v-if="nextCursor" class="load-more" :disabled="loadingMore" @click="loadArtifacts(true)">
-              {{ loadingMore ? '读取中…' : '加载下一页' }}
-            </button>
+          <ArtifactPagination :page="artifactPage" :total="artifactTotal || 0" :page-size="artifactPageSize" :loading="loadingMore" @update:page="selectArtifactPage" @update:page-size="selectArtifactPageSize" />
           </div>
           <div v-else-if="mode === 'patches' && domain?.adapter === 'hoyo'" class="file-list patch-route-list">
             <article v-for="(artifact, index) in displayedArtifacts" :key="artifact.id" class="file-card package-card">
@@ -2295,7 +2536,7 @@ function chunkMatchingField(artifact: Artifact): string {
                 <div class="file-meta">
                   <span>{{ formatBytes(artifact.size) }}</span>
                   <span v-if="artifact.checksum_value">{{ formatChecksum(artifact) }}</span>
-                  <span v-if="artifact.attributes.route_from && (artifact.attributes.route_to || selectedVersion)">{{ artifact.attributes.route_from }} -> {{ artifact.attributes.route_to || selectedVersion }}</span>
+                  <span v-if="artifact.attributes.route_from && (artifact.attributes.route_to || selectedVersion)">{{ displayVersionLabel(String(artifact.attributes.route_from)) }} -> {{ displayVersionLabel(String(artifact.attributes.route_to || selectedVersion)) }}</span>
                   <span v-if="artifact.attributes.language">{{ hoyoLanguageLabel(artifact.attributes.language) }}</span>
                 </div>
               </div>
@@ -2352,9 +2593,7 @@ function chunkMatchingField(artifact: Artifact): string {
                 </button>
               </div>
             </article>
-            <button v-if="nextCursor" class="load-more" :disabled="loadingMore" @click="loadArtifacts(true)">
-              {{ loadingMore ? '读取中…' : '加载下一页' }}
-            </button>
+          <ArtifactPagination :page="artifactPage" :total="artifactTotal || 0" :page-size="artifactPageSize" :loading="loadingMore" @update:page="selectArtifactPage" @update:page-size="selectArtifactPageSize" />
           </div>
           <div v-else class="file-list">
             <article v-for="artifact in displayedArtifacts" :key="artifact.id" class="file-card">
@@ -2443,16 +2682,12 @@ function chunkMatchingField(artifact: Artifact): string {
                 </button>
               </div>
             </article>
-            <button v-if="nextCursor" class="load-more" :disabled="loadingMore" @click="loadArtifacts(true)">
-              {{ loadingMore ? '读取中…' : '加载下一页' }}
-            </button>
+          <ArtifactPagination :page="artifactPage" :total="artifactTotal || 0" :page-size="artifactPageSize" :loading="loadingMore" @update:page="selectArtifactPage" @update:page-size="selectArtifactPageSize" />
           </div>
         </template>
       </section>
       <footer class="archive-footer">
-        <div v-if="syncTimeText" class="footer-sync-info">
-          <span>当前资源最近探活于 <b>{{ syncTimeText }}</b></span>
-        </div>
+        <ProbeScheduleInfo :checked-time="syncTimeText" :global-time="globalProbeLoaded" @refresh="loadGlobalProbeTime" />
         <div class="footer-notice">
           <button type="button" class="footer-provenance-link" @click="openProvenanceModal($event)">
             官方下载索引与数据溯源
@@ -2472,6 +2707,13 @@ function chunkMatchingField(artifact: Artifact): string {
       :origin-pos="provenanceOrigin"
       :active-game-id="gameId"
       @close="showProvenanceModal = false"
+    />
+    <SiteChangelogModal
+      :open="showSiteChangelog"
+      :origin-pos="siteChangelogOrigin"
+      :initial-tab="siteChangelogInitialTab"
+      :game-names="gameNames"
+      @close="showSiteChangelog = false"
     />
   </div>
 </template>

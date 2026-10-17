@@ -6,6 +6,7 @@ import {
   adminUiCapabilities,
   externalScheduleNotice,
   manualVersionSavedMessage,
+  probeScheduleNotice,
   supportsApkVersionEditor,
 } from "../admin-ui-capabilities";
 import { gameIcons } from "../game-icons";
@@ -17,12 +18,14 @@ import AdminOperationProgress from "../components/admin/AdminOperationProgress.v
 import {
   discoverItemState,
   discoverSkippedCount,
+  isProbeUnknownItem,
   operationControlsDisabled,
   operationScopeLabel,
   probeAvailableUrls,
   probeCheckedUrls,
   probeFailedUrls,
   probeItemKey,
+  probeResultReason,
   probeUnavailableUrls,
   probeUnknownUrls,
   restoredOperationScope,
@@ -37,6 +40,7 @@ import type {
   AdminSyncStatus,
   ManualArtifactPayload,
   ProbeSchedule,
+  ProbeSchedulerStatus,
   ProbeStatus,
   ProbeUrlResult,
   RetentionConfig,
@@ -53,6 +57,7 @@ const OPERATION_JOB_KEY = "game-manifest-index-web-operation-job-v1";
 const AVAILABILITY_INVALIDATION_EVENT = "gmi-availability-invalidated";
 const AVAILABILITY_INVALIDATION_STORAGE_KEY = "gmi-availability-invalidated-at";
 let lastInvalidatedOperationJobId: string | null = null;
+let availabilityInvalidationSequence = 0;
 
 const router = useRouter();
 const token = ref(localStorage.getItem(TOKEN_STORAGE_KEY) || sessionStorage.getItem(TOKEN_STORAGE_KEY) || "");
@@ -109,6 +114,7 @@ const selectedVersion = ref("");
 const syncStatus = ref<AdminSyncStatus | null>(null);
 const probeStatus = ref<ProbeStatus | null>(null);
 const probeSchedule = ref<ProbeSchedule>({ enabled: false, interval_hours: 24, mode: "normal" });
+const probeSchedulerStatus = ref<ProbeSchedulerStatus | null>(null);
 let probePollTimer: number | null = null;
 const newGame = ref(false);
 const newDomain = ref(false);
@@ -1661,11 +1667,21 @@ async function loadProbeStatus(): Promise<void> {
   }
 }
 
+async function loadProbeSchedulerStatus(): Promise<void> {
+  try {
+    probeSchedulerStatus.value = await adminApi.probeScheduler(token.value.trim());
+  } catch (reason) {
+    probeSchedulerStatus.value = null;
+    if (!(reason instanceof DOMException && reason.name === "AbortError")) showError(reason);
+  }
+}
+
 function startProbePolling(): void {
   stopProbePolling();
   probePollTimer = window.setInterval(async () => {
     if (!authenticated.value || tab.value !== "probe") return;
     await loadProbeStatus();
+    await loadProbeSchedulerStatus();
     await loadSyncRunStatus();
   }, 2500);
 }
@@ -1684,6 +1700,7 @@ async function openProbe(): Promise<void> {
   cancelRetentionSave();
   tab.value = "probe";
   await loadProbeStatus();
+  await loadProbeSchedulerStatus();
   await loadSyncRunStatus();
   try {
     probeSchedule.value = await adminApi.probeSchedule(token.value.trim());
@@ -1711,7 +1728,8 @@ async function saveProbeSchedule(): Promise<void> {
   if (!confirmed) return;
   await withLoading(async (signal) => {
     probeSchedule.value = await adminApi.saveProbeSchedule(probeSchedule.value, token.value, signal);
-    success.value = `探活计划参数已保存。${externalScheduleNotice}`;
+    await loadProbeSchedulerStatus();
+    success.value = "定时探活计划已保存。";
   });
 }
 
@@ -1976,10 +1994,79 @@ const opJob = ref<AdminOperationJob | null>(null);
 const opResult = ref<AdminOperationResult | null>(null);
 const opExecutionTime = ref<number | null>(null);
 const opTerminalLogs = ref<string[]>([]);
+const OP_TERMINAL_LOG_LIMIT = 256;
 const opLogOffset = ref(0);
 const opTerminalHidden = ref(false);
 let operationPollTimer: number | null = null;
 let operationPollBusy = false;
+
+type TerminalLogTone = "success" | "danger" | "warning" | "info";
+type TerminalLogEntry = {
+  id: number;
+  raw: string;
+  phase: string;
+  target: string;
+  outcome: string;
+  tone: TerminalLogTone;
+  detail: string;
+};
+
+const terminalLogSource = computed(() => {
+  if (opTerminalLogs.value.length) return opTerminalLogs.value;
+  const syncTail = syncRunStatus.value?.result?.log_tail;
+  if (syncTail) return syncTail.split(/\r?\n/).filter(Boolean);
+  return (probeStatus.value?.log || []).slice(-150);
+});
+
+function terminalLogTone(outcome: string): TerminalLogTone {
+  if (/失败|失效|错误|异常|取消/i.test(outcome)) return "danger";
+  if (/未知|未判定|跳过|等待/i.test(outcome)) return "warning";
+  if (/成功|可用|完成|正常/i.test(outcome)) return "success";
+  return "info";
+}
+
+function parseTerminalLog(raw: string, id: number): TerminalLogEntry {
+  const match = raw.match(/^\[([^\]]+)\]\s+(.+?)\s+(可用|不可用|未判定|未知|失败(?::.*)?|成功|跳过.*)$/u);
+  if (!match) {
+    return { id, raw, phase: "系统", target: "运维任务", outcome: "记录", tone: "info", detail: raw };
+  }
+  const [scope, target, outcome] = match.slice(1);
+  const [phase, platform] = scope.split("/");
+  return {
+    id,
+    raw,
+    phase: phase === "probe" ? "探活" : phase === "discover" ? "发现" : phase,
+    target: `${target}${platform ? ` · ${platform}` : ""}`,
+    outcome: outcome.startsWith("失败:") ? "失败" : outcome,
+    tone: terminalLogTone(outcome),
+    detail: outcome.startsWith("失败:") ? outcome.slice(3) : "",
+  };
+}
+
+const terminalLogEntries = computed<TerminalLogEntry[]>(() =>
+  terminalLogSource.value.map((line, index) => parseTerminalLog(line, index + 1)),
+);
+
+const terminalLogStats = computed(() => terminalLogEntries.value.reduce(
+  (stats, entry) => {
+    stats.total += 1;
+    if (entry.tone === "success") stats.success += 1;
+    if (entry.tone === "danger") stats.danger += 1;
+    if (entry.tone === "warning") stats.warning += 1;
+    return stats;
+  },
+  { total: 0, success: 0, danger: 0, warning: 0 },
+));
+
+const terminalStatusText = computed(() => {
+  if (opJob.value?.status === "cancelling") return "正在取消";
+  if (opRunning.value) return "执行中";
+  if (opJob.value?.status === "finished") return "已完成";
+  if (opJob.value?.status === "failed") return "执行失败";
+  if (opJob.value?.status === "cancelled") return "已取消";
+  if (probeStatus.value?.status === "running") return "探活中";
+  return terminalLogEntries.value.length ? "最近记录" : "等待任务";
+});
 
 const operationScope = computed(() =>
   restoredOperationScope(opJob.value?.scope ?? opResult.value?.scope),
@@ -2001,7 +2088,7 @@ const filteredProbeItems = computed(() => {
     return items.filter((it) => it.available === false);
   }
   if (probeTableFilter.value === "unknown") {
-    return items.filter((it) => it.available !== true && it.available !== false);
+    return items.filter(isProbeUnknownItem);
   }
   if (probeTableFilter.value === "failed") {
     return items.filter((it) => it.ok === false);
@@ -2037,6 +2124,11 @@ function notifyAvailabilityInvalidated(jobId: string): void {
   }
 }
 
+function nextVersionProbeInvalidationId(domainId: string, version: string): string {
+  availabilityInvalidationSequence += 1;
+  return `version-probe:${domainId}:${version}:${Date.now()}:${availabilityInvalidationSequence}`;
+}
+
 async function applyOperationJob(job: AdminOperationJob, isInitialRestore = false, incremental = false): Promise<void> {
   const sameJob = opJob.value?.job_id === job.job_id;
   opJob.value = job;
@@ -2044,12 +2136,12 @@ async function applyOperationJob(job: AdminOperationJob, isInitialRestore = fals
   if (restoredScope) opPlatformScope.value = restoredScope;
   opRunning.value = job.status === "running" || job.status === "cancelling";
   if (incremental && sameJob) {
-    opTerminalLogs.value = [...opTerminalLogs.value, ...(job.logs || [])];
+    opTerminalLogs.value = [...opTerminalLogs.value, ...(job.logs || [])].slice(-OP_TERMINAL_LOG_LIMIT);
     opLogOffset.value = job.log_total ?? (opLogOffset.value + (job.logs || []).length);
     if (job.logs?.length) opTerminalHidden.value = false;
   } else {
-    opTerminalLogs.value = [...(job.logs || [])];
-    opLogOffset.value = job.logs?.length || 0;
+    opTerminalLogs.value = (job.logs || []).slice(-OP_TERMINAL_LOG_LIMIT);
+    opLogOffset.value = job.log_total ?? ((job.log_offset ?? 0) + (job.logs?.length || 0));
     opTerminalHidden.value = false;
   }
   if (opRunning.value) return;
@@ -2151,8 +2243,8 @@ function isGameSelected(gameId: string): boolean {
 function appendOpLog(line: string): void {
   opTerminalHidden.value = false;
   opTerminalLogs.value.push(line);
-  if (opTerminalLogs.value.length > 300) {
-    opTerminalLogs.value = opTerminalLogs.value.slice(-300);
+  if (opTerminalLogs.value.length > OP_TERMINAL_LOG_LIMIT) {
+    opTerminalLogs.value = opTerminalLogs.value.slice(-OP_TERMINAL_LOG_LIMIT);
   }
 }
 
@@ -2186,9 +2278,7 @@ function gameDisplayName(gameId: string): string {
 
 async function executeAdminOperation(): Promise<void> {
   const actions: ("discover" | "probe")[] =
-    opAction.value === "both"
-      ? ["discover", "probe"]
-      : [opAction.value];
+    opAction.value === "discover" ? ["discover"] : ["discover", "probe"];
 
   if (opScope.value === "custom" && opSelectedGameIds.value.length === 0) {
     error.value = "请至少勾选一款游戏，或切换为【全部游戏】模式。";
@@ -2209,7 +2299,7 @@ async function executeAdminOperation(): Promise<void> {
       ? "【查找新版本 + 探活全量】"
       : opAction.value === "discover"
       ? "【仅查找新版本 (discover)】"
-      : "【仅探活历史版本 (probe)】";
+      : "【检查新版本并探活历史版本】";
   const scopeText =
     opScope.value === "all"
       ? `全部 ${catalog.value.games.length || "已注册"} 款游戏`
@@ -2836,9 +2926,12 @@ async function saveEditableVersion(): Promise<void> {
       );
     }
 
+    let probeCompleted = false;
     if (willProbe) {
       try {
         await adminApi.probeVersion(selectedDomainId.value, selectedVersion.value, token.value, signal);
+        probeCompleted = true;
+        notifyAvailabilityInvalidated(nextVersionProbeInvalidationId(selectedDomainId.value, selectedVersion.value));
       } catch {
         // 探活失败不阻塞保存
       }
@@ -2848,7 +2941,9 @@ async function saveEditableVersion(): Promise<void> {
     versions.value = verRes.items;
     await loadEditableVersion(selectedDomainId.value, selectedVersion.value);
     success.value = willProbe
-      ? `版本 ${selectedVersion.value} 修改已保存并已完成探活！`
+      ? probeCompleted
+        ? `版本 ${selectedVersion.value} 修改已保存并已完成探活！`
+        : `版本 ${selectedVersion.value} 修改已保存，但探活失败，请重试。`
       : `版本 ${selectedVersion.value} 的配置修改已保存成功。`;
   });
 }
@@ -3212,6 +3307,7 @@ async function probeCurrentVersion(ver = selectedVersion.value): Promise<void> {
   await withLoading(async (signal) => {
     try {
       await adminApi.probeVersion(selectedDomainId.value, ver, token.value, signal);
+      notifyAvailabilityInvalidated(nextVersionProbeInvalidationId(selectedDomainId.value, ver));
       const verRes = await adminApi.versions(selectedDomainId.value, token.value, signal);
       versions.value = verRes.items;
       await loadEditableVersion(selectedDomainId.value, ver);
@@ -4545,7 +4641,7 @@ onBeforeUnmount(() => {
               <div class="card-title-group">
                 <div class="kicker-tag">OPERATIONS CONSOLE</div>
                 <h3>数据采集与版本探活控制台</h3>
-                <p class="card-subtitle">支持单款/多款/全量游戏执行新版本查找与历史版本探活，并实时显示进度</p>
+                <p class="card-subtitle">批量探活会先检查官方新版本；配置 TG 后仅发送新版本更新，无变化时保持静默。单链接和单版本探活只检查指定目标。</p>
               </div>
 
               <!-- 动作模式选择 -->
@@ -4581,8 +4677,8 @@ onBeforeUnmount(() => {
                 >
                   <input v-model="opAction" class="op-radio" type="radio" value="probe" />
                   <div class="op-action-text">
-                    <span class="op-action-title">⚡ 仅探活历史版本 (probe)</span>
-                    <span class="op-action-desc">批量探活所选游戏在本地存储的所有历史版本可用性</span>
+                    <span class="op-action-title">⚡ 探活历史版本（含新版本检查）</span>
+                    <span class="op-action-desc">先查询官方新版本，再探活所选游戏的历史版本与新发现链接</span>
                   </div>
                 </label>
               </div>
@@ -4698,7 +4794,7 @@ onBeforeUnmount(() => {
             <div class="probe-card">
               <div class="card-title-group">
                 <div class="kicker-tag">AUTOMATION & SCHEDULES</div>
-                <h3>外部调度计划参数</h3>
+                <h3>定时探活与采集计划</h3>
                 <p class="card-subtitle">{{ externalScheduleNotice }}</p>
               </div>
 
@@ -4727,11 +4823,25 @@ onBeforeUnmount(() => {
               <hr style="border: 0; border-top: 1px solid var(--line-soft); margin: 6px 0;" />
 
               <!-- 定时探活计划 -->
+              <div class="schedule-runtime-status" aria-live="polite">
+                <div>
+                  内置探活计时器：<strong>{{ !probeSchedulerStatus ? '状态未知' : probeSchedulerStatus.running ? '运行中' : '已停止' }}</strong>
+                </div>
+                <div v-if="probeSchedulerStatus?.next_run_at">
+                  下次任务计划：{{ formatSyncTime(probeSchedulerStatus.next_run_at) || '时间无效' }}
+                </div>
+                <div v-if="probeSchedulerStatus?.last_started_at">
+                  最近任务启动：{{ formatSyncTime(probeSchedulerStatus.last_started_at) || '时间无效' }}
+                  <span v-if="probeSchedulerStatus.last_job_id"> · 任务 {{ probeSchedulerStatus.last_job_id }}</span>
+                </div>
+                <div v-if="probeSchedulerStatus?.error" class="text-danger">错误：{{ probeSchedulerStatus.error }}</div>
+              </div>
+              <p class="card-subtitle">{{ probeScheduleNotice }}</p>
               <div class="schedule-toggle-row">
                 <label class="admin-toggle-label">
                   <input v-model="probeSchedule.enabled" class="admin-toggle-checkbox" type="checkbox" />
                   <span class="toggle-slider"></span>
-                  <span class="toggle-text">{{ probeSchedule.enabled ? '探活计划参数已启用' : '探活计划参数已停用' }}</span>
+                  <span class="toggle-text">{{ probeSchedule.enabled ? '定时探活已启用' : '定时探活已停用' }}</span>
                 </label>
               </div>
               <div class="schedule-inputs-row">
@@ -4744,14 +4854,14 @@ onBeforeUnmount(() => {
                   <CustomSelect
                     v-model="probeSchedule.mode"
                     :options="[
-                      { label: '正常轮 (TTL 20h)', value: 'normal' },
-                      { label: '全量轮 (全部)', value: 'full' }
+                      { label: '普通轮（跳过 20h 内有效证据）', value: 'normal' },
+                      { label: '全量轮（新发现及上次可用 URL）', value: 'full' }
                     ]"
                   />
                 </div>
               </div>
               <button class="admin-btn secondary full-width" type="button" :disabled="loading" @click="saveProbeSchedule">
-                <span>保存探活计划参数</span>
+                <span>保存定时探活计划</span>
               </button>
             </div>
           </div>
@@ -4845,6 +4955,9 @@ onBeforeUnmount(() => {
 
             <!-- 查找新版本明细表 -->
             <div v-if="opResult.discover" class="op-table-section">
+              <p v-if="opResult.discover.items_truncated" class="text-muted">
+                本次采集共 {{ opResult.discover.items_total }} 条结果，下方保留 {{ opResult.discover.items.length }} 条明细；上方统计包含全部结果。
+              </p>
               <h4 style="margin: 0 0 10px; font-size: 13.5px; font-weight: 750; color: #7dd3fc;">🔍 查找新版本 (Discover) 执行明细</h4>
               <div class="op-table-wrapper">
                 <table class="op-table">
@@ -4898,6 +5011,9 @@ onBeforeUnmount(() => {
 
             <!-- 探活历史版本明细表 -->
             <div v-if="opResult.probe" class="op-table-section">
+              <p v-if="opResult.probe.items_truncated" class="text-muted">
+                本次探活共 {{ opResult.probe.items_total }} 条结果，下方保留 {{ opResult.probe.items.length }} 条明细；筛选仅针对保留的明细，上方统计包含全部结果。
+              </p>
               <div class="op-table-head-row">
                 <h4 style="margin: 0; font-size: 13.5px; font-weight: 750; color: #34d399;">
                   ⚡ 历史版本探活 (Probe) 执行明细
@@ -4952,7 +5068,7 @@ onBeforeUnmount(() => {
                       <th>Artifact / URL</th>
                       <th>可用性状态</th>
                       <th>探活适配器</th>
-                      <th>错误 / 异常信息</th>
+                      <th>探活原因 / 异常信息</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -4973,8 +5089,10 @@ onBeforeUnmount(() => {
                       </td>
                       <td><span class="text-mono text-muted" style="font-size: 11.5px;">{{ pItem.adapter || 'default' }}</span></td>
                       <td>
-                        <span v-if="pItem.error" class="text-rose text-mono" style="font-size: 11.5px;">{{ pItem.error }}</span>
-                        <span v-else class="text-emerald" style="font-size: 11.5px;">正常</span>
+                        <span
+                          :class="!pItem.ok || pItem.available === false ? 'text-rose' : isProbeUnknownItem(pItem) ? 'text-amber' : 'text-emerald'"
+                          style="font-size: 11.5px;"
+                        >{{ probeResultReason(pItem) }}</span>
                       </td>
                     </tr>
                     <tr v-if="filteredProbeItems.length === 0">
@@ -4988,26 +5106,80 @@ onBeforeUnmount(() => {
             </div>
           </div>
 
-          <!-- 底部全宽黑曜石终端日志窗口 (Terminal Console) -->
+          <!-- 底部全宽运维日志面板 -->
           <div class="admin-terminal-window">
             <div class="terminal-titlebar">
-              <div class="terminal-dots">
-                <span class="dot red"></span>
-                <span class="dot yellow"></span>
-                <span class="dot green"></span>
+              <div class="terminal-heading">
+                <div class="kicker-tag">OPERATIONS LOG</div>
+                <h3>任务日志</h3>
+                <p>实时记录探活与版本发现结果，原始行可展开查看。</p>
               </div>
-              <div class="terminal-title">CONSOLE LOG STREAM · {{ operationScopeText }} · OPERATIONS & PROBE LOGS</div>
+              <div class="terminal-state" :class="`tone-${terminalLogTone(terminalStatusText)}`">
+                <span class="terminal-state-dot"></span>
+                <span>{{ terminalStatusText }}</span>
+              </div>
               <div class="terminal-actions">
-                <button class="terminal-refresh-btn" type="button" @click="opTerminalHidden = true">
-                  <span>🧹 清屏（仅当前页面）</span>
+                <button class="terminal-refresh-btn" type="button" @click="opTerminalHidden = true" title="仅隐藏当前页面的日志">
+                  <span>清屏</span>
                 </button>
-                <button class="terminal-refresh-btn" type="button" :disabled="loading || operationPollBusy" @click="refreshTerminalLogs">
-                  <span>🔄 刷新日志</span>
+                <button class="terminal-refresh-btn" type="button" :disabled="loading || operationPollBusy" @click="refreshTerminalLogs" title="重新获取日志">
+                  <span>刷新</span>
                 </button>
               </div>
             </div>
-            <div class="terminal-viewport">
-              <pre class="terminal-pre"><code>{{ opTerminalHidden ? '--- 已清屏，仅隐藏当前页面日志；新日志到达后会继续显示 ---' : (opTerminalLogs.length ? opTerminalLogs.join('\n') : (syncRunStatus?.result?.log_tail || (probeStatus?.log || []).slice(-150).join('\n') || '--- 暂无实时运维或探活日志，点击上方执行按钮开始操作 ---')) }}</code></pre>
+            <div class="terminal-summary" aria-label="日志摘要">
+              <div class="terminal-summary-item">
+                <span>范围</span>
+                <strong>{{ operationScopeText }}</strong>
+              </div>
+              <div class="terminal-summary-item">
+                <span>记录</span>
+                <strong>{{ terminalLogStats.total }}</strong>
+              </div>
+              <div class="terminal-summary-item tone-success">
+                <span>成功</span>
+                <strong>{{ terminalLogStats.success }}</strong>
+              </div>
+              <div class="terminal-summary-item tone-danger">
+                <span>异常</span>
+                <strong>{{ terminalLogStats.danger }}</strong>
+              </div>
+              <div class="terminal-summary-item tone-warning">
+                <span>待确认</span>
+                <strong>{{ terminalLogStats.warning }}</strong>
+              </div>
+            </div>
+            <div class="terminal-viewport" aria-live="polite">
+              <div v-if="opTerminalHidden" class="terminal-empty terminal-empty-muted">
+                <strong>日志已清屏</strong>
+                <span>仅隐藏当前页面，新日志到达后会继续显示。</span>
+              </div>
+              <div v-else-if="terminalLogEntries.length" class="terminal-list">
+                <article
+                  v-for="entry in terminalLogEntries"
+                  :key="entry.id"
+                  class="terminal-row"
+                  :class="`tone-${entry.tone}`"
+                >
+                  <span class="terminal-row-index">{{ String(entry.id).padStart(3, '0') }}</span>
+                  <div class="terminal-row-content">
+                    <div class="terminal-row-meta">
+                      <span class="terminal-phase">{{ entry.phase }}</span>
+                      <strong>{{ entry.target }}</strong>
+                      <span class="terminal-outcome">{{ entry.outcome }}</span>
+                    </div>
+                    <p v-if="entry.detail" class="terminal-row-detail">{{ entry.detail }}</p>
+                    <details class="terminal-raw-details">
+                      <summary>查看原始记录</summary>
+                      <code>{{ entry.raw }}</code>
+                    </details>
+                  </div>
+                </article>
+              </div>
+              <div v-else class="terminal-empty">
+                <strong>暂无运维日志</strong>
+                <span>点击上方执行按钮开始任务，或刷新以获取最新记录。</span>
+              </div>
             </div>
           </div>
         </section>

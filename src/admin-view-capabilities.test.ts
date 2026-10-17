@@ -134,6 +134,12 @@ function mockAdminApi(platform: "android" | "windows", pcAvailability: "availabl
   vi.spyOn(adminApi, "probeVersion").mockResolvedValue({} as never);
   vi.spyOn(adminApi, "probeStatus").mockResolvedValue({ running: false, log: [] } as never);
   vi.spyOn(adminApi, "probeSchedule").mockResolvedValue({ enabled: false, interval_hours: 24, mode: "normal" });
+  vi.spyOn(adminApi, "saveProbeSchedule").mockResolvedValue({ enabled: false, interval_hours: 24, mode: "normal" });
+  vi.spyOn(adminApi, "probeScheduler").mockResolvedValue({
+    driver: "apscheduler", running: true, enabled: false,
+    next_run_at: "2026-09-15T12:00:00Z", last_started_at: "2026-09-14T12:00:00Z",
+    last_job_id: "probe-job-1", error: null,
+  });
   vi.spyOn(adminApi, "syncSchedule").mockResolvedValue({ enabled: false, times: ["04:45", "14:00"] });
 }
 
@@ -394,6 +400,7 @@ describe("AdminView capability alignment", () => {
     expect(editName.value).toBe("renamed.apk");
     buttonByText(root, "保存并探活").click();
     await flushUpdates();
+    expect(localStorage.getItem("gmi-availability-invalidated-at")).toContain("version-probe:demo-android:1.0.0");
     expect(updateVersion).toHaveBeenCalledWith("demo-android", "1.0.0", expect.objectContaining({
       artifacts: [expect.objectContaining({ kind: "apk", name: "renamed.apk" })],
     }), "test-admin-token", expect.anything());
@@ -469,15 +476,110 @@ describe("AdminView capability alignment", () => {
     app.unmount();
   });
 
-  it("describes schedule values as external configuration without an internal timer", async () => {
+  it("shows built-in probe scheduler status while keeping daily collection external", async () => {
     const { app, root } = await mountAdmin("android");
     buttonByText(root, "监控").click();
     await flushUpdates();
-    expect(root.textContent).toContain("这里只保存计划参数");
-    expect(root.textContent).toContain("服务不会启动内置计时器");
+    expect(root.textContent).toContain("这里只保存每日采集计划参数");
     expect(root.textContent).toContain("时区、漏跑策略及采集动作由外部计划任务决定");
+    expect(root.textContent).toContain("内置探活计时器：运行中");
+    expect(root.textContent).toContain("下次任务计划：");
+    expect(root.textContent).toContain("最近任务启动：");
+    expect(root.textContent).toContain("内置计时器先从官方来源采集新 URL");
+    expect(root.textContent).toContain("Android+PC 新发现或上次探活可用的官方与历史 URL");
+    expect(root.textContent).toContain("仅发送新版本更新");
+    expect(root.textContent).toContain("启动新的间隔周期");
     expect(root.textContent).not.toContain("北京时间");
+    expect(adminApi.probeScheduler).toHaveBeenCalled();
     app.unmount();
+  });
+
+  it("checks official updates before a batch probe selected in the console", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    vi.spyOn(adminApi, "latestOperation").mockRejectedValue(new Error("no previous operation"));
+    const start = vi.spyOn(adminApi, "startOperation").mockResolvedValue(operationJob({
+      status: "running", phase: "discover", actions: ["discover", "probe"],
+      result: null, finished_at: null,
+    }) as never);
+    const { app, root } = await mountAdmin("android");
+    buttonByText(root, "监控").click();
+    await flushUpdates();
+    const probeOption = root.querySelector<HTMLInputElement>('input[type="radio"][value="probe"]');
+    expect(probeOption).not.toBeNull();
+    probeOption!.click();
+    await flushUpdates();
+    buttonByText(root, "启动运维任务").click();
+    await flushUpdates();
+    expect(start).toHaveBeenCalledWith(expect.objectContaining({
+      actions: ["discover", "probe"], scope: "all", all_games: true,
+    }), "test-admin-token", expect.any(AbortSignal));
+    expect(root.textContent).toContain("仅发送新版本更新");
+    app.unmount();
+  });
+
+  it("refreshes built-in scheduler status after saving probe schedule", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const { app, root } = await mountAdmin("android");
+    buttonByText(root, "监控").click();
+    await flushUpdates();
+    const scheduler = vi.mocked(adminApi.probeScheduler);
+    const callsBeforeSave = scheduler.mock.calls.length;
+    buttonByText(root, "保存定时探活计划").click();
+    await flushUpdates();
+    expect(scheduler.mock.calls.length).toBeGreaterThan(callsBeforeSave);
+    app.unmount();
+  });
+
+  it("does not retain a running scheduler claim when status refresh fails", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const { app, root } = await mountAdmin("android");
+    buttonByText(root, "监控").click();
+    await flushUpdates();
+    expect(root.textContent).toContain("内置探活计时器：运行中");
+    vi.mocked(adminApi.probeScheduler).mockRejectedValueOnce(new Error("status unavailable"));
+    buttonByText(root, "保存定时探活计划").click();
+    await flushUpdates();
+    expect(root.textContent).toContain("内置探活计时器：状态未知");
+    expect(root.textContent).not.toContain("内置探活计时器：运行中");
+    app.unmount();
+  });
+
+  it("keeps unknown probe rows separate from failures and explains their results", async () => {
+    const items = [
+      { game_id: "demo", version: "403", ok: true, available: null, adapter: "demo", error: null, reason: "HTTP 403" },
+      { game_id: "demo", version: "200", ok: true, available: null, adapter: "demo", error: null, reason: "HTTP 200" },
+      { game_id: "demo", version: "archive", ok: true, available: false, adapter: "demo", error: null, reason: "oss_archive_not_restored" },
+      { game_id: "demo", version: "error", ok: false, available: null, adapter: "demo", error: "ProbeError", reason: "probe_failed" },
+    ];
+    vi.spyOn(adminApi, "operationStatus").mockResolvedValue(operationJob({
+      result: { actions: ["probe"], game_ids: ["demo"], scope: "all", probe: {
+        checked: 4, available: 0, unavailable: 1, unknown: 2, failed: 1, items,
+      } },
+    }) as never);
+    sessionStorage.setItem("game-manifest-index-web-operation-job-v1", "probe-job-1");
+    const { app, root } = await mountAdmin("windows");
+    try {
+      buttonByText(root, "监控").click();
+      await flushUpdates();
+      buttonByText(root, "? 未知 (2)").click();
+      await flushUpdates();
+      const table = root.querySelector(".op-table-section");
+      expect(table?.querySelectorAll("tbody tr")).toHaveLength(2);
+      expect(table?.textContent).toContain("仅显示未知: 2 条");
+      expect(table?.textContent).toContain("上游拒绝访问（HTTP 403）");
+      expect(table?.textContent).toContain("已响应，但未取得有效文件证据（HTTP 200）");
+      expect(table?.textContent).not.toContain("正常");
+      expect(table?.textContent).not.toContain("ProbeError");
+      buttonByText(root, "✕ 失效 (1)").click();
+      await flushUpdates();
+      expect(table?.textContent).toContain("对象已归档，尚未恢复下载");
+      buttonByText(root, "⚠ 异常 (1)").click();
+      await flushUpdates();
+      expect(table?.querySelectorAll("tbody tr")).toHaveLength(1);
+      expect(table?.textContent).toContain("ProbeError");
+    } finally {
+      app.unmount();
+    }
   });
 
   it("sends one availability invalidation when a probe operation finishes", async () => {
@@ -495,6 +597,93 @@ describe("AdminView capability alignment", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("resumes compacted logs with the absolute cursor and keeps a bounded terminal", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let calls = 0;
+    let app: ReturnType<typeof createApp> | undefined;
+    try {
+      const mounted = await mountResumedOperation(() => {
+        calls += 1;
+        return operationJob({
+          status: "running", phase: "probe", finished_at: null,
+          result: null,
+          log_offset: calls === 1 ? 744 : 1000,
+          log_total: calls === 1 ? 1000 : 1010,
+          logs: Array.from({ length: calls === 1 ? 256 : 10 }, (_, index) => `audit-log-${(calls === 1 ? 744 : 1000) + index}`),
+        });
+      });
+      app = mounted.app;
+      expect(vi.mocked(adminApi.operationStatus).mock.calls[1]?.[3]).toBe(1000);
+      buttonByText(mounted.root, "监控").click();
+      await flushUpdates();
+      expect(mounted.root.querySelectorAll(".terminal-row").length).toBeLessThanOrEqual(256);
+      expect(mounted.root.textContent).toContain("audit-log-1009");
+      expect(mounted.root.textContent).not.toContain("audit-log-744");
+    } finally {
+      app?.unmount();
+      vi.useRealTimers();
+    }
+  });
+
+  it("explains when probe details are bounded while keeping the complete totals", async () => {
+    vi.spyOn(adminApi, "operationStatus").mockResolvedValue(operationJob({
+      result: { actions: ["probe"], game_ids: ["demo"], probe: {
+        checked: 5000, available: 5000, unavailable: 0, unknown: 0, failed: 0,
+        items_truncated: true, items_total: 5000, items_omitted: 4999,
+        items: [{ game_id: "demo", version: "1.0.0", ok: true, available: true }],
+      } },
+    }) as never);
+    sessionStorage.setItem("game-manifest-index-web-operation-job-v1", "probe-job-1");
+    const { app, root } = await mountAdmin("windows");
+    try {
+      buttonByText(root, "监控").click();
+      await flushUpdates();
+      expect(root.textContent).toContain("本次探活共 5000 条结果，下方保留 1 条明细");
+      expect(root.textContent).toContain("上方统计包含全部结果");
+      expect(buttonByText(root, "✓ 可用 (5000)")).toBeTruthy();
+    } finally {
+      app.unmount();
+    }
+  });
+
+  it("sends a fresh availability invalidation after every successful direct version probe", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const events: CustomEvent[] = [];
+    const listener = (event: Event): void => { events.push(event as CustomEvent); };
+    window.addEventListener("gmi-availability-invalidated", listener);
+    const { app, root } = await mountAdmin("windows");
+    buttonByText(root, "版本").click();
+    await flushUpdates();
+
+    buttonByText(root, "探活并保存").click();
+    await flushUpdates();
+    buttonByText(root, "探活并保存").click();
+    await flushUpdates();
+
+    expect(events).toHaveLength(2);
+    expect(events[0].detail.jobId).not.toBe(events[1].detail.jobId);
+    app.unmount();
+    window.removeEventListener("gmi-availability-invalidated", listener);
+  });
+
+  it("does not report failed save-and-probe as a completed probe", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const { app, root } = await mountAdmin("android");
+    buttonByText(root, "版本").click();
+    await flushUpdates();
+    const url = root.querySelector<HTMLInputElement>(".apk-file-card input.url-long-input")!;
+    url.value = "https://example.com/updated.apk";
+    url.dispatchEvent(new Event("input"));
+    await flushUpdates();
+    vi.mocked(adminApi.probeVersion).mockRejectedValueOnce(new Error("network failed"));
+    buttonByText(root, "保存并探活").click();
+    await flushUpdates();
+    expect(root.textContent).toContain("修改已保存，但探活失败");
+    expect(root.textContent).not.toContain("修改已保存并已完成探活");
+    expect(localStorage.getItem("gmi-availability-invalidated-at")).toBeNull();
+    app.unmount();
   });
 
   it("does not send availability invalidation for discovery-only operations", async () => {

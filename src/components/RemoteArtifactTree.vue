@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { api, isAbortError } from "../api";
 import { artifactUrlStateCounts, isAvailabilityActionable, latestLiveProbeTime } from "../domain-presentation";
-import type { Artifact, ArtifactTreePage, AvailabilityState } from "../types";
+import type { Artifact, ArtifactTreePage, AvailabilityState, FileTimeChange } from "../types";
 import AvailabilityBadge from "./AvailabilityBadge.vue";
 import FragmentFileRow from "./FragmentFileRow.vue";
 
@@ -19,6 +19,8 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   (e: "probe-time-change", value: string | null): void;
+  (e: "manifest-size-change", value: { domainId: string; version: string; kind: string; size: number | null }): void;
+  (e: "file-time-change", value: FileTimeChange): void;
 }>();
 
 const page = ref<ArtifactTreePage>({ prefix: "", folders: [], items: [], next_cursor: null });
@@ -33,36 +35,53 @@ const crumbs = computed(() => page.value.prefix.split("/").filter(Boolean));
 const showsUrlDetails = computed(() => props.kind !== "file");
 
 async function load(prefix: string, append = false): Promise<void> {
+  const context = { domainId: props.domainId, version: props.version, kind: props.kind };
+  const timeContext = { domainId: context.domainId, version: context.version, source: "package" as const, identity: "game" };
+  const availabilityState = props.availabilityState;
   controller?.abort();
   const request = new AbortController();
   controller = request;
   const generation = ++requestGeneration;
+  const isCurrent = () => controller === request && generation === requestGeneration
+    && props.domainId === context.domainId && props.version === context.version && props.kind === context.kind
+    && props.availabilityState === availabilityState;
   append ? (loadingMore.value = true) : (loading.value = true);
-  if (!append) emit("probe-time-change", null);
+  if (!append) {
+    emit("probe-time-change", null);
+    emit("manifest-size-change", { ...context, size: null });
+    if (context.kind === "file") emit("file-time-change", { ...timeContext, fileTime: null, loading: true });
+  }
   error.value = "";
   try {
     const result = await api.artifactTree(
-      props.domainId,
-      props.version,
+      context.domainId,
+      context.version,
       {
-        kind: props.kind,
+        kind: context.kind,
         prefix,
         cursor: append ? page.value.next_cursor : null,
-        state: showsUrlDetails.value ? props.availabilityState : undefined,
+        state: context.kind !== "file" ? availabilityState : undefined,
         limit: 100,
       },
       request.signal
     );
-    if (controller !== request || generation !== requestGeneration) return;
+    if (!isCurrent()) return;
     page.value = append ? { ...result, items: [...page.value.items, ...result.items] } : result;
+    const size = result.manifest_total_size;
+    emit("manifest-size-change", {
+      ...context, size: typeof size === "number" && Number.isSafeInteger(size) && size >= 0 ? size : null,
+    });
     emit("probe-time-change", latestLiveProbeTime(page.value.items));
+    if (context.kind === "file") emit("file-time-change", { ...timeContext, fileTime: result.file_time ?? null, timeSource: result.file_time_source });
     if (!append) expanded.value = null;
   } catch (reason) {
-    if (isAbortError(reason) || controller !== request || generation !== requestGeneration) return;
+    if (isAbortError(reason) || !isCurrent()) return;
     error.value = reason instanceof Error ? reason.message : "目录加载失败";
     emit("probe-time-change", null);
+    emit("manifest-size-change", { ...context, size: null });
+    if (context.kind === "file") emit("file-time-change", { ...timeContext, fileTime: null });
   } finally {
-    if (controller === request && generation === requestGeneration) {
+    if (isCurrent()) {
       loading.value = false;
       loadingMore.value = false;
     }
@@ -121,7 +140,11 @@ watch(
   () => void load(page.value.prefix)
 );
 onMounted(() => void load(""));
-onBeforeUnmount(() => controller?.abort());
+onBeforeUnmount(() => {
+  controller?.abort();
+  controller = null;
+  requestGeneration += 1;
+});
 </script>
 
 <template>

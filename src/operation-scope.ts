@@ -56,9 +56,26 @@ export function probeUnknownUrls(summary: {
   [key: string]: unknown;
 }): number {
   if (Array.isArray(summary.items)) {
-    return summary.items.filter((item) => item.ok === true && item.available !== true && item.available !== false).length;
+    return summary.items.filter(isProbeUnknownItem).length;
   }
   return summary.unknown ?? 0;
+}
+
+export function isProbeUnknownItem(item: { ok?: boolean; available?: boolean | null }): boolean {
+  return item.ok === true && item.available !== true && item.available !== false;
+}
+
+export function probeResultReason(item: Pick<ProbeResultItem, "ok" | "available" | "error" | "reason">): string {
+  if (item.error) return `探活失败：${item.error}`;
+  if (!item.ok) return "探活失败，未取得有效结果";
+  const reason = item.reason?.trim();
+  if (reason === "oss_archive_not_restored") return "对象已归档，尚未恢复下载";
+  if (isProbeUnknownItem(item)) {
+    if (reason === "HTTP 401" || reason === "HTTP 403") return `上游拒绝访问（${reason}）`;
+    if (reason === "HTTP 200" || reason === "HTTP 206") return `已响应，但未取得有效文件证据（${reason}）`;
+    return reason ? `无法确认资源状态（${reason}）` : "探活完成，但未取得有效文件证据";
+  }
+  return reason || (item.available ? "探活判定可用" : "探活判定不可用");
 }
 
 export function probeFailedUrls(summary: {

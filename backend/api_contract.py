@@ -12,6 +12,7 @@ import json
 import os
 import re
 import stat
+from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -21,9 +22,13 @@ from urllib.parse import urlsplit
 from fastapi import FastAPI, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response
+from starlette.responses import StreamingResponse
+from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from backend import catalog_admin
+from backend.activity_store import ActivityStore
+from backend.admin_probe import candidates as scheduled_probe_candidates
 from backend.catalog_admin import CatalogConfigError
 from backend.indexes import IndexReadError, _entry as index_entry, read_index
 from backend.domain_registry import nondefault_pc_domains
@@ -37,14 +42,17 @@ from backend.manifest_readers import (
     ManifestUpstream,
     OFFICIAL_SOPHON_HOSTS,
     chunk_content,
+    chunk_download_plan_items,
     chunk_file_detail,
     local_file_detail,
     local_files,
     list_chunk_files,
     list_local_files,
+    normalize_file_time,
     strict_relative_posix,
 )
 from backend.mihoyo_package_files import (
+    PACKAGE_HOSTS_BY_GAME,
     PackageFilesBadRequest,
     PackageFilesCacheError,
     PackageFilesNotFound,
@@ -56,13 +64,14 @@ from backend.mihoyo_package_files import (
     package_files as mihoyo_package_files,
 )
 from backend.schema_v2 import SchemaValidationError, artifact_identity_key, validate_v2_record
+from url_adapters.service import DISCOVERERS, PC_DISCOVERERS
 
 
 MAX_RECORD_BYTES = 8 * 1024 * 1024
 MAX_INDEX_BYTES = 2 * 1024 * 1024
 MAX_DOCUMENT_BYTES = 16 * 1024 * 1024
 SAFE_COMPONENT = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
-VENDORS = ("mihoyo", "hypergryph", "kuro", "perfectworld")
+VENDORS = ("mihoyo", "hypergryph", "kuro", "perfectworld", "manjuu")
 PLATFORMS = (("android", "android"), ("pc", "windows"))
 ARTIFACT_KINDS = frozenset({"apk", "package", "patch", "resource"})
 TREE_KINDS = ARTIFACT_KINDS | {"all", "file"}
@@ -77,6 +86,7 @@ LOCAL_OFFICIAL_HOSTS = {
         }
     ),
     "perfectworld": frozenset({"yhcdn1.wmupd.com", "nsywl-client-dev1.wmupd.com", "htcdn1.wmupd.com"}),
+    "manjuu": frozenset({"syncstation.manjuu.com"}),
 }
 
 GAME_CATALOG: tuple[tuple[str, str, str], ...] = (
@@ -159,7 +169,7 @@ def _paginate(items: list[Any], limit: int, cursor: str | None) -> tuple[list[An
     return items[offset : offset + limit], str(offset + limit) if offset + limit < len(items) else None
 
 
-def _safe_public_url(value: Any, *, allow_query: bool = True) -> str | None:
+def _safe_public_url(value: Any, *, allow_query: bool = True, allow_http: bool = False) -> str | None:
     if not isinstance(value, str):
         return None
     try:
@@ -168,11 +178,11 @@ def _safe_public_url(value: Any, *, allow_query: bool = True) -> str | None:
     except ValueError:
         return None
     if (
-        parsed.scheme != "https"
+        parsed.scheme not in ({"http", "https"} if allow_http else {"https"})
         or not parsed.hostname
         or parsed.username is not None
         or parsed.password is not None
-        or port not in (None, 443)
+        or port not in (None, 80 if parsed.scheme == "http" else 443)
         or parsed.fragment
         or (parsed.query and not allow_query)
     ):
@@ -205,6 +215,26 @@ class DomainData:
     records: tuple[dict[str, Any], ...]
 
 
+def _index_entry_matches(item: dict[str, Any], record: dict[str, Any] | None, platform: str) -> bool:
+    expected = index_entry(record, platform) if record is not None else None
+    if expected is None or set(item) != set(expected):
+        return False
+    if item == expected:
+        return True
+    if any(item[key] != value for key, value in expected.items() if key != "available"):
+        return False
+    # Accept only the exact pre-403-policy summary of this canonical record.
+    # This keeps historical indexes readable without rewriting server data.
+    legacy_record = deepcopy(record)
+    for artifact in legacy_record.get("artifacts", []):
+        for candidate in artifact.get("urls", []):
+            current = candidate.get("current")
+            if isinstance(current, dict) and current.get("http_code") == 403:
+                del current["http_code"]
+    legacy = index_entry(legacy_record, platform)
+    return legacy != expected and item == legacy
+
+
 class ApiContract:
     def __init__(self, data_root: Path, upstream: Any | None = None, state_root: Path | None = None) -> None:
         self.data_root = Path(data_root)
@@ -214,6 +244,7 @@ class ApiContract:
             if state_root is not None
             else Path(os.environ.get("GMI_STATE_ROOT") or Path(__file__).resolve().parents[1] / ".cache")
         )
+        self.activity_store = ActivityStore(self.state_root)
 
     def _catalog_games(self) -> list[dict[str, Any]]:
         try:
@@ -337,10 +368,7 @@ class ApiContract:
             fail(500, "index_mismatch", "版本索引与记录不一致")
         for item in entries:
             record = by_version.get(item["version"])
-            expected_entry = index_entry(record, "windows") if record is not None else None
-            if expected_entry is None or set(item) != set(expected_entry) or any(
-                item.get(key) != value for key, value in expected_entry.items()
-            ):
+            if not _index_entry_matches(item, record, "windows"):
                 fail(500, "index_mismatch", "版本索引摘要不匹配")
         indexed = set(indexed_versions)
         ordered = [by_version[version] for version in indexed_versions]
@@ -351,6 +379,9 @@ class ApiContract:
         return DomainData(vendor, game_id, "pc", "windows", domain_id, directory, tuple(ordered))
 
     def inventory(self) -> dict[str, DomainData]:
+        return self._inventory()
+
+    def _inventory(self, requested_domain: str | None = None) -> dict[str, DomainData]:
         if not _ordinary(self.data_root, directory=True):
             fail(500, "data_root_invalid", "数据目录不可用")
         result: dict[str, DomainData] = {}
@@ -367,12 +398,14 @@ class ApiContract:
                 if not _ordinary(game_root, directory=True):
                     fail(500, "unsafe_data_path", "数据目录不安全")
                 for disk_platform, platform in PLATFORMS:
+                    domain_id = f"{game_id}-{'android' if platform == 'android' else 'pc'}"
+                    if requested_domain is not None and domain_id != requested_domain:
+                        continue
                     directory = game_root / disk_platform
                     if not _present(directory):
                         continue
                     if not _ordinary(directory, directory=True):
                         fail(500, "unsafe_data_path", "数据目录不安全")
-                    domain_id = f"{game_id}-{'android' if platform == 'android' else 'pc'}"
                     if domain_id in result:
                         fail(500, "duplicate_domain", "归档域归属冲突")
                     index_path = directory / "index.json"
@@ -472,8 +505,7 @@ class ApiContract:
                     for item in entries:
                         if item["version"] not in by_version:
                             fail(500, "index_mismatch", "版本索引指向缺失记录")
-                        expected_entry = index_entry(by_version[item["version"]], platform)
-                        if expected_entry is None or set(item) != set(expected_entry) or any(item.get(key) != value for key, value in expected_entry.items()):
+                        if not _index_entry_matches(item, by_version[item["version"]], platform):
                             fail(500, "index_mismatch", "版本索引摘要不匹配")
                     unindexed_versions = [version for version in visible_versions if version not in set(indexed_versions)]
                     records = [by_version[version] for version in indexed_versions + sorted(unindexed_versions, key=_version_key, reverse=True)]
@@ -493,6 +525,8 @@ class ApiContract:
                 *nondefault_pc_domains(vendor, game_id),
                 *catalog_admin.configured_nondefault_pc_domains(self.data_root, vendor, game_id),
             ):
+                if requested_domain is not None and domain_id != requested_domain:
+                    continue
                 domain_config = self._catalog_domains().get(domain_id)
                 if domain_config is not None and domain_config.get("is_enabled") is False:
                     continue
@@ -510,7 +544,7 @@ class ApiContract:
 
     def domain(self, domain_id: str) -> DomainData:
         _safe_component(domain_id, not_found=True)
-        domain = self.inventory().get(domain_id)
+        domain = self._inventory(domain_id).get(domain_id)
         if domain is None:
             fail(404, "domain_not_found", "归档域不存在")
         return domain
@@ -632,8 +666,9 @@ def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-# Live-probe evidence counts as verified for 20 hours after checked_at
-# (the current probe rotation rule), then stays visible as stale.
+# Live-probe evidence for URLs in the scheduled rotation counts as verified
+# for 20 hours after checked_at, then stays visible as stale. Terminal or
+# otherwise excluded URLs retain their concrete state without a stale timer.
 PROBE_EVIDENCE_TTL = timedelta(hours=20)
 
 
@@ -652,12 +687,14 @@ def _probe_checked_at(current: dict[str, Any]) -> tuple[str, datetime] | None:
     return value, parsed
 
 
-def _public_current(current: Any) -> dict[str, Any] | None:
+def _public_current(current: Any, *, rotation_eligible: bool = True) -> dict[str, Any] | None:
     if not isinstance(current, dict):
         return None
     state = current.get("state") if current.get("state") in AVAILABILITY_STATES else "unknown"
     checked_at = current.get("checked_at") if isinstance(current.get("checked_at"), str) else None
     http_code = current.get("http_code") if isinstance(current.get("http_code"), int) and not isinstance(current.get("http_code"), bool) else None
+    if http_code == 403:
+        state = "unavailable"
     probe = _probe_checked_at(current)
     now = _utc_now()
     evidence_status = "unverified"
@@ -665,9 +702,20 @@ def _public_current(current: Any) -> dict[str, Any] | None:
     expires_at = None
     # A future checked_at cannot prove a completed probe; treat it as unverified.
     if probe is not None and probe[1] <= now:
-        evidence_status = "verified" if now - probe[1] < PROBE_EVIDENCE_TTL else "stale"
+        age = now - probe[1]
+        if state == "available" and rotation_eligible:
+            evidence_status = "verified" if age < PROBE_EVIDENCE_TTL else "stale"
+        elif state == "available" and age >= PROBE_EVIDENCE_TTL:
+            # URLs outside the scheduled rotation cannot refresh this evidence;
+            # keep them non-actionable without presenting a stale timer badge.
+            evidence_status = "unverified"
+        else:
+            # A confirmed unavailable/unknown result is terminal for the
+            # scheduled rotation, so keep its real state visible after TTL.
+            evidence_status = "verified"
         source_kind = "live_probe"
-        expires_at = (probe[1] + PROBE_EVIDENCE_TTL).isoformat().replace("+00:00", "Z")
+        if state == "available" and rotation_eligible:
+            expires_at = (probe[1] + PROBE_EVIDENCE_TTL).isoformat().replace("+00:00", "Z")
     return {
         "state": state,
         "reason": f"HTTP {http_code}" if http_code is not None else "",
@@ -682,7 +730,19 @@ def _public_current(current: Any) -> dict[str, Any] | None:
     }
 
 
-def _public_artifact(record: dict[str, Any], artifact: dict[str, Any]) -> dict[str, Any]:
+def _scheduled_probe_indices(record: dict[str, Any]) -> set[tuple[int, int]] | None:
+    if not record:
+        return None
+    if record.get("game_id") not in DISCOVERERS and record.get("game_id") not in PC_DISCOVERERS:
+        return set()
+    return {
+        (artifact_index, url_index)
+        for artifact_index, url_index, _artifact, candidate in scheduled_probe_candidates(record)
+        if candidate.get("source_kind") in {"official", "legacy"}
+    }
+
+
+def _public_artifact(record: dict[str, Any], artifact: dict[str, Any], artifact_index: int = 0, scheduled_indices: set[tuple[int, int]] | None = None) -> dict[str, Any]:
     artifact_id = artifact["artifact_id"]
     checksum = artifact.get("checksum") if isinstance(artifact.get("checksum"), dict) else {}
     checksum_type = next((kind for kind in ("md5", "sha256", "crc64") if isinstance(checksum.get(kind), str)), None)
@@ -691,6 +751,8 @@ def _public_artifact(record: dict[str, Any], artifact: dict[str, Any]) -> dict[s
         for key in ("component", "package_type", "delivery_mode", "language", "route_from", "route_to", "decompressed_size")
         if artifact.get(key) is not None and isinstance(artifact.get(key), (str, int, bool))
     }
+    if scheduled_indices is None:
+        scheduled_indices = _scheduled_probe_indices(record)
     urls = []
     for index, candidate in enumerate(artifact.get("urls", [])):
         if not isinstance(candidate, dict):
@@ -699,7 +761,8 @@ def _public_artifact(record: dict[str, Any], artifact: dict[str, Any]) -> dict[s
         if url is None:
             continue
         source_kind = candidate.get("source_kind") if isinstance(candidate.get("source_kind"), str) else "unknown"
-        current = _public_current(candidate.get("current"))
+        rotation_eligible = scheduled_indices is None or (artifact_index, index) in scheduled_indices
+        current = _public_current(candidate.get("current"), rotation_eligible=rotation_eligible)
         urls.append(
             {
                 "id": _stable_id(artifact_id, index, url),
@@ -721,10 +784,16 @@ def _public_artifact(record: dict[str, Any], artifact: dict[str, Any]) -> dict[s
         "checksum_value": checksum.get(checksum_type) if checksum_type else None,
         "attributes": attributes,
         "urls": urls,
+        # Link publication remains HTTPS-only; probe evidence for legacy HTTP
+        # candidates still belongs to this artifact and must not be discarded.
+        "availability": _artifact_availability(artifact, scheduled_indices=scheduled_indices, artifact_index=artifact_index),
     }
 
 
 def _artifact_state(artifact: dict[str, Any]) -> str:
+    derived = artifact.get("availability")
+    if isinstance(derived, dict) and derived.get("state") in AVAILABILITY_STATES:
+        return derived["state"]
     states = []
     for url in artifact["urls"]:
         if not isinstance(url, dict) or not isinstance(url.get("current"), dict):
@@ -736,7 +805,9 @@ def _artifact_state(artifact: dict[str, Any]) -> str:
             if current is None:
                 continue
             evidence_status = current["evidence_status"]
-        if evidence_status != "verified":
+        if evidence_status != "verified" and not (
+            current.get("state") == "unavailable" and current.get("reason") == "HTTP 403"
+        ):
             continue
         state = current.get("state")
         if state in AVAILABILITY_STATES:
@@ -746,6 +817,48 @@ def _artifact_state(artifact: dict[str, Any]) -> str:
     if states and all(state == "unavailable" for state in states):
         return "unavailable"
     return "unknown"
+
+
+def _artifact_availability(artifact: dict[str, Any], *, scheduled_indices: set[tuple[int, int]] | None = None, artifact_index: int = 0) -> dict[str, str]:
+    candidates = [item for item in artifact.get("urls", [])
+                  if isinstance(item, dict) and _safe_public_url(item.get("url"), allow_http=True)]
+    currents = [
+        _public_current(
+            item.get("current"),
+            rotation_eligible=scheduled_indices is None or (artifact_index, index) in scheduled_indices,
+        )
+        for index, item in enumerate(artifact.get("urls", []))
+        if isinstance(item, dict) and _safe_public_url(item.get("url"), allow_http=True)
+    ]
+    state = _artifact_state({"urls": [{"current": current} for current in currents]})
+    if state != "unknown":
+        return {"state": state, "reason": ""}
+    if not candidates:
+        return {"state": state, "reason": "没有可探活的下载 URL"}
+    has_fresh_unknown = any(current and current["evidence_status"] == "verified" and current["state"] == "unknown" for current in currents)
+    reasons = []
+    for candidate, current in zip(candidates, currents):
+        if has_fresh_unknown and (current is None or current["evidence_status"] != "verified"):
+            continue
+        if current is None or current["evidence_status"] == "unverified":
+            reason = "尚无有效探活记录"
+        elif current["evidence_status"] == "stale":
+            reason = "探活证据已过期"
+        elif current["state"] != "unknown":
+            continue
+        else:
+            code = candidate["current"].get("http_code")
+            if code == 401:
+                reason = f"上游拒绝访问（HTTP {code}）"
+            elif code in {200, 206}:
+                reason = f"已响应，但未取得有效文件证据（HTTP {code}）"
+            elif isinstance(code, int) and not isinstance(code, bool):
+                reason = f"上游响应无法确认资源状态（HTTP {code}）"
+            else:
+                reason = "未取得有效文件证据"
+        if reason not in reasons:
+            reasons.append(reason)
+    return {"state": state, "reason": "；".join(reasons) or "未取得有效文件证据"}
 
 
 def _public_version(record: dict[str, Any]) -> dict[str, Any]:
@@ -772,7 +885,7 @@ def _public_version(record: dict[str, Any]) -> dict[str, Any]:
     candidate = next((item for item in artifact.get("urls", []) if isinstance(item, dict) and _safe_public_url(item.get("url"))), {})
     current = candidate.get("current") if isinstance(candidate, dict) and isinstance(candidate.get("current"), dict) else {}
     checksum = artifact.get("checksum") if isinstance(artifact.get("checksum"), dict) else {}
-    state = current.get("state")
+    state = (_public_current(current) or {}).get("state")
     return {
         "vendor": record["vendor"],
         "game_id": record["game_id"],
@@ -797,21 +910,163 @@ def _public_version(record: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _nte_manifest_modified_at(record: dict[str, Any]) -> str | None:
+    if (record.get("vendor"), record.get("game_id"), record.get("platform")) != ("perfectworld", "nte", "windows"):
+        return None
+    return _file_metadata(record, delivery="file_manifest")["file_time"]
+
+
+def _file_artifacts(record: dict[str, Any], delivery: str | None = None) -> list[dict[str, Any]]:
+    candidates = [
+        item for item in record.get("artifacts", []) if isinstance(item, dict)
+        and item.get("component") == "game" and item.get("package_type") in {"full", "segment"}
+        and item.get("delivery_mode") in ({delivery} if delivery else {"file_manifest", "archive"})
+        and item.get("kind") == "package"
+    ]
+    manifests = [item for item in candidates if item.get("delivery_mode") == "file_manifest"]
+    candidates = manifests or candidates
+    full = [item for item in candidates if item.get("package_type") == "full"]
+    # Ambiguous complete packages cannot share a reliable list-level timestamp.
+    return full if len(full) == 1 else [] if full else candidates
+
+
+def _file_metadata(
+    record: dict[str, Any], *, artifact: dict[str, Any] | None = None,
+    document: dict[str, Any] | None = None, upstream: Any = None, delivery: str | None = None,
+) -> dict[str, Any]:
+    """Project source timestamps; optional HEAD is only used on actual file-list routes."""
+    missing = {"file_time": None, "file_time_source": None}
+    selected = [artifact] if artifact is not None else _file_artifacts(record, delivery)
+    if not selected or record.get("platform") != "windows":
+        return missing
+    source = "manifest" if selected[0].get("delivery_mode") == "file_manifest" else "package"
+    hosts = LOCAL_OFFICIAL_HOSTS.get(record["vendor"], frozenset())
+    if record["vendor"] == "mihoyo":
+        hosts = PACKAGE_HOSTS_BY_GAME.get(record["game_id"], frozenset())
+    segmented = source == "package" and len(selected) > 1 and all(item.get("package_type") == "segment" for item in selected)
+    if segmented:
+        parts = [item.get("part") for item in selected]
+        if any(isinstance(part, bool) or not isinstance(part, int) for part in parts) or sorted(parts) != list(range(1, len(parts) + 1)):
+            return missing
+    part_times: list[str | None] = []
+    read_time = getattr(upstream, "file_modified_at", None)
+    dates: set[str] = set()
+    urls: list[str] = []
+    invalid_evidence = False
+    nte = (record.get("vendor"), record.get("game_id")) == ("perfectworld", "nte") and source == "manifest"
+    for item in selected:
+        item_dates: set[str] = set()
+        item_urls: list[str] = []
+        for candidate in item.get("urls", []):
+            if not isinstance(candidate, dict) or candidate.get("source_kind") not in {"official", "legacy"}:
+                continue
+            url = _safe_public_url(candidate.get("url"), allow_query=not nte)
+            if not url or urlsplit(url).hostname not in hosts:
+                continue
+            if nte:
+                parsed = urlsplit(url)
+                suffix = f"/Version/Windows/version/{record['version']}/ResList.bin.zip"
+                if item.get("name") != "ResList.bin.zip" or parsed.hostname != "yhcdn1.wmupd.com" or not parsed.path.startswith("/clientRes/") or not parsed.path.endswith(suffix):
+                    continue
+            urls.append(url)
+            item_urls.append(url)
+            current = candidate.get("current")
+            if not isinstance(current, dict):
+                continue
+            if current.get("http_code") not in {200, 206}:
+                invalid_evidence = True
+                continue
+            modified = normalize_file_time(current.get("last_modified"), http_header=True)
+            if modified is not None:
+                dates.add(modified)
+                item_dates.add(modified)
+            elif "last_modified" in current:
+                invalid_evidence = True
+        if segmented:
+            # Separate volumes have separate modification clocks; alternate URLs
+            # for the same volume must still agree before using its evidence.
+            if len(item_dates) > 1:
+                return missing
+            modified = next(iter(item_dates), None)
+            if modified is None and item_urls and callable(read_time):
+                modified = read_time(item_urls[0], allowed_hosts=hosts)
+            part_times.append(modified)
+    if segmented:
+        if all(part_times):
+            modified = max(value for value in part_times if value is not None)
+        else:
+            modified = normalize_file_time(record.get("file_time")) if not invalid_evidence else None
+        return {"file_time": modified, "file_time_source": "package" if modified is not None else None}
+    if len(dates) > 1:
+        return missing
+    if dates:
+        return {"file_time": dates.pop(), "file_time_source": source}
+    # Metadata-only reads can recover an absent header, but never download an archive.
+    if callable(read_time):
+        if urls:
+            modified = read_time(urls[0], allowed_hosts=hosts)
+            if modified is not None:
+                return {"file_time": modified, "file_time_source": source}
+        elif source == "manifest":
+            provenance = document.get("provenance") if isinstance(document, dict) else None
+            artifact_source = selected[0].get("source")
+            provenance = provenance if isinstance(provenance, dict) else artifact_source if isinstance(artifact_source, dict) else record.get("provenance")
+            source_url = provenance.get("source_url") if isinstance(provenance, dict) else None
+            document_url = document.get("manifest_url") if isinstance(document, dict) else None
+            if (record["vendor"], record["game_id"]) == ("mihoyo", "abc") and document_url == source_url:
+                source_url = document_url
+            # ABC's already authenticated CBT source is metadata-only: do not expand
+            # the Sophon content-download allowlist for this historical inventory.
+            provenance_hosts = frozenset({"autopatchcn-beta.bhyyjl.com"}) if (record["vendor"], record["game_id"]) == ("mihoyo", "abc") else hosts
+            try:
+                parsed = urlsplit(source_url) if isinstance(source_url, str) else None
+                recognized = (record["vendor"], record["game_id"]) == ("mihoyo", "abc") or (record["vendor"] == "kuro" and parsed is not None and parsed.path.endswith("/indexFile.json"))
+                if recognized and parsed is not None and parsed.hostname in provenance_hosts:
+                    modified = read_time(source_url, allowed_hosts=provenance_hosts)
+                    return {"file_time": modified, "file_time_source": "manifest" if modified is not None else None}
+            except (ValueError, ManifestError):
+                pass
+    # Existing canonical file_time is usable for historical package records. NTE
+    # specifically promises an authenticated ResList date, so retain its strictness.
+    is_complete_game = all(item.get("component") == "game" and item.get("package_type") in {"full", "segment"} for item in selected)
+    modified = normalize_file_time(record.get("file_time")) if is_complete_game and not nte and not invalid_evidence else None
+    return {"file_time": modified, "file_time_source": source if modified is not None else None}
+
+
 def _summary(record: dict[str, Any]) -> dict[str, Any]:
-    artifacts = [_public_artifact(record, item) for item in record.get("artifacts", []) if isinstance(item, dict)]
+    scheduled_indices = _scheduled_probe_indices(record)
+    artifacts = [
+        _public_artifact(record, item, index, scheduled_indices)
+        for index, item in enumerate(record.get("artifacts", [])) if isinstance(item, dict)
+    ]
     has_chunk = any(
         isinstance(reference, dict) and reference.get("kind") == "chunk_manifest"
         for reference in record.get("references", [])
     )
     kinds: dict[str, dict[str, Any]] = {}
     states = {state: 0 for state in AVAILABILITY_STATES}
+    reasons: dict[str, int] = {}
     for artifact in artifacts:
         state = _artifact_state(artifact)
         states[state] += 1
-        bucket = kinds.setdefault(artifact["kind"], {"count": 0, "size": 0, "availability_states": {name: 0 for name in AVAILABILITY_STATES}})
+        bucket = kinds.setdefault(artifact["kind"], {"count": 0, "size": 0, "availability_states": {name: 0 for name in AVAILABILITY_STATES}, "availability_reasons": {}})
         bucket["count"] += 1
         bucket["size"] += artifact["size"]
         bucket["availability_states"][state] += 1
+        if state == "unknown":
+            reason = artifact["availability"]["reason"]
+            reasons[reason] = reasons.get(reason, 0) + 1
+            bucket["availability_reasons"][reason] = bucket["availability_reasons"].get(reason, 0) + 1
+    attributes = {"has_chunk": True} if has_chunk else {}
+    modified_at = _nte_manifest_modified_at(record)
+    if modified_at is not None:
+        attributes["manifest_modified_at"] = modified_at
+    # The default files source is Sophon when present; archive dates belong to the
+    # explicit package source, not to the selected chunk manifest.
+    metadata = _file_metadata(record) if not has_chunk else {"file_time": None}
+    if metadata["file_time"] is not None:
+        attributes["file_modified_at"] = metadata["file_time"]
+        attributes["file_time_source"] = metadata["file_time_source"]
     return {
         "version": record["version"],
         "current_revision_id": 1,
@@ -823,7 +1078,8 @@ def _summary(record: dict[str, Any]) -> dict[str, Any]:
         "artifact_count": len(artifacts),
         "artifact_kinds": kinds,
         "availability_states": states,
-        "attributes": {"has_chunk": True} if has_chunk else {},
+        "availability_reasons": reasons,
+        "attributes": attributes,
         "provenance": _public_provenance(record.get("provenance")),
         "is_visible": True,
     }
@@ -890,6 +1146,10 @@ def _domain_projection(domain: DomainData, sort_order: int) -> dict[str, Any]:
         }
     )
     adapter = _domain_adapter(domain)
+    metadata_only_availability = (
+        domain.vendor == "manjuu"
+        and domain.game_id == "azurpromilia"
+    )
     return {
         "id": domain.domain_id,
         "game_id": domain.game_id,
@@ -901,7 +1161,10 @@ def _domain_projection(domain: DomainData, sort_order: int) -> dict[str, Any]:
             "artifact_fields": {"size": "supported", "checksum": "supported", "availability": "supported"},
             "url_source_kinds": sorted({candidate.get("source_kind") for item in artifacts for candidate in item.get("urls", []) if isinstance(candidate, dict) and isinstance(candidate.get("source_kind"), str)}),
             "checksum_algorithms": checksums,
-            "availability_source_kinds": [],
+            # Azur Promilia is a checked-in launcher archive without a probe
+            # adapter. Its official URLs remain directly usable from metadata;
+            # other domains keep the default probe-gated contract.
+            "availability_source_kinds": ["metadata_inference"] if metadata_only_availability else [],
             "url_providers": providers,
             "features": {"compare": "supported" if len(domain.records) > 1 else "unsupported", "chunks": "supported" if has_chunk else "unsupported"},
             "actions": {"download": "conditional"},
@@ -1058,6 +1321,44 @@ def create_api_app(data_root: Path, upstream: Any | None = None, *, state_root: 
     def health() -> dict[str, str]:
         return {"status": "ok"}
 
+    @app.get("/api/v1/probe/latest")
+    def latest_probe() -> dict[str, str | None]:
+        """Return one consistent timestamp for the latest completed live probe."""
+        latest: tuple[datetime, str] | None = None
+        for domain in service().inventory().values():
+            for record in domain.records:
+                for artifact in record.get("artifacts", []):
+                    if not isinstance(artifact, dict):
+                        continue
+                    for candidate in artifact.get("urls", []):
+                        if not isinstance(candidate, dict):
+                            continue
+                        current = candidate.get("current")
+                        if not isinstance(current, dict):
+                            continue
+                        checked = _probe_checked_at(current)
+                        if checked is None:
+                            continue
+                        if latest is None or checked[1] > latest[0]:
+                            latest = (checked[1], checked[0])
+        return {"last_checked_at": latest[1] if latest else None}
+
+    @app.get("/api/v1/activity")
+    def activity(limit: int = Query(default=20, ge=1, le=100)) -> dict[str, Any]:
+        enabled_games = tuple(
+            game["id"] for game in service()._catalog_games()
+            if game.get("is_enabled") is not False
+        )
+        visible_versions = {
+            (domain.game_id, domain.domain_id, record["version"])
+            for domain in service().inventory().values()
+            if domain.game_id in enabled_games
+            for record in domain.records
+        }
+        return {"items": service().activity_store.list_recent(
+            limit, game_ids=enabled_games, visible_versions=visible_versions,
+        )}
+
     @app.get("/api/v1/games")
     def games() -> list[dict[str, Any]]:
         inventory = service().inventory()
@@ -1072,6 +1373,27 @@ def create_api_app(data_root: Path, upstream: Any | None = None, *, state_root: 
                 result.append({"id": game_id, "name": game["name"], "sub_name": game["sub_name"], "platform": "multi" if len(domains) > 1 else domains[0].platform, "icon_source": game["icon_source"], "version_count": len(versions), "latest_version": max(versions, key=_version_key), "is_enabled": True, "sort_order": game["sort_order"]})
         result.sort(key=lambda item: (item.get("sort_order", 0), item["id"]))
         return result
+
+    @app.get("/api/v1/games/{game_id}/activity")
+    def game_activity(game_id: str, limit: int = Query(default=20, ge=1, le=100)) -> dict[str, Any]:
+        game = next(
+            (
+                item for item in service()._catalog_games()
+                if item["id"] == game_id and item.get("is_enabled") is not False
+            ),
+            None,
+        )
+        if game is None:
+            fail(404, "game_not_found", "游戏不存在")
+        visible_versions = {
+            (game_id, domain.domain_id, record["version"])
+            for domain in service().inventory().values()
+            if domain.game_id == game_id
+            for record in domain.records
+        }
+        return {"items": service().activity_store.list_for_game(
+            game_id, limit, visible_versions=visible_versions,
+        )}
 
     @app.get("/api/v1/games/{game_id}/domains")
     def game_domains(game_id: str) -> list[dict[str, Any]]:
@@ -1118,7 +1440,8 @@ def create_api_app(data_root: Path, upstream: Any | None = None, *, state_root: 
             fail(400, "bad_availability", "availability_state 无效")
         domain = service().domain(domain_id)
         record = service().record(domain, version)
-        items = [_public_artifact(record, item) for item in record["artifacts"]]
+        scheduled_indices = _scheduled_probe_indices(record)
+        items = [_public_artifact(record, item, index, scheduled_indices) for index, item in enumerate(record["artifacts"])]
         if kind:
             items = [item for item in items if item["kind"] == kind]
         if availability_state:
@@ -1127,8 +1450,9 @@ def create_api_app(data_root: Path, upstream: Any | None = None, *, state_root: 
             needle = q.casefold()
             items = [item for item in items if needle in json.dumps(item, ensure_ascii=False).casefold()]
         items.sort(key=lambda item: (item["kind"], item["name"].casefold(), item["part"], item["id"]))
+        total = len(items)
         page, next_cursor = _paginate(items, limit, cursor)
-        return {"items": page, "next_cursor": next_cursor}
+        return {"items": page, "next_cursor": next_cursor, "total": total}
 
     def file_compare_rows(
         domain: DomainData, before_record: dict[str, Any], after_record: dict[str, Any],
@@ -1293,12 +1617,13 @@ def create_api_app(data_root: Path, upstream: Any | None = None, *, state_root: 
             if selected == "chunk":
                 return {"source": "chunk", **list_chunk_files(payload, identity, service().upstream, path, q, limit, cursor)}
             if selected == "mihoyo_package":
-                return list_mihoyo_package_files(
+                result = list_mihoyo_package_files(
                     service().state_root, record, record["game_id"], record["version"], identity,
                     path, q, limit, cursor, service().upstream,
                 )
+                return {**result, **_file_metadata(record, delivery="archive", upstream=service().upstream)}
             artifact, document, base_urls = payload
-            return {"source": "package", "fetch_mode": "checked_in_manifest", "identity": str(_stable_id(artifact["artifact_id"])), **list_local_files(document, base_urls, path, q, limit, cursor)}
+            return {"source": "package", "fetch_mode": "checked_in_manifest", "identity": str(_stable_id(artifact["artifact_id"])), **list_local_files(document, base_urls, path, q, limit, cursor), **_file_metadata(record, artifact=artifact, document=document, upstream=service().upstream)}
         except ManifestError as error:
             raise _manifest_error(error) from error
 
@@ -1322,6 +1647,48 @@ def create_api_app(data_root: Path, upstream: Any | None = None, *, state_root: 
         except ManifestError as error:
             raise _manifest_error(error) from error
 
+    @app.get("/api/v1/domains/{domain_id}/versions/{version}/file-content")
+    async def version_file_content(domain_id: str, version: str, path: str, source: str = "package", identity: str = "game") -> Response:
+        if source != "package":
+            fail(400, "bad_source", "完整文件下载仅支持 package 来源")
+        # Resolve from the existing authenticated metadata; clients cannot supply URLs.
+        detail = await run_in_threadpool(version_file, domain_id, version, path, source, identity)
+        domain = service().domain(domain_id)
+        allowed_hosts = PACKAGE_HOSTS_BY_GAME.get(domain.game_id, frozenset()) if domain.vendor == "mihoyo" else LOCAL_OFFICIAL_HOSTS.get(domain.vendor, frozenset())
+        url = detail.get("download_url")
+        if not isinstance(url, str) or not allowed_hosts:
+            fail(404, "file_not_found", "文件没有可下载的官方直链")
+        try:
+            upstream_response, client = await service().upstream.open_file(url, allowed_hosts=allowed_hosts, expected_size=detail["size"])
+        except ManifestError as error:
+            raise _manifest_error(error) from error
+
+        async def body():
+            received = 0
+            async for block in upstream_response.aiter_raw(64 * 1024):
+                received += len(block)
+                if received > detail["size"]:
+                    raise ManifestUpstream("官方文件长度不匹配")
+                yield block
+            if received != detail["size"]:
+                raise ManifestUpstream("官方文件响应不完整")
+
+        class FileResponse(StreamingResponse):
+            async def __call__(self, scope, receive, send):
+                try:
+                    await super().__call__(scope, receive, send)
+                finally:
+                    # Disconnect cancellation must not interrupt connection cleanup.
+                    import anyio
+                    with anyio.CancelScope(shield=True):
+                        try:
+                            await upstream_response.aclose()
+                        finally:
+                            await client.aclose()
+
+        headers = {"Content-Length": str(detail["size"]), "Cache-Control": "no-store", "X-Accel-Buffering": "no"}
+        return FileResponse(body(), status_code=200, headers=headers, media_type="application/octet-stream")
+
     @app.get("/api/v1/domains/{domain_id}/versions/{version}/chunk-manifests/{identity}/files")
     def chunk_files_route(
         domain_id: str, version: str, identity: str, path: str = "", q: str | None = None,
@@ -1339,6 +1706,31 @@ def create_api_app(data_root: Path, upstream: Any | None = None, *, state_root: 
         document = service().chunk_document(domain, record)
         try:
             return {"source": "chunk", **list_chunk_files(document, identity, service().upstream, path, q, limit, cursor)}
+        except ManifestError as error:
+            raise _manifest_error(error) from error
+
+    @app.get("/api/v1/domains/{domain_id}/versions/{version}/chunk-manifests/{identity}/download-plan")
+    def chunk_download_plan_route(
+        domain_id: str, version: str, identity: str,
+        limit: int = Query(100, ge=1, le=500), cursor: str | None = None,
+    ) -> dict[str, Any]:
+        if SAFE_COMPONENT.fullmatch(identity) is None:
+            fail(400, "bad_identity", "identity 无效")
+        _cursor(cursor)
+        domain = service().domain(domain_id)
+        record = service().record(domain, version)
+        document = service().chunk_document(domain, record)
+        try:
+            public_identity, page, total, total_size, next_cursor = chunk_download_plan_items(
+                document, identity, service().upstream, limit=limit, cursor=cursor,
+            )
+            return {
+                "identity": public_identity,
+                "items": page,
+                "total": total,
+                "next_cursor": next_cursor,
+                "total_size": total_size,
+            }
         except ManifestError as error:
             raise _manifest_error(error) from error
 
@@ -1390,6 +1782,7 @@ def create_api_app(data_root: Path, upstream: Any | None = None, *, state_root: 
             try:
                 artifact, document, base_urls = service().package_document(domain, record, "game")
                 page = list_local_files(document, base_urls, prefix, q, limit, cursor)
+                manifest_total_size = sum(item["size"] for item in local_files(document))
             except ApiFault as error:
                 if error.status == 404:
                     _cursor(cursor)
@@ -1402,8 +1795,12 @@ def create_api_app(data_root: Path, upstream: Any | None = None, *, state_root: 
                 for item in page["items"] if item.get("type") == "directory"
             ]
             items = [tree_artifact(artifact["artifact_id"], item) for item in page["items"] if item.get("type") == "file"]
-            return {"prefix": prefix, "folders": folders, "items": items, "next_cursor": page["next_cursor"], "base_url": base_urls[0] if base_urls else None, "base_urls": base_urls}
-        public = [_public_artifact(record, item) for item in record["artifacts"] if kind == "all" or item["kind"] == kind]
+            return {"prefix": prefix, "folders": folders, "items": items, "next_cursor": page["next_cursor"], "base_url": base_urls[0] if base_urls else None, "base_urls": base_urls, "manifest_total_size": manifest_total_size, **_file_metadata(record, artifact=artifact, document=document, upstream=service().upstream)}
+        scheduled_indices = _scheduled_probe_indices(record)
+        public = [
+            _public_artifact(record, item, index, scheduled_indices)
+            for index, item in enumerate(record["artifacts"]) if kind == "all" or item["kind"] == kind
+        ]
         if availability_state:
             public = [item for item in public if _artifact_state(item) == availability_state]
         if q:

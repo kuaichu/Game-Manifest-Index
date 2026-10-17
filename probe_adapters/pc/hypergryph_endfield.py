@@ -28,9 +28,12 @@ _MIRROR_PATH = re.compile(
     r"/AetherArchive/beyond-hg-archive/releases/download/[A-Za-z0-9._-]+/(?:"
     + _BEYOND_ARCHIVE + "|" + _TOKEN_PATCH_ARCHIVE + r")"
 )
+_AUTH_QUERY = re.compile(r"auth_key=[0-9]{10}-[0-9a-fA-F]{32}-[0-9]+-[0-9a-fA-F]{32}")
 
 
 def matches(vendor: str | None, game_id: str | None, url: str) -> bool:
+    if any(ord(char) <= 32 or ord(char) == 127 for char in url):
+        return False
     try:
         parsed = urlsplit(url)
         port = parsed.port
@@ -41,18 +44,26 @@ def matches(vendor: str | None, game_id: str | None, url: str) -> bool:
         or port not in (None, 443)
         or parsed.username is not None
         or parsed.password is not None
-        or parsed.query
         or parsed.fragment
         or (vendor and vendor != "hypergryph")
         or (game_id and game_id != "endfield")
     ):
         return False
     if parsed.hostname == "beyond.hycdn.cn":
+        if parsed.query:
+            return bool(_OFFICIAL_ARCHIVE_PATH.fullmatch(parsed.path)
+                        and _AUTH_QUERY.fullmatch(parsed.query))
         return bool(
             _OFFICIAL_ARCHIVE_PATH.fullmatch(parsed.path)
             or _OFFICIAL_RESOURCE_PATH.fullmatch(parsed.path)
         )
-    return parsed.hostname == "github.com" and _MIRROR_PATH.fullmatch(parsed.path) is not None
+    if parsed.hostname == "beyond-prod.oss-cn-shanghai.aliyuncs.com":
+        return ("?" not in url and "#" not in url
+                and parsed.path.startswith("/6LL0KJuqHBVz33WK/")
+                and all(segment not in {".", ".."} for segment in parsed.path.split("/"))
+                and _OFFICIAL_ARCHIVE_PATH.fullmatch(parsed.path) is not None)
+    return (not parsed.query and parsed.hostname == "github.com"
+            and _MIRROR_PATH.fullmatch(parsed.path) is not None)
 
 
 def preflight(url: str, **_: object) -> None:

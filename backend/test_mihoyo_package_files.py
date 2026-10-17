@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+import struct
 import tempfile
 import unittest
 import zipfile
+import zlib
 from io import BytesIO
 from pathlib import Path
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
@@ -14,6 +17,7 @@ from backend.api_contract import create_api_app
 from backend.indexes import rebuild_indexes
 from backend.manifest_readers import ManifestNotFound, ManifestUpstream
 from backend.mihoyo_package_files import PackageFilesUpstream, _ArchiveReader, _scattered_root
+from backend import mihoyo_package_files as package_module
 from backend.schema_v2 import artifact_id
 
 
@@ -313,6 +317,91 @@ class MihoyoPackageFilesTests(unittest.TestCase):
         cache_file.write_text(json.dumps(cache), encoding="utf-8")
         broken = client.get("/api/v1/domains/hk4e-pc/versions/5.5.0/files", params={"source": "package"})
         self.assertEqual((broken.status_code, broken.json()["error"]["code"]), (500, "corrupt_manifest"))
+
+    def test_verified_hot_cache_skips_reparse_and_does_not_expose_mutable_files(self):
+        url = "https://autopatchcn.yuanshen.com/client_app/download/pc_zip/release/YuanShen.zip"
+        value = self.record("hk4e", "5.5.0", [self.package("hk4e", "5.5.0", url, size=10)])
+        raw = b'{"remoteName":"YuanShen.exe","fileSize":1,"md5":"' + b"a" * 32 + b'"}\n'
+        upstream = PackageUpstream(direct=raw)
+        kwargs = {"state_root": self.state_root, "record": value, "game_id": "hk4e", "version": "5.5.0", "upstream": upstream}
+        package_module.list_files(**kwargs)
+        # The first disk read verifies both raw SHA and parsed index equality.
+        package_module.list_files(**kwargs)
+        with patch.object(package_module, "_parse_pkg_version", side_effect=AssertionError("hot cache reparsed")), patch.object(package_module, "_file_sha256", side_effect=AssertionError("hot cache rehashed")):
+            page = package_module.list_files(**kwargs)
+            page["items"][0]["path"] = "mutated"
+            files = package_module.package_files(**kwargs)
+            files[0]["chunks"].append({"name": "mutated"})
+            files[0]["path"] = "mutated"
+            self.assertEqual(package_module.package_files(**kwargs)[0]["path"], "YuanShen.exe")
+            self.assertEqual(package_module.package_files(**kwargs)[0]["chunks"], [])
+        self.assertEqual(len(upstream.calls), 1)
+
+        cache = next(self.state_root.glob("cache/package-files/hk4e/5.5.0/*"))
+        (cache / "pkg_version").write_bytes(raw.replace(b'a' * 32, b'b' * 32))
+        with self.assertRaises(package_module.PackageFilesCacheError):
+            package_module.list_files(**kwargs)
+
+    def test_changed_disk_cache_still_requires_raw_sha_and_parsed_equality(self):
+        url = "https://autopatchcn.yuanshen.com/client_app/download/pc_zip/release/YuanShen.zip"
+        value = self.record("hk4e", "5.5.0", [self.package("hk4e", "5.5.0", url, size=10)])
+        raw = b'{"remoteName":"YuanShen.exe","fileSize":1,"md5":"' + b"a" * 32 + b'"}\n'
+        kwargs = {"state_root": self.state_root, "record": value, "game_id": "hk4e", "version": "5.5.0", "upstream": PackageUpstream(direct=raw)}
+        package_module.list_files(**kwargs)
+        package_module.list_files(**kwargs)
+        index_path = next(self.state_root.glob("cache/package-files/hk4e/5.5.0/*/files.json"))
+        raw_path = index_path.parent / "pkg_version"
+        changed_raw = raw.replace(b'a' * 32, b'b' * 32)
+        raw_path.write_bytes(changed_raw)
+        index = json.loads(index_path.read_text(encoding="utf-8"))
+        index["raw_sha256"] = hashlib.sha256(changed_raw).hexdigest()
+        # A matching raw SHA cannot excuse a different parsed file index.
+        index_path.write_text(json.dumps(index), encoding="utf-8")
+        with self.assertRaises(package_module.PackageFilesCacheError):
+            package_module.list_files(**kwargs)
+
+    def test_verified_cache_byte_budget_evicts_and_skips_oversized_values(self):
+        with package_module._VERIFIED_CACHE_GUARD:
+            package_module._VERIFIED_CACHE.clear()
+            package_module._VERIFIED_CACHE_BYTES = 0
+        files = [{"path": "sample", "chunks": []}]
+        meta = {"fetch_mode": "package_zip_member", "download_base": None}
+        fingerprint = ((1, 2, 3, 4, 5),)
+        entry_bytes = package_module._retained_size((fingerprint, files, meta))
+        with patch.object(package_module, "MAX_VERIFIED_CACHE_BYTES", entry_bytes):
+            package_module._remember_verified("one", fingerprint, files, meta)
+            package_module._remember_verified("two", fingerprint, files, meta)
+            self.assertEqual(list(package_module._VERIFIED_CACHE), ["two"])
+            self.assertLessEqual(package_module._VERIFIED_CACHE_BYTES, entry_bytes)
+            package_module._remember_verified("large", fingerprint, files * 20, meta)
+            self.assertNotIn("large", package_module._VERIFIED_CACHE)
+
+    def test_zip_deflate_enforces_declared_output_budget_during_decompression(self):
+        compressor = zlib.compressobj(wbits=-15)
+        body = compressor.compress(b"x" * (1024 * 1024)) + compressor.flush()
+        local = struct.pack("<4s5H3L2H", b"PK\x03\x04", 20, 0, 8, 0, 0, 0, len(body), 1, 0, 0)
+        reader = object.__new__(_ArchiveReader)
+        reader._sizes = [len(local) + len(body)]
+        entry = {"flags": 0, "method": 8, "compressed": len(body), "uncompressed": 1, "offset": 0, "disk": 0, "crc": 0}
+        original_decoder = zlib.decompressobj
+        limits = []
+
+        class BoundedDecoder:
+            def __init__(self, *args):
+                self.decoder = original_decoder(*args)
+
+            def decompress(self, data, max_length):
+                limits.append(max_length)
+                return self.decoder.decompress(data, max_length)
+
+            @property
+            def eof(self):
+                return self.decoder.eof
+
+        with patch.object(reader, "read_archive", side_effect=[local, body]), patch.object(package_module.zlib, "decompressobj", BoundedDecoder):
+            with self.assertRaises(PackageFilesUpstream):
+                reader._read_member(entry)
+        self.assertEqual(limits, [2])
 
     def test_historical_vendor_owned_bh3_cdn_is_accepted(self):
         url = "https://bundle.bh3.com/tmp/pc/BH3_v4.2.0.7z"
