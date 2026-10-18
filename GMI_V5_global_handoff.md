@@ -1,6 +1,6 @@
 # Game Manifest Index 项目交接文档
 
-更新日期：2026-10-17（Asia/Shanghai）。本文件保留接手所需的入口、基线和未完成事项；工作规则见 [AGENTS.md](AGENTS.md)，分支与晋级规则见 [BRANCHING.md](BRANCHING.md)。本次结合当前代码、GitHub 远端、服务器只读检查及历史对话记录更新；历史验收另标日期，不以旧交接记录替代当前代码或服务器状态。
+更新日期：2026-10-19（Asia/Shanghai）。本文件保留接手所需的入口、基线和未完成事项；工作规则见 [AGENTS.md](AGENTS.md)，分支与晋级规则见 [BRANCHING.md](BRANCHING.md)。本次核对本地代码、实时 GitHub main、本机 HTTP 服务与前端独立副本配置，补齐 10 月 17 日后端修复及重写记录；没有重新检查服务器、线上前端或执行业务测试。服务器及历史验收均另标核对日期，不以旧记录替代实时状态。
 
 ## 1. 项目与入口
 
@@ -14,6 +14,8 @@ Game Manifest Index 索引游戏资源链接、版本和元数据，不持久托
 | --- | --- |
 | `backend/app.py`、`backend/api_contract.py` | 应用启动、公共 API 与数据投影 |
 | `backend/admin_routes.py`、`backend/admin_operations.py` | Token 鉴权、采集及探活管理任务 |
+| `backend/version_store.py`、`backend/storage_locks.py`、`backend/indexes.py` | canonical 记录与索引的事务提交、共享数据锁及索引构建 |
+| `backend/admin_probe.py`、`probe_adapters/service.py` | 探活目标身份核对、仅生成 `current` 的状态转换及统一写回 |
 | `backend/admin_state.py` | 管理计划、任务状态及结果详情限额保存 |
 | `backend/probe_scheduler.py` | 内置定时探活 |
 | `backend/telegram_notify.py` | 批量及定时任务的新版本 TG 通知 |
@@ -29,26 +31,28 @@ Game Manifest Index 索引游戏资源链接、版本和元数据，不持久托
 
 ## 2. 当前基线
 
-以下基线对应 2026-10-17 的只读核对。游戏版本数、文件数和任务时间均是本次快照，后续操作前重新确认；本次未重新执行业务测试、浏览器验收或下载验收。
+本地与 GitHub 基线对应 2026-10-19 的只读核对；以下提交号是本次文档任务开始前的功能基线，纯文档提交会改变本地提交号，不改变功能代码。服务器、游戏数量及线上调度信息仍为 10 月 17 日快照，本次没有重新连接服务器。
 
-多选下载之后又完成了数据动态及弹窗滚动修复、HTTP 403 状态统一、内存与分页优化、高清图标更新。本次从 `integration/v5@720652a` 创建文档任务分支更新交接文档；按用户要求，验证后 squash 合并到 `integration/v5`，再正常合并到本地 `main`，保留公开 main 排除内部文档的规则。文档类工作仅本地提交与合并，不推送、发布或写入服务器；完成后备份并删除两个文档任务分支，保留 main、三个 integration 及历史 snapshot / safety 分支。
+10 月 17 日已完成三轮后端修复及探活写回重写，代码已推送 GitHub main，当次没有部署服务器或同步游戏数据。任务均经过相应的 core / backend / APK / PC 分支验证及集成；临时分支已删除。本次文档任务开始前仅保留本地 `main`、`integration/v5`、`integration/apk`、`integration/pc`，没有历史 snapshot / safety 分支；上轮清理后 GitHub 仅保留 main（本次只重新核对 main 引用），integration 的旧 upstream 显示 gone 不表示需要重建远端分支。
 
-更新前已有 `AGENTS.md`、`BRANCHING.md`、`GMI_V5_global_handoff.md`、`PROJECT_STATUS.md`、`README.md` 的未提交修改；本次只续写交接文档，其他修改保留。内部工作约定与交接文档不进入公开 `main`。本地 README 为内部版本，公开 README 在 `main`；用户直接在 GitHub 上的 `384b446` README 修改已保留在最新主线，不要用内部版本覆盖。历史分支备份位于 `C:/Users/Administrator/.codex/backups/gmi-branches/20261002-710f2140fe7f43bf884c496ae7cdeaa0/before-cleanup.bundle`，删除依据在同目录 `deleted-branch-candidates.json`。
+本次只更新 `GMI_V5_global_handoff.md`。用户已有 `AGENTS.md`、`BRANCHING.md`、`PROJECT_STATUS.md`、`README.md` 四份未提交修改，保持原样。`PROJECT_STATUS.md` 的部分基线与历史数量仍过时，仅作历史背景。根目录 README 为用户编辑的内部版本，不得覆盖公开 main README；内部工作约定和交接文档不进入公开 main。文档任务从 `integration/v5@a00d640` 创建 `backend/handoff-current-state`，按约定验证后 squash 到 V5、正常合并至本地 main 并保留文档排除规则，仅本地提交，不推送或写服务器。
 
-`PROJECT_STATUS.md` 的顶部提交基线及部分覆盖数量也已过时，本次未修改；其中阶段记录仅作历史背景。不要按旧分支名或旧计数恢复项目。部分本地 integration 分支仍跟踪已删除的远端引用；这不代表需要重新创建 GitHub integration 分支。
+历史分支备份在 `C:/Users/Administrator/.codex/backups/gmi-branches/20261002-710f2140fe7f43bf884c496ae7cdeaa0/before-cleanup.bundle`；最近两轮代码任务备份在 `.cache/unified-backend-fixes/completed-task-branches.bundle`、`.cache/probe-rewrite-completed-tasks.bundle`。备份只用于查阅，不应整支合回当前集成分支。
 
-| 项目 | 基线 |
+| 项目 | 最近确认的基线 |
 | --- | --- |
-| 本地功能基线 | `integration/v5` 为 `720652a`，`integration/pc` 为 `48b1b48`，`integration/apk` 为 `76ab2a8`；平台分支尚未包含共享多选下载及后续共享改动，相关新任务开始前按 BRANCHING.md 同步 |
-| 公开与服务器代码 | 本轮只读核对时，本地 `main`、`origin/main`、实时 GitHub `main` 及 `/opt/GMI` 均为 `de4bd1ee6af572ab9de183502c528cfbbec103c9`；之后的纯本地文档晋级会新增本地提交，不改变 main 的公开文件树，也不代表 GitHub 或服务器已更新。main 与 integration/v5 功能源码一致，树差异为 `.gitignore` 及公开分支排除的内部文档 |
-| 前台发布 | 两个前台域名首页均返回 HTTP 200；历史对话记录包含后续 Cloudflare 发布及局部 UI 验收，本次未重新核对部署检查、在线 JS 哈希或浏览器交互 |
-| 服务器运行环境 | 虚拟环境 `/opt/GMI/.venv`；本次确认 FastAPI `0.136.1`、Starlette `1.0.0`；Debian 12、Python 3.11.2 及 `pip check` 通过为此前记录，本次未重跑环境完整检查 |
-| 服务 | `gmi-v5.service`，本次确认 active 且 enabled；此前部署为 `0.0.0.0:8000`、单 worker，本次内外网健康接口均返回 200 |
-| 服务及环境文件 | `/etc/systemd/system/gmi-v5.service`、`/etc/gmi-v5.env`（权限 600） |
-| 数据及状态目录 | `/opt/GMI/data`、`/opt/GMI/.cache` |
-| 定时探活 | 启用，每小时，`normal`；调度器运行中且无错误，最近一轮北京时间 2026-10-17 13:48:46 启动、13:49:03 完成 |
-| 每日采集配置 | 保存为启用，时间 `08:00`、`13:23`；自动触发尚未验证 |
-| 已知历史部署备份 | `/root/gmi-selected-downloads-backup-c1b153d` 为 10 月 3 日备份；后续发布的最新备份位置本次未核实，不应把它当作当前部署基线 |
+| 本地功能代码（10 月 19 日） | `integration/v5@a00d640`；`integration/apk@dffdc62`；`integration/pc@a159eeb`。平台分支均已包含 `bd86d40` 的共享探活接口重写，但分别只包含自身的旧写回函数清理；后续任务开始前按 BRANCHING.md 同步所需共享变更 |
+| 公开代码（10 月 19 日） | 本次文档任务前本地 main、origin/main 及实时 GitHub main 均为 `cd99c5491fc961c8a9299460cccf3b20f49acf28`；main 与 V5 的 backend、probe_adapters、url_adapters、src 源码一致，整体树差异为 `.gitignore` 和公开分支排除的内部文档。纯本地文档合并之后本地 main 可领先 GitHub，不能据此声称已推送 |
+| 服务器代码（10 月 17 日最后核对） | `/opt/GMI@de4bd1ee6af572ab9de183502c528cfbbec103c9`。本对话后续只推送代码并重启本地预览，未部署服务器；10 月 19 日没有重新核实服务器 HEAD，当前实际部署为未确认 |
+| 前台发布（10 月 17 日快照） | 两个前台域名首页当时均返回 HTTP 200；本次未重新核对部署、在线 JS 哈希或浏览器交互 |
+| 服务器运行环境（10 月 17 日快照） | 虚拟环境 `/opt/GMI/.venv`；FastAPI `0.136.1`、Starlette `1.0.0`；Debian 12、Python 3.11.2 及 `pip check` 通过为更早记录，均未在本次重跑 |
+| 服务器服务（10 月 17 日快照） | `gmi-v5.service` 当时 active / enabled，内外网健康接口均返回 200；此前部署为 `0.0.0.0:8000`、单 worker；当前运行状态未重新核实 |
+| 服务及环境文件 | `/etc/systemd/system/gmi-v5.service`、`/etc/gmi-v5.env`（最后记录权限 600） |
+| 服务器数据及状态目录 | `/opt/GMI/data`、`/opt/GMI/.cache` |
+| 线上定时探活（10 月 17 日快照） | 当时启用，每小时，`normal`；调度器运行中且无错误，最近一轮北京时间 13:48:46 启动、13:49:03 完成；当前配置和轮次未重新读取 |
+| 每日采集配置（10 月 17 日快照） | 当时保存为启用，时间 `08:00`、`13:23`；外部自动触发、时区与漏跑行为仍未验证 |
+| 本机运行（10 月 19 日） | `127.0.0.1:8000` 健康、游戏列表及计划状态接口均连接被拒绝，`127.0.0.1:5173/` 也连接被拒绝；本次没有启动服务。10 月 17 日曾运行最新后端并验证健康与 14 款游戏，属于历史验收 |
+| 已知历史部署备份 | `/root/gmi-selected-downloads-backup-c1b153d` 为 10 月 3 日备份；之后的最新服务器备份位置未核实，不作为当前部署基线 |
 
 **游戏数据以服务器 `/opt/GMI/data` 为准，本地仅供参考。** 同一数据存在差异时一律采用服务器内容，即使本地时间戳更晚。仅本地独有、服务器尚未收录的新数据可增量补充；先确认缺失的身份或条目，再保留服务器已有内容、artifact 身份和来源。完整约定见 `AGENTS.md` 的 Server Data Authority。
 
@@ -65,6 +69,19 @@ Game Manifest Index 索引游戏资源链接、版本和元数据，不持久托
 | 2026-10-11 | `474b1b2` | 所有 HTTP 403 统一判定、展示为不可用，包括历史探活证据 |
 | 2026-10-13 | `8a49f24`；公开 main `2301f35` | 优化归档读取、清单缓存、任务状态与下载内存；清单分页、跨页勾选；Blob 合成上限改为 64 MiB |
 | 2026-10-17 | `720652a`；公开 main `de4bd1e` | 异环换为 300×300 官方图标，战双及明日方舟换为 192×192 官方应用图标 |
+| 2026-10-17 | `c005c8a`、`880a0b9`；main `0f5bd38` | 数据锁重入、管理编辑按资源 ID 匹配、目录配置读改写锁、任务启动失败释放执行槽、探活状态与失效活动判断、普通包缓存并发及递归文件计数修复 |
+| 2026-10-17 | `8c3d088`、`42b0300`；main `3085eec` | 记录与索引统一事务；CRUD、探活及鹰角 PC 采集接入，删除分散索引补救；Zstd 分配前限制和下载数据域单次解析 |
+| 2026-10-17 | `bd86d40`、`dffdc62`、`a159eeb`；V5 `a00d640`，main `cd99c54` | 探活写回接口重写为只生成 current，身份定位与写入归提交层；移除 Android / PC 整记录写回函数、嵌套 persist 事务及整记录深拷贝；修复重复 URL 无法按资源分别写回 |
+
+### 后端修复后的维护边界
+
+- `version_store.record_index_transaction(record, root)` 在共享进程锁与文件锁内协调一条记录及所属域索引，成功时重建索引，运行异常时恢复两份文件。`persist_v2_record()` 默认同时发布记录及索引；`write_v2_record()` 是仅写记录的底层接口，在 CRUD / 探活事务内使用，不能把它当作完整发布接口。相同记录的嵌套事务可加入外层，不同记录共用同一索引不能嵌套；保留匹配的 legacy 记录不做迁移。异常恢复不保证断电或强杀进程时一致性。
+- 管理版本编辑使用 `artifact_id` 匹配资源，前端编辑及 JSON 导入保留可选 ID；不依赖数组位置。目录配置的读改写和版本 CRUD 读取至提交均有数据锁保护；不要单独删除读取前的外层锁。
+- 探活提交链为 `admin_probe._run_probe` → `current_fn(identity, target_url, result)` → `_commit_probe`。网络和状态转换在存储事务外执行；转换函数仅接收独立的六个记录身份字段、目标 URL 和探活结果，不接触 canonical 记录。共享入口为 `probe_adapters.service.current_from_result()`，分别复用 Android / PC 字段转换，保留平台校验及官方重定向规则。
+- 提交时重新读取最新记录，核对记录身份及 provenance、artifact 身份与元数据、URL 候选除 current 外的元数据，再定位目标；允许未变资源重排，拒绝将旧探活结果写到已经变化的资源。只复制选中路径并替换其 `artifacts[].urls[].current`，一次事务提交记录与索引；事件在提交成功后发布。同一 URL 可属于不同 artifact 或元数据能唯一识别的不同候选；无法唯一定位的重复候选会拒绝提交，不能再按整条记录内 URL 唯一性决定写回对象。
+- 旧 `apply_fn` 注入及 `apply_result()`、`apply_android_v2_result()`、`apply_pc_v2_result()` 已删除。应用工厂、管理路由、批量及定时任务统一使用 `current_fn`；不要恢复整记录回调或添加旧接口 fallback。新路径一次探活只进入一次记录事务，不做整记录深拷贝。
+- 后台任务启动保存 / 线程启动失败会释放执行槽，忙碌与启动失败分别反馈 409 / 503。手动与批量探活状态选择、版本详情证据状态已统一修正，过期的已知可用证据不再漏记资源转失效的活动。
+- 普通包清单缓存按 key 合并并发读取，文件总数递归统计；Zstd 对已知输出大小先检查帧头，未知大小采用 SDK 输出限制。文件内容接口复用已解析的数据域，并在线程池解析，避免在事件循环重复扫描。上述改动保留现有 HTTP 字段语义、schema v2 身份、来源信息与官方端点；管理编辑额外支持可选 artifact_id。
 
 当前已具备归档及文件清单浏览、管理操作、官方采集、手动及定时探活、公开平台与版本路由、按日期分组的更新动态、游戏活动和最近探活时间展示。因缘精灵、蓝色星原及崩坏学园2的图标已本地化。接手时留意以下行为：
 
@@ -121,7 +138,31 @@ npm run dev -- --port 5173 --strictPort
 
 前台为 `http://127.0.0.1:5173/`，管理页为 `/admin`，健康接口为 `http://127.0.0.1:8000/api/v1/health`。Vite 将 `/api` 转发到本机 8000；按 `Ctrl+C` 停止服务。同一数据和状态目录仅运行一个后端实例 / worker，后台写操作验证使用独立数据副本与状态目录。
 
-2026-10-17 本机 `127.0.0.1:8000` 健康接口和 `127.0.0.1:5173/` 均连接被拒绝，当前本地服务未运行，本次未启动。10 月 3 日曾使用 `.cache/local-server/venv/Scripts/python.exe` 与 `start-local-backend.py` 托管后端，数据为 `.cache/local-server/runtime-data`，状态为 `.cache/local-server/state`，不是根目录参考数据；`.cache/local-server/processes.json` 是历史进程登记，不能仅凭其中 PID 判断服务仍在运行。独立下载验收的 8018 / 5188 服务及 headless 浏览器当时已结束；这些 `.cache` 文件是本机辅助材料，不随代码发布。
+### 本机后端与前端独立副本
+
+2026-10-19 实际请求本机 8000 的健康、游戏及公开调度状态接口，以及 5173 首页，均连接被拒绝；本次没有启动服务。10 月 17 日最后一次重启曾运行 `integration/v5@a00d640`，健康正常、游戏列表为 14 款；预览进程没有配置管理及 TG 凭证，自动探活未启用。进程登记在 `.cache/frontend-handoff-backend/process.json`，stdout / stderr 为同目录 `backend-probe-rewrite.*.log`。PID 23548 / 29052 是当时记录，不能据此结束现存进程；重启前先核实端口和进程命令行。
+
+该预览使用 `.cache/local-server/venv/Scripts/python.exe`、数据 `.cache/local-server/runtime-data`、状态 `.cache/frontend-handoff-backend/state`。数据是本机参考副本，可能落后于服务器。需要恢复相同的无管理权限预览时，在项目目录另开终端：
+
+```powershell
+$env:GMI_DATA_ROOT = Join-Path (Get-Location) '.cache/local-server/runtime-data'
+$env:GMI_STATE_ROOT = Join-Path (Get-Location) '.cache/frontend-handoff-backend/state'
+$env:GMI_ADMIN_TOKEN = ''
+$env:GMI_TELEGRAM_BOT_TOKEN = ''
+$env:GMI_TELEGRAM_CHAT_ID = ''
+.\.cache\local-server\venv\Scripts\python.exe -m uvicorn backend.app:app --host 127.0.0.1 --port 8000 --workers 1
+```
+
+前端已按用户要求独立复制到 `D:\Project\Active\Game Manifest Index-src`，包含 `src`、`public`、包配置、Vite / TypeScript 配置及已安装依赖；该副本交给其他 AI 修改，不能擅自覆盖、回拷或同步到仓库。2026-10-19 只读检查确认其 `.env.development.local` 为 `VITE_API_BASE_URL=/api/v1`、`VITE_PROXY_TARGET=http://10.0.0.234:8000`；`vite.config.ts` 从后者读取代理目标，未设置时才回退本机 `127.0.0.1:8000`。当前副本使用服务器后端，并非 10 月 17 日最初准备时的本机代理；这不代表服务器具备最新本地修复，本次也未请求服务器或启动副本验证。
+
+在独立副本目录可执行：
+
+```powershell
+Set-Location 'D:\Project\Active\Game Manifest Index-src'
+npm run dev -- --host 127.0.0.1 --port 5173 --strictPort
+```
+
+若要切换至本机后端，需明确调整该副本的 `VITE_PROXY_TARGET` 为 `http://127.0.0.1:8000` 并重启 Vite；本次仅记录配置，没有修改副本。旧 `.cache/local-server/processes.json`、`start-local-backend.py` 与此前 8018 / 5188 下载验收服务均属历史辅助材料，不应直接当作当前启动配置；`.cache` 不随代码发布。
 
 | 环境变量 | 含义 |
 | --- | --- |
@@ -152,14 +193,25 @@ curl --fail --max-time 10 http://127.0.0.1:8000/api/v1/health
 
 管理计划及运行状态分别读取 `/api/v1/admin/probe/schedule`、`/api/v1/admin/probe/scheduler`，需 Bearer Token。
 
-2026-10-17 本轮实际完成的只读核对：
+2026-10-19 本次文档更新实际完成：
 
-- 对照本地提交与文件树、实时 GitHub 分支引用及服务器 HEAD，确认当前代码基线；阅读历史对话 `01a0fb42-10e2-71a3-be5b-790530afec46` 的交付记录，并对照代码确认后续行为变化。
-- 两个前台首页、内网及公网健康接口均返回 HTTP 200；服务器服务 active / enabled，FastAPI 与 Starlette 版本如基线表。
-- 读取公开探活状态及受保护的探活计划、调度器、每日采集配置、最近任务状态，确认每小时 normal、无调度错误及最近任务完成；没有触发采集、探活或 TG 消息。
-- 扫描服务器数据文件并统计 649 条 v2 结构记录；没有写入、同步或全量 schema 校验。本机 8000 / 5173 未运行。
+- 核对本地分支、提交及 main / V5 功能源码差异，`git ls-remote` 确认 GitHub main 仍为 `cd99c54`；核对旧探活函数已移除及当前 current / 事务调用链。
+- 本机 8000 的健康、游戏列表、公开调度状态以及 5173 首页均连接被拒绝；没有启动服务、触发采集 / 探活 / TG、同步数据或发布。
+- 只读检查前端独立副本的 package、环境与 Vite 代理配置，确认现指向 `10.0.0.234:8000`；未修改或验收该副本。
+- 未连接服务器、读取线上管理计划或扫描服务器数据；下列服务器和浏览器结果均为历史记录。本次只做文档检查，不重新运行下述业务测试。
 
-以下后续发布验收摘自原对话交付记录，本轮未重新运行：
+10 月 17 日后端修复期间实际完成的验证（不同轮次有重叠，不累加为最终全量测试数）：
+
+| 对应代码 | 当轮验证及边界 |
+| --- | --- |
+| `880a0b9` / main `0f5bd38` | 324 项后端、133 项前端相关测试通过，类型检查与生产构建通过 |
+| `42b0300` / main `3085eec` | 458 项后端 / 适配器、62 项前端 API / 下载测试通过；覆盖记录与索引恢复、CRUD、探活、采集流水线、Zstd 输出限制、事件循环响应；使用临时数据及假上游，没有写生产数据 |
+| `a00d640` / main `cd99c54`（最后重写） | 最终合并代码的 174 项相关测试通过，包括探活提交、管理同步、定时探活、活动、存储事务、调度、任务可靠性与内存、管理 CRUD、Android / PC 转换；覆盖重复 URL、候选重排、无关编辑保留、非法 current 拒绝和索引失败恢复 |
+| 最后重写的运行跟踪 | Android 与 Windows 各一次临时探活均写回成功，每次记录事务进入 1 次，整记录深拷贝 0 次；10 月 17 日本机重启后健康接口正常、游戏列表 14 款，公开调度 disabled；未部署服务器或验收生产 UI |
+
+10 月 17 日较早的只读核对曾确认服务器 HEAD、服务 active / enabled、内外网健康、每小时 normal 计划与调度无错误，并统计 649 条 v2 结构记录；当时未执行全量 schema 校验。这些结论只适用于当时，不能替代 10 月 19 日的实时服务器核对。
+
+以下更早的发布验收摘自原对话交付记录，本次未重新运行：
 
 | 日期 | 当时报告的验证 |
 | --- | --- |
@@ -206,12 +258,13 @@ curl --fail --max-time 10 http://127.0.0.1:8000/api/v1/health
 ## 4. 剩余问题
 
 - 每日采集自动触发、外部调度部署、时区及漏跑行为仍为 `UNKNOWN`；保存启用配置不等于任务实际运行。
-- retention、多 worker / 多实例协调未实现；macOS 实际运行未核实。
-- 本轮确认 GitHub 与服务器 `main` 一致；Cloudflare 部署检查及其他云端 CI 的三平台运行结果本次未重新核实。
-- 本机 Git / HTTPS 请求曾出现证书及 TLS 错误，历史发布曾通过服务器网络和一次性凭证转发完成。本轮 `git ls-remote`、两个前台及公网健康请求成功，但没有执行推送，不能据此保证写入鉴权或所有网络路径均正常；不修改系统证书、路由或凭证存储来绕过问题。
-- 两个域名的当前前端脚本与全部线上视觉及交互未重新验收；HTTP 成功不能代替浏览器验证。本轮未运行浏览器；后续浏览器与工具边界遵循 `AGENTS.md`。
+- retention、多 worker / 多实例协调未实现；macOS 实际运行未核实。记录 / 索引事务只保证运行异常时回滚，不覆盖断电或强杀进程；未提供崩溃日志恢复机制。
+- 最新后端代码已推送至 GitHub `main@cd99c54`，本对话没有部署服务器；服务器 HEAD 和线上行为须重新核实，不能宣称已与 GitHub 一致。Cloudflare 部署及其他云端 CI 三平台结果本次也未核实。
+- 本机 Git / HTTPS 历史曾出现证书及 TLS 错误。10 月 17 日代码已通过凭证管理器成功推送，本次只重新执行 `git ls-remote`；不表示全部网络或未来写入始终正常，不修改系统证书、路由或凭证存储绕过问题。
+- 两个域名的当前前端脚本与全部线上视觉及交互未重新验收；历史 HTTP 成功不能代替浏览器验证。本次未请求线上前端或运行浏览器；后续浏览器与工具边界遵循 `AGENTS.md`。
 - 鸣潮 `3.5.0` 历史清单 / 记录缺少可追溯官方来源时间，暂不显示日期，大小正常；其他无法确认官方时间的历史版本也隐藏日期，不编造或借用时间。
 - 部分历史完整包已失效或没有可靠时间证据，例如原神 5.5.0 有分卷 404，不能保证所有完整包来源都显示日期。
 - 整目录与多选目录下载需要支持 File System Access API 的桌面 Chrome / Edge 和安全上下文；Blob 合成现限 64 MiB。流式保存没有该文件总大小上限，但历史超过 512 MiB 的文件仅验证了可进入流式路径，百 GB 整游戏尚未做全量实下载，单 Chunk 仍受前后端限制。不支持自动断点续传，关闭或离开页面会取消任务。原生目录选择对话框尚未自动验收，手机 / Firefox 的替代入口以能力模拟验证，不代表已在各浏览器实际运行。
-- 已知官方归档冻结的历史下载无法靠切换 OSS 域名恢复，包括终末地 PC `0.5.27` 和上述崩坏3 Android APK；需要官方恢复对象访问。本轮未重新请求这些安装包，历史可用性不能视为永久有效。
+- 已知官方归档冻结的历史下载无法靠切换 OSS 域名恢复，包括终末地 PC `0.5.27` 和上述崩坏3 Android APK；需要官方恢复对象访问。本次未重新请求这些安装包，历史可用性不能视为永久有效。
 - 历史 JSON 及采集编码源头尚未全面修复，已有乱码修复仅覆盖指定展示位置。
+- 任务结束快照保存失败时，已完成的操作可能被归类为失败；尚未定义并验证该场景的产品语义，未纳入本轮修复。多次并发探活同一候选的提交仍可能由后完成者覆盖 current，未实现基于探活开始时间的结果淘汰。
