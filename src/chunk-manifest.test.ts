@@ -128,8 +128,6 @@ describe("ChunkManifestView component", () => {
     document.body.appendChild(root);
 
     let copiedUrl = "";
-    let copiedLabel = "";
-    let selectedVersion = "";
 
     const app = createApp(ChunkManifestView, {
       domain: { id: "hk4e-pc", game_id: "hk4e", kind: "packages", platform: "windows", capabilities: ["packages", "chunks", "archive"], adapter: "hoyo", version_count: 44, latest_version: "5.5.0" },
@@ -138,12 +136,8 @@ describe("ChunkManifestView component", () => {
       chunkDetail: mockDetail,
       chunkCollection: mockCollection,
       loading: false,
-      onCopyUrl: (url: string, label?: string) => {
+      onCopyUrl: (url: string) => {
         copiedUrl = url;
-        copiedLabel = label || "";
-      },
-      onSelectVersion: (v: string) => {
-        selectedVersion = v;
       },
     });
 
@@ -209,11 +203,9 @@ describe("ChunkManifestView component", () => {
     appVoice.unmount();
   });
 
-  it("renders clean empty state and handles switching to latest chunk version", async () => {
+  it("renders clean empty state without chunk records", async () => {
     const root = document.createElement("div");
     document.body.appendChild(root);
-
-    let switchedVersion = "";
 
     const app = createApp(ChunkManifestView, {
       domain: { id: "hk4e-pc", game_id: "hk4e", kind: "packages", platform: "windows", capabilities: ["packages", "chunks", "archive"], adapter: "hoyo", version_count: 44, latest_version: "5.5.0" },
@@ -222,9 +214,6 @@ describe("ChunkManifestView component", () => {
       chunkDetail: null,
       chunkCollection: mockCollection,
       loading: false,
-      onSelectVersion: (v: string) => {
-        switchedVersion = v;
-      },
     });
 
     app.mount(root);
@@ -269,7 +258,7 @@ describe("ArchiveView chunks mode integration", () => {
     vi.spyOn(api, "versions").mockResolvedValue([version] as never);
     vi.spyOn(api, "chunkManifestCollection").mockResolvedValue({ items: mockCollection } as never);
     vi.spyOn(api, "chunkManifests").mockResolvedValue(mockDetail as never);
-    vi.spyOn(api, "artifacts").mockResolvedValue({ items: [], next_cursor: null } as never);
+    const artifacts = vi.spyOn(api, "artifacts").mockResolvedValue({ items: [], next_cursor: null } as never);
 
     const router = createRouter({
       history: createMemoryHistory(),
@@ -289,6 +278,7 @@ describe("ArchiveView chunks mode integration", () => {
     expect(root.textContent).toContain("导出 Manifest 链接 · 2");
     expect(root.textContent).toContain("游戏资源-外网");
     expect(root.textContent).toContain("Dd8uOkHOcG6M");
+    expect(artifacts).not.toHaveBeenCalled();
 
     app.unmount();
   });

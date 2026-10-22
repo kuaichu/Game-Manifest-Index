@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
-import { ApiError, adminApi, isAbortError } from "../api";
+import "../styles/admin.css";
+import { ApiError, adminApi } from "../api";
 import {
   adminUiCapabilities,
   externalScheduleNotice,
@@ -10,9 +11,17 @@ import {
   supportsApkVersionEditor,
 } from "../admin-ui-capabilities";
 import { gameIcons } from "../game-icons";
+import { formatBytes, formatSyncTime, getFileTimeSourceDescription } from "../admin-format";
+import { formatFileTimeLabel, isoToLocalInput, localInputToIso } from "../admin-date-time";
 import CustomSelect from "../components/CustomSelect.vue";
 import AdminGameCatalog from "../components/admin/AdminGameCatalog.vue";
 import AdminDomainCatalog from "../components/admin/AdminDomainCatalog.vue";
+import AdminConfirmDialog, {
+  type ConfirmDialogRequest,
+} from "../components/admin/AdminConfirmDialog.vue";
+import AdminIcon from "../components/admin/AdminIcon.vue";
+import AdminLoginView from "../components/admin/AdminLoginView.vue";
+import AdminRail from "../components/admin/AdminRail.vue";
 import AdminPcArtifactFields from "../components/admin/AdminPcArtifactFields.vue";
 import AdminOperationProgress from "../components/admin/AdminOperationProgress.vue";
 import {
@@ -43,14 +52,12 @@ import type {
   ProbeSchedulerStatus,
   ProbeStatus,
   ProbeUrlResult,
-  RetentionConfig,
-  RetentionStatus,
   SyncRunStatus,
   SyncSchedule,
   VersionSummary,
 } from "../types";
 
-type Tab = "games" | "domains" | "content" | "probe" | "retention";
+type Tab = "games" | "domains" | "content" | "probe";
 
 const TOKEN_STORAGE_KEY = "game-manifest-index-web-admin-token-v1";
 const OPERATION_JOB_KEY = "game-manifest-index-web-operation-job-v1";
@@ -68,17 +75,45 @@ const loading = ref(false);
 const error = ref("");
 const success = ref("");
 
+interface PendingConfirm extends ConfirmDialogRequest {
+  resolve: (accepted: boolean) => void;
+}
+
+const pendingConfirm = ref<PendingConfirm | null>(null);
+
+function askConfirm(
+  message: string,
+  options: Partial<Omit<ConfirmDialogRequest, "message">> = {},
+): Promise<boolean> {
+  return new Promise<boolean>((resolve) => {
+    pendingConfirm.value = {
+      title: options.title ?? "请确认操作",
+      message,
+      confirmLabel: options.confirmLabel ?? "确认",
+      cancelLabel: options.cancelLabel ?? "取消",
+      tone: options.tone ?? "default",
+      resolve,
+    };
+  });
+}
+
+function resolveConfirm(accepted: boolean): void {
+  const pending = pendingConfirm.value;
+  pendingConfirm.value = null;
+  pending?.resolve(accepted);
+}
+
 const currentTabMeta = computed(() => {
   switch (tab.value) {
     case "games":
       return {
         title: "游戏入口目录",
-        subtitle: "查看当前静态游戏目录；V5 尚未提供目录写入能力",
+        subtitle: "维护游戏入口、图标资源、展示排序与前台可见性",
       };
     case "domains":
       return {
         title: "数据模块目录",
-        subtitle: "查看数据分发模块、适配器契约与能力；V5 尚未提供目录写入能力",
+        subtitle: "维护数据模块、适配器契约与版本能力",
       };
     case "content":
       return {
@@ -89,11 +124,6 @@ const currentTabMeta = computed(() => {
       return {
         title: "采集与探活监控",
         subtitle: "监控各模块自动同步任务状态、定时探活与链接可用性",
-      };
-    case "retention":
-      return {
-        title: "数据保留能力未接入",
-        subtitle: "当前 V5 后端没有 retention API，此入口不可用",
       };
     default:
       return {
@@ -150,10 +180,10 @@ const editableLoaded = ref(false);
 const editableLoading = ref(false);
 const originalEditableJson = ref("");
 const checksumsOpen = ref(false);
-const createChecksumsOpen = ref(false);
 const moreActionsOpen = ref(false);
 
-const editableDraft = ref({
+const editableDraft = ref<VersionDraft>({
+  version: "",
   channel: "official",
   version_code: null as number | null,
   is_visible: true,
@@ -174,10 +204,6 @@ const selectedDomainGameName = computed(() => {
   if (!selectedDomainObj.value) return "";
   const game = catalog.value.games.find((g) => g.id === selectedDomainObj.value?.game_id);
   return game?.name || selectedDomainObj.value.game_id;
-});
-
-const selectedDomainPlatform = computed(() => {
-  return selectedDomainObj.value?.platform || "Android";
 });
 
 function supportsPcVersionEditor(domain: AdminDomain | null | undefined): boolean {
@@ -290,33 +316,6 @@ function isVersionAvailable(item: VersionSummary): boolean {
   return true;
 }
 
-function getFileTimeSourceDescription(timeStr: string, rawUrl: string): string {
-  if (!timeStr?.trim()) return "留空（保存后由后端自动识别）";
-  const cleanTime = timeStr.trim();
-  const cleanUrl = rawUrl || "";
-
-  // 1. 检查 URL 中是否有完整时间戳形如 20260803155301
-  const tsMatch = cleanUrl.match(/(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
-  if (tsMatch) {
-    const compactTs = tsMatch[0];
-    const cleanTimeCompact = cleanTime.replace(/[-:T Z+]/g, "");
-    if (cleanTimeCompact.startsWith(compactTs.slice(0, 8))) {
-      return "URL 时间";
-    }
-  }
-
-  // 2. 检查 URL 中是否有日期戳形如 20260803 或 2026-08-03
-  const dateMatch = cleanUrl.match(/(\d{4})[-_]?(\d{2})[-_]?(\d{2})/);
-  if (dateMatch) {
-    const datePrefix = `${dateMatch[1]}-${dateMatch[2]}-${dateMatch[3]}`;
-    if (cleanTime.startsWith(datePrefix)) {
-      return "URL 时间";
-    }
-  }
-
-  return "人工填写";
-}
-
 function getChecksumSummaryText(etag: string, crc64: string, md5: string): string {
   const parts: string[] = [];
   if (etag?.trim()) parts.push("ETag");
@@ -356,12 +355,8 @@ const dirtyChangesCount = computed(() => {
   return count;
 });
 
-function clearFileTime(): void {
-  editableDraft.value.file_created_at_override = "";
-}
-
-function clearCreateFileTime(): void {
-  createDraft.value.file_created_at = "";
+function clearActiveFileTime(): void {
+  versionDraft.value.file_created_at_override = "";
 }
 
 async function copyUrl(url: string): Promise<void> {
@@ -768,7 +763,7 @@ function addArtifactItem(): void {
 
 function removeArtifactItem(index: number): void {
   if (editableDraft.value.artifacts.length <= 1) {
-    alert("版本必须包含至少一个资源文件 (Artifact)。");
+    error.value = "版本必须包含至少一个资源文件 (Artifact)。";
     return;
   }
   editableDraft.value.artifacts.splice(index, 1);
@@ -884,7 +879,6 @@ const isEditableDirty = computed(() => {
 });
 
 const urlProbeMap = ref<Record<string, { loading: boolean; result?: ProbeUrlResult }>>({});
-const batchProbing = ref(false);
 
 async function probeUrlItem(target: EditableArtifactDraft["urls"][number] | string): Promise<void> {
   const urlItem = typeof target === "string" ? { url: target, priority: 0, source_kind: "official" } : target;
@@ -917,60 +911,11 @@ async function probeUrlItem(target: EditableArtifactDraft["urls"][number] | stri
   }
 }
 
-async function probeAllDraftUrls(artifacts: EditableArtifactDraft[]): Promise<void> {
-  const candidates = artifacts.flatMap((art) => art.urls).filter((item) => {
-    const url = item.url.trim();
-    return url.startsWith("http://") || url.startsWith("https://");
-  });
-  const urls = Array.from(
-    new Set(candidates.map((item) => item.url.trim())),
-  );
-  const artifactUrlIds = Array.from(new Set(
-    candidates
-      .filter((item) => item.id && item.url.trim() === item.persisted_url)
-      .map((item) => item.id as number),
-  ));
-  if (!urls.length) {
-    error.value = "当前没有可用于验活的有效 http/https 下载链接";
-    return;
-  }
-  batchProbing.value = true;
-  for (const u of urls) {
-    urlProbeMap.value[u] = { loading: true };
-  }
-  try {
-    const res = await adminApi.probeUrls(urls, token.value, 10, artifactUrlIds);
-    for (const item of res.items) {
-      urlProbeMap.value[item.url] = { loading: false, result: item };
-    }
-    const okCount = res.items.filter((i) => i.ok).length;
-    const failCount = res.items.length - okCount;
-    const transientCount = res.items.filter((i) => !i.persisted).length;
-    if (failCount === 0) {
-      const persistence = transientCount
-        ? `其中 ${transientCount} 条尚未保存，仅完成临时检测。`
-        : "结果已全部同步到下载区。";
-      success.value = `全部 ${okCount} 条下载链接已验活通过！${persistence}`;
-    } else {
-      error.value = `验活完成：${okCount} 条链接正常，${failCount} 条链接异常，请检查红色标记。`;
-    }
-  } catch (err) {
-    for (const u of urls) {
-      if (urlProbeMap.value[u]?.loading) {
-        urlProbeMap.value[u] = { loading: false };
-      }
-    }
-    error.value = `批量验活请求失败: ${err instanceof Error ? err.message : "未知错误"}`;
-  } finally {
-    batchProbing.value = false;
-  }
-}
-
-interface CreateVersionDraft {
+interface VersionDraft {
   version: string;
   channel: string;
   version_code: number | null;
-  file_created_at: string;
+  file_created_at_override: string;
   is_visible: boolean;
   checksum_etag: string;
   checksum_crc64: string;
@@ -980,7 +925,7 @@ interface CreateVersionDraft {
   artifactsMode: "visual" | "json";
 }
 
-function defaultCreateDraft(): CreateVersionDraft {
+function defaultCreateDraft(): VersionDraft {
   const initialArtifacts: EditableArtifactDraft[] = [
     {
       kind: "apk",
@@ -1006,7 +951,7 @@ function defaultCreateDraft(): CreateVersionDraft {
     version: "",
     channel: "official",
     version_code: null,
-    file_created_at: "",
+    file_created_at_override: "",
     is_visible: true,
     checksum_etag: "",
     checksum_crc64: "",
@@ -1030,7 +975,37 @@ function defaultCreateDraft(): CreateVersionDraft {
   };
 }
 
-const createDraft = ref<CreateVersionDraft>(defaultCreateDraft());
+const createDraft = ref<VersionDraft>(defaultCreateDraft());
+
+const isCreateMode = computed(() => contentSubTab.value === "create");
+
+const versionDraft = computed(() => (isCreateMode.value ? createDraft.value : editableDraft.value));
+
+const showApkFileCard = computed(
+  () => Boolean(versionDraft.value.artifacts[0]) && (isCreateMode.value || selectedDomainSupportsCreateVersion.value),
+);
+
+const fileTimeRaw = computed(() => versionDraft.value.file_created_at_override.trim());
+
+const fileTimeInputValue = computed(() => isoToLocalInput(fileTimeRaw.value));
+
+const fileTimeLabel = computed(() => formatFileTimeLabel(fileTimeRaw.value));
+
+const fileTimeUnparsable = computed(() => Boolean(fileTimeRaw.value) && !fileTimeLabel.value);
+
+function onFileTimeInput(event: Event): void {
+  const input = event.target as HTMLInputElement;
+  versionDraft.value.file_created_at_override = localInputToIso(input.value);
+}
+
+async function submitVersionForm(): Promise<void> {
+  if (isCreateMode.value) {
+    await addVersion();
+    return;
+  }
+  await saveEditableVersion();
+}
+
 
 let controller: AbortController | null = null;
 
@@ -1101,7 +1076,7 @@ const versionFilterState = ref<"all" | "unavailable" | "unknown">("all");
 
 async function toggleVersionFilter(target: "unavailable" | "unknown"): Promise<void> {
   if (isEditableDirty.value) {
-    const confirmed = window.confirm(
+    const confirmed = await askConfirm(
       `当前版本 (${selectedVersion.value}) 存在未保存的变更。\n切换筛选将丢弃未保存的修改，是否确定继续？`,
     );
     if (!confirmed) return;
@@ -1134,7 +1109,7 @@ async function toggleVersionFilter(target: "unavailable" | "unknown"): Promise<v
 
 async function resetVersionFilter(): Promise<void> {
   if (isEditableDirty.value) {
-    const confirmed = window.confirm(
+    const confirmed = await askConfirm(
       `当前版本 (${selectedVersion.value}) 存在未保存的变更。\n清除筛选将丢弃未保存的修改，是否确定继续？`,
     );
     if (!confirmed) return;
@@ -1525,16 +1500,6 @@ watch(
   },
 );
 
-const tabTitle = computed(() => {
-  switch (tab.value) {
-    case "games": return "游戏入口管理";
-    case "domains": return "数据模块管理";
-    case "content": return "版本管理";
-    case "probe": return "采集与探活监控";
-    case "retention": return "数据保留与自动清理";
-  }
-});
-
 async function refreshAllData(): Promise<void> {
   await withLoading(async (signal) => {
     await loadCatalog(signal);
@@ -1545,19 +1510,9 @@ async function refreshAllData(): Promise<void> {
         await loadEditableVersion(selectedDomainId.value, selectedVersion.value);
       }
     }
-    if (adminUiCapabilities.retention && tab.value === "retention") {
-      await Promise.all([
-        loadRetentionConfig(signal),
-        loadRetentionStatus(signal, true),
-      ]);
-    }
     success.value = "数据已全部刷新至最新状态。";
   });
 }
-
-const activeFailuresCount = computed(() => {
-  return Object.keys(syncStatus.value?.latest_refresh?.failures || {}).length;
-});
 
 function resolveGameIcon(id: string, source?: string): string | undefined {
   const clean = source?.trim();
@@ -1628,10 +1583,6 @@ async function login(): Promise<void> {
 function logout(): void {
   stopProbePolling();
   stopOperationPolling();
-  stopRetentionStatusPolling();
-  cancelRetentionStatusRequests();
-  cancelRetentionRun();
-  cancelRetentionSave();
   localStorage.removeItem(TOKEN_STORAGE_KEY);
   sessionStorage.removeItem(TOKEN_STORAGE_KEY);
   token.value = "";
@@ -1655,13 +1606,6 @@ onMounted(async () => {
     });
   }
 });
-
-async function refreshSyncStatus(): Promise<void> {
-  await withLoading(async (signal) => {
-    syncStatus.value = await adminApi.syncStatus(token.value.trim(), signal);
-    await loadSyncRunStatus();
-  });
-}
 
 async function loadProbeStatus(): Promise<void> {
   try {
@@ -1698,10 +1642,6 @@ function stopProbePolling(): void {
 }
 
 async function openProbe(): Promise<void> {
-  stopRetentionStatusPolling();
-  cancelRetentionStatusRequests();
-  cancelRetentionRun();
-  cancelRetentionSave();
   tab.value = "probe";
   await loadProbeStatus();
   await loadProbeSchedulerStatus();
@@ -1728,7 +1668,7 @@ async function openProbe(): Promise<void> {
 }
 
 async function saveProbeSchedule(): Promise<void> {
-  const confirmed = window.confirm("确定要保存并更新下载链接探活策略吗？");
+  const confirmed = await askConfirm("确定要保存并更新下载链接探活策略吗？");
   if (!confirmed) return;
   await withLoading(async (signal) => {
     probeSchedule.value = await adminApi.saveProbeSchedule(probeSchedule.value, token.value, signal);
@@ -1737,257 +1677,8 @@ async function saveProbeSchedule(): Promise<void> {
   });
 }
 
-// --- 数据保留与自动清理控制台 (Retention & Storage Cleanup Console) ---
-const retentionConfig = ref<RetentionConfig>({
-  cache_days: 30,
-  observation_days: 90,
-  interval_hours: 24,
-});
-const retentionStatus = ref<RetentionStatus | null>(null);
-const retentionRunning = ref<boolean>(false);
-const retentionSaving = ref<boolean>(false);
-let retentionStatusTimer: number | null = null;
-let retentionStatusController: AbortController | null = null;
-let retentionStatusGeneration = 0;
-let retentionStatusBusy = false;
-let retentionRunController: AbortController | null = null;
-let retentionRunGeneration = 0;
-let retentionSaveController: AbortController | null = null;
-let retentionSaveGeneration = 0;
-
-function cancelRetentionRun(): void {
-  retentionRunGeneration += 1;
-  retentionRunController?.abort();
-  retentionRunController = null;
-  retentionRunning.value = false;
-}
-
-function cancelRetentionSave(): void {
-  retentionSaveGeneration += 1;
-  retentionSaveController?.abort();
-  retentionSaveController = null;
-  retentionSaving.value = false;
-}
-
-function cancelRetentionStatusRequests(): void {
-  retentionStatusGeneration += 1;
-  retentionStatusController?.abort();
-  retentionStatusController = null;
-  retentionStatusBusy = false;
-}
-
-function stopRetentionStatusPolling(): void {
-  if (retentionStatusTimer !== null) {
-    window.clearInterval(retentionStatusTimer);
-    retentionStatusTimer = null;
-  }
-}
-
-function startRetentionStatusPolling(): void {
-  stopRetentionStatusPolling();
-  retentionStatusTimer = window.setInterval(() => {
-    if (authenticated.value && tab.value === "retention" && !retentionRunning.value && !retentionSaving.value && !retentionStatusBusy) {
-      void loadRetentionStatus();
-    }
-  }, 45_000);
-}
-
-function retentionSourceLabel(source: string | null | undefined): string {
-  if (source === "manual") return "管理员手动触发";
-  if (source === "scheduled") return "定时调度自动执行";
-  if (source === "startup") return "系统启动时自动执行";
-  return source || "未知来源";
-}
-
-function retentionDurationText(startedAt: string | null | undefined, finishedAt: string | null | undefined): string {
-  if (!startedAt || !finishedAt) return "—";
-  const start = new Date(startedAt).getTime();
-  const end = new Date(finishedAt).getTime();
-  if (Number.isNaN(start) || Number.isNaN(end) || end < start) return "—";
-  const sec = (end - start) / 1000;
-  return sec < 1 ? `${(sec * 1000).toFixed(0)} ms` : `${sec.toFixed(1)} 秒`;
-}
-
-async function loadRetentionConfig(signal?: AbortSignal): Promise<void> {
-  try {
-    const config = await adminApi.getRetentionConfig(token.value.trim(), signal);
-    if (config && typeof config.cache_days === "number") {
-      retentionConfig.value = {
-        cache_days: config.cache_days,
-        observation_days: config.observation_days,
-        interval_hours: config.interval_hours,
-      };
-    }
-  } catch (reason) {
-    if (!(reason instanceof DOMException && reason.name === "AbortError")) {
-      showError(reason);
-    }
-  }
-}
-
-async function loadRetentionStatus(signal?: AbortSignal, force = false): Promise<void> {
-  if (retentionStatusBusy && !force) return;
-  if (force) cancelRetentionStatusRequests();
-  const generation = ++retentionStatusGeneration;
-  const controller = new AbortController();
-  retentionStatusController?.abort();
-  retentionStatusController = controller;
-  retentionStatusBusy = true;
-  const abortFromCaller = () => controller.abort();
-  if (signal) {
-    if (signal.aborted) controller.abort();
-    else signal.addEventListener("abort", abortFromCaller, { once: true });
-  }
-  try {
-    const status = await adminApi.getRetentionStatus(token.value.trim(), controller.signal);
-    if (generation === retentionStatusGeneration && !controller.signal.aborted && authenticated.value && tab.value === "retention") {
-      retentionStatus.value = status;
-    }
-  } catch (reason) {
-    if (generation === retentionStatusGeneration && !isAbortError(reason)) {
-      showError(reason);
-    }
-  } finally {
-    if (signal) signal.removeEventListener("abort", abortFromCaller);
-    if (generation === retentionStatusGeneration) {
-      retentionStatusBusy = false;
-      retentionStatusController = null;
-    }
-  }
-}
-
-async function openRetention(): Promise<void> {
-  if (!adminUiCapabilities.retention) {
-    error.value = "当前 V5 后端尚未提供数据保留与自动清理能力。";
-    return;
-  }
-  tab.value = "retention";
-  startRetentionStatusPolling();
-  await withLoading(async (signal) => {
-    cancelRetentionStatusRequests();
-    await Promise.all([
-        loadRetentionConfig(signal),
-        loadRetentionStatus(signal, true),
-    ]);
-  });
-}
-
-async function saveRetentionConfig(): Promise<void> {
-  const cfg = retentionConfig.value;
-  const cacheDays = Number(cfg.cache_days);
-  const obsDays = Number(cfg.observation_days);
-  const intHours = Number(cfg.interval_hours);
-
-  if (
-    !Number.isInteger(cacheDays) ||
-    cacheDays < 1 ||
-    cacheDays > 36500 ||
-    !Number.isInteger(obsDays) ||
-    obsDays < 1 ||
-    obsDays > 36500 ||
-    !Number.isInteger(intHours) ||
-    intHours < 1 ||
-    intHours > 8760
-  ) {
-    error.value = "清理配置参数不合法：保留天数需为 1～36500 之间的整数，清理周期需为 1～8760 小时之间的整数。";
-    return;
-  }
-
-  cancelRetentionSave();
-  const generation = ++retentionSaveGeneration;
-  const controller = new AbortController();
-  retentionSaveController = controller;
-  retentionSaving.value = true;
-  cancelRetentionStatusRequests();
-  error.value = "";
-  success.value = "";
-  try {
-    const payload: RetentionConfig = {
-      cache_days: cacheDays,
-      observation_days: obsDays,
-      interval_hours: intHours,
-    };
-    const saved = await adminApi.updateRetentionConfig(payload, token.value.trim(), controller.signal);
-    if (generation !== retentionSaveGeneration || controller.signal.aborted || !authenticated.value || tab.value !== "retention") return;
-    retentionConfig.value = { ...saved };
-    success.value = "数据清理配置已保存并立即唤醒调度器生效！";
-  } catch (reason) {
-    if (generation === retentionSaveGeneration && !isAbortError(reason)) showError(reason);
-  } finally {
-    if (generation === retentionSaveGeneration) {
-      retentionSaving.value = false;
-      retentionSaveController = null;
-    }
-  }
-}
-
-async function runRetentionManual(): Promise<void> {
-  const confirmed = window.confirm("确定要立即执行一次数据保留与存储清理吗？该操作将删除过期缓存文件与历史探活观测记录。");
-  if (!confirmed) return;
-
-  cancelRetentionRun();
-  const generation = ++retentionRunGeneration;
-  const controller = new AbortController();
-  retentionRunController = controller;
-  retentionRunning.value = true;
-  cancelRetentionStatusRequests();
-  error.value = "";
-  success.value = "";
-  try {
-    const result = await adminApi.runRetention(token.value.trim(), controller.signal);
-    if (generation !== retentionRunGeneration || controller.signal.aborted || !authenticated.value || tab.value !== "retention") return;
-    retentionStatus.value = result;
-    const res = result.result;
-    const details = res
-      ? `缓存清除: ${res.cache_deleted}，临时文件清除: ${res.temp_deleted}，运维记录清除: ${res.operation_deleted}，探活记录清除: ${res.observations_deleted}，跳过: ${res.skipped}`
-      : "";
-    success.value = `数据清理任务已执行完成！${details}`;
-  } catch (reason) {
-    if (generation === retentionRunGeneration && !isAbortError(reason)) showError(reason);
-  } finally {
-    if (generation === retentionRunGeneration) {
-      retentionRunning.value = false;
-      retentionRunController = null;
-    }
-  }
-}
-
-function resetRetentionDefaults(): void {
-  retentionConfig.value = {
-    cache_days: 30,
-    observation_days: 90,
-    interval_hours: 24,
-  };
-  success.value = "已载入推荐默认配置（请点击保存以生效）。";
-}
-
-function adjustRetentionField(field: "cache_days" | "observation_days" | "interval_hours", delta: number): void {
-  const current = Number(retentionConfig.value[field]) || 0;
-  let next = current + delta;
-  if (field === "cache_days" || field === "observation_days") {
-    next = Math.max(1, Math.min(36500, next));
-  } else if (field === "interval_hours") {
-    next = Math.max(1, Math.min(8760, next));
-  }
-  retentionConfig.value[field] = next;
-}
-
-function setRetentionPreset(field: "cache_days" | "observation_days" | "interval_hours", val: number): void {
-  retentionConfig.value[field] = val;
-}
-
-const retentionHeroTitle = computed(() => {
-  if (retentionRunning.value) return "正在执行数据保留清理…";
-  if (!retentionStatus.value || !retentionStatus.value.started_at) return "自动清理引擎待命中";
-  if (retentionStatus.value.error) return "上次清理执行异常";
-  if (retentionStatus.value.source === "scheduled") return "定时自动清理完成 · 引擎就绪";
-  if (retentionStatus.value.source === "manual") return "手动清理执行完成 · 引擎就绪";
-  if (retentionStatus.value.source === "startup") return "启动环境清理完成 · 引擎就绪";
-  return "数据保留清理引擎已就绪";
-});
-
 // --- 运维操作控制台 (start -> status polling -> cancel) ---
-const opAction = ref<"both" | "discover" | "probe">("both");
+const opAction = ref<"both" | "discover">("both");
 const opScope = ref<"all" | "custom">("all");
 const opPlatformScope = ref<"all" | "android" | "pc">("all");
 const opSelectedGameIds = ref<string[]>([]);
@@ -2299,11 +1990,9 @@ async function executeAdminOperation(): Promise<void> {
   };
 
   const actionText =
-    opAction.value === "both"
-      ? "【查找新版本 + 探活全量】"
-      : opAction.value === "discover"
+    opAction.value === "discover"
       ? "【仅查找新版本 (discover)】"
-      : "【检查新版本并探活历史版本】";
+      : "【查找新版本 + 探活全量 (discover + probe)】";
   const scopeText =
     opScope.value === "all"
       ? `全部 ${catalog.value.games.length || "已注册"} 款游戏`
@@ -2315,7 +2004,10 @@ async function executeAdminOperation(): Promise<void> {
       ? "仅 Android (APK 直链)"
       : "仅 PC 客户端 (Windows)";
 
-  const confirmed = window.confirm(`确定要启动 ${actionText} 操作吗？\n目标范围：${scopeText}\n数据类型：${platformText}\n启动后可查看实时进度，也可以取消未开始的任务。`);
+  const confirmed = await askConfirm(
+    `确定要启动 ${actionText} 操作吗？\n目标范围：${scopeText}\n数据类型：${platformText}\n启动后可查看实时进度，也可以取消未开始的任务。`,
+    { title: "启动运维任务", confirmLabel: "启动" },
+  );
   if (!confirmed) return;
 
   opRunning.value = true;
@@ -2326,7 +2018,7 @@ async function executeAdminOperation(): Promise<void> {
   success.value = "";
 
   const timeStr = new Date().toLocaleTimeString();
-  appendOpLog(`[${timeStr}] 🚀 启动运维操作 POST /api/v1/admin/operations/start`);
+  appendOpLog(`[${timeStr}] 启动运维操作 POST /api/v1/admin/operations/start`);
   appendOpLog(`[${timeStr}] 动作: [${actions.join(", ")}] | 数据范围: ${operationScopeLabel(payload.scope)} | 游戏范围: ${opScope.value === "all" ? "全部游戏 (all_games=true)" : opSelectedGameIds.value.join(", ")} | 超时: ${payload.timeout}s | 并发: ${payload.workers}`);
 
   await withLoading(async (signal) => {
@@ -2346,7 +2038,14 @@ async function executeAdminOperation(): Promise<void> {
 
 async function cancelAdminOperation(): Promise<void> {
   const jobId = opJob.value?.job_id;
-  if (!jobId || !window.confirm("确定要取消当前运维任务吗？已完成的数据会保留。")) return;
+  if (
+    !jobId ||
+    !(await askConfirm("确定要取消当前运维任务吗？已完成的数据会保留。", {
+      title: "取消运维任务",
+      confirmLabel: "取消任务",
+    }))
+  )
+    return;
   try {
     await applyOperationJob(await adminApi.cancelOperation(jobId, token.value.trim()));
     if (opRunning.value) startOperationPolling(jobId);
@@ -2368,11 +2067,6 @@ async function loadSyncRunStatus(): Promise<void> {
 
 const syncSchedule = ref<SyncSchedule>({ enabled: true, times: ["04:45", "14:00"] });
 
-function scheduleTimesText(): string {
-  const times = (syncSchedule.value?.times || []).filter(Boolean);
-  return times.length ? times.join(" / ") : "未配置";
-}
-
 async function saveSyncSchedule(): Promise<void> {
   const validTimes = (syncSchedule.value?.times || [])
     .map((item) => (item || "").trim())
@@ -2383,7 +2077,7 @@ async function saveSyncSchedule(): Promise<void> {
     return;
   }
 
-  const confirmed = window.confirm(`确定要保存每日采集计划（时间点: ${validTimes.join(", ")}）吗？`);
+  const confirmed = await askConfirm(`确定要保存每日采集计划（时间点: ${validTimes.join(", ")}）吗？`);
   if (!confirmed) return;
 
   await withLoading(async (signal) => {
@@ -2402,33 +2096,7 @@ async function saveSyncSchedule(): Promise<void> {
   });
 }
 
-function probeStuckRows(): string[] {
-  const log = probeStatus.value?.log || [];
-  const stuck: string[] = [];
-  for (const line of log) {
-    const m = line.match(/^\[probe\] \(\d+\/\d+\) probing (.+)$/);
-    if (m) {
-      const url = m[1];
-      const hasDone = log.some((item) => item.includes(`done `) && item.includes(url));
-      if (!hasDone) {
-        stuck.push(url.length > 90 ? url.slice(0, 90) + "…" : url);
-      }
-    }
-  }
-  return stuck.slice(-8);
-}
-
-function probeProgress(): string {
-  const log = probeStatus.value?.log || [];
-  const m = log.find((line) => /^\[probe\] \(/.test(line));
-  return m ? m.replace(/^\[probe\] /, "") : "准备中…";
-}
-
 function openGames(): void {
-  stopRetentionStatusPolling();
-  cancelRetentionStatusRequests();
-  cancelRetentionRun();
-  cancelRetentionSave();
   tab.value = "games";
   stopProbePolling();
   selectGame(selectedGameId.value);
@@ -2467,6 +2135,25 @@ function startGame(): void {
   };
 }
 
+function cancelCreateGame(): void {
+  if (!newGame.value) return;
+  newGame.value = false;
+  const target = selectedGameId.value || catalog.value.games[0]?.id;
+  if (target) {
+    selectGame(target);
+  } else {
+    gameDraft.value = {
+      id: "",
+      name: "",
+      sub_name: "",
+      platform: "PC",
+      icon_source: "",
+      is_enabled: true,
+      sort_order: 0,
+    };
+  }
+}
+
 function preventEnterSubmit(event: KeyboardEvent): void {
   const target = event.target as HTMLElement | null;
   if (target && target.tagName === "INPUT") {
@@ -2476,13 +2163,17 @@ function preventEnterSubmit(event: KeyboardEvent): void {
 
 async function saveGame(): Promise<void> {
   if (!adminUiCapabilities.catalogMutations) {
-    error.value = "当前 V5 游戏目录为只读。";
+    error.value = "当前管理会话未开启游戏目录写入能力。";
     return;
   }
   const actionText = newGame.value
     ? `确定要创建新游戏【${gameDraft.value.name || gameDraft.value.id}】吗？`
     : `确定要保存游戏【${gameDraft.value.name || gameDraft.value.id}】的配置修改吗？`;
-  if (!window.confirm(actionText)) return;
+  if (!(await askConfirm(actionText, {
+    title: newGame.value ? "创建游戏入口" : "保存游戏配置",
+    confirmLabel: newGame.value ? "创建" : "保存",
+  })))
+    return;
 
   await withLoading(async (signal) => {
     const payload = { ...gameDraft.value };
@@ -2497,10 +2188,17 @@ async function saveGame(): Promise<void> {
 
 async function removeGame(): Promise<void> {
   if (!adminUiCapabilities.catalogMutations) {
-    error.value = "当前 V5 游戏目录为只读。";
+    error.value = "当前管理会话未开启游戏目录写入能力。";
     return;
   }
-  if (!newGame.value && !window.confirm(`确定要彻底删除空游戏【${gameDraft.value.name || gameDraft.value.id}】吗？仅空游戏可删除，此操作不可撤销。`)) return;
+  if (
+    !newGame.value &&
+    !(await askConfirm(
+      `确定要彻底删除空游戏【${gameDraft.value.name || gameDraft.value.id}】吗？仅空游戏可删除，此操作不可撤销。`,
+      { title: "删除空游戏", confirmLabel: "永久删除", tone: "danger" },
+    ))
+  )
+    return;
   await withLoading(async (signal) => {
     await adminApi.deleteGame(gameDraft.value.id, token.value, signal);
     await loadCatalog(signal);
@@ -2579,22 +2277,33 @@ function startDomain(): void {
   };
 }
 
+function cancelCreateDomain(): void {
+  if (!newDomain.value) return;
+  newDomain.value = false;
+  const target = selectedDomainId.value
+    || catalog.value.domains.find((item) => item.id === selectedDomainId.value)?.id
+    || catalog.value.domains[0]?.id;
+  if (target) {
+    selectDomain(target);
+    return;
+  }
+  domainDraft.value = {
+    id: "",
+    game_id: selectedGameId.value || catalog.value.games[0]?.id || "",
+    kind: "packages",
+    platform: "Windows",
+    capabilities: "packages",
+    adapter: "generic",
+    is_enabled: true,
+    sort_order: 0,
+  };
+}
+
 function openDomains(): void {
-  stopRetentionStatusPolling();
-  cancelRetentionStatusRequests();
-  cancelRetentionRun();
-  cancelRetentionSave();
   tab.value = "domains";
   stopProbePolling();
   const target = catalog.value.domains.find((item) => item.id === selectedDomainId.value) || catalog.value.domains[0];
   if (target) selectDomain(target.id);
-  else startDomain();
-}
-
-function selectModuleGame(id: string): void {
-  selectGame(id);
-  const first = gameDomains.value[0];
-  if (first) selectDomain(first.id);
   else startDomain();
 }
 
@@ -2629,20 +2338,6 @@ function revertDomainDraft(): void {
   }
 }
 
-function formatSyncTime(value: string | null | undefined): string {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat("zh-CN", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(date);
-}
-
 function domainPayload(): Partial<AdminDomain> {
   return {
     ...domainDraft.value,
@@ -2652,13 +2347,17 @@ function domainPayload(): Partial<AdminDomain> {
 
 async function saveDomain(): Promise<void> {
   if (!adminUiCapabilities.catalogMutations) {
-    error.value = "当前 V5 数据模块目录为只读。";
+    error.value = "当前管理会话未开启数据模块写入能力。";
     return;
   }
   const actionText = newDomain.value
     ? `确定要创建新数据模块【${domainDraft.value.id}】吗？`
     : `确定要保存数据模块【${domainDraft.value.id}】的配置修改吗？`;
-  if (!window.confirm(actionText)) return;
+  if (!(await askConfirm(actionText, {
+    title: newDomain.value ? "新建数据模块" : "保存模块配置",
+    confirmLabel: newDomain.value ? "新建" : "保存",
+  })))
+    return;
 
   await withLoading(async (signal) => {
     const payload = domainPayload();
@@ -2673,24 +2372,21 @@ async function saveDomain(): Promise<void> {
 
 async function removeDomain(): Promise<void> {
   if (!adminUiCapabilities.catalogMutations) {
-    error.value = "当前 V5 数据模块目录为只读。";
+    error.value = "当前管理会话未开启数据模块写入能力。";
     return;
   }
-  if (!window.confirm(`确定要彻底删除空模块【${domainDraft.value.id}】吗？仅没有版本和候选记录的空模块可删除，此操作不可撤销。`)) return;
+  if (
+    !(await askConfirm(
+      `确定要彻底删除空模块【${domainDraft.value.id}】吗？仅没有版本和候选记录的空模块可删除，此操作不可撤销。`,
+      { title: "删除空模块", confirmLabel: "永久删除", tone: "danger" },
+    ))
+  )
+    return;
   await withLoading(async (signal) => {
     await adminApi.deleteDomain(domainDraft.value.id, token.value, signal);
     await loadCatalog(signal);
     success.value = "空模块已删除。";
   });
-}
-
-function formatBytes(bytes: number | null | undefined): string {
-  if (bytes === null || bytes === undefined || Number.isNaN(bytes)) return "—";
-  if (bytes === 0) return "0 B";
-  const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB", "TB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
 }
 
 function pcArtifactTitle(artifact: EditableArtifactDraft, index: number): string {
@@ -2764,6 +2460,7 @@ async function loadEditableVersion(domainId = selectedDomainId.value, version = 
     }
 
     editableDraft.value = {
+      version: "",
       channel: typeof attrs.channel === "string" ? attrs.channel : "official",
       version_code: typeof attrs.version_code === "number" ? attrs.version_code : null,
       is_visible: data.is_visible ?? true,
@@ -2776,9 +2473,14 @@ async function loadEditableVersion(domainId = selectedDomainId.value, version = 
       artifactsMode: "visual",
     };
 
-    const initialArtifactsStr = normalizeArtifactsForComparison(
-      editableArtifactsPayload,
-    );
+    // 用草稿回写后的形态作为基线：视觉编辑器会补默认属性、清理空值，
+    // 直接拿接口原始 payload 当基线会让表单一打开就显示“未保存修改”。
+    let initialArtifactsStr = "";
+    try {
+      initialArtifactsStr = normalizeArtifactsForComparison(buildArtifactsPayload());
+    } catch {
+      initialArtifactsStr = normalizeArtifactsForComparison(editableArtifactsPayload);
+    }
 
     originalEditableJson.value = JSON.stringify({
       channel: editableDraft.value.channel.trim(),
@@ -2803,7 +2505,7 @@ async function loadEditableVersion(domainId = selectedDomainId.value, version = 
 async function onContentVersionSelect(version: string): Promise<void> {
   if (selectedVersion.value === version) return;
   if (isEditableDirty.value) {
-    const confirmed = window.confirm(
+    const confirmed = await askConfirm(
       `当前版本 (${selectedVersion.value}) 存在未保存的变更。\n切换到版本 ${version} 将丢弃未保存的修改，是否确定继续？`,
     );
     if (!confirmed) return;
@@ -2814,12 +2516,12 @@ async function onContentVersionSelect(version: string): Promise<void> {
   scrollToActiveVersion();
 }
 
-function fillCurrentTime(): void {
-  editableDraft.value.file_created_at_override = new Date().toISOString();
-}
-
 async function discardChanges(): Promise<void> {
-  if (!window.confirm("确定要放弃所有未保存的修改并还原为当前服务端配置吗？")) return;
+  if (!(await askConfirm("确定要放弃所有未保存的修改并还原为当前服务端配置吗？", {
+    title: "放弃未保存的修改",
+    confirmLabel: "放弃修改",
+  })))
+    return;
   await loadEditableVersion(selectedDomainId.value, selectedVersion.value);
   success.value = "已放弃修改，表单已还原。";
 }
@@ -2909,11 +2611,14 @@ async function saveEditableVersion(): Promise<void> {
   const actionPrompt = willProbe
     ? `确定要保存对版本【${selectedVersion.value}】的修改并立即向官方源探活吗？`
     : `确定要保存对版本【${selectedVersion.value}】的修改吗？`;
-  const confirmed = window.confirm(actionPrompt);
+  const confirmed = await askConfirm(actionPrompt, {
+    title: "保存版本修改",
+    confirmLabel: willProbe ? "保存并探活" : "保存",
+  });
   if (!confirmed) return;
 
   await withLoading(async (signal) => {
-    const result = await adminApi.updateEditableVersion(
+    await adminApi.updateEditableVersion(
       selectedDomainId.value,
       selectedVersion.value,
       payload,
@@ -2954,11 +2659,23 @@ async function saveEditableVersion(): Promise<void> {
   });
 }
 
+function openTab(next: Tab): void {
+  if (next === "games") {
+    openGames();
+    return;
+  }
+  if (next === "domains") {
+    openDomains();
+    return;
+  }
+  if (next === "content") {
+    void openContent();
+    return;
+  }
+  void openProbe();
+}
+
 async function openContent(id = selectedDomainId.value): Promise<void> {
-  stopRetentionStatusPolling();
-  cancelRetentionStatusRequests();
-  cancelRetentionRun();
-  cancelRetentionSave();
   selectedDomainId.value = id;
   selectDomain(id);
   tab.value = "content";
@@ -2979,7 +2696,13 @@ async function toggleVersionVisibility(): Promise<void> {
   const current = selectedVersionSummary.value;
   if (!selectedDomainId.value || !selectedVersion.value || !current) return;
   const actionText = current.is_visible ? "隐藏" : "公开";
-  if (!window.confirm(`确定要将版本【${selectedVersion.value}】切换为【${actionText}】状态吗？`)) return;
+  if (
+    !(await askConfirm(`确定要将版本【${selectedVersion.value}】切换为【${actionText}】状态吗？`, {
+      title: "切换版本可见性",
+      confirmLabel: actionText,
+    }))
+  )
+    return;
 
   await withLoading(async (signal) => {
     await adminApi.setVersionVisibility(
@@ -2997,8 +2720,9 @@ async function toggleVersionVisibility(): Promise<void> {
 
 async function deleteCurrentVersion(ver = selectedVersion.value): Promise<void> {
   if (!selectedDomainId.value || !ver) return;
-  const confirmed = window.confirm(
-    `⚠️ 危险操作警告：\n确定要彻底删除版本【${ver}】吗？\n\n此操作将永久清除该版本的所有 Revision 快照、资源文件及下载链接，不可撤销！`,
+  const confirmed = await askConfirm(
+    `确定要彻底删除版本【${ver}】吗？\n\n此操作将永久清除该版本的所有 Revision 快照、资源文件及下载链接，不可撤销。`,
+    { title: "删除版本", confirmLabel: "永久删除", tone: "danger" },
   );
   if (!confirmed) return;
 
@@ -3051,7 +2775,7 @@ function copyCurrentVersionToCreateDraft(): void {
     version: "",
     channel: editableDraft.value.channel,
     version_code: editableDraft.value.version_code,
-    file_created_at: editableDraft.value.file_created_at_override || "",
+    file_created_at_override: editableDraft.value.file_created_at_override || "",
     is_visible: editableDraft.value.is_visible,
     checksum_etag: editableDraft.value.checksum_etag,
     checksum_crc64: editableDraft.value.checksum_crc64,
@@ -3069,96 +2793,22 @@ function resetCreateDraft(): void {
   success.value = "新版本录入表单已重置为空白模板。";
 }
 
-function fillCreateCurrentTime(): void {
-  createDraft.value.file_created_at = new Date().toISOString();
-}
-
-function addCreateArtifactItem(): void {
-  const nextPart = (createDraft.value.artifacts.length ? Math.max(...createDraft.value.artifacts.map((a) => a.part)) : 0) + 1;
-  createDraft.value.artifacts.push({
-    kind: "apk",
-    name: "",
-    part: nextPart,
-    size: 0,
-    component: "game",
-    package_type: "",
-    delivery_mode: "",
-    language: "",
-    route_from: "",
-    route_to: "",
-    decompressed_size: null,
-    manifestJson: "",
-    sourceJson: "",
-    checksum_type: "",
-    checksum_value: "",
-    attributesJson: "{}",
-    urls: [{ url: "", priority: 0, source_kind: "official" }],
-  });
-  syncCreateArtifactsToJson();
-}
-
-function removeCreateArtifactItem(idx: number): void {
-  if (createDraft.value.artifacts.length <= 1) {
-    error.value = "新版本必须保留至少一个资源分卷 (Artifact)。";
+function syncArtifactsJsonForActiveDraft(): void {
+  if (isCreateMode.value) {
+    createDraft.value.artifactsJson = JSON.stringify(buildCreateArtifactsPayload(), null, 2);
     return;
   }
-  createDraft.value.artifacts.splice(idx, 1);
-  syncCreateArtifactsToJson();
+  syncArtifactsToJson();
 }
 
-function addCreateArtifactUrlItem(artIdx: number): void {
-  const art = createDraft.value.artifacts[artIdx];
-  if (!art) return;
-  const nextPriority = art.urls.length;
-  art.urls.push({ url: "", priority: nextPriority, source_kind: "official" });
-  syncCreateArtifactsToJson();
-}
-
-function removeCreateArtifactUrlItem(artIdx: number, urlIdx: number): void {
-  const art = createDraft.value.artifacts[artIdx];
-  if (!art) return;
-  art.urls.splice(urlIdx, 1);
-  syncCreateArtifactsToJson();
-}
-
-function syncCreateArtifactsToJson(): void {
-  const payload = buildCreateArtifactsPayload();
-  createDraft.value.artifactsJson = JSON.stringify(payload, null, 2);
-}
-
-function formatCreateArtifactsJson(): void {
-  try {
-    const parsed = JSON.parse(createDraft.value.artifactsJson || "[]");
-    createDraft.value.artifactsJson = JSON.stringify(parsed, null, 2);
-  } catch (err) {
-    error.value = err instanceof Error ? `JSON 格式错误: ${err.message}` : "JSON 格式无效";
-  }
-}
-
-function switchCreateArtifactsMode(mode: "visual" | "json"): void {
-  if (mode === "json") {
-    syncCreateArtifactsToJson();
-    createDraft.value.artifactsMode = "json";
-  } else {
-    try {
-      const parsed = JSON.parse(createDraft.value.artifactsJson || "[]");
-      if (!Array.isArray(parsed)) throw new Error("JSON 顶层必须是数组");
-      createDraft.value.artifacts = parsed.map(artifactDraftFromPayload);
-      createDraft.value.artifactsMode = "visual";
-    } catch (err) {
-      error.value = err instanceof Error ? `切换失败: ${err.message}` : "JSON 解析失败";
-    }
-  }
-}
-
-function handleCreateArtifactUrlChange(art: EditableArtifactDraft, newUrl: string): void {
+function handleActiveArtifactUrlChange(art: EditableArtifactDraft, newUrl: string): void {
   applyArtifactFilenameFromUrl(art, newUrl);
-  syncCreateArtifactsToJson();
+  syncArtifactsJsonForActiveDraft();
 }
 
-function forceExtractCreateArtifactName(art: EditableArtifactDraft): void {
+function forceExtractActiveArtifactName(art: EditableArtifactDraft): void {
   const firstUrl = art.urls.find((u) => u.url.trim())?.url || "";
-  if (applyArtifactFilenameFromUrl(art, firstUrl, true)) syncCreateArtifactsToJson();
+  if (applyArtifactFilenameFromUrl(art, firstUrl, true)) syncArtifactsJsonForActiveDraft();
 }
 
 function buildCreateArtifactsPayload(): ManualArtifactPayload[] {
@@ -3253,12 +2903,13 @@ async function addVersion(): Promise<void> {
         ? Number(createDraft.value.version_code)
         : null,
   };
-  if (createDraft.value.file_created_at?.trim()) {
-    attributes.file_created_at = createDraft.value.file_created_at.trim();
+  if (createDraft.value.file_created_at_override?.trim()) {
+    attributes.file_created_at = createDraft.value.file_created_at_override.trim();
   }
 
-  const confirmed = window.confirm(
+  const confirmed = await askConfirm(
     `确定要为【${selectedDomainGameName.value || selectedDomainId.value}】录入新版本【${ver}】吗？`,
+    { title: "录入新版本", confirmLabel: "录入" },
   );
   if (!confirmed) return;
 
@@ -3307,7 +2958,10 @@ async function addVersion(): Promise<void> {
 
 async function probeCurrentVersion(ver = selectedVersion.value): Promise<void> {
   if (!selectedDomainId.value || !ver) return;
-  const confirmed = window.confirm(`确定要向官方源发起对版本【${ver}】的实时探活并持久化保存吗？`);
+  const confirmed = await askConfirm(
+    `确定要向官方源发起对版本【${ver}】的实时探活并持久化保存吗？表单中未保存的修改不会被一并提交。`,
+    { title: "实时探活", confirmLabel: "开始探活" },
+  );
   if (!confirmed) return;
 
   await withLoading(async (signal) => {
@@ -3333,143 +2987,28 @@ onBeforeUnmount(() => {
   controller?.abort();
   stopProbePolling();
   stopOperationPolling();
-  stopRetentionStatusPolling();
-  cancelRetentionStatusRequests();
-  cancelRetentionRun();
-  cancelRetentionSave();
 });
 </script>
 
 <template>
   <div class="admin-app" :class="{ 'is-unauthenticated': !authenticated }">
-    <!-- 主页面同款精致图标轨（Game Rail 风格, 88px, 仅登录后展示） -->
-    <aside v-if="authenticated" class="admin-rail">
-      <div class="rail-brand" title="Game Manifest Index 控制台">
-        <div class="rail-logo-box">
-          <span>GMI</span>
-        </div>
-      </div>
-
-      <div v-if="authenticated" class="rail-nav-list">
-        <!-- 1. 游戏入口 -->
-        <button
-          class="rail-item"
-          :class="{ active: tab === 'games' }"
-          type="button"
-          title="游戏入口管理"
-          @click="openGames"
-        >
-          <span class="rail-icon">🎮</span>
-          <span class="rail-label">游戏</span>
-        </button>
-
-        <!-- 2. 数据模块 -->
-        <button
-          class="rail-item"
-          :class="{ active: tab === 'domains' }"
-          type="button"
-          title="数据模块管理"
-          @click="openDomains"
-        >
-          <span class="rail-icon">📦</span>
-          <span class="rail-label">模块</span>
-        </button>
-
-        <!-- 3. 版本内容 -->
-        <button
-          class="rail-item"
-          :class="{ active: tab === 'content' }"
-          type="button"
-          title="版本内容控制"
-          @click="openContent()"
-        >
-          <span class="rail-icon">📑</span>
-          <span class="rail-label">版本</span>
-        </button>
-
-        <!-- 4. 采集与探活 -->
-        <button
-          class="rail-item"
-          :class="{ active: tab === 'probe' }"
-          type="button"
-          title="采集与探活监控"
-          @click="openProbe"
-        >
-          <span class="rail-icon">⚡</span>
-          <span class="rail-label">监控</span>
-        </button>
-
-        <!-- 5. 数据保留与自动清理 -->
-        <button
-          class="rail-item"
-          :class="{ active: tab === 'retention' }"
-          type="button"
-          :disabled="!adminUiCapabilities.retention"
-          title="当前 V5 后端尚未提供数据保留与自动清理接口"
-          @click="openRetention"
-        >
-          <span class="rail-icon">🧹</span>
-          <span class="rail-label">未接入</span>
-        </button>
-      </div>
-
-      <!-- 底部退出操作 -->
-      <div class="rail-foot">
-        <button
-          v-if="authenticated"
-          class="rail-action-btn"
-          type="button"
-          title="退出登录"
-          @click="logout"
-        >
-          <span class="rail-icon">🚪</span>
-          <span class="rail-label">退出</span>
-        </button>
-      </div>
-    </aside>
+    <AdminRail
+      v-if="authenticated"
+      :active-tab="tab"
+      @select="openTab"
+      @logout="logout"
+    />
 
     <!-- 主工作区 Main Dashboard -->
     <main class="admin-main">
-      <!-- 登录视窗 Login Screen (未登录时仅显示居中登录面板及返回前台按钮) -->
-      <div v-if="!authenticated" class="admin-login-layout">
-        <div class="login-top-actions">
-          <button class="admin-btn secondary small" type="button" @click="router.push('/')">
-            <svg class="admin-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="19" y1="12" x2="5" y2="12"></line>
-              <polyline points="12 19 5 12 12 5"></polyline>
-            </svg>
-            <span>返回前台</span>
-          </button>
-        </div>
-        <form class="admin-login-card" @submit.prevent="login">
-          <div class="login-badge-wrap">
-            <div class="login-brand-badge">GMI</div>
-          </div>
-          <div class="login-head">
-            <h2>管理员身份验证</h2>
-            <p>请输入统一归档管理 Token / 密码进入后台</p>
-          </div>
-          
-          <div v-if="error" class="admin-alert error">{{ error }}</div>
-          
-          <div class="login-input-wrap">
-            <label for="admin-token-input">管理凭证</label>
-            <input
-              id="admin-token-input"
-              v-model="token"
-              type="password"
-              placeholder="输入管理 token..."
-              autocomplete="current-password"
-              required
-              autofocus
-            />
-          </div>
-          
-          <button class="admin-btn primary large full-width" type="submit" :disabled="loading">
-            <span>{{ loading ? '验证中…' : '进入管理系统' }}</span>
-          </button>
-        </form>
-      </div>
+      <AdminLoginView
+        v-if="!authenticated"
+        v-model="token"
+        :error="error"
+        :loading="loading"
+        @submit="login"
+        @back="router.push('/')"
+      />
 
       <!-- 已登录主工作区 -->
       <template v-else>
@@ -3522,6 +3061,7 @@ onBeforeUnmount(() => {
           :use-fallback-icon="useFallbackIcon"
           @select-game="selectGame"
           @start-game="startGame"
+          @cancel-create="cancelCreateGame"
           @save-game="saveGame"
           @remove-game="removeGame"
           @revert-game="revertGameDraft"
@@ -3550,6 +3090,7 @@ onBeforeUnmount(() => {
           :use-fallback-icon="useFallbackIcon"
           @select-domain="selectDomain"
           @start-domain="startDomain"
+          @cancel-create="cancelCreateDomain"
           @save-domain="saveDomain"
           @remove-domain="removeDomain"
           @revert-domain="revertDomainDraft"
@@ -3584,7 +3125,7 @@ onBeforeUnmount(() => {
                       :class="{ 'endfield-icon': selectedGame.id === 'endfield' }"
                       alt=""
                     />
-                    <div v-else class="game-dropdown-icon fallback-icon">🎮</div>
+                    <div v-else class="game-dropdown-icon fallback-icon"><AdminIcon name="game" /></div>
                     <div class="trigger-texts">
                       <strong class="trigger-title">{{ selectedGame?.name || '选择游戏…' }}</strong>
                       <span v-if="selectedGame?.sub_name" class="trigger-subtitle">{{ selectedGame.sub_name }}</span>
@@ -3624,7 +3165,7 @@ onBeforeUnmount(() => {
                           :class="{ 'endfield-icon': game.id === 'endfield' }"
                           alt=""
                         />
-                        <div v-else class="option-game-icon fallback-icon">🎮</div>
+                        <div v-else class="option-game-icon fallback-icon"><AdminIcon name="game" /></div>
                         <div class="option-info">
                           <strong class="option-name">{{ game.name }}</strong>
                           <span class="option-sub">{{ game.sub_name || game.id }}</span>
@@ -3892,7 +3433,7 @@ onBeforeUnmount(() => {
                   type="button"
                   @click="contentSubTab = 'edit'"
                 >
-                  <span>🛠️ 编辑版本</span>
+                  <span>编辑版本</span>
                 </button>
                 <button
                   v-if="selectedDomainSupportsCreateVersion"
@@ -3901,81 +3442,112 @@ onBeforeUnmount(() => {
                   type="button"
                   @click="contentSubTab = 'create'"
                 >
-                  <span>➕ 新建版本</span>
+                  <span>新建版本</span>
                 </button>
               </div>
 
-              <!-- 表单 A：编辑版本 -->
-              <form v-if="contentSubTab === 'edit'" class="version-edit-form" @keydown.enter="preventEnterSubmit" @submit.prevent="saveEditableVersion">
+              <!-- 版本工作台：编辑与新建共用同一套字段与资源编辑器 -->
+              <form
+                class="version-edit-form"
+                :class="{ 'version-create-form': isCreateMode }"
+                novalidate
+                @keydown.enter="preventEnterSubmit"
+                @submit.prevent="submitVersionForm"
+              >
                 <!-- 顶部版本状态栏 -->
                 <div class="version-status-topbar">
                   <div class="version-header-meta">
                     <div class="version-title-row">
-                      <h2>{{ selectedDomainGameName }} <span class="divider">/</span> {{ getDomainFriendlyName(selectedDomain) }} <span class="divider">/</span> {{ selectedVersion || '未选择版本' }}</h2>
-                      <span v-if="!editableDraft.is_visible" class="status-pill hidden">已隐藏</span>
+                      <template v-if="isCreateMode">
+                        <h2>新建版本 · {{ selectedDomainGameName }} <span class="divider">/</span> {{ getDomainFriendlyName(selectedDomain) }}</h2>
+                        <span class="status-pill success">新建模式</span>
+                      </template>
+                      <template v-else>
+                        <h2>{{ selectedDomainGameName }} <span class="divider">/</span> {{ getDomainFriendlyName(selectedDomain) }} <span class="divider">/</span> {{ selectedVersion || '未选择版本' }}</h2>
+                        <span v-if="!editableDraft.is_visible" class="status-pill hidden">已隐藏</span>
+                      </template>
                     </div>
                   </div>
 
-                  <!-- 右侧操作区：探活并保存 + 更多菜单 -->
                   <div class="version-header-actions">
-                    <button
-                      type="button"
-                      class="admin-btn secondary"
-                      :disabled="editableLoading || loading || !selectedVersion"
-                      title="探活官方链接并持久化更新到 version.json"
-                      @click="probeCurrentVersion()"
-                    >
-                      <span>⚡ 探活并保存</span>
-                    </button>
-
-                    <!-- 更多操作下拉菜单 -->
-                    <div class="custom-dropdown-container more-actions-dropdown">
+                    <template v-if="isCreateMode">
+                      <button
+                        v-if="selectedVersion && editableLoaded"
+                        class="admin-btn secondary"
+                        type="button"
+                        @click="copyCurrentVersionToCreateDraft"
+                      >
+                        <span>复制当前 ({{ selectedVersion }}) 为模板</span>
+                      </button>
+                      <button
+                        class="admin-btn secondary"
+                        type="button"
+                        @click="resetCreateDraft"
+                      >
+                        <span>重置</span>
+                      </button>
+                    </template>
+                    <template v-else>
                       <button
                         type="button"
                         class="admin-btn secondary"
-                        title="更多操作"
-                        @click.stop="moreActionsOpen = !moreActionsOpen"
+                        :disabled="editableLoading || loading || !selectedVersion"
+                        title="向官方源发起实时探活并持久化探活结果，不会保存当前表单草稿"
+                        @click="probeCurrentVersion()"
                       >
-                        <span>更多 ▾</span>
+                        <span>实时探活</span>
                       </button>
-                      <transition name="dropdown-fade">
-                        <div v-if="moreActionsOpen" class="more-dropdown-menu" @click.stop>
-                          <button
-                            type="button"
-                            class="more-dropdown-item"
-                            @click="toggleVersionVisibility(); moreActionsOpen = false"
-                          >
-                            <span>{{ editableDraft.is_visible ? '👁️ 隐藏此版本' : '👁️ 恢复公开' }}</span>
-                          </button>
-                          <button
-                            v-if="selectedDomainSupportsCreateVersion"
-                            type="button"
-                            class="more-dropdown-item"
-                            @click="copyCurrentVersionToCreateDraft(); moreActionsOpen = false"
-                          >
-                            <span>📋 复制为新版本模板</span>
-                          </button>
-                          <hr class="more-divider" />
-                          <button
-                            type="button"
-                            class="more-dropdown-item danger"
-                            @click="deleteCurrentVersion(); moreActionsOpen = false"
-                          >
-                            <span>🗑️ 删除此版本</span>
-                          </button>
-                        </div>
-                      </transition>
-                    </div>
+
+                      <!-- 更多操作下拉菜单 -->
+                      <div class="custom-dropdown-container more-actions-dropdown">
+                        <button
+                          type="button"
+                          class="admin-btn secondary"
+                          title="更多操作"
+                          @click.stop="moreActionsOpen = !moreActionsOpen"
+                        >
+                          <span>更多 ▾</span>
+                        </button>
+                        <transition name="dropdown-fade">
+                          <div v-if="moreActionsOpen" class="more-dropdown-menu" @click.stop>
+                            <button
+                              type="button"
+                              class="more-dropdown-item"
+                              @click="toggleVersionVisibility(); moreActionsOpen = false"
+                            >
+                              <span>{{ editableDraft.is_visible ? '隐藏此版本' : '恢复公开' }}</span>
+                            </button>
+                            <button
+                              v-if="selectedDomainSupportsCreateVersion"
+                              type="button"
+                              class="more-dropdown-item"
+                              @click="copyCurrentVersionToCreateDraft(); moreActionsOpen = false"
+                            >
+                              <span>复制为新版本模板</span>
+                            </button>
+                            <hr class="more-divider" />
+                            <button
+                              type="button"
+                              class="more-dropdown-item danger"
+                              @click="deleteCurrentVersion(); moreActionsOpen = false"
+                            >
+                              <span>删除此版本</span>
+                            </button>
+                          </div>
+                        </transition>
+                      </div>
+                    </template>
                   </div>
                 </div>
 
-                <div v-if="!selectedVersion" class="admin-empty-state">
+                <div v-if="!isCreateMode && !selectedVersion" class="admin-empty-state">
                   请先在左侧列表中选择一个目标版本。
                 </div>
 
                 <template v-else>
-                  <!-- 链接健康条 (Health Banner - 紧凑低饱和) -->
+                  <!-- 链接健康条 (Health Banner - 紧凑低饱和)：仅编辑已有版本时展示 -->
                   <div
+                    v-if="!isCreateMode"
                     class="health-banner-card"
                     :class="currentVersionHealth.isOk ? 'success' : (currentVersionHealth.isChecked ? 'danger' : 'neutral')"
                   >
@@ -3997,19 +3569,31 @@ onBeforeUnmount(() => {
                         type="button"
                         @click="probeCurrentVersion()"
                       >
-                        ⚡ 重新探活
+                        重新探活
                       </button>
                     </div>
                   </div>
-
                   <!-- 基本信息 -->
                   <div class="form-section-card">
                     <div class="section-card-title">基本信息</div>
-                    <div class="admin-field-grid compact-3col">
-                      <label class="admin-field">
-                        <span class="field-label">渠道 <small class="field-sublabel">channel</small></span>
+                    <div
+                      class="admin-field-grid"
+                      :class="isCreateMode ? 'compact-4col' : 'compact-3col'"
+                    >
+                      <label v-if="isCreateMode" class="admin-field">
+                        <span class="field-label">版本号 <small class="field-sublabel">version</small> <b class="text-rose">*</b></span>
                         <input
-                          v-model="editableDraft.channel"
+                          v-model="versionDraft.version"
+                          class="admin-input"
+                          placeholder="例如: 7.1.0"
+                          required
+                        />
+                      </label>
+
+                      <label class="admin-field">
+                        <span class="field-label">渠道</span>
+                        <input
+                          v-model="versionDraft.channel"
                           class="admin-input"
                           placeholder="official / bilibili"
                           required
@@ -4017,9 +3601,9 @@ onBeforeUnmount(() => {
                       </label>
 
                       <label class="admin-field">
-                        <span class="field-label">版本代码 <small class="field-sublabel">version_code</small></span>
+                        <span class="field-label">版本代码</span>
                         <input
-                          v-model.number="editableDraft.version_code"
+                          v-model.number="versionDraft.version_code"
                           class="admin-input"
                           type="number"
                           placeholder="例如: 12345"
@@ -4029,32 +3613,37 @@ onBeforeUnmount(() => {
                       <div class="admin-field">
                         <div class="field-header-row">
                           <span class="field-label">
-                            文件时间 <small class="field-sublabel">file_time</small>
+                            文件时间
                           </span>
                           <button
-                            v-if="editableDraft.file_created_at_override"
+                            v-if="versionDraft.file_created_at_override"
                             class="field-mini-btn"
                             type="button"
                             title="清空后将由后端自动识别 URL 或 Last-Modified 时间"
-                            @click="clearFileTime"
+                            @click="clearActiveFileTime"
                           >
-                            🔄 清空 (恢复自动识别)
+                            清空
                           </button>
                         </div>
                         <input
-                          v-model="editableDraft.file_created_at_override"
                           class="admin-input"
-                          placeholder="例如: 2026-08-03T07:53:01Z"
+                          type="datetime-local"
+                          :value="fileTimeInputValue"
+                          @input="onFileTimeInput"
                         />
-                        <small class="field-tip">
-                          来源：<strong>{{ getFileTimeSourceDescription(editableDraft.file_created_at_override, editableDraft.artifacts[0]?.urls[0]?.url) }}</strong>
+                        <small v-if="fileTimeUnparsable" class="field-tip field-tip-warning">
+                          无法识别当前值（{{ fileTimeRaw }}），请重新选择或清空。
+                        </small>
+                        <small v-else class="field-tip">
+                          {{ fileTimeLabel ? `当前 ${fileTimeLabel}，按 UTC 保存` : '留空时按 URL / Last-Modified 自动识别' }}
+                          · 来源：{{ getFileTimeSourceDescription(versionDraft.file_created_at_override, versionDraft.artifacts[0]?.urls[0]?.url) }}
                         </small>
                       </div>
                     </div>
                   </div>
 
                   <!-- APK 文件平铺卡片 -->
-                  <div v-if="selectedDomainSupportsCreateVersion && editableDraft.artifacts[0]" class="form-section-card apk-file-card">
+                  <div v-if="showApkFileCard" class="form-section-card apk-file-card">
                     <div class="section-card-title">APK 文件</div>
 
                     <div class="admin-field-grid">
@@ -4062,36 +3651,36 @@ onBeforeUnmount(() => {
                         <div class="field-header-row">
                           <span class="field-label">文件名</span>
                           <button
-                            v-if="editableDraft.artifacts[0].urls[0]?.url"
+                            v-if="versionDraft.artifacts[0].urls[0]?.url"
                             class="field-mini-btn"
                             type="button"
                             title="根据当前 URL 自动解析并填入文件名"
-                            @click="forceExtractArtifactName(editableDraft.artifacts[0])"
+                            @click="forceExtractActiveArtifactName(versionDraft.artifacts[0])"
                           >
-                            🎯 根据 URL 填写文件名
+                            根据 URL 填写文件名
                           </button>
                         </div>
                         <input
-                          v-model="editableDraft.artifacts[0].name"
+                          v-model="versionDraft.artifacts[0].name"
                           class="admin-input"
-                          placeholder="例如: yuanshen_7.0.0.apk"
+                          placeholder="例如: yuanshen_7.1.0.apk"
                           required
-                          @input="syncArtifactsToJson"
+                          @input="syncArtifactsJsonForActiveDraft"
                         />
                       </div>
 
                       <label class="admin-field">
                         <span class="field-label">文件大小</span>
                         <input
-                          v-model.number="editableDraft.artifacts[0].size"
+                          v-model.number="versionDraft.artifacts[0].size"
                           class="admin-input"
                           type="number"
                           min="0"
                           placeholder="字节数"
-                          @input="syncArtifactsToJson"
+                          @input="syncArtifactsJsonForActiveDraft"
                         />
                         <small class="field-tip">
-                          当前换算：<strong>{{ formatBytes(editableDraft.artifacts[0].size) }}</strong>
+                          当前换算：<strong>{{ formatBytes(versionDraft.artifacts[0].size) }}</strong>
                         </small>
                       </label>
                     </div>
@@ -4101,25 +3690,25 @@ onBeforeUnmount(() => {
                       <span class="field-label">下载 URL</span>
                       <div class="url-input-action-row">
                         <input
-                          v-model="editableDraft.artifacts[0].urls[0].url"
+                          v-model="versionDraft.artifacts[0].urls[0].url"
                           class="admin-input text-mono url-long-input"
                           placeholder="https://..."
                           required
-                          @input="handleArtifactUrlChange(editableDraft.artifacts[0], editableDraft.artifacts[0].urls[0].url)"
+                          @input="handleActiveArtifactUrlChange(versionDraft.artifacts[0], versionDraft.artifacts[0].urls[0].url)"
                         />
                         <button
                           class="url-action-pill-btn"
                           type="button"
                           title="复制下载链接"
-                          @click="copyUrl(editableDraft.artifacts[0].urls[0].url)"
+                          @click="copyUrl(versionDraft.artifacts[0].urls[0].url)"
                         >
-                          📋 复制
+                          复制
                         </button>
                         <button
                           class="url-action-pill-btn"
                           type="button"
                           title="在新窗口打开"
-                          @click="openUrl(editableDraft.artifacts[0].urls[0].url)"
+                          @click="openUrl(versionDraft.artifacts[0].urls[0].url)"
                         >
                           ↗ 打开
                         </button>
@@ -4127,10 +3716,10 @@ onBeforeUnmount(() => {
                           class="url-action-pill-btn"
                           type="button"
                           title="仅检查网络连通性，不修改或保存任何数据"
-                          :disabled="urlProbeMap[editableDraft.artifacts[0].urls[0].url]?.loading"
-                          @click="probeUrlItem(editableDraft.artifacts[0].urls[0].url)"
+                          :disabled="urlProbeMap[versionDraft.artifacts[0].urls[0].url]?.loading"
+                          @click="probeUrlItem(versionDraft.artifacts[0].urls[0].url)"
                         >
-                          {{ urlProbeMap[editableDraft.artifacts[0].urls[0].url]?.loading ? '⏳ 测试中' : '🔍 测试 URL' }}
+                          {{ urlProbeMap[versionDraft.artifacts[0].urls[0].url]?.loading ? '测试中…' : '测试 URL' }}
                         </button>
                       </div>
                     </div>
@@ -4144,8 +3733,8 @@ onBeforeUnmount(() => {
                       >
                         <span class="chevron" :class="{ open: checksumsOpen }">▶</span>
                         <span class="collapse-title">文件校验值</span>
-                        <span v-if="getChecksumSummaryText(editableDraft.checksum_etag, editableDraft.checksum_crc64, editableDraft.checksum_md5)" class="checksum-tag">
-                          {{ getChecksumSummaryText(editableDraft.checksum_etag, editableDraft.checksum_crc64, editableDraft.checksum_md5) }}
+                        <span v-if="getChecksumSummaryText(versionDraft.checksum_etag, versionDraft.checksum_crc64, versionDraft.checksum_md5)" class="checksum-tag">
+                          {{ getChecksumSummaryText(versionDraft.checksum_etag, versionDraft.checksum_crc64, versionDraft.checksum_md5) }}
                         </span>
                         <span v-else class="checksum-tag-empty">未配置</span>
                       </button>
@@ -4154,7 +3743,7 @@ onBeforeUnmount(() => {
                         <label class="admin-field">
                           <span class="field-label">ETag</span>
                           <input
-                            v-model="editableDraft.checksum_etag"
+                            v-model="versionDraft.checksum_etag"
                             class="admin-input text-mono"
                             placeholder="例如: &quot;abcd1234...&quot;"
                           />
@@ -4162,7 +3751,7 @@ onBeforeUnmount(() => {
                         <label class="admin-field">
                           <span class="field-label">CRC64</span>
                           <input
-                            v-model="editableDraft.checksum_crc64"
+                            v-model="versionDraft.checksum_crc64"
                             class="admin-input text-mono"
                             placeholder="例如: 15852710230531907"
                           />
@@ -4170,7 +3759,7 @@ onBeforeUnmount(() => {
                         <label class="admin-field">
                           <span class="field-label">MD5</span>
                           <input
-                            v-model="editableDraft.checksum_md5"
+                            v-model="versionDraft.checksum_md5"
                             class="admin-input text-mono"
                             placeholder="32位 MD5 字符串"
                           />
@@ -4358,11 +3947,35 @@ onBeforeUnmount(() => {
                       </div>
                     </div>
                   </div>
+                  <!-- 底部操作条：新建走提交，编辑走吸附保存 -->
+                  <div v-if="isCreateMode" class="form-actions-bar">
+                  <div class="actions-left">
+                    <button
+                      type="button"
+                      class="admin-btn secondary"
+                      @click="resetCreateDraft"
+                    >
+                      <span>重置表单</span>
+                    </button>
+                    <span v-if="!createDraft.version.trim()" class="create-submit-hint">
+                      填写版本号后即可提交
+                    </span>
+                  </div>
 
+                  <div class="actions-right">
+                    <button
+                      class="admin-btn primary"
+                      type="submit"
+                      :disabled="loading || !selectedDomainId || !createDraft.version.trim()"
+                    >
+                      <span>{{ loading ? '录入中…' : '保存并录入新版本' }}</span>
+                    </button>
+                  </div>
+                </div>
                   <!-- 底部吸附保存交互条（唯一保存入口） -->
-                  <div class="sticky-save-bar" :class="{ dirty: isEditableDirty }">
+                  <div v-else class="sticky-save-bar" :class="{ dirty: isEditableDirty }">
                     <div class="bar-left">
-                      <span v-if="isEditableDirty" class="save-status-badge dirty">⚠️ 有 {{ dirtyChangesCount }} 项未保存修改</span>
+                      <span v-if="isEditableDirty" class="save-status-badge dirty">⚠ 有 {{ dirtyChangesCount }} 项未保存修改</span>
                       <span v-else class="save-status-badge clean">● 没有未保存修改</span>
                     </div>
                     <div class="bar-right">
@@ -4379,247 +3992,11 @@ onBeforeUnmount(() => {
                         type="submit"
                         :disabled="loading || !selectedVersion || !isEditableDirty"
                       >
-                        <span>{{ selectedDomainSupportsCreateVersion && isUrlChanged ? '💾 保存并探活' : '💾 保存更改' }}</span>
+                        <span>{{ selectedDomainSupportsCreateVersion && isUrlChanged ? '保存并探活' : '保存更改' }}</span>
                       </button>
                     </div>
                   </div>
                 </template>
-              </form>
-
-              <!-- 表单 B：新建版本 (极简录入工作台) -->
-              <form v-else-if="selectedDomainSupportsCreateVersion" class="version-create-form" @keydown.enter="preventEnterSubmit" @submit.prevent="addVersion">
-                <!-- 顶部新建版本标题栏 -->
-                <div class="version-status-topbar">
-                  <div class="version-header-meta">
-                    <div class="version-title-row">
-                      <h2>新建版本 · {{ selectedDomainGameName }} {{ selectedDomainPlatform }}</h2>
-                      <span class="status-pill success">新建模式</span>
-                    </div>
-                  </div>
-
-                  <div class="version-header-actions">
-                    <button
-                      v-if="selectedVersion && editableLoaded"
-                      class="admin-btn secondary"
-                      type="button"
-                      @click="copyCurrentVersionToCreateDraft"
-                    >
-                      <span>📋 复制当前 ({{ selectedVersion }}) 为模板</span>
-                    </button>
-                    <button
-                      class="admin-btn secondary"
-                      type="button"
-                      @click="resetCreateDraft"
-                    >
-                      <span>🔄 重置</span>
-                    </button>
-                  </div>
-                </div>
-
-                <!-- 基本信息 -->
-                <div class="form-section-card">
-                  <div class="section-card-title">基本信息</div>
-                  <div class="admin-field-grid compact-4col">
-                    <label class="admin-field">
-                      <span class="field-label">版本号 <small class="field-sublabel">version</small> <b class="text-rose">*</b></span>
-                      <input
-                        v-model="createDraft.version"
-                        class="admin-input"
-                        placeholder="例如: 7.1.0"
-                        required
-                      />
-                    </label>
-
-                    <label class="admin-field">
-                      <span class="field-label">渠道 <small class="field-sublabel">channel</small></span>
-                      <input
-                        v-model="createDraft.channel"
-                        class="admin-input"
-                        placeholder="official"
-                        required
-                      />
-                    </label>
-
-                    <label class="admin-field">
-                      <span class="field-label">版本代码 <small class="field-sublabel">version_code</small></span>
-                      <input
-                        v-model.number="createDraft.version_code"
-                        class="admin-input"
-                        type="number"
-                        placeholder="例如: 12345 (可留空)"
-                      />
-                    </label>
-
-                    <div class="admin-field">
-                      <div class="field-header-row">
-                        <span class="field-label">
-                          文件时间 <small class="field-sublabel">file_time</small>
-                        </span>
-                        <button
-                          v-if="createDraft.file_created_at"
-                          class="field-mini-btn"
-                          type="button"
-                          @click="clearCreateFileTime"
-                        >
-                          🔄 清空
-                        </button>
-                      </div>
-                      <input
-                        v-model="createDraft.file_created_at"
-                        class="admin-input"
-                        placeholder="例如: 2026-08-03T07:53:01Z"
-                      />
-                      <small class="field-tip">
-                        来源：<strong>{{ getFileTimeSourceDescription(createDraft.file_created_at, createDraft.artifacts[0]?.urls[0]?.url) }}</strong>
-                      </small>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- APK 文件平铺卡片 -->
-                <div v-if="createDraft.artifacts[0]" class="form-section-card apk-file-card">
-                  <div class="section-card-title">APK 文件</div>
-
-                  <div class="admin-field-grid">
-                    <div class="admin-field">
-                      <div class="field-header-row">
-                        <span class="field-label">文件名 <b class="text-rose">*</b></span>
-                        <button
-                          v-if="createDraft.artifacts[0].urls[0]?.url"
-                          class="field-mini-btn"
-                          type="button"
-                          title="根据当前 URL 自动解析并填入文件名"
-                          @click="forceExtractCreateArtifactName(createDraft.artifacts[0])"
-                        >
-                          🎯 根据 URL 填写文件名
-                        </button>
-                      </div>
-                      <input
-                        v-model="createDraft.artifacts[0].name"
-                        class="admin-input"
-                        placeholder="例如: yuanshen_7.1.0.apk"
-                        required
-                        @input="syncCreateArtifactsToJson"
-                      />
-                    </div>
-
-                    <label class="admin-field">
-                      <span class="field-label">文件大小</span>
-                      <input
-                        v-model.number="createDraft.artifacts[0].size"
-                        class="admin-input"
-                        type="number"
-                        min="0"
-                        placeholder="字节数"
-                        @input="syncCreateArtifactsToJson"
-                      />
-                      <small class="field-tip">
-                        当前换算：<strong>{{ formatBytes(createDraft.artifacts[0].size) }}</strong>
-                      </small>
-                    </label>
-                  </div>
-
-                  <!-- URL 独占一行 -->
-                  <div class="admin-field full-width url-line-field">
-                    <span class="field-label">下载 URL <b class="text-rose">*</b></span>
-                    <div class="url-input-action-row">
-                      <input
-                        v-model="createDraft.artifacts[0].urls[0].url"
-                        class="admin-input text-mono url-long-input"
-                        placeholder="https://..."
-                        required
-                        @input="handleCreateArtifactUrlChange(createDraft.artifacts[0], createDraft.artifacts[0].urls[0].url)"
-                      />
-                      <button
-                        class="url-action-pill-btn"
-                        type="button"
-                        title="复制下载链接"
-                        @click="copyUrl(createDraft.artifacts[0].urls[0].url)"
-                      >
-                        📋 复制
-                      </button>
-                      <button
-                        class="url-action-pill-btn"
-                        type="button"
-                        title="在新窗口打开"
-                        @click="openUrl(createDraft.artifacts[0].urls[0].url)"
-                      >
-                        ↗ 打开
-                      </button>
-                      <button
-                        class="url-action-pill-btn"
-                        type="button"
-                        :disabled="urlProbeMap[createDraft.artifacts[0].urls[0].url]?.loading"
-                        @click="probeUrlItem(createDraft.artifacts[0].urls[0].url)"
-                      >
-                        {{ urlProbeMap[createDraft.artifacts[0].urls[0].url]?.loading ? '⏳ 验活中' : '🔍 快速验活' }}
-                      </button>
-                    </div>
-                  </div>
-
-                  <!-- 校验值折叠面板 -->
-                  <div class="checksums-collapse-section">
-                    <button
-                      class="collapse-toggle-btn"
-                      type="button"
-                      @click="createChecksumsOpen = !createChecksumsOpen"
-                    >
-                      <span class="chevron" :class="{ open: createChecksumsOpen }">▶</span>
-                      <span class="collapse-title">文件校验值 (ETag / CRC64 / MD5)</span>
-                      <span v-if="createDraft.checksum_md5 || createDraft.checksum_crc64 || createDraft.checksum_etag" class="checksum-tag">已配置</span>
-                    </button>
-
-                    <div v-if="createChecksumsOpen" class="collapse-fields-grid">
-                      <label class="admin-field">
-                        <span class="field-label">ETag</span>
-                        <input
-                          v-model="createDraft.checksum_etag"
-                          class="admin-input text-mono"
-                          placeholder="例如: &quot;abcd1234...&quot;"
-                        />
-                      </label>
-                      <label class="admin-field">
-                        <span class="field-label">CRC64</span>
-                        <input
-                          v-model="createDraft.checksum_crc64"
-                          class="admin-input text-mono"
-                          placeholder="例如: 15852710230531907"
-                        />
-                      </label>
-                      <label class="admin-field">
-                        <span class="field-label">MD5</span>
-                        <input
-                          v-model="createDraft.checksum_md5"
-                          class="admin-input text-mono"
-                          placeholder="32位 MD5 字符串"
-                        />
-                      </label>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- 底部提交操作条 -->
-                <div class="form-actions-bar">
-                  <div class="actions-left">
-                    <button
-                      type="button"
-                      class="admin-btn secondary"
-                      @click="resetCreateDraft"
-                    >
-                      <span>🔄 重置表单</span>
-                    </button>
-                  </div>
-
-                  <div class="actions-right">
-                    <button
-                      class="admin-btn primary"
-                      type="submit"
-                      :disabled="loading || !selectedDomainId || !createDraft.version.trim()"
-                    >
-                      <span>{{ loading ? '录入中…' : '＋ 保存并录入新版本' }}</span>
-                    </button>
-                  </div>
-                </div>
               </form>
             </div>
             <div v-else class="content-work-card">
@@ -4629,7 +4006,6 @@ onBeforeUnmount(() => {
                 </div>
               </div>
               <div class="admin-empty-state">
-                <div class="empty-icon">🖥️</div>
                 <strong>当前单 APK 表单不适用于 PC 资源</strong>
                 <span>PC package、patch、voice、file manifest 与 chunk manifest 具有不同身份结构，当前不提供手工新增或编辑。</span>
                 <span>请使用已接入的官方采集与探活流程维护记录；左侧版本列表仍可用于只读浏览。</span>
@@ -4645,9 +4021,7 @@ onBeforeUnmount(() => {
             <!-- 卡片 1: 运维操作控制台 (start / status / cancel) -->
             <div class="probe-card">
               <div class="card-title-group">
-                <div class="kicker-tag">OPERATIONS CONSOLE</div>
                 <h3>数据采集与版本探活控制台</h3>
-                <p class="card-subtitle">批量探活会先检查官方新版本；配置 TG 后仅发送新版本更新，无变化时保持静默。单链接和单版本探活只检查指定目标。</p>
               </div>
 
               <!-- 动作模式选择 -->
@@ -4659,8 +4033,8 @@ onBeforeUnmount(() => {
                 >
                   <input v-model="opAction" class="op-radio" type="radio" value="both" />
                   <div class="op-action-text">
-                    <span class="op-action-title">✨ 查找新版本 + 探活全量 (discover + probe)</span>
-                    <span class="op-action-desc">先查询官方入口获取最新版本并入库更新索引，再探活全部历史版本（推荐）</span>
+                    <span class="op-action-title">查找新版本 + 探活全量（discover + probe）</span>
+                    <span class="op-action-desc">先扫描官方入口发现新版本并写入索引，再逐条探活所有历史版本链接（推荐）</span>
                   </div>
                 </label>
 
@@ -4671,20 +4045,8 @@ onBeforeUnmount(() => {
                 >
                   <input v-model="opAction" class="op-radio" type="radio" value="discover" />
                   <div class="op-action-text">
-                    <span class="op-action-title">🔍 仅查找新版本 (discover)</span>
-                    <span class="op-action-desc">查询官方入口，获取最新版本，探活后保存 version.json 并更新索引</span>
-                  </div>
-                </label>
-
-                <label
-                  class="op-action-card"
-                  :class="{ active: opAction === 'probe' }"
-                  @click="opAction = 'probe'"
-                >
-                  <input v-model="opAction" class="op-radio" type="radio" value="probe" />
-                  <div class="op-action-text">
-                    <span class="op-action-title">⚡ 探活历史版本（含新版本检查）</span>
-                    <span class="op-action-desc">先查询官方新版本，再探活所选游戏的历史版本与新发现链接</span>
+                    <span class="op-action-title">仅查找新版本（discover）</span>
+                    <span class="op-action-desc">只扫描官方入口并写入新版本记录，不检查已有链接的可用性</span>
                   </div>
                 </label>
               </div>
@@ -4699,7 +4061,7 @@ onBeforeUnmount(() => {
                   :aria-pressed="opPlatformScope === 'all'"
                   @click="opPlatformScope = 'all'"
                 >
-                  🌐 全量数据 (APK + 已接入的 PC)
+                  全量数据 (APK + 已接入的 PC)
                 </button>
                 <button
                   type="button"
@@ -4709,7 +4071,7 @@ onBeforeUnmount(() => {
                   :aria-pressed="opPlatformScope === 'android'"
                   @click="opPlatformScope = 'android'"
                 >
-                  📱 仅 Android (APK)
+                  仅 Android (APK)
                 </button>
                 <button
                   type="button"
@@ -4719,7 +4081,7 @@ onBeforeUnmount(() => {
                   :aria-pressed="opPlatformScope === 'pc'"
                   @click="opPlatformScope = 'pc'"
                 >
-                  💻 仅 PC 客户端（已接入适配器）
+                  仅 PC 客户端（已接入适配器）
                 </button>
               </div>
 
@@ -4799,9 +4161,11 @@ onBeforeUnmount(() => {
             <!-- 卡片 2: 定时调度与策略配置 -->
             <div class="probe-card">
               <div class="card-title-group">
-                <div class="kicker-tag">AUTOMATION & SCHEDULES</div>
                 <h3>定时探活与采集计划</h3>
-                <p class="card-subtitle">{{ externalScheduleNotice }}</p>
+                <details class="inline-help">
+                  <summary>说明</summary>
+                  <p>{{ externalScheduleNotice }}</p>
+                </details>
               </div>
 
               <!-- 每日采集计划 -->
@@ -4842,7 +4206,10 @@ onBeforeUnmount(() => {
                 </div>
                 <div v-if="probeSchedulerStatus?.error" class="text-danger">错误：{{ probeSchedulerStatus.error }}</div>
               </div>
-              <p class="card-subtitle">{{ probeScheduleNotice }}</p>
+              <details class="inline-help">
+                <summary>说明</summary>
+                <p>{{ probeScheduleNotice }}</p>
+              </details>
               <div class="schedule-toggle-row">
                 <label class="admin-toggle-label">
                   <input v-model="probeSchedule.enabled" class="admin-toggle-checkbox" type="checkbox" />
@@ -4876,7 +4243,6 @@ onBeforeUnmount(() => {
           <div v-if="opResult" class="op-results-container">
             <div class="op-results-header">
               <div class="card-title-group">
-                <div class="kicker-tag text-emerald">OPERATION RESULT SUMMARY</div>
                 <h3>运维操作执行结果报告</h3>
                 <p class="card-subtitle">
                   执行动作：<span class="text-mono font-bold">{{ opResult.actions.join(' + ') }}</span>
@@ -4964,7 +4330,7 @@ onBeforeUnmount(() => {
               <p v-if="opResult.discover.items_truncated" class="text-muted">
                 本次采集共 {{ opResult.discover.items_total }} 条结果，下方保留 {{ opResult.discover.items.length }} 条明细；上方统计包含全部结果。
               </p>
-              <h4 style="margin: 0 0 10px; font-size: 13.5px; font-weight: 750; color: #7dd3fc;">🔍 查找新版本 (Discover) 执行明细</h4>
+              <h4 style="margin: 0 0 10px; font-size: 13.5px; font-weight: 750; color: #7dd3fc;">查找新版本 (Discover) 执行明细</h4>
               <div class="op-table-wrapper">
                 <table class="op-table">
                   <thead>
@@ -4993,7 +4359,7 @@ onBeforeUnmount(() => {
                         <span class="text-mono font-bold">{{ item.version || '--' }}</span>
                       </td>
                       <td>
-                        <span v-if="item.new" class="op-badge info">🆕 全新版本</span>
+                        <span v-if="item.new" class="op-badge info">全新版本</span>
                         <span v-else-if="discoverItemState(item) === 'success'" class="op-badge muted">现有最新</span>
                         <span v-else class="text-muted">--</span>
                       </td>
@@ -5022,7 +4388,7 @@ onBeforeUnmount(() => {
               </p>
               <div class="op-table-head-row">
                 <h4 style="margin: 0; font-size: 13.5px; font-weight: 750; color: #34d399;">
-                  ⚡ 历史版本探活 (Probe) 执行明细
+                  历史版本探活 (Probe) 执行明细
                   <span v-if="probeTableFilter === 'all'" class="text-muted" style="font-weight: 400; margin-left: 6px;">(共 {{ filteredProbeItems.length }} 条)</span>
                   <span v-else-if="probeTableFilter === 'available'" style="color: #34d399; font-weight: 700; margin-left: 6px;">(仅显示可用: {{ filteredProbeItems.length }} 条)</span>
                   <span v-else-if="probeTableFilter === 'unavailable'" style="color: #f43f5e; font-weight: 700; margin-left: 6px;">(仅显示失效: {{ filteredProbeItems.length }} 条)</span>
@@ -5116,7 +4482,6 @@ onBeforeUnmount(() => {
           <div class="admin-terminal-window">
             <div class="terminal-titlebar">
               <div class="terminal-heading">
-                <div class="kicker-tag">OPERATIONS LOG</div>
                 <h3>任务日志</h3>
                 <p>实时记录探活与版本发现结果，原始行可展开查看。</p>
               </div>
@@ -5189,444 +4554,9 @@ onBeforeUnmount(() => {
             </div>
           </div>
         </section>
-
-        <!-- 模块 5：数据保留与自动清理 (Retention & Cleanup Console) -->
-        <section v-else-if="tab === 'retention' && adminUiCapabilities.retention" class="admin-retention-dashboard">
-          <!-- 上方双列：策略配置 + 最近执行状态 -->
-          <div class="retention-top-grid">
-            <!-- 卡片 1: 保留与自动清理策略配置 -->
-            <div class="retention-card">
-              <div class="card-title-group">
-                <div class="kicker-tag">RETENTION POLICY</div>
-                <h3>自动清理与保留策略配置</h3>
-                <p class="card-subtitle">
-                  配置本地缓存生命周期、旧运维记录与探活历史轮转天数。保存后立即热加载生效，无需重启服务。
-                </p>
-              </div>
-
-              <form class="retention-form" @submit.prevent="saveRetentionConfig">
-                <!-- 1. cache_days -->
-                <div class="retention-setting-block">
-                  <div class="setting-block-header">
-                    <div class="setting-title-wrap">
-                      <span class="setting-icon-badge">📦</span>
-                      <div class="setting-title-text">
-                        <strong>缓存与临时文件保留</strong>
-                        <code>cache_days</code>
-                      </div>
-                    </div>
-                    <span class="setting-range-pill">1 ～ 36,500 天</span>
-                  </div>
-
-                  <div class="setting-stepper-row">
-                    <div class="stepper-control">
-                      <button
-                        type="button"
-                        class="stepper-btn dec"
-                        :disabled="retentionConfig.cache_days <= 1"
-                        @click="adjustRetentionField('cache_days', -1)"
-                      >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                      </button>
-                      <div class="stepper-input-wrap">
-                        <input
-                          id="retention-cache-days"
-                          v-model.number="retentionConfig.cache_days"
-                          class="stepper-input"
-                          type="number"
-                          min="1"
-                          max="36500"
-                          step="1"
-                          required
-                        />
-                        <span class="stepper-unit">天</span>
-                      </div>
-                      <button
-                        type="button"
-                        class="stepper-btn inc"
-                        :disabled="retentionConfig.cache_days >= 36500"
-                        @click="adjustRetentionField('cache_days', 1)"
-                      >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                      </button>
-                    </div>
-
-                    <div class="preset-chips">
-                      <button
-                        v-for="preset in [7, 15, 30, 90, 180]"
-                        :key="preset"
-                        type="button"
-                        class="preset-chip"
-                        :class="{ active: retentionConfig.cache_days === preset }"
-                        @click="setRetentionPreset('cache_days', preset)"
-                      >
-                        {{ preset }}天{{ preset === 30 ? ' · 推荐' : '' }}
-                      </button>
-                    </div>
-                  </div>
-
-                  <p class="setting-desc">
-                    安全轮转 <code>data/.cache</code> 下的下载临时文件、解压残留分块及超期运维任务历史记录。
-                  </p>
-                </div>
-
-                <!-- 2. observation_days -->
-                <div class="retention-setting-block">
-                  <div class="setting-block-header">
-                    <div class="setting-title-wrap">
-                      <span class="setting-icon-badge">🔭</span>
-                      <div class="setting-title-text">
-                        <strong>探活历史观测数据保留</strong>
-                        <code>observation_days</code>
-                      </div>
-                    </div>
-                    <span class="setting-range-pill">1 ～ 36,500 天</span>
-                  </div>
-
-                  <div class="setting-stepper-row">
-                    <div class="stepper-control">
-                      <button
-                        type="button"
-                        class="stepper-btn dec"
-                        :disabled="retentionConfig.observation_days <= 1"
-                        @click="adjustRetentionField('observation_days', -1)"
-                      >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                      </button>
-                      <div class="stepper-input-wrap">
-                        <input
-                          id="retention-obs-days"
-                          v-model.number="retentionConfig.observation_days"
-                          class="stepper-input"
-                          type="number"
-                          min="1"
-                          max="36500"
-                          step="1"
-                          required
-                        />
-                        <span class="stepper-unit">天</span>
-                      </div>
-                      <button
-                        type="button"
-                        class="stepper-btn inc"
-                        :disabled="retentionConfig.observation_days >= 36500"
-                        @click="adjustRetentionField('observation_days', 1)"
-                      >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                      </button>
-                    </div>
-
-                    <div class="preset-chips">
-                      <button
-                        v-for="preset in [30, 60, 90, 180, 365]"
-                        :key="preset"
-                        type="button"
-                        class="preset-chip"
-                        :class="{ active: retentionConfig.observation_days === preset }"
-                        @click="setRetentionPreset('observation_days', preset)"
-                      >
-                        {{ preset }}天{{ preset === 90 ? ' · 推荐' : '' }}
-                      </button>
-                    </div>
-                  </div>
-
-                  <p class="setting-desc">
-                    控制已归档版本下载直链的历史观测（observations）最长存储天数，超期将安全裁剪。
-                  </p>
-                </div>
-
-                <!-- 3. interval_hours -->
-                <div class="retention-setting-block">
-                  <div class="setting-block-header">
-                    <div class="setting-title-wrap">
-                      <span class="setting-icon-badge">⏱️</span>
-                      <div class="setting-title-text">
-                        <strong>后台自动清理周期</strong>
-                        <code>interval_hours</code>
-                      </div>
-                    </div>
-                    <span class="setting-range-pill">1 ～ 8,760 小时</span>
-                  </div>
-
-                  <div class="setting-stepper-row">
-                    <div class="stepper-control">
-                      <button
-                        type="button"
-                        class="stepper-btn dec"
-                        :disabled="retentionConfig.interval_hours <= 1"
-                        @click="adjustRetentionField('interval_hours', -1)"
-                      >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                      </button>
-                      <div class="stepper-input-wrap">
-                        <input
-                          id="retention-interval-hours"
-                          v-model.number="retentionConfig.interval_hours"
-                          class="stepper-input"
-                          type="number"
-                          min="1"
-                          max="8760"
-                          step="1"
-                          required
-                        />
-                        <span class="stepper-unit">小时</span>
-                      </div>
-                      <button
-                        type="button"
-                        class="stepper-btn inc"
-                        :disabled="retentionConfig.interval_hours >= 8760"
-                        @click="adjustRetentionField('interval_hours', 1)"
-                      >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                      </button>
-                    </div>
-
-                    <div class="preset-chips">
-                      <button
-                        v-for="preset in [6, 12, 24, 48, 168]"
-                        :key="preset"
-                        type="button"
-                        class="preset-chip"
-                        :class="{ active: retentionConfig.interval_hours === preset }"
-                        @click="setRetentionPreset('interval_hours', preset)"
-                      >
-                        {{ preset === 168 ? '7天(168h)' : `${preset}小时` }}{{ preset === 24 ? ' · 推荐' : '' }}
-                      </button>
-                    </div>
-                  </div>
-
-                  <p class="setting-desc">
-                    后台自动执行清理的任务间隔。保存后直接唤醒事件循环重置倒计时，实时生效。
-                  </p>
-                </div>
-
-                <div class="retention-actions-footer">
-                  <button
-                    class="retention-btn-save"
-                    type="submit"
-                    :disabled="loading || retentionSaving || retentionRunning"
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                      <polyline points="17 21 17 13 7 13 7 21" />
-                      <polyline points="7 3 7 8 15 8" />
-                    </svg>
-                    <span>{{ retentionSaving ? '保存唤醒中…' : '保存配置并立即生效' }}</span>
-                  </button>
-                  <button
-                    class="retention-btn-reset"
-                    type="button"
-                    :disabled="loading || retentionSaving || retentionRunning"
-                    @click="resetRetentionDefaults"
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                      <path d="M3 3v5h5" />
-                    </svg>
-                    <span>恢复推荐默认值</span>
-                  </button>
-                </div>
-              </form>
-            </div>
-
-            <!-- 卡片 2: 最近一次清理状态与指标 -->
-            <div class="retention-card">
-              <div class="card-title-group">
-                <div class="kicker-tag">LATEST RUN STATUS</div>
-                <h3>最近执行状态与删除统计</h3>
-                <p class="card-subtitle">
-                  保存于 <code>data/.cache/retention_status.json</code>，记录上次自动调度或管理员手动执行清理的完整统计指标。
-                </p>
-              </div>
-
-              <!-- 状态概览栏 -->
-              <div class="retention-hero-card" :class="retentionStatus?.error ? 'is-error' : (retentionStatus?.source ? 'is-active' : 'is-idle')">
-                <div class="hero-status-left">
-                  <div class="pulse-indicator-wrap">
-                    <span class="pulse-ring"></span>
-                    <span class="pulse-core"></span>
-                  </div>
-                  <div class="hero-title-group">
-                    <div class="hero-status-title">
-                      {{ retentionHeroTitle }}
-                    </div>
-                    <div class="hero-status-meta">
-                      <span>完成时间: <b>{{ formatSyncTime(retentionStatus?.finished_at || retentionStatus?.started_at) || '无历史记录' }}</b></span>
-                      <span class="meta-dot">·</span>
-                      <span>耗时: <b>{{ retentionDurationText(retentionStatus?.started_at, retentionStatus?.finished_at) }}</b></span>
-                    </div>
-                  </div>
-                </div>
-                <div class="hero-status-right">
-                  <span class="source-tag" :class="retentionStatus?.source || 'none'">
-                    {{ retentionSourceLabel(retentionStatus?.source) }}
-                  </span>
-                </div>
-              </div>
-
-              <!-- 错误提醒 -->
-              <div v-if="retentionStatus?.error" class="admin-alert error" style="margin: 0;">
-                <span>执行异常：{{ retentionStatus.error }}</span>
-              </div>
-
-              <!-- 6 大删除指标网格 -->
-              <div class="retention-metrics-grid">
-                <div class="metric-card theme-cyan">
-                  <div class="metric-header">
-                    <span class="metric-icon">🗄️</span>
-                    <span class="metric-label">过期缓存清除</span>
-                  </div>
-                  <div class="metric-value-row">
-                    <strong class="metric-number">{{ retentionStatus?.result?.cache_deleted ?? 0 }}</strong>
-                    <span class="metric-unit">项</span>
-                  </div>
-                  <span class="metric-hint">data/.cache 临时文件</span>
-                </div>
-
-                <div class="metric-card theme-blue">
-                  <div class="metric-header">
-                    <span class="metric-icon">📑</span>
-                    <span class="metric-label">临时文件清除</span>
-                  </div>
-                  <div class="metric-value-row">
-                    <strong class="metric-number">{{ retentionStatus?.result?.temp_deleted ?? 0 }}</strong>
-                    <span class="metric-unit">项</span>
-                  </div>
-                  <span class="metric-hint">下载解压中间产物</span>
-                </div>
-
-                <div class="metric-card theme-purple">
-                  <div class="metric-header">
-                    <span class="metric-icon">📋</span>
-                    <span class="metric-label">旧运维记录清除</span>
-                  </div>
-                  <div class="metric-value-row">
-                    <strong class="metric-number">{{ retentionStatus?.result?.operation_deleted ?? 0 }}</strong>
-                    <span class="metric-unit">条</span>
-                  </div>
-                  <span class="metric-hint">超期历史任务日志</span>
-                </div>
-
-                <div class="metric-card theme-indigo">
-                  <div class="metric-header">
-                    <span class="metric-icon">📡</span>
-                    <span class="metric-label">探活观测清除</span>
-                  </div>
-                  <div class="metric-value-row">
-                    <strong class="metric-number">{{ retentionStatus?.result?.observations_deleted ?? 0 }}</strong>
-                    <span class="metric-unit">条</span>
-                  </div>
-                  <span class="metric-hint">历史版本探测明细</span>
-                </div>
-
-                <div class="metric-card theme-amber" :class="{ 'has-value': (retentionStatus?.result?.skipped ?? 0) > 0 }">
-                  <div class="metric-header">
-                    <span class="metric-icon">🔒</span>
-                    <span class="metric-label">锁冲突 / 跳过数</span>
-                  </div>
-                  <div class="metric-value-row">
-                    <strong class="metric-number">{{ retentionStatus?.result?.skipped ?? 0 }}</strong>
-                    <span class="metric-unit">项</span>
-                  </div>
-                  <span class="metric-hint">保护中或并发占用</span>
-                </div>
-
-                <div class="metric-card" :class="(retentionStatus?.result?.errors ?? 0) > 0 ? 'theme-rose has-value' : 'theme-emerald'">
-                  <div class="metric-header">
-                    <span class="metric-icon">{{ (retentionStatus?.result?.errors ?? 0) > 0 ? '⚠️' : '✅' }}</span>
-                    <span class="metric-label">清理错误数</span>
-                  </div>
-                  <div class="metric-value-row">
-                    <strong class="metric-number">{{ retentionStatus?.result?.errors ?? 0 }}</strong>
-                    <span class="metric-unit">项</span>
-                  </div>
-                  <span class="metric-hint">{{ (retentionStatus?.result?.errors ?? 0) === 0 ? '运行状态健康' : '存在异常排查' }}</span>
-                </div>
-              </div>
-
-              <!-- 立即手动执行操作栏 -->
-              <div class="retention-card-footer">
-                <div class="footer-security-pill">
-                  <span class="sec-dot"></span>
-                  <span>受限沙盒与进程互斥锁防护生效中</span>
-                </div>
-                <div class="footer-actions">
-                  <button
-                    class="action-btn-ghost"
-                    type="button"
-                    :disabled="loading || retentionRunning"
-                    title="重新获取最新清理执行状态"
-                    @click="loadRetentionStatus(undefined, true)"
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
-                    </svg>
-                    <span>刷新状态</span>
-                  </button>
-                  <button
-                    class="action-btn-run"
-                    type="button"
-                    :disabled="loading || retentionRunning || retentionSaving"
-                    @click="runRetentionManual"
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-                    </svg>
-                    <span>{{ retentionRunning ? '正在执行清理…' : '立即执行清理' }}</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 下方全宽：数据生命周期与安全性 Bento 矩阵 -->
-          <div class="retention-security-bento">
-            <div class="bento-feature-card">
-              <div class="bento-icon-box">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                </svg>
-              </div>
-              <h4>核心元数据不可变</h4>
-              <p>仅安全轮转临时缓存与过期探活观测，绝不修改或删除任何游戏已入库的 <code>version.json</code> 核心版本清单。</p>
-            </div>
-
-            <div class="bento-feature-card">
-              <div class="bento-icon-box">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                </svg>
-              </div>
-              <h4>受限沙盒与越界防御</h4>
-              <p>所有清理路径均严格校验于 <code>data/.cache</code> 目录范围，自动拦截阻断软链接、符号链接与跨目录穿透。</p>
-            </div>
-
-            <div class="bento-feature-card">
-              <div class="bento-icon-box">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/>
-                  <rect x="2" y="14" width="20" height="8" rx="2" ry="2"/>
-                  <line x1="6" y1="6" x2="6.01" y2="6"/>
-                  <line x1="6" y1="18" x2="6.01" y2="18"/>
-                </svg>
-              </div>
-              <h4>跨进程排他文件锁</h4>
-              <p>执行期间独占 <code>.retention.lock</code> 互斥锁，彻底杜绝数据清理与并发探活、自动同步任务之间的文件读写冲突。</p>
-            </div>
-
-            <div class="bento-feature-card">
-              <div class="bento-icon-box">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-                </svg>
-              </div>
-              <h4>毫秒级热重载生效</h4>
-              <p>配置保存后立即向后台异步事件循环发送唤醒信号重置倒计时，无需重启后端服务即可即时生效。</p>
-            </div>
-          </div>
-        </section>
       </template>
     </main>
+
+    <AdminConfirmDialog :request="pendingConfirm" @resolve="resolveConfirm" />
   </div>
 </template>

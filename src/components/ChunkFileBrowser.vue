@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useModalScrollLock } from "../composables/useModalScrollLock";
 import { api, chunkContentUrl, isAbortError } from "../api";
-import { formatBytes, formatObservedDate, hoyoLanguageLabel, repairMojibake } from "../domain-presentation";
+import { formatBytes, hoyoLanguageLabel, isChunkOnlyVersion, repairMojibake } from "../domain-presentation";
 import { chunkUrl, ChunkDownloadError, MAX_BROWSER_SYNTHESIS_SIZE, saveBlob, synthesizeChunkFile, writeChunkFile, type ChunkDownloadProgress } from "../chunk-download";
 import { downloadChunkDirectory, type DirectoryDownloadProgress } from "../chunk-directory-download";
 import { downloadSelectedFiles, selectedFileExport, selectedFilePlan, type SelectedFileContext } from "../selected-file-download";
@@ -44,7 +44,9 @@ const hasPackage = computed(() => {
   return Boolean(
     kinds?.package?.count ||
       kinds?.file?.count ||
-      (props.domain?.capabilities?.includes("packages") && props.domain?.adapter === "hoyo"),
+      (props.domain?.capabilities?.includes("packages")
+        && props.domain?.adapter === "hoyo"
+        && !isChunkOnlyVersion(props.versionSummary)),
   );
 });
 
@@ -93,18 +95,6 @@ const isUnavailablePackage = computed(() => {
   );
   return activeSource.value === "package" && (isAllUnavailable || isRangeOrUpstreamError);
 });
-
-function navigateToPatches(): void {
-  void router.push({
-    name: "archive",
-    params: {
-      gameId: String(route.params.gameId || props.game?.id || props.domain?.game_id || ""),
-      domainId: String(route.params.domainId || props.domainId),
-      version: props.version,
-      mode: "patches",
-    },
-  });
-}
 
 // File Detail Modal State
 const selectedFile = ref<ChunkFileItem | null>(null);
@@ -848,7 +838,7 @@ onBeforeUnmount(() => {
                 </span>
 
                 <div class="cfb-name-texts">
-                  <strong class="cfb-main-name">{{ item.name }}</strong>
+                  <strong class="cfb-main-name" :title="item.name">{{ item.name }}</strong>
                   <span v-if="props.searchQuery && item.path !== item.name" class="cfb-sub-path">
                     {{ item.path }}
                   </span>
@@ -2293,10 +2283,8 @@ onBeforeUnmount(() => {
 
   .cfb-identity-chips {
     width: 100%;
-    overflow-x: auto;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-    flex-wrap: nowrap;
+    overflow: visible;
+    flex-wrap: wrap;
     padding-bottom: 2px;
   }
 
@@ -2333,14 +2321,18 @@ onBeforeUnmount(() => {
   }
 
   .cfb-grid-table {
-    min-width: 620px;
+    min-width: 0;
   }
 
   .cfb-grid-header,
   .cfb-grid-row {
-    grid-template-columns: minmax(180px, 2.5fr) 90px 100px minmax(120px, 1.2fr) 110px;
+    grid-template-columns: minmax(180px, 1fr) 90px 100px 112px;
     padding: 8px 12px;
     gap: 8px;
+  }
+
+  .cfb-col-hash {
+    display: none;
   }
 
   .cfb-main-name {
@@ -2390,13 +2382,61 @@ onBeforeUnmount(() => {
   }
 }
 
+@media (max-width: 1100px) {
+  .cfb-grid-table {
+    min-width: 0;
+  }
+
+  .cfb-grid-header,
+  .cfb-grid-row {
+    grid-template-columns: minmax(0, 1fr) 90px 100px 120px;
+  }
+
+  .cfb-col-hash {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .cfb-grid-header,
+  .cfb-grid-row {
+    grid-template-columns: minmax(0, 1fr) 74px 96px;
+    gap: 8px;
+    padding: 8px 10px;
+  }
+
+  .cfb-col-chunks {
+    display: none;
+  }
+
+  .cfb-col-action .copy-act {
+    display: none;
+  }
+
+  .cfb-act-btn {
+    padding: 4px 6px;
+    font-size: 10.5px;
+  }
+}
+
 @media (max-width: 480px) {
   .cfb-modal-meta-grid {
     grid-template-columns: 1fr;
   }
 
   .cfb-grid-table {
-    min-width: 540px;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 360px) {
+  .cfb-grid-header,
+  .cfb-grid-row {
+    grid-template-columns: minmax(0, 1fr) 88px;
+  }
+
+  .cfb-col-size {
+    display: none;
   }
 }
 </style>

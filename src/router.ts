@@ -1,7 +1,8 @@
 import { createRouter, createWebHistory } from "vue-router";
-import AdminView from "./views/AdminView.vue";
 import ArchiveView from "./views/ArchiveView.vue";
 import NotFoundView from "./views/NotFoundView.vue";
+
+const AdminView = () => import("./views/AdminView.vue");
 
 const VIEW_STORAGE_KEY = "game-manifest-index-web-view-v1";
 

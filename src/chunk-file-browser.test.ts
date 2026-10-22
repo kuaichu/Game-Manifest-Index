@@ -554,6 +554,41 @@ describe("ChunkFileBrowser", () => {
     host.remove();
   });
 
+  it("defaults to chunk source for a chunk-only version", async () => {
+    const versionFilesMock = vi.spyOn(api, "versionFiles").mockResolvedValue(mockChunkFiles);
+
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+
+    const router = createTestRouter();
+    await router.push("/");
+    await router.isReady();
+
+    const app = createApp(ChunkFileBrowser, {
+      domainId: "hk4e-pc",
+      version: "7.1.0",
+      game: null,
+      domain: { id: "hk4e-pc", game_id: "hk4e", kind: "mixed", platform: "windows", capabilities: ["packages", "files"], adapter: "hoyo", version_count: 57, latest_version: "7.1.0" },
+      chunkDetail: mockDetail,
+      versionSummary: {
+        version: "7.1.0",
+        artifact_count: 0,
+        packed_size: 0,
+        artifact_kinds: {},
+        attributes: { has_chunk: true },
+      },
+    });
+    app.use(router);
+    app.mount(host);
+
+    await flushUpdates();
+
+    expect(versionFilesMock).toHaveBeenCalledWith("hk4e-pc", "7.1.0", expect.objectContaining({ source: "chunk" }), expect.any(AbortSignal));
+
+    app.unmount();
+    host.remove();
+  });
+
   it("navigates into directory on click and updates breadcrumbs", async () => {
     const versionFilesMock = vi.spyOn(api, "versionFiles")
       .mockResolvedValueOnce(mockChunkFiles)

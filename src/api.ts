@@ -34,7 +34,6 @@ import type {
   ChunkFileDetail,
   ChunkDownloadPlanPage,
   RetentionConfig,
-  RetentionRunResult,
   RetentionStatus,
 } from "./types";
 
@@ -66,8 +65,6 @@ export class ApiError extends Error {
     this.name = "ApiError";
   }
 }
-
-type ErrorEnvelope = { error?: { code?: string; message?: string; details?: unknown } };
 
 export function isAbortError(error: unknown): boolean {
   return typeof error === "object" && error !== null

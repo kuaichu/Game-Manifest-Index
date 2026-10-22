@@ -1,7 +1,7 @@
 import { ref, type Ref } from "vue";
 import type { RouteLocationNormalizedLoaded, Router } from "vue-router";
 import { api, isAbortError } from "../api";
-import { displayVersionLabel, routeVersionLabel, versionSupportsMode } from "../domain-presentation";
+import { displayVersionLabel, preferredDefaultMode, routeVersionLabel, versionSupportsMode } from "../domain-presentation";
 import type { ArchiveDomain, Game, VersionSummary } from "../types";
 
 export function domainRouteLabel(gameId: string, domain: ArchiveDomain): string {
@@ -125,7 +125,7 @@ export function useArchiveLoader(options: ArchiveLoaderOptions): ArchiveLoaderSt
         requestedVersion = String(options.route.query.version || "");
       }
       const hasRequestedMode = Boolean(requestedMode && targetDomainRow?.capabilities.includes(requestedMode));
-      const targetMode = hasRequestedMode ? requestedMode : targetDomainRow?.capabilities[0];
+      const targetMode = hasRequestedMode ? requestedMode : preferredDefaultMode(targetDomainRow, loadedVersions);
       if (!targetMode) return;
       const scopesHoYoVersions = targetDomainRow?.adapter === "hoyo"
         && ["packages", "patches", "chunks"].includes(targetMode);
@@ -133,12 +133,15 @@ export function useArchiveLoader(options: ArchiveLoaderOptions): ArchiveLoaderSt
         ? loadedVersions.filter((item) => versionSupportsMode(item, targetMode, targetDomainRow?.adapter))
         : loadedVersions;
       const requestedDisplayVersion = displayVersionLabel(requestedVersion);
-      const matchedVersion = modeVersions.find(
+      // Honour an explicit version even when it has no artifacts for the mode.
+      // This keeps deep links such as /7.1.0/packages stable and lets the page
+      // show a precise "only Chunk" hint instead of silently jumping to 5.5.0.
+      const requestedVersionItem = loadedVersions.find(
         (item) => item.version === requestedVersion
           || routeVersionLabel(item.version) === requestedVersion
           || displayVersionLabel(item.version, item.attributes) === requestedDisplayVersion,
-      )?.version;
-      const targetVersion = matchedVersion || modeVersions[0]?.version || loadedVersions[0]?.version;
+      );
+      const targetVersion = requestedVersionItem?.version || modeVersions[0]?.version || loadedVersions[0]?.version;
       if (!targetVersion) return;
       const targetRouteVersion = routeVersionLabel(targetVersion);
       const requestedCompareFrom = String(options.route.query.from || "");

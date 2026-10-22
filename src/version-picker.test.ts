@@ -274,10 +274,15 @@ describe("mode-specific HoYo version picker", () => {
     return { app, root };
   }
 
-  it("shows only package versions and does not mix patch failures into package status", async () => {
+  it("shows package versions plus newer chunk-only versions without mixing patch failures", async () => {
     const { app, root } = await mountPicker("packages");
     const rows = Array.from(root.querySelectorAll(".version-row"));
-    expect(rows.map((row) => row.querySelector(".version-number")?.textContent)).toEqual(["4.4.0", "3.3.0"]);
+    expect(rows.map((row) => row.querySelector(".version-number")?.textContent)).toEqual(["4.5.0", "4.4.0", "3.3.0"]);
+    const latest = rows.find((row) => row.textContent?.includes("4.5.0"));
+    expect(latest?.textContent).toContain("最新");
+    expect(latest?.textContent).toContain("仅 Chunk");
+    expect(latest?.textContent).not.toContain("无数据");
+    expect(latest?.textContent).not.toContain("未判定");
     const threeThree = rows.find((row) => row.textContent?.includes("3.3.0"));
     expect(threeThree?.textContent).toContain("可用");
     expect(threeThree?.textContent).not.toContain("含失效");

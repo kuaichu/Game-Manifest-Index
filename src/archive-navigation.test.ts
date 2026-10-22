@@ -7,6 +7,22 @@ import ArchiveView from "./views/ArchiveView.vue";
 
 const emptyPage = { items: [], next_cursor: null };
 
+type MountedApp = ReturnType<typeof createApp>;
+const mountedApps: MountedApp[] = [];
+
+function trackedApp(): MountedApp {
+  const app = createApp(ArchiveView);
+  mountedApps.push(app);
+  return app;
+}
+
+function unmountApp(app: MountedApp): void {
+  const index = mountedApps.indexOf(app);
+  if (index === -1) return;
+  mountedApps.splice(index, 1);
+  app.unmount();
+}
+
 async function flushUpdates(): Promise<void> {
   await Promise.resolve();
   await nextTick();
@@ -15,6 +31,15 @@ async function flushUpdates(): Promise<void> {
 
 describe("archive cross-game navigation", () => {
   afterEach(() => {
+    // Unmount even when an assertion fails; clearing body only would leave
+    // window listeners and app state alive for the next test.
+    for (const app of mountedApps.splice(0)) {
+      try {
+        app.unmount();
+      } catch {
+        // The test may already have unmounted it.
+      }
+    }
     vi.restoreAllMocks();
     document.body.innerHTML = "";
   });
@@ -52,7 +77,7 @@ describe("archive cross-game navigation", () => {
     await router.isReady();
     const root = document.createElement("div");
     document.body.appendChild(root);
-    const app = createApp(ArchiveView);
+    const app = trackedApp();
     app.use(router);
     app.mount(root);
     await flushUpdates();
@@ -66,7 +91,7 @@ describe("archive cross-game navigation", () => {
     expect(root.textContent).not.toContain("未判定");
     expect(root.querySelector(".panel-meta-inline")?.textContent).toContain("文件时间2026.09.30 04:00");
     expect(root.querySelector(".panel-meta-inline")?.textContent).not.toContain("2026.08.01");
-    app.unmount();
+    unmountApp(app);
   });
 
   it("keeps package, chunk and voice file dates isolated and hides invalid metadata", async () => {
@@ -92,7 +117,7 @@ describe("archive cross-game navigation", () => {
     const router = createRouter({ history: createMemoryHistory(), routes: [{ path: "/games/:gameId/:domainId?/:version?/:mode?", name: "archive", component: ArchiveView }] });
     await router.push("/games/nap/nap-pc/2.3.0/files"); await router.isReady();
     const root = document.createElement("div"); document.body.appendChild(root);
-    const app = createApp(ArchiveView); app.use(router); app.mount(root);
+    const app = trackedApp(); app.use(router); app.mount(root);
     await flushUpdates(); await flushUpdates();
     const metadata = () => root.querySelector(".panel-meta-inline");
     expect(metadata()?.textContent).toContain("文件时间2026.09.30 04:00");
@@ -110,7 +135,7 @@ describe("archive cross-game navigation", () => {
     root.querySelectorAll<HTMLButtonElement>(".cfb-source-switch-group button")[0].click();
     await flushUpdates(); await flushUpdates();
     expect(metadata()).toBeNull();
-    app.unmount();
+    unmountApp(app);
   });
 
   it("fetches file dates for an initial Perfect World tree search without an extra normal-tree request", async () => {
@@ -130,7 +155,7 @@ describe("archive cross-game navigation", () => {
     const router = createRouter({ history: createMemoryHistory(), routes: [{ path: "/games/:gameId/:domainId?/:version?/:mode?", name: "archive", component: ArchiveView }] });
     await router.push("/games/pw/pw-pc/1.0.0/files?q=Client"); await router.isReady();
     const root = document.createElement("div"); document.body.appendChild(root);
-    const app = createApp(ArchiveView); app.use(router); app.mount(root);
+    const app = trackedApp(); app.use(router); app.mount(root);
     await flushUpdates(); await flushUpdates();
     expect(root.querySelector(".panel-meta-inline")?.textContent).toContain("文件时间2026.09.30 04:00");
     expect(tree).toHaveBeenCalledTimes(1);
@@ -139,7 +164,7 @@ describe("archive cross-game navigation", () => {
     await flushUpdates(); await flushUpdates();
     expect(tree).toHaveBeenCalledTimes(2);
     expect(root.querySelector(".panel-meta-inline")?.textContent).toContain("文件时间2026.09.30 04:00");
-    app.unmount();
+    unmountApp(app);
   });
 
   it("loads the bounded NTE version on demand and keeps unverified/helper actions hidden", async () => {
@@ -186,7 +211,7 @@ describe("archive cross-game navigation", () => {
     await router.isReady();
     const root = document.createElement("div");
     document.body.appendChild(root);
-    const app = createApp(ArchiveView);
+    const app = trackedApp();
     app.use(router);
     app.mount(root);
     await flushUpdates();
@@ -228,7 +253,7 @@ describe("archive cross-game navigation", () => {
     for (const judgment of ["可用", "不可用", "未判定", "含失效", "链接失效", "无数据"]) {
       expect(versionMenu?.textContent || "").not.toContain(judgment);
     }
-    app.unmount();
+    unmountApp(app);
   });
 
   it("uses NTE manifest time and clears the file time when switching to versions without valid evidence", async () => {
@@ -262,7 +287,7 @@ describe("archive cross-game navigation", () => {
     await router.isReady();
     const root = document.createElement("div");
     document.body.appendChild(root);
-    const app = createApp(ArchiveView);
+    const app = trackedApp();
     app.use(router);
     app.mount(root);
     await flushUpdates();
@@ -283,7 +308,7 @@ describe("archive cross-game navigation", () => {
     await flushUpdates();
     expect(metadata()?.textContent).toContain("发布时间2026.07.18 08:00");
     expect(metadata()?.textContent).not.toContain("文件时间");
-    app.unmount();
+    unmountApp(app);
   });
 
   it("keeps HoYo chunk manifests downloadable when live-probe evidence is absent", async () => {
@@ -328,7 +353,7 @@ describe("archive cross-game navigation", () => {
     await router.isReady();
     const root = document.createElement("div");
     document.body.appendChild(root);
-    const app = createApp(ArchiveView);
+    const app = trackedApp();
     app.use(router);
     app.mount(root);
     await flushUpdates();
@@ -339,10 +364,10 @@ describe("archive cross-game navigation", () => {
     expect(root.textContent).toContain("下载 Manifest");
     expect(root.textContent).toContain("复制链接");
     expect(root.querySelector<HTMLAnchorElement>(".chunk-card a.icon-button")?.href).toBe(chunk.urls[0].url);
-    app.unmount();
+    unmountApp(app);
   });
 
-  it("redirects an unsupported HoYo package version to the latest version with packages", async () => {
+  it("keeps an explicit HoYo package version and explains chunk-only data", async () => {
     const game = { id: "hkrpg", name: "崩坏：星穹铁道", sub_name: "Honkai: Star Rail", icon_source: "", sort_order: 0 };
     const domain = {
       id: "hkrpg-pc", game_id: "hkrpg", kind: "mixed", platform: "windows",
@@ -375,15 +400,67 @@ describe("archive cross-game navigation", () => {
     await router.isReady();
     const root = document.createElement("div");
     document.body.appendChild(root);
-    const app = createApp(ArchiveView);
+    const app = trackedApp();
     app.use(router);
     app.mount(root);
     await flushUpdates();
     await flushUpdates();
 
-    expect(router.currentRoute.value.fullPath).toBe("/games/hkrpg/pc/4.4.0/packages");
-    expect(artifacts.mock.calls.some(([domainId, version]) => domainId === "hkrpg-pc" && version === "4.4.0")).toBe(true);
-    app.unmount();
+    expect(router.currentRoute.value.fullPath).toBe("/games/hkrpg/pc/4.5.0/packages");
+    expect(artifacts.mock.calls.some(([domainId, version]) => domainId === "hkrpg-pc" && version === "4.5.0")).toBe(true);
+    expect(root.textContent).toContain("该版本仅提供 Chunk 分发");
+    expect(root.textContent).toContain("切换到文件视图");
+    unmountApp(app);
+  });
+
+  it("defaults a chunk-only HoYo catalog to files and keeps the newest version", async () => {
+    const game = { id: "hk4e", name: "原神", sub_name: "Genshin Impact", icon_source: "", sort_order: 0 };
+    const domain = {
+      id: "hk4e-pc", game_id: "hk4e", kind: "mixed", platform: "windows",
+      capabilities: ["packages", "patches", "chunks", "files", "archive", "compare"], adapter: "hoyo",
+      version_count: 2, latest_version: "7.1.0", sort_order: 0, capability_contract: { features: { chunks: "supported" } },
+    };
+    const versions = [
+      {
+        version: "7.1.0", current_revision_id: 1, revision_count: 1, observed_at: null,
+        packed_size: 0, unpacked_size: 0, artifact_count: 0, artifact_kinds: {},
+        availability_states: {}, attributes: { has_chunk: true }, provenance: {},
+      },
+      {
+        version: "5.5.0", current_revision_id: 1, revision_count: 1, observed_at: "2026-08-01T00:00:00Z",
+        packed_size: 1, unpacked_size: 1, artifact_count: 12,
+        artifact_kinds: { package: { count: 12, size: 1 } }, availability_states: { available: 12 },
+        attributes: {}, provenance: {},
+      },
+    ];
+    vi.spyOn(api, "games").mockResolvedValue([game] as never);
+    vi.spyOn(api, "domains").mockResolvedValue([domain] as never);
+    vi.spyOn(api, "versions").mockResolvedValue(versions as never);
+    vi.spyOn(api, "chunkManifestCollection").mockResolvedValue({ items: [] } as never);
+    vi.spyOn(api, "chunkManifests").mockResolvedValue({ manifests: [] } as never);
+    const files = vi.spyOn(api, "versionFiles").mockResolvedValue({
+      items: [], total: 0, next_cursor: null, identity: "game", path: "", q: null,
+    } as never);
+
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: "/games/:gameId/:domainId?/:version?/:mode?", name: "archive", component: ArchiveView }],
+    });
+    await router.push("/games/hk4e/hk4e-pc");
+    await router.isReady();
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const app = trackedApp();
+    app.use(router);
+    app.mount(root);
+    await flushUpdates();
+    await flushUpdates();
+    await flushUpdates();
+
+    expect(router.currentRoute.value.path).toBe("/games/hk4e/pc/7.1.0/files");
+    expect(root.textContent).toContain("7.1.0");
+    expect(files).toHaveBeenCalled();
+    unmountApp(app);
   });
 
   it("renders NTE full-history selection and evidence-only partial/404 candidates", async () => {
@@ -442,7 +519,7 @@ describe("archive cross-game navigation", () => {
     await router.isReady();
     const root = document.createElement("div");
     document.body.appendChild(root);
-    const app = createApp(ArchiveView);
+    const app = trackedApp();
     app.use(router);
     app.mount(root);
     await flushUpdates();
@@ -460,7 +537,7 @@ describe("archive cross-game navigation", () => {
     expect(root.querySelectorAll(".legacy-candidate-card")).toHaveLength(5);
     expect(root.querySelectorAll(".legacy-candidate-card .file-actions")).toHaveLength(0);
     expect(root.textContent).not.toContain("aria2");
-    app.unmount();
+    unmountApp(app);
   });
 
   it("does not request the destination domain with the previous game's version", async () => {
@@ -498,7 +575,7 @@ describe("archive cross-game navigation", () => {
     await router.isReady();
     const root = document.createElement("div");
     document.body.appendChild(root);
-    const app = createApp(ArchiveView);
+    const app = trackedApp();
     app.use(router);
     app.mount(root);
     await flushUpdates();
@@ -516,7 +593,7 @@ describe("archive cross-game navigation", () => {
     expect(router.currentRoute.value.params).toMatchObject({
       gameId: "endfield", domainId: "pc", version: "1.3.3", mode: "packages",
     });
-    app.unmount();
+    unmountApp(app);
   });
 
   it("renders WuWa fragment URLs as standard grouped actions without URL status rows", async () => {
@@ -563,7 +640,7 @@ describe("archive cross-game navigation", () => {
     await router.isReady();
     const root = document.createElement("div");
     document.body.appendChild(root);
-    const app = createApp(ArchiveView);
+    const app = trackedApp();
     app.use(router);
     app.mount(root);
     await flushUpdates();
@@ -578,8 +655,8 @@ describe("archive cross-game navigation", () => {
     expect(root.querySelector(".browser-availability")).toBeNull();
     expect(root.querySelector(".browser-url-list")).toBeNull();
     expect(root.textContent).toContain("可用 / Client/a.bin");
-    expect(root.querySelector(".footer-sync-info")?.textContent).toContain("当前资源最近探活于");
-    expect(root.querySelector(".footer-sync-info")?.textContent).toContain("2026.07.06 08:00");
+    expect(root.querySelector(".probe-schedule-info")?.textContent).toContain("当前页面链接最近实际检测");
+    expect(root.querySelector(".probe-schedule-info")?.textContent).toContain("2026.07.06 08:00");
     expect(root.textContent).toContain("复制官方入口");
     expect(root.textContent).toContain("官方入口");
     expect(root.textContent).toContain("CDN2");
@@ -593,7 +670,7 @@ describe("archive cross-game navigation", () => {
     expect(root.textContent).not.toContain("https://cdn-a.example/a.bin");
     expect(root.textContent).not.toContain("不可操作");
     expect(root.querySelector(".fragment-file-actions .availability")).toBeNull();
-    app.unmount();
+    unmountApp(app);
   });
 
   it("compares two selected versions from a 42-version WuWa catalog on demand", async () => {
@@ -632,7 +709,7 @@ describe("archive cross-game navigation", () => {
     await router.isReady();
     const root = document.createElement("div");
     document.body.appendChild(root);
-    const app = createApp(ArchiveView);
+    const app = trackedApp();
     app.use(router);
     app.mount(root);
     await flushUpdates();
@@ -643,7 +720,7 @@ describe("archive cross-game navigation", () => {
     expect(root.textContent).toContain("3.4.2 → 3.5.0");
     expect(root.textContent).toContain("修改1 个");
     expect(root.textContent).not.toContain("复制");
-    app.unmount();
+    unmountApp(app);
   });
 
   it("ignores a late versions response from a domain that is no longer selected", async () => {
@@ -676,7 +753,7 @@ describe("archive cross-game navigation", () => {
     await router.isReady();
     const root = document.createElement("div");
     document.body.appendChild(root);
-    const app = createApp(ArchiveView);
+    const app = trackedApp();
     app.use(router);
     app.mount(root);
     await flushUpdates();
@@ -693,7 +770,7 @@ describe("archive cross-game navigation", () => {
     expect(artifacts.mock.calls.some(([domainId, version]) => (
       domainId === "demo-a" && version === "b1"
     ))).toBe(false);
-    app.unmount();
+    unmountApp(app);
   });
 
   it("unifies PC and Android compare tabs into one top tab and provides in-panel platform switching", async () => {
@@ -742,7 +819,7 @@ describe("archive cross-game navigation", () => {
     await router.isReady();
     const root = document.createElement("div");
     document.body.appendChild(root);
-    const app = createApp(ArchiveView);
+    const app = trackedApp();
     app.use(router);
     app.mount(root);
     await flushUpdates();
@@ -782,7 +859,7 @@ describe("archive cross-game navigation", () => {
     const activeModeTab = root.querySelector(".mode-tab.active");
     expect(activeModeTab?.textContent?.trim()).toBe("版本对比");
 
-    app.unmount();
+    unmountApp(app);
   });
 
   it("keeps HoYo chunk-only versions on artifact-level comparison", async () => {
@@ -814,7 +891,7 @@ describe("archive cross-game navigation", () => {
     await router.isReady();
     const root = document.createElement("div");
     document.body.appendChild(root);
-    const app = createApp(ArchiveView);
+    const app = trackedApp();
     app.use(router);
     app.mount(root);
     await flushUpdates();
@@ -825,7 +902,7 @@ describe("archive cross-game navigation", () => {
     }), expect.any(AbortSignal));
     expect(compare.mock.calls[0]?.[1]).not.toMatchObject({ kind: "file" });
 
-    app.unmount();
+    unmountApp(app);
   });
 
   it("shows the canonical APK file time on the Android APK page", async () => {
@@ -863,7 +940,7 @@ describe("archive cross-game navigation", () => {
     await router.isReady();
     const root = document.createElement("div");
     document.body.appendChild(root);
-    const app = createApp(ArchiveView);
+    const app = trackedApp();
     app.use(router);
     app.mount(root);
     await flushUpdates();
@@ -871,10 +948,10 @@ describe("archive cross-game navigation", () => {
 
     expect(root.querySelector(".panel-meta-inline")?.textContent).toContain("文件时间");
     expect(root.querySelector(".panel-meta-inline")?.textContent).toContain("2025.03.14 18:58");
-    expect(root.querySelector(".footer-sync-info")?.textContent).toContain("当前资源最近探活于");
-    expect(root.querySelector(".footer-sync-info")?.textContent).toContain("2026.08.29 09:00");
-    expect(root.querySelector(".footer-sync-info")?.textContent).not.toContain("2025.03.14 18:58");
-    app.unmount();
+    expect(root.querySelector(".probe-schedule-info")?.textContent).toContain("当前页面链接最近实际检测");
+    expect(root.querySelector(".probe-schedule-info")?.textContent).toContain("2026.08.29 09:00");
+    expect(root.querySelector(".probe-schedule-info")?.textContent).not.toContain("2025.03.14 18:58");
+    unmountApp(app);
   });
 
   it("keeps a user-selected compare base when switching compare platforms", async () => {
@@ -913,7 +990,7 @@ describe("archive cross-game navigation", () => {
     await router.isReady();
     const root = document.createElement("div");
     document.body.appendChild(root);
-    const app = createApp(ArchiveView);
+    const app = trackedApp();
     app.use(router);
     app.mount(root);
     await flushUpdates();
@@ -933,7 +1010,7 @@ describe("archive cross-game navigation", () => {
     }), expect.any(AbortSignal));
     expect(root.querySelector(".mode-tab.active")?.textContent?.trim()).toBe("版本对比");
 
-    app.unmount();
+    unmountApp(app);
   });
 
   it("falls back to a legal compare base when the selected base is missing on the target platform", async () => {
@@ -978,7 +1055,7 @@ describe("archive cross-game navigation", () => {
     await router.isReady();
     const root = document.createElement("div");
     document.body.appendChild(root);
-    const app = createApp(ArchiveView);
+    const app = trackedApp();
     app.use(router);
     app.mount(root);
     await flushUpdates();
@@ -993,7 +1070,7 @@ describe("archive cross-game navigation", () => {
       fromVersion: "5.2.0", toVersion: "5.5.0",
     }), expect.any(AbortSignal));
 
-    app.unmount();
+    unmountApp(app);
   });
 
   it("reloads archive data on availability invalidation and stops after unmount", async () => {
@@ -1018,7 +1095,7 @@ describe("archive cross-game navigation", () => {
     await router.isReady();
     const root = document.createElement("div");
     document.body.appendChild(root);
-    const app = createApp(ArchiveView);
+    const app = trackedApp();
     app.use(router);
     app.mount(root);
     await flushUpdates();
@@ -1041,7 +1118,7 @@ describe("archive cross-game navigation", () => {
     await flushUpdates();
     expect(api.games).toHaveBeenCalledTimes(2);
 
-    app.unmount();
+    unmountApp(app);
     window.dispatchEvent(new CustomEvent("gmi-availability-invalidated", { detail: { jobId: "job-2" } }));
     window.dispatchEvent(new StorageEvent("storage", { key: "gmi-availability-invalidated-at", newValue: "job-2:2" }));
     await flushUpdates();
@@ -1103,7 +1180,7 @@ describe("archive cross-game navigation", () => {
     await router.isReady();
     const root = document.createElement("div");
     document.body.appendChild(root);
-    const app = createApp(ArchiveView);
+    const app = trackedApp();
     app.use(router);
     app.mount(root);
     await flushUpdates();
@@ -1111,8 +1188,8 @@ describe("archive cross-game navigation", () => {
 
     const cards = Array.from(root.querySelectorAll(".file-card"));
     expect(cards).toHaveLength(3);
-    expect(root.querySelector(".footer-sync-info")?.textContent).toContain("当前资源最近探活于");
-    expect(root.querySelector(".footer-sync-info")?.textContent).toContain("2026.08.29 09:00");
+    expect(root.querySelector(".probe-schedule-info")?.textContent).toContain("当前页面链接最近实际检测");
+    expect(root.querySelector(".probe-schedule-info")?.textContent).toContain("2026.08.29 09:00");
     const badges = cards.map((card) => card.querySelector(".availability")?.textContent?.trim());
     expect(badges).toEqual(["可用", "失效", "证据已陈旧"]);
     const downloadLinks = cards.map((card) => card.querySelector(".file-actions a.icon-button"));
@@ -1124,7 +1201,7 @@ describe("archive cross-game navigation", () => {
       expect(card.querySelector(".file-actions a.icon-button")).toBeNull();
     }
 
-    app.unmount();
+    unmountApp(app);
   });
 
   it("keeps the destination page intact when a superseded refresh returns late", async () => {
@@ -1160,7 +1237,7 @@ describe("archive cross-game navigation", () => {
     await router.isReady();
     const root = document.createElement("div");
     document.body.appendChild(root);
-    const app = createApp(ArchiveView);
+    const app = trackedApp();
     app.use(router);
     app.mount(root);
     await flushUpdates();
@@ -1195,7 +1272,7 @@ describe("archive cross-game navigation", () => {
     expect(root.textContent).not.toContain("1.2.15");
     expect(root.textContent).toContain("1.3.3");
 
-    app.unmount();
+    unmountApp(app);
   });
 
   it("ignores an old artifact response that returns after the destination page", async () => {
@@ -1239,7 +1316,7 @@ describe("archive cross-game navigation", () => {
     await router.isReady();
     const root = document.createElement("div");
     document.body.appendChild(root);
-    const app = createApp(ArchiveView);
+    const app = trackedApp();
     app.use(router);
     app.mount(root);
     await flushUpdates();
@@ -1267,7 +1344,7 @@ describe("archive cross-game navigation", () => {
     expect(root.textContent).toContain("current-endfield.zip");
     expect(root.textContent).not.toContain("late-old-nte.zip");
 
-    app.unmount();
+    unmountApp(app);
   });
 
   it("commits only the last refresh when two invalidations arrive back to back", async () => {
@@ -1292,7 +1369,7 @@ describe("archive cross-game navigation", () => {
     await router.isReady();
     const root = document.createElement("div");
     document.body.appendChild(root);
-    const app = createApp(ArchiveView);
+    const app = trackedApp();
     app.use(router);
     app.mount(root);
     await flushUpdates();
@@ -1316,7 +1393,7 @@ describe("archive cross-game navigation", () => {
     await flushUpdates();
     expect(versions).toHaveBeenCalledTimes(1);
 
-    app.unmount();
+    unmountApp(app);
   });
 
   it("ignores pending refresh responses after unmount", async () => {
@@ -1341,7 +1418,7 @@ describe("archive cross-game navigation", () => {
     await router.isReady();
     const root = document.createElement("div");
     document.body.appendChild(root);
-    const app = createApp(ArchiveView);
+    const app = trackedApp();
     app.use(router);
     app.mount(root);
     await flushUpdates();
@@ -1353,7 +1430,7 @@ describe("archive cross-game navigation", () => {
     expect(pendingGames).toHaveLength(1);
 
     versions.mockClear();
-    app.unmount();
+    unmountApp(app);
     pendingGames[0]([game]);
     await flushUpdates();
     expect(versions).not.toHaveBeenCalled();
@@ -1391,7 +1468,7 @@ describe("archive cross-game navigation", () => {
     await router.isReady();
     const root = document.createElement("div");
     document.body.appendChild(root);
-    const app = createApp(ArchiveView);
+    const app = trackedApp();
     app.use(router);
     app.mount(root);
     await flushUpdates();
@@ -1409,7 +1486,105 @@ describe("archive cross-game navigation", () => {
     expect(router.currentRoute.value.fullPath).toBe("/games/nte/pc/1.2.15/files");
     expect(versions).toHaveBeenCalledWith("nte-pc", expect.anything());
 
-    app.unmount();
+    unmountApp(app);
+  });
+
+  it("collapses the recent activity block to the newest release and keeps both platforms", async () => {
+    const game = { id: "nte", name: "异环", sub_name: "Neverness to Everness", icon_source: "", sort_order: 0 };
+    const domain = {
+      id: "nte-pc", game_id: "nte", kind: "files", platform: "windows",
+      capabilities: ["files"], adapter: "generic", version_count: 2,
+      latest_version: "1.4.15", sort_order: 0, capability_contract: { availability_source_kinds: [], live_probe: false },
+    };
+    const versions = ["1.4.15", "1.4.14"].map((version) => ({
+      version, current_revision_id: 1, revision_count: 1, observed_at: null,
+      packed_size: 1, unpacked_size: 1, artifact_count: 1,
+      artifact_kinds: { file: { count: 1, size: 1, availability_states: { unknown: 1 } } },
+      availability_states: { unknown: 1 }, attributes: {}, provenance: {},
+    }));
+    vi.spyOn(api, "games").mockResolvedValue([game] as never);
+    vi.spyOn(api, "domains").mockResolvedValue([domain] as never);
+    vi.spyOn(api, "versions").mockResolvedValue(versions as never);
+    vi.spyOn(api, "versionFiles").mockResolvedValue({
+      source: "package", fetch_mode: "checked_in_manifest", identity: "game", path: "", q: null,
+      items: [], total: 0, next_cursor: null, totals: { files: 0, directories: 0, size: 0 },
+      file_time: null, file_time_source: null,
+    } as never);
+    const activity = [
+      { id: 6, game_id: "nte", domain_id: "nte-android", platform: "android", version: "1.4.15", type: "version_update", occurred_at: "2026-10-17T06:02:00Z" },
+      { id: 5, game_id: "nte", domain_id: "nte-pc", platform: "windows", version: "1.4.15", type: "version_update", occurred_at: "2026-10-17T05:48:35Z" },
+      { id: 4, game_id: "nte", domain_id: "nte-pc", platform: "windows", version: "1.4.14", type: "version_update", occurred_at: "2026-10-16T05:47:16Z" },
+    ];
+    vi.spyOn(api, "gameActivity").mockResolvedValue({ items: activity } as never);
+
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: "/games/:gameId/:domainId?/:version?/:mode?", name: "archive", component: ArchiveView }],
+    });
+    await router.push("/games/nte/nte-pc/1.4.15/files");
+    await router.isReady();
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const app = trackedApp();
+    app.use(router);
+    app.mount(root);
+    await flushUpdates();
+    await flushUpdates();
+
+    const entries = Array.from(root.querySelectorAll(".recent-activity li"));
+    expect(entries).toHaveLength(2);
+    expect(entries.map((entry) => entry.querySelector(".recent-activity-platform")?.textContent)).toEqual(["Android", "PC"]);
+    expect(entries[0].textContent).toContain("1.4.15");
+    expect(root.querySelector(".recent-activity")?.textContent).not.toContain("1.4.14");
+    expect(api.gameActivity).toHaveBeenCalledWith("nte", expect.any(AbortSignal));
+    unmountApp(app);
+  });
+
+  it("keeps a single line without a platform badge when only one platform shipped", async () => {
+    const game = { id: "nte", name: "异环", sub_name: "Neverness to Everness", icon_source: "", sort_order: 0 };
+    const domain = {
+      id: "nte-pc", game_id: "nte", kind: "files", platform: "windows",
+      capabilities: ["files"], adapter: "generic", version_count: 2,
+      latest_version: "1.4.15", sort_order: 0, capability_contract: { availability_source_kinds: [], live_probe: false },
+    };
+    const versions = ["1.4.15", "1.4.14"].map((version) => ({
+      version, current_revision_id: 1, revision_count: 1, observed_at: null,
+      packed_size: 1, unpacked_size: 1, artifact_count: 0,
+      artifact_kinds: {}, availability_states: {}, attributes: {}, provenance: {},
+    }));
+    vi.spyOn(api, "games").mockResolvedValue([game] as never);
+    vi.spyOn(api, "domains").mockResolvedValue([domain] as never);
+    vi.spyOn(api, "versions").mockResolvedValue(versions as never);
+    vi.spyOn(api, "versionFiles").mockResolvedValue({
+      source: "package", fetch_mode: "checked_in_manifest", identity: "game", path: "", q: null,
+      items: [], total: 0, next_cursor: null, totals: { files: 0, directories: 0, size: 0 },
+      file_time: null, file_time_source: null,
+    } as never);
+    const activity = [
+      { id: 5, game_id: "nte", domain_id: "nte-pc", platform: "windows", version: "1.4.15", type: "version_update", occurred_at: "2026-10-17T05:48:35Z" },
+      { id: 4, game_id: "nte", domain_id: "nte-pc", platform: "windows", version: "1.4.14", type: "version_update", occurred_at: "2026-10-16T05:47:16Z" },
+    ];
+    vi.spyOn(api, "gameActivity").mockResolvedValue({ items: activity } as never);
+
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: "/games/:gameId/:domainId?/:version?/:mode?", name: "archive", component: ArchiveView }],
+    });
+    await router.push("/games/nte/nte-pc/1.4.15/files");
+    await router.isReady();
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const app = trackedApp();
+    app.use(router);
+    app.mount(root);
+    await flushUpdates();
+    await flushUpdates();
+
+    const entries = Array.from(root.querySelectorAll(".recent-activity li"));
+    expect(entries).toHaveLength(1);
+    expect(entries[0].textContent).toContain("1.4.15");
+    expect(entries[0].querySelector(".recent-activity-platform")).toBeNull();
+    unmountApp(app);
   });
 
 });
