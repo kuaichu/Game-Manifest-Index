@@ -499,6 +499,33 @@ export function versionSupportsMode(summary: VersionSummary, mode: string, adapt
   return kind ? artifactCountForMode(summary, mode, adapter) > 0 : true;
 }
 
+/**
+ * A recent HoYo catalog can publish only Chunk/Sophon data while the version
+ * summary still reports no package or patch artifacts. Such a version should
+ * stay visible in the picker instead of being filtered down to an older package.
+ */
+export function isChunkOnlyVersion(summary: VersionSummary | null | undefined): boolean {
+  if (!summary) return false;
+  const hasChunk = Boolean(summary.attributes?.has_chunk)
+    || Number(summary.artifact_kinds?.chunk?.count || 0) > 0;
+  if (!hasChunk) return false;
+  return Number(summary.artifact_kinds?.package?.count || 0) === 0
+    && Number(summary.artifact_kinds?.patch?.count || 0) === 0;
+}
+
+export function preferredDefaultMode(
+  domain: ArchiveDomain | null | undefined,
+  versions: VersionSummary[],
+): string | null {
+  if (!domain) return null;
+  const latest = versions[0];
+  if (latest && isChunkOnlyVersion(latest)) {
+    if (domain.capabilities.includes("files")) return "files";
+    if (domain.capabilities.includes("chunks")) return "chunks";
+  }
+  return domain.capabilities[0] || null;
+}
+
 export function artifactUrlStateCounts(artifact: Artifact): Record<AvailabilityState, number> {
   const counts: Record<AvailabilityState, number> = { available: 0, unavailable: 0, unknown: 0 };
   if (artifact.urls.length === 0 && artifact.availability) {
@@ -658,7 +685,6 @@ export function buildVersionBadges(
       return result;
     }
     const unavailable = Number(states?.unavailable || 0);
-    const unknown = Number(states?.unknown || 0);
     if (unavailable > 0 && total > 0 && unavailable >= total) {
       result.push({ label: domain.adapter === "android" ? "不可用" : "链接失效", tone: "red" });
     } else if (unavailable > 0 && domain.adapter !== "android") {
@@ -731,7 +757,6 @@ export function buildArchiveOverview(input: {
     ];
   } else if (domain.adapter === "perfectworld_patcher") {
     const decodedFiles = Number(attrs.decoded_file_count || 0);
-    const patchObjects = Number(attrs.patch_object_count || 0);
     const reslistSize = Number(attrs.reslist_size || 0);
     const configResSize = Number(attrs.config_res_size || 0);
     moduleDetails = [

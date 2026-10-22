@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { api, isAbortError } from "../api";
-import { artifactUrlStateCounts, isAvailabilityActionable, latestLiveProbeTime } from "../domain-presentation";
+import { isAvailabilityActionable, latestLiveProbeTime } from "../domain-presentation";
 import type { Artifact, ArtifactTreePage, AvailabilityState, FileTimeChange } from "../types";
 import AvailabilityBadge from "./AvailabilityBadge.vue";
 import FragmentFileRow from "./FragmentFileRow.vue";
@@ -118,17 +118,6 @@ function toggle(item: Artifact): void {
 
 function candidateIsActionable(candidate: Artifact["urls"][number]): boolean {
   return props.allowActions && isAvailabilityActionable(candidate.current, candidate.url);
-}
-
-function stateRows(item: Artifact): Array<{ state: AvailabilityState; label: string; count: number }> {
-  const counts = artifactUrlStateCounts(item);
-  return (
-    [
-      { state: "available", label: "可用", count: counts.available },
-      { state: "unavailable", label: "失效", count: counts.unavailable },
-      { state: "unknown", label: "未判定", count: counts.unknown },
-    ] as Array<{ state: AvailabilityState; label: string; count: number }>
-  ).filter((row) => row.count > 0);
 }
 
 watch(

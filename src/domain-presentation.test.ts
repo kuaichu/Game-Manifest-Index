@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ArchiveDomain, Artifact, AvailabilityCurrent, VersionSummary } from "./types";
-import { artifactActionLabel, archiveSourceLabel, artifactKindForMode, artifactUrlStateCounts, availabilityStatesForMode, availableArchiveModes, availabilityLabel, buildArchiveOverview, buildSyncStatusPresentation, buildVersionBadges, distributionProfile, domainActionSupport, domainFeatureSupport, domainFieldSupport, domainModeLabel, fileTimestampEvidence, hoyoArtifactCardPresentation, isAvailabilityActionable, preferredArtifactAction, preferredDomainArtifactAction, repairMojibake, displayVersionLabel, routeVersionLabel, versionSupportsMode } from "./domain-presentation";
+import { artifactActionLabel, archiveSourceLabel, artifactKindForMode, artifactUrlStateCounts, availabilityStatesForMode, availableArchiveModes, availabilityLabel, buildArchiveOverview, buildSyncStatusPresentation, buildVersionBadges, distributionProfile, domainActionSupport, domainFeatureSupport, domainFieldSupport, domainModeLabel, fileTimestampEvidence, hoyoArtifactCardPresentation, isAvailabilityActionable, isChunkOnlyVersion, preferredDefaultMode, preferredArtifactAction, preferredDomainArtifactAction, repairMojibake, displayVersionLabel, routeVersionLabel, versionSupportsMode } from "./domain-presentation";
 
 describe("WuWa historical provenance presentation", () => {
   it("labels the real 3.5.3 migration summary as archived community data", () => {
@@ -821,5 +821,31 @@ describe("multi-channel module details", () => {
     expect(channelRow?.value).toBe("mihoyo / mihoyo_8");
     const linkRow = overview.moduleDetails.find((row) => row.label === "链接状态");
     expect(linkRow?.value).toBe("部分可达");
+  });
+});
+
+describe("chunk-only version defaults", () => {
+  it("detects a version that only carries Chunk data", () => {
+    const chunkOnly = summary({ artifact_count: 0, artifact_kinds: { chunk: { count: 4, size: 400 } }, attributes: { has_chunk: true } });
+    expect(isChunkOnlyVersion(chunkOnly)).toBe(true);
+    expect(isChunkOnlyVersion(summary())).toBe(false);
+    expect(isChunkOnlyVersion(null)).toBe(false);
+  });
+
+  it("prefers files when the newest version is chunk-only", () => {
+    const current = domain("hoyo", ["packages", "patches", "chunks", "files"], "hk4e");
+    const latest = summary({ version: "7.1.0", artifact_count: 0, artifact_kinds: {}, attributes: { has_chunk: true } });
+    const previous = summary({ version: "7.0.0" });
+    expect(preferredDefaultMode(current, [latest, previous])).toBe("files");
+  });
+
+  it("falls back to chunks and then the primary capability", () => {
+    const latest = summary({ version: "7.1.0", artifact_count: 0, artifact_kinds: {}, attributes: { has_chunk: true } });
+    expect(preferredDefaultMode(domain("hoyo", ["packages", "chunks"], "hk4e"), [latest])).toBe("chunks");
+    expect(preferredDefaultMode(domain("hoyo", ["packages"], "hk4e"), [latest])).toBe("packages");
+  });
+
+  it("keeps the primary capability for a package-bearing latest version", () => {
+    expect(preferredDefaultMode(domain("hoyo", ["packages", "files"], "hk4e"), [summary()])).toBe("packages");
   });
 });

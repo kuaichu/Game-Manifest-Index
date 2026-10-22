@@ -14,19 +14,16 @@ import ArtifactPagination from "../components/ArtifactPagination.vue";
 import CustomSelect from "../components/CustomSelect.vue";
 import { copyTextToClipboard } from "../clipboard";
 import {
-  artifactActionLabel,
-  archiveSourceLabel,
   artifactKindForMode,
   availabilityStatesForMode,
   availableArchiveModes,
-  buildArchiveOverview,
-  buildSyncStatusPresentation,
   domainActionSupport,
   domainFieldSupport,
   domainModeLabel,
   hoyoArtifactCardPresentation,
   hoyoLanguageLabel,
   isAvailabilityActionable,
+  isChunkOnlyVersion,
   latestLiveProbeTime,
   preferredArtifactAction,
   preferredDomainArtifactAction,
@@ -35,7 +32,12 @@ import {
   versionSupportsMode,
 } from "../domain-presentation";
 import { gameIcons } from "../game-icons";
-import { gameActivityTime, gameActivityTitle } from "../game-activity";
+import {
+  gameActivityPlatform,
+  gameActivityTime,
+  gameActivityTitle,
+  latestReleaseActivity,
+} from "../game-activity";
 import { publisherGroups } from "../game-meta";
 import SourceProvenanceModal from "../components/SourceProvenanceModal.vue";
 import SiteChangelogModal from "../components/SiteChangelogModal.vue";
@@ -165,6 +167,7 @@ watch(gameId, () => void loadGameActivity(), { immediate: true });
 watch(showSiteChangelog, (open) => {
   if (open) void loadGameActivity();
 });
+const recentActivity = computed(() => latestReleaseActivity(gameActivity.value));
 const domainId = computed(() => {
   const requested = String(route.params.domainId || "");
   const matched = resolveRouteDomain(gameId.value, requested, domains.value);
@@ -211,6 +214,7 @@ const visibleModes = computed(() => {
 const selectedSummary = computed(
   () => versions.value.find((item) => item.version === selectedVersion.value) || null,
 );
+const selectedVersionIsChunkOnly = computed(() => isChunkOnlyVersion(selectedSummary.value));
 const selectedDisplayVersion = computed(() =>
   displayVersionLabel(selectedVersion.value, selectedSummary.value?.attributes),
 );
@@ -222,9 +226,6 @@ const channelVersions = computed(() => {
     (item) => item.version !== selectedVersion.value && displayVersionLabel(item.version, item.attributes) === base,
   );
 });
-const gamePackageCount = computed(
-  () => artifacts.value.filter((item) => item.attributes?.component !== "voice").length,
-);
 const compareBaseOptions = computed(() =>
   versions.value.filter((item) => item.version !== selectedVersion.value),
 );
@@ -383,6 +384,7 @@ const loadedArchiveArtifacts = useArchiveArtifactsLoader({
     remoteTreeProbeTime.value = null;
   },
   loadChunkState,
+  hasChunkManifestData: () => Boolean(chunkDetail.value?.manifests?.length || chunkCollection.value.length),
   setLeads: (loadedLeads) => {
     leads.value = loadedLeads;
   },
@@ -432,8 +434,6 @@ const displayedAvailabilityFilters = computed(() => {
   }
   return list;
 });
-const availabilityFilters = displayedAvailabilityFilters;
-
 const exportUrlsCount = computed(() => {
   const states = availabilityStatesForMode(selectedSummary.value, mode.value);
   return states.available ?? 0;
@@ -683,10 +683,6 @@ function formatChecksum(artifact: Artifact): string {
   return `${type}: ${artifact.checksum_value}`;
 }
 
-const availabilityEvidenceNote = computed(
-  () => "“可用”只表示受限 Range 请求收到有效内容，不保证完整文件传输或所有下载器兼容。",
-);
-const fileWorkspaceSubtitle = "列表 / 对比 / Chunk";
 const panelEyebrow = computed(() => {
   if (mode.value === "resources") {
     return gameId.value === "endfield" ? "Endfield Windows resources" : "Aether Gazer resources";
@@ -710,67 +706,6 @@ const displayGameName = computed(() => {
   const current = game.value;
   if (!current) return gameId.value;
   return /[\u3400-\u9fff]/.test(current.name) ? current.name : current.sub_name || current.name;
-});
-const displayGameSubtitle = computed(() => {
-  const current = game.value;
-  if (!current) return "";
-  return displayGameName.value === current.name ? current.sub_name : current.name;
-});
-const chunkSummary = computed(() => {
-  const rows = artifacts.value.filter((item) => item.kind === "chunk");
-  const numeric = (item: Artifact, key: string) => Number(item.attributes?.[key] || 0);
-  return {
-    buildId: String(rows[0]?.attributes?.build_id || "—"),
-    manifests: selectedSummary.value?.artifact_kinds?.chunk?.count || rows.length,
-    files: rows.reduce((sum, item) => sum + numeric(item, "file_count"), 0),
-    chunks: rows.reduce((sum, item) => sum + numeric(item, "chunk_count"), 0),
-    compressed: rows.reduce((sum, item) => sum + item.size, 0),
-    uncompressed: rows.reduce((sum, item) => sum + numeric(item, "uncompressed_size"), 0),
-  };
-});
-const kindSummary = (kind: string) => selectedSummary.value?.artifact_kinds?.[kind] || { count: 0, size: 0 };
-const archiveOverview = computed(() =>
-  buildArchiveOverview({
-    domain: domain.value,
-    summary: selectedSummary.value,
-    mode: mode.value,
-    version: selectedVersion.value,
-    displayVersion: selectedDisplayVersion.value,
-    channelSummaries: channelVersions.value,
-    formatBytes,
-    formatDate: formatObservedDate,
-  }),
-);
-
-const adapterSourceLabel = (adapter: string | undefined, sourceKind?: unknown): string => {
-  return archiveSourceLabel(adapter, sourceKind);
-};
-
-const syncStatus = computed(() => {
-  const latest = versions.value[0] || null;
-  const presentation = buildSyncStatusPresentation({
-    domains: domains.value,
-    currentDomain: domain.value,
-    currentLatest: latest,
-  });
-  const currentDomainSummary = latest || selectedSummary.value || null;
-  const primarySummary = presentation.primaryDomain?.id === domain.value?.id ? latest : currentDomainSummary;
-  const observed = primarySummary?.observed_at
-    || primarySummary?.source_updated_at
-    || primarySummary?.source_released_at
-    || primarySummary?.archived_at
-    || null;
-  const packages = Number(primarySummary?.artifact_kinds?.package?.count ?? 0);
-  const patches = Number(primarySummary?.artifact_kinds?.patch?.count ?? 0);
-  return {
-    title: `${displayGameName.value} 最新归档`,
-    primaryLabel: presentation.primaryLabel,
-    primaryLatest: presentation.primaryLatest,
-    syncedAt: observed,
-    source: adapterSourceLabel(presentation.primaryDomain?.adapter || domain.value?.adapter, selectedSummary.value?.provenance?.source_kind),
-    detail: `${packages.toLocaleString()} 个压缩包 / ${patches.toLocaleString()} 个更新包`,
-    androidSecondary: presentation.androidSecondary,
-  };
 });
 
 const fileTimeMetadata = computed(() => {
@@ -903,33 +838,6 @@ const currentVersionApiUrl = computed(() => {
   return apiUrl(`/domains/${encodeURIComponent(domainId.value)}/versions/${encodeURIComponent(selectedVersion.value)}`);
 });
 
-const provenanceSource = computed(() => {
-  if (gameId.value === "abc") {
-    const sourceUrl = selectedSummary.value?.provenance?.source_url;
-    if (typeof sourceUrl === "string" && sourceUrl.startsWith("https://autopatchcn-beta.bhyyjl.com/")) {
-      return { label: "米哈游官方 Sophon Manifest", href: sourceUrl };
-    }
-  }
-  if (domain.value?.adapter === "hoyo") {
-    return { label: "hoyo-files.amarea.cn", href: "https://hoyo-files.amarea.cn/" };
-  }
-  if (domain.value?.adapter === "wuwa") {
-    if (selectedSummary.value?.provenance?.source_kind === "legacy_migration") {
-      return { label: "Game-Manifest-Index（历史迁移）", href: "https://github.com/yuhkix/wuwa-downloader" };
-    }
-    return { label: "yuhkix/wuwa-downloader", href: "https://github.com/yuhkix/wuwa-downloader" };
-  }
-  if (domain.value?.adapter === "perfectworld_patcher") {
-    return { label: "完美世界官方 PatcherSDK", href: "https://wmupd.com/" };
-  }
-  if (gameId.value === "endfield") {
-    return { label: "上游资源归档", href: "https://ak-endfield-api-archive.daydreamer-json.cc/" };
-  }
-  if (domain.value?.adapter === "arknights") {
-    return { label: "明日方舟 PC 官网", href: "https://ak.hypergryph.com/pcs" };
-  }
-  return { label: "GitHub 仓库", href: "https://github.com/kuaichu/Game-Manifest-Index" };
-});
 const legacyLeads = computed(() =>
   [...leads.value].sort((left, right) =>
     String(left.generated_at || "").localeCompare(String(right.generated_at || "")),
@@ -998,6 +906,10 @@ async function navigateMode(targetDomain: ArchiveDomain, targetMode: string): Pr
     version: targetVersion,
     mode: targetMode,
   });
+}
+
+function switchToFiles(): void {
+  if (domain.value) void navigateMode(domain.value, "files");
 }
 
 function saveTextFile(filename: string, content: string, type: string): void {
@@ -1091,9 +1003,6 @@ async function replaceQuery(name: "q" | "availability" | "from", value: string):
 
 function updateCompareBase(value: string): void {
   void replaceQuery("from", routeVersionLabel(value));
-}
-function onCompareBaseChange(event: Event): void {
-  updateCompareBase((event.target as HTMLSelectElement).value);
 }
 
 let searchTimer: number | null = null;
@@ -1408,9 +1317,6 @@ function artifactDownloadUrl(artifact: Artifact): string | undefined {
     || artifact.urls.find((u) => u.current?.state === "available")?.url
     || rawArtifactUrl(artifact);
 }
-function archiveAvailabilityLabel(artifact: Artifact): string {
-  return artifactActionLabel(artifact);
-}
 function preferredAvailableUrl(artifact: Artifact, action: "open" | "copy" | "download" = "download"): string | undefined {
   return preferredDomainArtifactAction(domain.value, artifact, action)?.url;
 }
@@ -1434,43 +1340,13 @@ function packageLabel(artifact?: Artifact): string {
   if (domain.value?.adapter === "wuwa" || (artifact && isFileManifestArtifact(artifact))) return "官方资源清单";
   return "官方完整包";
 }
-function packageSource(): string {
-  if (selectedSummary.value?.provenance?.source_kind === "legacy_migration") return "历史迁移/社区归档资源";
-  if (selectedSummary.value?.provenance?.source_kind === "official_launcher") return "官方启动器索引";
-  if (domain.value?.adapter === "arknights") return "Hypergryph launcher API";
-  if (domain.value?.adapter === "hoyo") return "HoYo launcher API";
-  return "official launcher API";
-}
-function availabilityText(artifact: Artifact): string {
-  return artifactActionLabel(artifact);
-}
-
 function apkSourceSize(artifact: Artifact): number | null {
   const value = artifact.attributes.source_size;
   return typeof value === "number" && value > 0 ? value : null;
 }
-function apkSourceSizeText(artifact: Artifact): string {
-  const value = apkSourceSize(artifact);
-  return value === null ? "" : formatBytes(value);
-}
-
-function packageSubtitle(artifact: Artifact, index: number): string {
-  if (domain.value?.adapter === "hoyo") {
-    return hoyoArtifactCardPresentation(
-      artifact,
-      selectedVersion.value,
-      index,
-      gamePackageCount.value || artifacts.value.length,
-    ).subtitle;
-  }
-  return `分卷 ${artifact.part || index + 1} / ${packageSource()} / ${availabilityText(artifact)}`;
-}
 
 function hoyoPatchLabel(artifact: Artifact): string {
   return hoyoArtifactCardPresentation(artifact, selectedVersion.value).label;
-}
-function hoyoPatchSubtitle(artifact: Artifact): string {
-  return hoyoArtifactCardPresentation(artifact, selectedVersion.value).subtitle;
 }
 function patchRouteLabel(name: string): string {
   return name.replace("→", "->");
@@ -1484,28 +1360,6 @@ function patchBasePath(artifact: Artifact): string {
   } catch {
     return raw;
   }
-}
-function chunkManifestId(artifact: Artifact): string {
-  const stored = artifact.attributes?.manifest_id;
-  if (stored) return String(stored);
-  const raw = artifact.urls[0]?.url;
-  if (!raw) return "—";
-  try {
-    return decodeURIComponent(new URL(raw).pathname.split("/").filter(Boolean).at(-1) || "—");
-  } catch {
-    return artifact.name;
-  }
-}
-function chunkMatchField(name: string): string {
-  const value = name.toLowerCase();
-  if (value.includes("中文") || value.includes("chinese")) return "zh-cn";
-  if (value.includes("英文") || value.includes("english")) return "en-us";
-  if (value.includes("日文") || value.includes("japanese")) return "ja-jp";
-  if (value.includes("韩文") || value.includes("korean")) return "ko-kr";
-  return "game";
-}
-function chunkMatchingField(artifact: Artifact): string {
-  return String(artifact.attributes?.matching_field || chunkMatchField(artifact.name));
 }
 </script>
 
@@ -1616,15 +1470,18 @@ function chunkMatchingField(artifact: Artifact): string {
           <span class="topbar-changelog-arrow" aria-hidden="true">↗</span>
         </button>
       </header>
-      <section v-if="gameActivity.length" class="recent-activity" aria-label="最近资源变动">
+      <section v-if="recentActivity.length" class="recent-activity" aria-label="最近资源变动">
         <div class="recent-activity-heading">
           <strong>最近资源变动</strong>
           <button type="button" @click="openSiteChangelog($event, 'data')">查看全部</button>
         </div>
         <ol>
-          <li v-for="event in gameActivity.slice(0, 3)" :key="event.id">
+          <li v-for="event in recentActivity" :key="event.id">
             <time :datetime="event.occurred_at">{{ gameActivityTime(event.occurred_at) }}</time>
-            <span>{{ gameActivityTitle(event, displayGameName) }}</span>
+            <span class="recent-activity-text">
+              {{ gameActivityTitle(event, displayGameName) }}
+              <span v-if="recentActivity.length > 1" class="recent-activity-platform">{{ gameActivityPlatform(event) }}</span>
+            </span>
           </li>
         </ol>
       </section>
@@ -1639,7 +1496,7 @@ function chunkMatchingField(artifact: Artifact): string {
           @select="navigate({ version: $event })"
         />
         <div class="mode-field">
-          <div class="mode-tabs" role="tablist" aria-label="数据视图">
+          <div class="mode-tabs" :class="{ 'mode-tabs-grid': visibleModes.length === 6 }" role="tablist" aria-label="数据视图">
             <button
               v-for="item in visibleModes"
               :key="`${item.domain.id}:${item.capability}`"
@@ -2033,7 +1890,13 @@ function chunkMatchingField(artifact: Artifact): string {
             />
           </div>
           <div v-else-if="!displayedArtifacts.length" class="empty">
-            {{ domain?.adapter === 'hoyo' && mode === 'packages' ? '该分类下没有压缩包直链' : '没有符合当前条件的归档记录。' }}
+            <template v-if="selectedVersionIsChunkOnly && (mode === 'packages' || mode === 'patches')">
+              <span>该版本仅提供 Chunk 分发，当前视图没有对应资源。</span>
+              <button class="tool-button" type="button" @click="switchToFiles">切换到文件视图</button>
+            </template>
+            <template v-else>
+              {{ domain?.adapter === 'hoyo' && mode === 'packages' ? '该分类下没有压缩包直链' : '没有符合当前条件的归档记录。' }}
+            </template>
           </div>
           <ArtifactTree v-else-if="usesArtifactTree" :artifacts="artifacts" />
           <div v-else-if="mode === 'files'" class="remote-workspace fragment-file-list">
@@ -2077,18 +1940,6 @@ function chunkMatchingField(artifact: Artifact): string {
                 </div>
               </div>
                <div class="file-actions">
-                  <button v-if="false" class="icon-button" type="button" @click="openArtifactFiles">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4z" /><path d="M8 9h8M8 13h5" /></svg>
-                    <span>查看清单</span>
-                  </button>
-                  <button v-if="false" class="icon-button" type="button" @click="copyManifestUrl(artifact)">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
-                    <span>复制清单链接</span>
-                  </button>
-                  <button v-if="false" class="icon-button" type="button" @click="copyBaseUrl(artifact)">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
-                    <span>复制资源文件根目录</span>
-                  </button>
                   <AvailabilityBadge
                     v-if="!suppressAvailabilityPresentation"
                     :value="preferredArtifactAction(artifact)?.current || artifact.urls[0]?.current || null"

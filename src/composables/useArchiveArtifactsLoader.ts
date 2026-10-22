@@ -33,6 +33,7 @@ export interface ArchiveArtifactsLoaderOptions {
     isCurrent: () => boolean,
   ) => Promise<void>;
   setLeads: (leads: ArchiveLead[]) => void;
+  hasChunkManifestData?: () => boolean;
 }
 
 export interface ArchiveArtifactsLoaderState {
@@ -146,21 +147,23 @@ export function useArchiveArtifactsLoader(options: ArchiveArtifactsLoaderOptions
         artifacts.value = [];
         nextCursor.value = null;
         total.value = null;
-        const [chunkResult, artifactResult] = await Promise.allSettled([
-          options.loadChunkState(context, request.signal, isCurrent),
-          api.artifacts(
+        // Chunk manifests are the authoritative source on current backends.
+        await options.loadChunkState(context, request.signal, isCurrent);
+        if (!isCurrent() || options.hasChunkManifestData?.()) return;
+        // Older backends may only expose chunk artifacts. Keep that fallback,
+        // but only after the manifest endpoints produced nothing.
+        try {
+          const page = await api.artifacts(
             context.domainId,
             context.selectedVersion,
             { query: context.query, kind: "chunk", limit: 100 },
             request.signal,
-          ),
-        ]);
-        if (!isCurrent()) return;
-        if (chunkResult.status === "rejected" && !isAbortError(chunkResult.reason)) {
-          // Chunk state owns its own presentation error; keep artifact loading independent.
-        }
-        if (artifactResult.status === "fulfilled" && artifactResult.value?.items?.length) {
-          artifacts.value = artifactResult.value.items;
+          );
+          if (!isCurrent()) return;
+          artifacts.value = page.items;
+        } catch (reason) {
+          if (isAbortError(reason)) return;
+          // Current backends reject kind=chunk; the manifest state owns errors.
         }
         return;
       }

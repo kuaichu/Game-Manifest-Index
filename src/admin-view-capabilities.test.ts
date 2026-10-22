@@ -176,6 +176,20 @@ function buttonByText(root: HTMLElement, text: string): HTMLButtonElement {
   return button;
 }
 
+async function acceptConfirm(): Promise<void> {
+  const accept = document.querySelector<HTMLButtonElement>('[data-testid="admin-confirm-accept"]');
+  if (!accept) throw new Error("confirm dialog not shown");
+  accept.click();
+  await flushUpdates();
+  expect(document.querySelector('[data-testid="admin-confirm-backdrop"]')).toBeNull();
+}
+
+async function clickAndConfirm(root: HTMLElement, text: string): Promise<void> {
+  buttonByText(root, text).click();
+  await flushUpdates();
+  await acceptConfirm();
+}
+
 function operationJob(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     job_id: "probe-job-1", status: "finished", phase: null,
@@ -212,18 +226,32 @@ describe("AdminView capability alignment", () => {
     vi.restoreAllMocks();
   });
 
-  it("exposes catalog mutation controls and disables unavailable retention", async () => {
+  it("exposes catalog mutation controls without a read-only fallback", async () => {
     const { app, root } = await mountAdmin("android");
     expect(root.textContent).not.toContain("游戏目录由当前 V5 静态注册关系和数据投影生成");
     expect(root.textContent).toContain("新增游戏");
     expect(root.textContent).toContain("保存游戏设置");
     expect(root.textContent).toContain("删除空游戏");
-    expect(buttonByText(root, "未接入").disabled).toBe(true);
+    const deleteButton = buttonByText(root, "删除空游戏");
+    expect(deleteButton.disabled).toBe(true);
+    expect(deleteButton.title).toContain("不可直接删除");
+    expect(root.textContent).not.toContain("未接入");
+    app.unmount();
+  });
+
+  it("keeps config sections free of numbering and English kickers", async () => {
+    const { app, root } = await mountAdmin("android");
+    const titles = [...root.querySelectorAll(".game-form-pane .section-card-title")].map((node) =>
+      node.textContent?.trim() ?? "",
+    );
+    expect(titles).toEqual(["基础信息", "图标", "发布"]);
+    titles.forEach((title) => expect(title).not.toMatch(/^\d+\./));
+    expect(root.querySelectorAll(".kicker-tag").length).toBe(0);
+    expect(root.querySelectorAll(".block-tag-pill").length).toBe(0);
     app.unmount();
   });
 
   it("passes edited game fields from the catalog component to the save API", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     const update = vi.spyOn(adminApi, "updateGame").mockResolvedValue({} as never);
     const { app, root } = await mountAdmin("android");
     const form = root.querySelector<HTMLFormElement>(".game-form-pane");
@@ -242,8 +270,7 @@ describe("AdminView capability alignment", () => {
     enabled.checked = false;
     enabled.dispatchEvent(new Event("change"));
     await flushUpdates();
-    buttonByText(root, "保存游戏设置").click();
-    await flushUpdates();
+    await clickAndConfirm(root, "保存游戏设置");
     expect(update).toHaveBeenCalledTimes(1);
     expect(update.mock.calls[0][0]).toBe("demo");
     expect(update.mock.calls[0][1]).toMatchObject({
@@ -252,20 +279,49 @@ describe("AdminView capability alignment", () => {
     app.unmount();
   });
 
+  it("asks for confirmation in an in-page dialog and honours cancel and Escape", async () => {
+    const update = vi.spyOn(adminApi, "updateGame").mockResolvedValue({} as never);
+    const { app, root } = await mountAdmin("android");
+
+    buttonByText(root, "保存游戏设置").click();
+    await flushUpdates();
+    const backdrop = root.querySelector<HTMLElement>('[data-testid="admin-confirm-backdrop"]');
+    if (!backdrop) throw new Error("confirm dialog not shown");
+    expect(backdrop.textContent).toContain("保存游戏配置");
+
+    buttonByText(backdrop, "取消").click();
+    await flushUpdates();
+    expect(root.querySelector('[data-testid="admin-confirm-backdrop"]')).toBeNull();
+    expect(update).not.toHaveBeenCalled();
+
+    buttonByText(root, "保存游戏设置").click();
+    await flushUpdates();
+    const reopened = root.querySelector<HTMLElement>('[data-testid="admin-confirm-backdrop"]');
+    if (!reopened) throw new Error("confirm dialog not shown again");
+    reopened.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    await flushUpdates();
+    expect(root.querySelector('[data-testid="admin-confirm-backdrop"]')).toBeNull();
+    expect(update).not.toHaveBeenCalled();
+
+    await clickAndConfirm(root, "保存游戏设置");
+    expect(update).toHaveBeenCalledTimes(1);
+    app.unmount();
+  });
+
   it("passes edited module fields to the existing save API", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     const update = vi.spyOn(adminApi, "updateDomain").mockResolvedValue({} as never);
     const { app, root } = await mountAdmin("windows");
     buttonByText(root, "模块").click();
     await flushUpdates();
     const form = root.querySelector<HTMLFormElement>(".domain-form-pane");
     if (!form) throw new Error("module form not found");
-    const adapter = form.querySelector<HTMLInputElement>("input[placeholder^='hoyo /']");
     const capabilities = form.querySelector<HTMLInputElement>(".raw-cap-input");
     const order = form.querySelector<HTMLInputElement>("input[type='number']");
     const enabled = form.querySelector<HTMLInputElement>("input[type='checkbox']");
-    if (!adapter || !capabilities || !order || !enabled) throw new Error("module fields not found");
-    for (const [input, value] of [[adapter, "hoyo"], [capabilities, "packages, archive"], [order, "7"]] as const) {
+    if (!capabilities || !order || !enabled) throw new Error("module fields not found");
+    buttonByText(form, "hoyo").click();
+    await flushUpdates();
+    for (const [input, value] of [[capabilities, "packages, archive"], [order, "7"]] as const) {
       input.value = value;
       input.dispatchEvent(new Event("input"));
       await flushUpdates();
@@ -273,8 +329,7 @@ describe("AdminView capability alignment", () => {
     enabled.checked = false;
     enabled.dispatchEvent(new Event("change"));
     await flushUpdates();
-    buttonByText(root, "保存模块配置").click();
-    await flushUpdates();
+    await clickAndConfirm(root, "保存模块配置");
     expect(update).toHaveBeenCalledTimes(1);
     expect(update.mock.calls[0][0]).toBe("demo-pc");
     expect(update.mock.calls[0][1]).toMatchObject({
@@ -337,8 +392,33 @@ describe("AdminView capability alignment", () => {
     app.unmount();
   });
 
+  it("opens the version editor without reporting phantom unsaved changes", async () => {
+    const { app, root } = await mountAdmin("android");
+    buttonByText(root, "版本").click();
+    await flushUpdates();
+    expect(root.querySelector(".sticky-save-bar")).not.toBeNull();
+    expect(root.querySelector(".save-status-badge.dirty")).toBeNull();
+    expect(root.textContent).toContain("没有未保存修改");
+    // 表单自带校验提示，必须关闭浏览器原生校验，否则提交会被静默拦截
+    expect(root.querySelector<HTMLFormElement>(".version-edit-form")!.noValidate).toBe(true);
+    expect(buttonByText(root, "实时探活")).toBeTruthy();
+    app.unmount();
+  });
+
+  it("cancels a pending new game entry and returns to the saved record", async () => {
+    const { app, root } = await mountAdmin("android");
+    buttonByText(root, "新增游戏").click();
+    await flushUpdates();
+    expect(root.textContent).toContain("创建新游戏入口");
+    expect(root.textContent).toContain("立即创建游戏入口");
+    buttonByText(root, "取消新建").click();
+    await flushUpdates();
+    expect(root.textContent).not.toContain("创建新游戏入口");
+    expect(root.textContent).toContain("保存游戏设置");
+    app.unmount();
+  });
+
   it("exposes a PC artifact edit workspace without the APK-only create flow", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     const { app, root } = await mountAdmin("windows");
     buttonByText(root, "版本").click();
     await flushUpdates();
@@ -359,8 +439,7 @@ describe("AdminView capability alignment", () => {
     nameInput.dispatchEvent(new Event("input"));
     await flushUpdates();
 
-    buttonByText(root, "保存更改").click();
-    await flushUpdates();
+    await clickAndConfirm(root, "保存更改");
 
     expect(adminApi.updateEditableVersion).toHaveBeenCalled();
     const payload = vi.mocked(adminApi.updateEditableVersion).mock.calls[0][2];
@@ -396,8 +475,7 @@ describe("AdminView capability alignment", () => {
       await flushUpdates();
       buttonByText(root, "列表").click();
       await flushUpdates();
-      buttonByText(root, "保存更改").click();
-      await flushUpdates();
+      await clickAndConfirm(root, "保存更改");
       const payload = vi.mocked(adminApi.updateEditableVersion).mock.calls[0][2];
       expect(payload.artifacts?.[0]).toMatchObject({
         artifact_id: "a1_pc_fixture", name: "edited-in-json.zip",
@@ -408,7 +486,6 @@ describe("AdminView capability alignment", () => {
   });
 
   it("keeps edit and create URL filename inference behavior aligned", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     const { app, root } = await mountAdmin("android");
     const updateVersion = vi.mocked(adminApi.updateEditableVersion);
     const addVersion = vi.mocked(adminApi.addVersion);
@@ -429,8 +506,7 @@ describe("AdminView capability alignment", () => {
     buttonByText(root, "根据 URL 填写文件名").click();
     await flushUpdates();
     expect(editName.value).toBe("renamed.apk");
-    buttonByText(root, "保存并探活").click();
-    await flushUpdates();
+    await clickAndConfirm(root, "保存并探活");
     expect(localStorage.getItem("gmi-availability-invalidated-at")).toContain("version-probe:demo-android:1.0.0");
     expect(updateVersion).toHaveBeenCalledWith("demo-android", "1.0.0", expect.objectContaining({
       artifacts: [expect.objectContaining({ kind: "apk", name: "renamed.apk" })],
@@ -449,11 +525,43 @@ describe("AdminView capability alignment", () => {
     createUrl.dispatchEvent(new Event("input"));
     await flushUpdates();
     expect(createForm.querySelector<HTMLInputElement>(".apk-file-card input[placeholder^='例如']")?.value).toBe("new.apk");
-    buttonByText(root, "保存并录入新版本").click();
-    await flushUpdates();
+    await clickAndConfirm(root, "保存并录入新版本");
     expect(addVersion).toHaveBeenCalledWith("demo-android", expect.objectContaining({
       artifacts: [expect.objectContaining({ kind: "apk", name: "new.apk", urls: [expect.objectContaining({ url: "https://example.com/new.apk" })] })],
     }), "test-admin-token", expect.anything());
+    app.unmount();
+  });
+
+  it("renders one version form whose action bar follows the create tab", async () => {
+    const { app, root } = await mountAdmin("android");
+    buttonByText(root, "版本").click();
+    await flushUpdates();
+    expect(root.querySelectorAll(".version-edit-form").length).toBe(1);
+    expect(root.querySelectorAll(".sticky-save-bar").length).toBe(1);
+    expect(root.querySelectorAll(".form-actions-bar").length).toBe(0);
+    expect(root.querySelector("input[placeholder^='例如: 7.1.0']")).toBeNull();
+
+    buttonByText(root, "新建版本").click();
+    await flushUpdates();
+    expect(root.querySelectorAll(".version-edit-form").length).toBe(1);
+    expect(root.querySelectorAll(".form-actions-bar").length).toBe(1);
+    expect(root.querySelectorAll(".sticky-save-bar").length).toBe(0);
+    expect(root.querySelector("input[placeholder^='例如: 7.1.0']")).not.toBeNull();
+
+    buttonByText(root, "编辑版本").click();
+    await flushUpdates();
+    expect(root.querySelectorAll(".sticky-save-bar").length).toBe(1);
+    expect(root.querySelectorAll(".form-actions-bar").length).toBe(0);
+    app.unmount();
+  });
+
+  it("renders rail navigation with vector icons instead of emoji", async () => {
+    const { app, root } = await mountAdmin("android");
+    const rail = root.querySelector(".admin-rail");
+    expect(rail).not.toBeNull();
+    expect(rail!.querySelectorAll(".admin-icon").length).toBe(5);
+    expect(rail!.querySelectorAll(".rail-icon").length).toBe(0);
+    expect(rail!.textContent).not.toMatch(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}]/u);
     app.unmount();
   });
 
@@ -526,7 +634,6 @@ describe("AdminView capability alignment", () => {
   });
 
   it("checks official updates before a batch probe selected in the console", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     vi.spyOn(adminApi, "latestOperation").mockRejectedValue(new Error("no previous operation"));
     const start = vi.spyOn(adminApi, "startOperation").mockResolvedValue(operationJob({
       status: "running", phase: "discover", actions: ["discover", "probe"],
@@ -535,12 +642,12 @@ describe("AdminView capability alignment", () => {
     const { app, root } = await mountAdmin("android");
     buttonByText(root, "监控").click();
     await flushUpdates();
-    const probeOption = root.querySelector<HTMLInputElement>('input[type="radio"][value="probe"]');
-    expect(probeOption).not.toBeNull();
-    probeOption!.click();
+    expect(root.querySelectorAll(".op-action-card").length).toBe(2);
+    const batchOption = root.querySelector<HTMLInputElement>('input[type="radio"][value="both"]');
+    expect(batchOption).not.toBeNull();
+    batchOption!.click();
     await flushUpdates();
-    buttonByText(root, "启动运维任务").click();
-    await flushUpdates();
+    await clickAndConfirm(root, "启动运维任务");
     expect(start).toHaveBeenCalledWith(expect.objectContaining({
       actions: ["discover", "probe"], scope: "all", all_games: true,
     }), "test-admin-token", expect.any(AbortSignal));
@@ -549,27 +656,23 @@ describe("AdminView capability alignment", () => {
   });
 
   it("refreshes built-in scheduler status after saving probe schedule", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     const { app, root } = await mountAdmin("android");
     buttonByText(root, "监控").click();
     await flushUpdates();
     const scheduler = vi.mocked(adminApi.probeScheduler);
     const callsBeforeSave = scheduler.mock.calls.length;
-    buttonByText(root, "保存定时探活计划").click();
-    await flushUpdates();
+    await clickAndConfirm(root, "保存定时探活计划");
     expect(scheduler.mock.calls.length).toBeGreaterThan(callsBeforeSave);
     app.unmount();
   });
 
   it("does not retain a running scheduler claim when status refresh fails", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     const { app, root } = await mountAdmin("android");
     buttonByText(root, "监控").click();
     await flushUpdates();
     expect(root.textContent).toContain("内置探活计时器：运行中");
     vi.mocked(adminApi.probeScheduler).mockRejectedValueOnce(new Error("status unavailable"));
-    buttonByText(root, "保存定时探活计划").click();
-    await flushUpdates();
+    await clickAndConfirm(root, "保存定时探活计划");
     expect(root.textContent).toContain("内置探活计时器：状态未知");
     expect(root.textContent).not.toContain("内置探活计时器：运行中");
     app.unmount();
@@ -680,7 +783,6 @@ describe("AdminView capability alignment", () => {
   });
 
   it("sends a fresh availability invalidation after every successful direct version probe", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     const events: CustomEvent[] = [];
     const listener = (event: Event): void => { events.push(event as CustomEvent); };
     window.addEventListener("gmi-availability-invalidated", listener);
@@ -688,10 +790,8 @@ describe("AdminView capability alignment", () => {
     buttonByText(root, "版本").click();
     await flushUpdates();
 
-    buttonByText(root, "探活并保存").click();
-    await flushUpdates();
-    buttonByText(root, "探活并保存").click();
-    await flushUpdates();
+    await clickAndConfirm(root, "实时探活");
+    await clickAndConfirm(root, "实时探活");
 
     expect(events).toHaveLength(2);
     expect(events[0].detail.jobId).not.toBe(events[1].detail.jobId);
@@ -700,7 +800,6 @@ describe("AdminView capability alignment", () => {
   });
 
   it("does not report failed save-and-probe as a completed probe", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     const { app, root } = await mountAdmin("android");
     buttonByText(root, "版本").click();
     await flushUpdates();
@@ -709,8 +808,7 @@ describe("AdminView capability alignment", () => {
     url.dispatchEvent(new Event("input"));
     await flushUpdates();
     vi.mocked(adminApi.probeVersion).mockRejectedValueOnce(new Error("network failed"));
-    buttonByText(root, "保存并探活").click();
-    await flushUpdates();
+    await clickAndConfirm(root, "保存并探活");
     expect(root.textContent).toContain("修改已保存，但探活失败");
     expect(root.textContent).not.toContain("修改已保存并已完成探活");
     expect(localStorage.getItem("gmi-availability-invalidated-at")).toBeNull();

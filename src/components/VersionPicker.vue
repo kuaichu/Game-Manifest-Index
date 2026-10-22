@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useModalScrollLock } from "../composables/useModalScrollLock";
 import type { ArchiveDomain, VersionSummary } from "../types";
-import { artifactCountForMode, artifactKindForMode, availabilityStatesForMode, buildVersionBadges, displayVersionLabel, versionSupportsMode } from "../domain-presentation";
+import { artifactCountForMode, artifactKindForMode, availabilityStatesForMode, buildVersionBadges, displayVersionLabel, isChunkOnlyVersion, versionSupportsMode } from "../domain-presentation";
 import { versionFamily } from "../version-grouping";
 
 const props = withDefaults(
@@ -31,10 +31,10 @@ const family = (version: string) => {
 
 const groups = computed(() => {
   const output = new Map<string, VersionSummary[]>();
-  const scopesHoYoVersions = props.domain?.adapter === "hoyo"
-    && ["packages", "patches", "chunks"].includes(props.mode || "");
-  const visibleVersions = scopesHoYoVersions
-    ? props.versions.filter((item) => versionSupportsMode(item, props.mode!, props.domain?.adapter))
+  // Only Chunk mode keeps its support filter. Packages/patches must still show
+  // chunk-only versions so a newer release is never invisible in the picker.
+  const visibleVersions = props.mode === "chunks" && props.domain?.adapter === "hoyo"
+    ? props.versions.filter((item) => versionSupportsMode(item, "chunks", props.domain?.adapter))
     : props.versions;
   for (const item of visibleVersions) {
     const key = family(item.version);
@@ -135,6 +135,10 @@ function showPickerAvailability(): boolean {
   return props.showAvailability && props.mode !== "chunks";
 }
 
+function isChunkOnlyInPackageMode(item: VersionSummary): boolean {
+  return (props.mode === "packages" || props.mode === "patches") && isChunkOnlyVersion(item);
+}
+
 function caps(row: {
   base: string;
   item: VersionSummary;
@@ -165,10 +169,8 @@ function timeBadge(row: {
 }
 
 function isLatestVersion(version: string): boolean {
-  const scopesHoYoVersions = props.domain?.adapter === "hoyo"
-    && ["packages", "patches", "chunks"].includes(props.mode || "");
-  const latest = scopesHoYoVersions
-    ? props.versions.find((item) => versionSupportsMode(item, props.mode!, props.domain?.adapter))
+  const latest = props.mode === "chunks" && props.domain?.adapter === "hoyo"
+    ? props.versions.find((item) => versionSupportsMode(item, "chunks", props.domain?.adapter))
     : props.versions[0];
   return latest?.version === version;
 }
@@ -194,6 +196,7 @@ function isRowUnavailable(row: {
   item: VersionSummary;
   states: Record<string, number>;
 }): boolean {
+  if (isChunkOnlyInPackageMode(row.item)) return false;
   const unavailable = Number(row.states.unavailable || 0);
   const available = Number(row.states.available || 0);
   const manifestFiles = (props.domain?.adapter === "wuwa" || props.domain?.adapter === "perfectworld_patcher") && props.mode === "files";
@@ -244,13 +247,15 @@ function atomicBadges(row: {
       }
     } else if (badge.label === "直链文件") {
       result.push({ label: "直链", tone: "cyan" });
+    } else if (badge.label === "Chunk" && isChunkOnlyInPackageMode(row.item)) {
+      result.push({ ...badge, label: "仅 Chunk", title: "该版本仅提供 Chunk 分发" });
     } else {
       result.push(badge);
     }
   }
 
   // 若需要展示可用性，确保每一行均有明确且准确的可用性徽章
-  if (showPickerAvailability()) {
+  if (showPickerAvailability() && !isChunkOnlyInPackageMode(row.item)) {
     const hasStatus = result.some((b) => ["可用", "不可用", "链接失效", "无数据", "未判定", "已归档"].includes(b.label)
       || b.label.startsWith("含失效 ") || b.label.startsWith("含未判定 "));
     const manifestFiles = (props.domain?.adapter === "wuwa" || props.domain?.adapter === "perfectworld_patcher") && props.mode === "files";
@@ -262,7 +267,7 @@ function atomicBadges(row: {
       const kind = props.mode ? artifactKindForMode(props.mode) : "";
       const count = manifestFiles ? artifactCountForMode(row.item, "files", props.domain?.adapter) : kind ? row.item.artifact_kinds?.[kind]?.count || 0 : 0;
       const modeHasKind = Boolean(kind || manifestFiles);
-      if (modeHasKind && count === 0 && !versionSupportsMode(row.item, props.mode || "", props.domain?.adapter)) {
+      if (modeHasKind && count === 0 && !versionSupportsMode(row.item, props.mode || "", props.domain?.adapter) && !isChunkOnlyInPackageMode(row.item)) {
         result.push({ label: "无数据", tone: "slate" });
       } else if (isRowUnavailable(row)) {
         result.push({ label: props.domain?.adapter === "android" ? "不可用" : "链接失效", tone: "red" });

@@ -1,0 +1,747 @@
+/* ==========================================================================
+   后台配置台样式（/admin）
+   --------------------------------------------------------------------------
+   从 styles.css 末尾抽出的配置台 v2 视觉规则，全部限定在 .admin-main 作用域内。
+   由 AdminView.vue 引入，只在进入后台时加载，前台页面不下载这段样式。
+
+   目录：
+   · 首轮：整体改版
+   · 第二轮：拆掉卡片套卡片
+   · 第三轮：排版间距与主按钮收口
+   · 第四轮：游戏页两列配比
+   · 第五轮：精简展示
+   · 第六轮：平台分段的换行修正
+   · 第七轮：结构减法
+   · 第八轮：版本列表层级
+   · 第九轮：监控页控件与统计卡统一
+   · 第十轮：平台分段铺满并等分
+   · 第十一轮：宽屏下的能力矩阵列数
+   规则顺序即层叠顺序，改动时请保持同选择器的先后关系。
+   ========================================================================== */
+
+/* ==========================================================================
+   Admin Config Surface Refresh (v2)
+   目标：去掉装饰性编号与彩色 kicker，收敛配色，统一控件语言（segmented /
+   chip / stepper / switch），把卡片改成更轻的分组段，保存条吸底。
+   全部规则限定在 .admin-main 内，不影响前台样式。
+   ========================================================================== */
+
+.admin-main .domain-hero-banner {
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1px solid var(--line-soft);
+  background: linear-gradient(120deg, rgba(56, 189, 248, 0.1), rgba(24, 35, 53, 0.6));
+}
+
+.admin-main .hero-title-row {
+  flex-wrap: wrap;
+  row-gap: 8px;
+  align-items: center;
+}
+
+.admin-main .hero-title-row h2 {
+  font-size: 20px;
+  letter-spacing: -0.01em;
+}
+
+.admin-main .hero-state-pill {
+  margin-left: 2px;
+}
+
+.admin-main .form-section-card,
+.admin-main .form-section-card.domain-card {
+  padding: 20px 22px;
+  border-radius: 16px;
+  border: 1px solid var(--line-soft);
+  background: rgba(24, 35, 53, 0.55);
+  box-shadow: none;
+}
+
+.admin-main .domain-cards-grid {
+  gap: 16px;
+}
+
+.admin-main .section-card-header {
+  align-items: flex-start;
+  margin-bottom: 16px;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.admin-main .section-header-left {
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.admin-main .section-card-title {
+  margin-bottom: 0;
+  color: var(--text);
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.admin-main .section-card-subtitle {
+  max-width: 64ch;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* 平台：segmented 控件 */
+.admin-main .platform-presets {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-deep);
+}
+
+.admin-main .platform-presets .preset-pill-btn {
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.admin-main .platform-presets .preset-pill-btn:hover {
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--text);
+}
+
+.admin-main .platform-presets .preset-pill-btn.active {
+  background: rgba(56, 189, 248, 0.16);
+  color: var(--blue);
+}
+
+/* 类型 / 适配器：统一 chip */
+.admin-main .kind-chip,
+.admin-main .adapter-chip {
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.admin-main .kind-chip:hover,
+.admin-main .adapter-chip:hover {
+  border-color: rgba(148, 163, 184, 0.4);
+  background: rgba(148, 163, 184, 0.08);
+  color: var(--text);
+}
+
+.admin-main .kind-chip.active,
+.admin-main .adapter-chip.active {
+  border-color: rgba(56, 189, 248, 0.5);
+  background: rgba(56, 189, 248, 0.12);
+  color: var(--blue);
+}
+
+/* 能力：轻量两列清单 */
+.admin-main .capability-toggle-card {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(16, 24, 38, 0.6);
+}
+
+.admin-main .capability-toggle-card:hover {
+  border-color: rgba(148, 163, 184, 0.4);
+}
+
+.admin-main .capability-toggle-card.active {
+  border-color: rgba(56, 189, 248, 0.45);
+  background: rgba(56, 189, 248, 0.08);
+}
+
+.admin-main .cap-key {
+  font-size: 12.5px;
+  font-weight: 650;
+}
+
+.admin-main .cap-desc {
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+/* 探测页卡片与操作项 */
+.admin-main .probe-card {
+  padding: 20px 22px;
+  border: 1px solid var(--line-soft);
+  border-radius: 16px;
+  background: rgba(24, 35, 53, 0.55);
+  box-shadow: none;
+}
+
+.admin-main .op-action-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(16, 24, 38, 0.6);
+}
+
+.admin-main .op-action-card.active {
+  border-color: rgba(56, 189, 248, 0.5);
+  background: rgba(56, 189, 248, 0.08);
+}
+
+/* 保存条 */
+.admin-main .sticky-save-bar,
+.admin-main .form-actions-bar {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(16, 24, 38, 0.92);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.32);
+}
+
+/* 字段排版的收口 */
+.admin-main .field-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.admin-main .field-tip {
+  color: var(--muted-dark);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+@media (max-width: 1040px) {
+  .admin-main .hero-title-row h2 {
+    font-size: 18px;
+  }
+}
+
+/* ==========================================================================
+   Admin Config Surface Refresh (v2) — 第二轮：拆掉卡片套卡片
+   ========================================================================== */
+
+/* 图标：预览行内联，不再是一张内嵌小卡 */
+.admin-main .icon-live-preview-box {
+  gap: 14px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.admin-main .preview-avatar-wrap {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  border-color: var(--line);
+  box-shadow: none;
+}
+
+.admin-main .preview-meta-title {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.admin-main .preview-meta-desc {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.admin-main .icon-quick-presets {
+  margin-top: 6px;
+}
+
+.admin-main .icon-quick-presets .preset-pill-btn {
+  border-radius: 999px;
+}
+
+/* 发布：三段平铺，去掉内层底色 */
+.admin-main .publish-bento-grid {
+  gap: 20px 28px;
+  margin-bottom: 16px;
+}
+
+.admin-main .publish-bento-cell {
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.admin-main .version-portal-box,
+.admin-main .visibility-toggle-card {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.admin-main .cell-label {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.admin-main .sort-tag-val {
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+/* 模块页：能力矩阵与原始能力输入保持同一层 */
+
+.admin-main .raw-cap-input {
+  background: var(--panel-deep);
+}
+
+/* ==========================================================================
+   Admin Config Surface Refresh (v2) — 第三轮：排版间距与主按钮收口
+   ========================================================================== */
+
+/* 分区标题：在 header 内贴紧，独立标题保留间距 */
+.admin-main .section-card-title {
+  margin-bottom: 14px;
+}
+
+.admin-main .section-card-header .section-card-title {
+  margin-bottom: 0;
+}
+
+/* 主按钮统一为天蓝渐变 */
+.admin-main .admin-btn.primary {
+  background: linear-gradient(135deg, #38bdf8 0%, #0ea5e9 100%);
+  border-color: transparent;
+  color: #04121f;
+}
+
+.admin-main .admin-btn.primary:hover {
+  filter: brightness(1.06);
+}
+
+/* 范围切换：从实心蓝改成浅色 seg */
+.admin-main .op-scope-tabs {
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-deep);
+}
+
+.admin-main .op-scope-btn {
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.admin-main .op-scope-btn.active {
+  background: rgba(56, 189, 248, 0.16);
+  color: var(--blue);
+  font-weight: 650;
+  box-shadow: none;
+}
+
+/* 定时开关行：去掉内层底色 */
+.admin-main .schedule-toggle-row {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+/* 平台自定义值：降级为辅助信息 */
+.admin-main .platform-input {
+  max-width: 240px;
+  padding: 6px 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* ==========================================================================
+   Admin Config Surface Refresh (v2) — 第四轮：游戏页两列配比
+   ========================================================================== */
+
+.admin-main .game-form-pane .domain-cards-grid {
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+}
+
+@media (max-width: 1280px) {
+  .admin-main .game-form-pane .domain-cards-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admin-main .game-form-pane .platform-presets {
+  flex-wrap: nowrap;
+}
+
+/* ==========================================================================
+   Admin Config Surface Refresh (v2) — 第五轮：精简展示
+   ========================================================================== */
+
+/* 字段标签里的英文缩写只保留给排查用，正文里不再占位 */
+.admin-main .field-sublabel {
+  display: none;
+}
+
+/* 长说明默认折叠 */
+.admin-main .inline-help {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.admin-main .inline-help > summary {
+  width: max-content;
+  color: var(--muted-dark);
+  font-size: 11.5px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.admin-main .inline-help > summary::-webkit-details-marker {
+  display: none;
+}
+
+.admin-main .inline-help > summary::before {
+  content: "?";
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-right: 6px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.admin-main .inline-help[open] > summary {
+  color: var(--text-secondary);
+}
+
+.admin-main .inline-help > p {
+  max-width: 72ch;
+  margin: 8px 0 0;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+/* ID 前缀只在新建时出现，编辑态恢复普通内边距 */
+.admin-main .id-input {
+  padding-left: 12px !important;
+}
+
+.admin-main .id-input.has-prefix {
+  padding-left: 46px !important;
+}
+
+/* 排序快捷值与步进器并排时不再重复展示权重数字 */
+.admin-main .sort-tag-val {
+  display: none;
+}
+
+/* ==========================================================================
+   Admin Config Surface Refresh (v2) — 第六轮：平台分段的换行修正
+   ========================================================================== */
+
+.admin-main .game-form-pane .platform-presets,
+.admin-main .platform-presets {
+  flex-wrap: wrap;
+}
+
+/* ==========================================================================
+   Admin Config Surface Refresh (v2) — 第七轮：结构减法
+   ========================================================================== */
+
+/* 列表行只保留核心信息：排序权重挪到发布区，不再逐行重复 */
+.admin-main .item-sort-badge {
+  display: none;
+}
+
+/* 发布区按单元格数量自适应列数（游戏 2 列 / 模块 3 列） */
+.admin-main .publish-bento-grid {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+/* 能力矩阵改两列，避免 8 张卡竖排滚两屏 */
+.admin-main .capabilities-matrix {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.admin-main .capability-toggle-card {
+  padding: 10px 12px;
+}
+
+.admin-main .capability-toggle-card .cap-desc {
+  display: none;
+}
+
+.admin-main .capability-toggle-card.active .cap-desc {
+  display: block;
+}
+
+/* 吸底条与卡片之间留出呼吸位 */
+.admin-main .admin-form-pane {
+  padding-bottom: 12px;
+}
+
+.admin-main .sticky-save-bar,
+.admin-main .form-actions-bar {
+  margin-top: 8px;
+}
+
+/* 说明折叠与卡片标题之间补间距 */
+.admin-main .inline-help {
+  margin-top: 6px;
+  margin-bottom: 12px;
+}
+
+/* ==========================================================================
+   Admin Config Surface Refresh (v2) — 第八轮：版本列表层级
+   ========================================================================== */
+
+/* 分组头退成安静的标题，版本行才是可点目标 */
+.admin-main .major-group {
+  margin-bottom: 2px;
+}
+
+.admin-main .major-group-header {
+  padding: 6px 10px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted-dark);
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
+}
+
+.admin-main .major-group-header:hover {
+  background: rgba(56, 189, 248, 0.06);
+  border-color: transparent;
+  color: var(--muted);
+}
+
+.admin-main .major-group-header.expanded {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-secondary);
+}
+
+.admin-main .major-group-header .version-count-inline,
+.admin-main .major-group-header .group-count {
+  color: var(--muted-dark);
+  font-size: 11px;
+}
+
+.admin-main .version-master-item .version-item-title {
+  color: var(--text-secondary);
+}
+
+.admin-main .version-master-item.active .version-item-title {
+  color: var(--text);
+}
+
+/* ==========================================================================
+   Admin Config Surface Refresh (v2) — 第九轮：监控页控件与统计卡统一
+   ========================================================================== */
+
+.admin-main .op-scope-btn {
+  border-color: transparent;
+  background: transparent;
+  border-radius: 10px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.admin-main .op-scope-btn:hover {
+  background: rgba(148, 163, 184, 0.08);
+  color: var(--text-secondary);
+}
+
+.admin-main .op-scope-btn.active {
+  border-color: rgba(56, 189, 248, 0.35);
+  background: rgba(56, 189, 248, 0.14);
+  color: #bae6fd;
+}
+
+.admin-main .op-stat-card {
+  border-color: transparent;
+  background: rgba(24, 35, 53, 0.55);
+  border-radius: 14px;
+}
+
+.admin-main .op-stat-card.is-highlight,
+.admin-main .op-stat-card.active {
+  border-color: rgba(56, 189, 248, 0.32);
+  background: rgba(56, 189, 248, 0.1);
+}
+
+.admin-main .op-progress-card {
+  border-color: transparent;
+  background: rgba(24, 35, 53, 0.55);
+  border-radius: 14px;
+}
+
+.admin-main .op-run-btn {
+  border-radius: 12px;
+}
+
+.admin-main .probe-card .card-title-group h3 {
+  font-size: 13.5px;
+  font-weight: 750;
+  color: var(--text);
+}
+
+/* ==========================================================================
+   Admin Config Surface Refresh (v2) — 第十轮：平台分段铺满并等分
+   ========================================================================== */
+
+/* 分段控件铺满字段宽度，按钮等分；窄于最小宽度时自动换成两排 */
+.admin-main .platform-presets {
+  display: flex;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.admin-main .platform-presets .preset-pill-btn {
+  flex: 1 1 0;
+  min-width: 64px;
+  padding: 6px 8px;
+  justify-content: center;
+  text-align: center;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .admin-main .platform-presets .preset-pill-btn {
+    min-width: 72px;
+  }
+}
+
+/* ==========================================================================
+   Admin Config Surface Refresh (v2) — 第十一轮：宽屏下的能力矩阵列数
+   ========================================================================== */
+
+/* 宽屏把 8 张能力卡摊开，减少右侧卡片与左侧基础信息卡的高度差 */
+@media (min-width: 1500px) {
+  .admin-main .capabilities-matrix {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .admin-main .capability-toggle-card .cap-desc,
+  .admin-main .capability-toggle-card.active .cap-desc {
+    display: none;
+  }
+}
+
+@media (min-width: 1800px) {
+  .admin-main .capabilities-matrix {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* 能力卡只留名称，选中摘要统一在矩阵下方一行说明 */
+.admin-main .capability-toggle-card .cap-desc,
+.admin-main .capability-toggle-card.active .cap-desc {
+  display: none;
+}
+
+.admin-main .cap-selection-summary {
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.admin-main .cap-selection-summary b {
+  color: var(--text-secondary);
+  font-weight: 650;
+}
+
+/* 排查用的底层配置串默认折叠，和「说明」保持同一套折叠样式 */
+.admin-main .admin-advanced {
+  margin-top: 10px;
+  border-radius: 10px;
+}
+
+.admin-main .admin-advanced > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px 3px 0;
+  font-size: 11.5px;
+  color: var(--muted-dark);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.admin-main .admin-advanced > summary::-webkit-details-marker {
+  display: none;
+}
+
+.admin-main .admin-advanced > summary::before {
+  content: "▸";
+  font-size: 9px;
+  line-height: 1;
+}
+
+.admin-main .admin-advanced[open] > summary::before {
+  content: "▾";
+}
+
+.admin-main .admin-advanced > summary:hover {
+  color: var(--muted);
+}
+
+.admin-main .admin-advanced .admin-field {
+  margin-top: 8px;
+}
+
+/* 版本内容库挪到基础信息卡底部：一条分隔线 + 数字与入口左右分列 */
+.admin-main .identity-version-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.admin-main .identity-version-footer .version-stat-group {
+  display: inline-flex;
+  align-items: baseline;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  gap: 6px;
+}
+
+.admin-main .identity-version-footer .version-stat-num {
+  font-size: 18px;
+  font-weight: 760;
+  color: var(--text);
+  line-height: 1.1;
+}
+
+.admin-main .identity-version-footer .version-stat-unit {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.admin-main .identity-version-footer .version-portal-hint {
+  flex: 0 0 auto;
+  margin-left: auto;
+  text-align: right;
+  font-size: 11.5px;
+  color: var(--muted-dark);
+}

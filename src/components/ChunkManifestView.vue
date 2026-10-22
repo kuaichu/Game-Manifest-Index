@@ -61,41 +61,6 @@ const displayedManifests = computed(() => {
   );
 });
 
-const summaryStats = computed(() => {
-  if (!props.chunkDetail?.manifests?.length) {
-    const rows = (props.artifacts || []).filter((item) => item.kind === "chunk");
-    const numeric = (item: Artifact, key: string) => Number(item.attributes?.[key] || 0);
-    return {
-      buildId: String(rows[0]?.attributes?.build_id || "—"),
-      manifestCount: rows.length,
-      fileCount: rows.reduce((sum, item) => sum + numeric(item, "file_count"), 0),
-      chunkCount: rows.reduce((sum, item) => sum + numeric(item, "chunk_count"), 0),
-      compressedSize: rows.reduce((sum, item) => sum + item.size, 0),
-      uncompressedSize: rows.reduce((sum, item) => sum + numeric(item, "uncompressed_size"), 0),
-      deduplicatedSize: rows.reduce((sum, item) => sum + item.size, 0),
-    };
-  }
-  const detail = props.chunkDetail;
-  const manifests = detail.manifests;
-  const fileCount = manifests.reduce((sum, m) => sum + (m.stats?.file_count || 0), 0);
-  const chunkCount = manifests.reduce((sum, m) => sum + (m.stats?.chunk_count || 0), 0);
-  const compressedSize = manifests.reduce((sum, m) => sum + (m.stats?.compressed_size || 0), 0);
-  const uncompressedSize = manifests.reduce((sum, m) => sum + (m.stats?.uncompressed_size || 0), 0);
-  const deduplicatedSize = manifests.reduce(
-    (sum, m) => sum + (m.deduplicated_stats?.compressed_size ?? m.stats?.compressed_size ?? 0),
-    0,
-  );
-  return {
-    buildId: detail.build_id || "—",
-    manifestCount: manifests.length,
-    fileCount,
-    chunkCount,
-    compressedSize,
-    uncompressedSize,
-    deduplicatedSize,
-  };
-});
-
 function copyManifestUrl(manifest: ChunkManifestEntry): void {
   const url = manifestDownloadUrl(manifest);
   if (url) emit("copy-url", url, "Manifest 下载链接");
@@ -147,7 +112,7 @@ function copyText(text: string, label: string): void {
           class="chunk-manifest-card"
         >
           <!-- 卡片头部 -->
-          <div class="card-head">
+          <div class="chunk-card-head">
             <div class="card-title-group">
               <span
                 class="component-pill"
@@ -160,11 +125,11 @@ function copyText(text: string, label: string): void {
             <div class="card-meta-line">
               <span class="meta-field">
                 <span class="meta-field-label">Manifest ID:</span>
-                <code class="mono-code" @click="copyText(manifest.manifest?.id || manifest.manifest_id || '', 'Manifest ID')">{{ manifest.manifest?.id || manifest.manifest_id || '—' }}</code>
+                <code class="mono-code" :title="manifest.manifest?.id || manifest.manifest_id || ''" @click="copyText(manifest.manifest?.id || manifest.manifest_id || '', 'Manifest ID')">{{ manifest.manifest?.id || manifest.manifest_id || '—' }}</code>
               </span>
               <span class="meta-field">
                 <span class="meta-field-label">MD5:</span>
-                <code class="mono-code">{{ manifest.manifest?.checksum || '—' }}</code>
+                <code class="mono-code" :title="manifest.manifest?.checksum || ''">{{ manifest.manifest?.checksum || '—' }}</code>
               </span>
               <span v-if="manifest.last_modified_at" class="meta-field">
                 <span class="meta-field-label">Manifest 更新时间:</span>
@@ -652,7 +617,7 @@ function copyText(text: string, label: string): void {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
 }
 
-.card-head {
+.chunk-card-head {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -717,6 +682,7 @@ function copyText(text: string, label: string): void {
 }
 
 .mono-code {
+  display: inline-block;
   font-family: var(--font-mono);
   color: #cbd5e1;
   background: rgba(15, 23, 42, 0.6);
@@ -726,7 +692,8 @@ function copyText(text: string, label: string): void {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 380px;
+  max-width: 100%;
+  vertical-align: bottom;
 }
 
 .mono-code:hover {
@@ -914,6 +881,54 @@ function copyText(text: string, label: string): void {
   }
   .card-metrics-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .chunk-manifest-card {
+    padding: 12px;
+    gap: 10px;
+  }
+  .card-meta-line {
+    gap: 6px;
+  }
+  .meta-field {
+    width: 100%;
+    max-width: 100%;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .meta-field .mono-code {
+    max-width: 100%;
+    white-space: normal;
+    overflow: visible;
+    overflow-wrap: anywhere;
+    word-break: break-all;
+    text-overflow: clip;
+  }
+  .metric-box {
+    padding: 6px 8px;
+  }
+  .recipe-row {
+    overflow: visible;
+  }
+  .recipe-info {
+    width: 100%;
+    flex-wrap: wrap;
+    overflow: visible;
+    row-gap: 4px;
+  }
+  /* The full URL is already available through the copy action; on phones it
+     only truncates to a meaningless fragment and wastes a whole line. */
+  .recipe-url-text {
+    display: none;
+  }
+  .recipe-actions {
+    display: flex;
+    width: 100%;
+    gap: 8px;
+  }
+  .recipe-actions .icon-button {
+    flex: 1 1 0;
+    min-width: 0;
   }
 }
 </style>
