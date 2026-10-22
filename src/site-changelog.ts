@@ -12,18 +12,6 @@ export interface SiteChangelogDay {
 
 export const siteChangelog: SiteChangelogEntry[] = [
   {
-    id: "2026-10-22-admin-console-redesign",
-    date: "2026-10-22",
-    title: "管理台界面与布局更新",
-    body: "重新设计管理登录页、侧栏及游戏、模块、版本和监控工作区。配置项按内容分组，精简重复说明，优化保存操作栏，并调整手机、平板及宽屏布局。",
-  },
-  {
-    id: "2026-10-22-admin-editing-workflow",
-    date: "2026-10-22",
-    title: "完善版本编辑与配置操作",
-    body: "版本新建与编辑使用统一表单，文件时间可通过日期时间选择器填写。保存及删除操作使用页内确认弹窗，校验提示直接显示在页面中；支持取消新建条目，并修复打开版本时误报未保存修改的问题。仍有数据的游戏或模块会提示无法直接删除。",
-  },
-  {
     id: "2026-10-22-chunk-only-version-browsing",
     date: "2026-10-22",
     title: "修复仅含 Chunk 版本的浏览",
@@ -38,8 +26,8 @@ export const siteChangelog: SiteChangelogEntry[] = [
   {
     id: "2026-10-22-activity-and-initial-load",
     date: "2026-10-22",
-    title: "精简活动展示与首屏加载",
-    body: "游戏活动栏聚焦最近一次版本事件，同一版本的 PC 与 Android 事件分别保留，减少旧记录重复占位。管理页面及其独立样式改为进入管理台时加载，减少前台首次加载的内容。",
+    title: "精简游戏活动展示",
+    body: "游戏活动栏聚焦最近一次版本事件，同一版本的 PC 与 Android 事件分别保留，减少旧记录重复占位。",
   },
   {
     id: "2026-10-17-game-icon-quality",
