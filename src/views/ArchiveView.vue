@@ -211,6 +211,11 @@ const uiModes = computed(() => availableArchiveModes(domains.value));
 const visibleModes = computed(() => {
   return uiModes.value;
 });
+// Drives the width at which the control strip switches to its two-row layout.
+const controlStripDensity = computed(() => {
+  const count = visibleModes.value.length;
+  return count >= 5 ? "modes-many" : count === 4 ? "modes-some" : "modes-few";
+});
 const selectedSummary = computed(
   () => versions.value.find((item) => item.version === selectedVersion.value) || null,
 );
@@ -1485,7 +1490,7 @@ function patchBasePath(artifact: Artifact): string {
           </li>
         </ol>
       </section>
-      <section class="control-strip">
+      <section class="control-strip" :class="controlStripDensity">
         <VersionPicker
           :versions="versions"
           :model-value="selectedVersion"
@@ -1803,7 +1808,7 @@ function patchBasePath(artifact: Artifact): string {
                 @change="updateCompareBase(String($event))"
               />
             </div>
-            <p>{{ compareScope === 'files' ? '差异由服务端按文件路径、大小和 MD5 计算并分页返回。' : '差异由服务端按稳定 artifact identity 计算并分页返回；对比响应不包含 URL 或 availability。' }}</p>
+            <p>{{ compareScope === 'files' ? '逐个比对两个版本的文件，路径相同但大小或 MD5 不同的算作修改。' : '逐个比对两个版本的下载包，列出新增、删除和有改动的包。这里只对比大小和校验值，下载链接请到对应页面查看。' }}</p>
           </div>
           <ComparePanel
             v-if="compareBaseVersion"
