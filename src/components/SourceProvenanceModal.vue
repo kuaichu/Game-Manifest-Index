@@ -8,8 +8,8 @@ interface GameProvenance {
   name: string;
   subName: string;
   vendor: string;
-  vendorCategory: "mihoyo" | "kuro" | "hypergryph" | "perfectworld";
-  apkSource: {
+  vendorCategory: "mihoyo" | "kuro" | "hypergryph" | "perfectworld" | "manjuu";
+  apkSource?: {
     channel: string;
     description: string;
     endpointName: string;
@@ -20,6 +20,7 @@ interface GameProvenance {
     upstreamProject?: string;
     upstreamUrl?: string;
   };
+  historySource?: string;
   officialHosts: string[];
 }
 
@@ -63,15 +64,16 @@ const GAME_PROVENANCE_LIST: GameProvenance[] = [
     vendorCategory: "mihoyo",
     apkSource: {
       channel: "米哈游官方下载传送门 API",
-      description: "官方动态接口轮询与直链提取，支持历史版本自动归档",
+      description: "从官方下载接口发现当前 Android 版本，提取安装包链接并持续归档。",
       endpointName: "api-takumi.mihoyo.com/.../ys_cn/official/android_default",
     },
     pcSource: {
-      channel: "HoyoFiles / Amarea 版本库",
-      description: "完整包、补丁路线及资源分块 (Chunks) 清单聚合",
-      upstreamProject: "hoyo-files.amarea.cn",
-      upstreamUrl: "https://hoyo-files.amarea.cn/",
+      channel: "米哈游官方 HoYoPlay / Sophon 接口",
+      description: "从 HoYoPlay 获取游戏与语音包、补丁，从 Sophon 获取资源分块清单。",
+      upstreamProject: "官方包接口",
+      upstreamUrl: "https://hyp-api.mihoyo.com/hyp/hyp-connect/api/getGamePackages?launcher_id=jGHBHlcOq1&game_ids[]=1Z8W5NHUQb",
     },
+    historySource: "部分 PC 历史版本通过 HoyoFiles / Amarea 导入，保留第三方历史来源。",
     officialHosts: ["autopatchcn.yuanshen.com"],
   },
   {
@@ -82,15 +84,16 @@ const GAME_PROVENANCE_LIST: GameProvenance[] = [
     vendorCategory: "mihoyo",
     apkSource: {
       channel: "米哈游官方下载传送门 API",
-      description: "官方动态接口轮询与直链提取，支持历史版本自动归档",
+      description: "从官方下载接口发现当前 Android 版本，提取安装包链接并持续归档。",
       endpointName: "api-takumi.mihoyo.com/.../hkrpg_cn/official/android_default",
     },
     pcSource: {
-      channel: "HoyoFiles / Amarea 版本库",
-      description: "完整包、补丁路线及资源分块 (Chunks) 清单聚合",
-      upstreamProject: "hoyo-files.amarea.cn",
-      upstreamUrl: "https://hoyo-files.amarea.cn/",
+      channel: "米哈游官方 HoYoPlay / Sophon 接口",
+      description: "从 HoYoPlay 获取游戏与语音包、补丁，从 Sophon 获取资源分块清单。",
+      upstreamProject: "官方包接口",
+      upstreamUrl: "https://hyp-api.mihoyo.com/hyp/hyp-connect/api/getGamePackages?launcher_id=jGHBHlcOq1&game_ids[]=64kMb5iAWu",
     },
+    historySource: "部分 PC 历史版本通过 HoyoFiles / Amarea 导入，保留第三方历史来源。",
     officialHosts: ["autopatchcn.bhsr.com"],
   },
   {
@@ -101,15 +104,16 @@ const GAME_PROVENANCE_LIST: GameProvenance[] = [
     vendorCategory: "mihoyo",
     apkSource: {
       channel: "米哈游官方下载传送门 API",
-      description: "官方动态接口轮询与直链提取，支持历史版本自动归档",
+      description: "从官方下载接口发现当前 Android 版本，提取安装包链接并持续归档。",
       endpointName: "api-takumi.mihoyo.com/.../nap_cn/official/android_default",
     },
     pcSource: {
-      channel: "HoyoFiles / Amarea 版本库",
-      description: "完整包、补丁路线及资源分块 (Chunks) 清单聚合",
-      upstreamProject: "hoyo-files.amarea.cn",
-      upstreamUrl: "https://hoyo-files.amarea.cn/",
+      channel: "米哈游官方 HoYoPlay / Sophon 接口",
+      description: "从 HoYoPlay 获取游戏与语音包、补丁，从 Sophon 获取资源分块清单。",
+      upstreamProject: "官方包接口",
+      upstreamUrl: "https://hyp-api.mihoyo.com/hyp/hyp-connect/api/getGamePackages?launcher_id=jGHBHlcOq1&game_ids[]=x6znKlJ0xK",
     },
+    historySource: "部分 PC 历史版本通过 HoyoFiles / Amarea 导入，保留第三方历史来源。",
     officialHosts: ["autopatchcn.juequling.com"],
   },
   {
@@ -120,15 +124,16 @@ const GAME_PROVENANCE_LIST: GameProvenance[] = [
     vendorCategory: "mihoyo",
     apkSource: {
       channel: "米哈游官方下载传送门 API",
-      description: "官方动态接口轮询与直链提取，支持历史版本自动归档",
+      description: "从官方下载接口发现当前 Android 版本，提取安装包链接并持续归档。",
       endpointName: "api-takumi.mihoyo.com/.../bh3_cn/bh3/android_official",
     },
     pcSource: {
-      channel: "HoyoFiles / Amarea + 历史快照",
-      description: "PC 完整包、补丁清单及人工校准历史记录",
-      upstreamProject: "hoyo-files.amarea.cn",
-      upstreamUrl: "https://hoyo-files.amarea.cn/",
+      channel: "米哈游官方 HoYoPlay / Sophon 接口",
+      description: "从 HoYoPlay 获取游戏与语音包、补丁，从 Sophon 获取资源分块清单。",
+      upstreamProject: "官方包接口",
+      upstreamUrl: "https://hyp-api.mihoyo.com/hyp/hyp-connect/api/getGamePackages?launcher_id=jGHBHlcOq1&game_ids[]=osvnlOc0S8",
     },
+    historySource: "部分 PC 历史版本来自 HoyoFiles / Amarea 或旧项目迁移，保留原有来源。",
     officialHosts: ["bundle.bh3.com", "autopatchcn.bh3.com"],
   },
   {
@@ -142,7 +147,7 @@ const GAME_PROVENANCE_LIST: GameProvenance[] = [
       description: "官方官网动态重定向与下载链接实时抓取",
       endpointName: "benghuai.com/download/latest",
     },
-    officialHosts: ["benghuai.com"],
+    officialHosts: ["static.benghuai.com"],
   },
   {
     id: "wuwa",
@@ -152,16 +157,17 @@ const GAME_PROVENANCE_LIST: GameProvenance[] = [
     vendorCategory: "kuro",
     apkSource: {
       channel: "库洛官方应用清单",
-      description: "官方多语言渠道与版本 Manifest 解析，沉淀完整历史序列",
+      description: "读取官方 Android 应用清单，发现当前版本并归档安装包链接。",
       endpointName: "download.kurogames.com/mc_.../official/cn/zh-Hans/android_app.json",
     },
     pcSource: {
-      channel: "社区开源抓包与快照恢复",
-      description: "启动器 index 动态解析、Wayback 快照与预下载 CDN 目录捕获",
-      upstreamProject: "yuhkix/wuwa-downloader",
-      upstreamUrl: "https://github.com/yuhkix/wuwa-downloader",
+      channel: "库洛官方 GameStarter 启动器清单",
+      description: "读取官方启动器配置及资源清单，归档当前 PC 版本的文件和补丁信息。",
+      upstreamProject: "官方启动器配置",
+      upstreamUrl: "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json",
     },
-    officialHosts: ["mirrors-package-mc.aki-game.com", "pcdownload-*.aki-game.com"],
+    historySource: "PC 历史版本包含旧项目迁移记录，部分保留了官方历史清单地址；未记录的发现来源不作推断。",
+    officialHosts: ["mirrors-package-mc.aki-game.com", "pcdownload-aliyun.aki-game.com", "pcdownload-qcloud.aki-game.com", "pcdownload-huoshan.aki-game.com"],
   },
   {
     id: "pns",
@@ -171,10 +177,10 @@ const GAME_PROVENANCE_LIST: GameProvenance[] = [
     vendorCategory: "kuro",
     apkSource: {
       channel: "库洛官方应用清单",
-      description: "官方多语言渠道与版本 Manifest 解析，沉淀完整历史序列",
+      description: "读取官方 Android 应用清单，发现当前版本并归档安装包链接。",
       endpointName: "download.kurogames.com/pns/official/cn/zh-Hans/androidpc_app.json",
     },
-    officialHosts: ["package.kurogames.com"],
+    officialHosts: ["zspms-txcdn-media.kurogame.com"],
   },
   {
     id: "arknights",
@@ -189,10 +195,11 @@ const GAME_PROVENANCE_LIST: GameProvenance[] = [
     },
     pcSource: {
       channel: "鹰角启动器官方 API",
-      description: "最新 PC 完整包从官方 API 自动采集，包含分卷大小和 MD5；历史记录保留原有来源。",
+      description: "最新 PC 完整包从官方 API 自动采集，包含分卷大小和 MD5。",
       upstreamProject: "鹰角启动器官方 API",
       upstreamUrl: "https://launcher.hypergryph.com/api/proxy/batch_proxy",
     },
+    historySource: "部分 PC 历史版本来自旧项目迁移，保留原有来源。",
     officialHosts: ["ak.hycdn.cn"],
   },
   {
@@ -203,15 +210,16 @@ const GAME_PROVENANCE_LIST: GameProvenance[] = [
     vendorCategory: "hypergryph",
     apkSource: {
       channel: "鹰角官方启动器 API",
-      description: "官方 Launcher 接口轮询，抓取测试服安装包",
+      description: "从官方 Launcher 接口获取当前官服 Android 安装包链接。",
       endpointName: "launcher.hypergryph.com/game/latest/6LL0KJuqHBVz33WK/1/1",
     },
     pcSource: {
-      channel: "鹰角启动器官方 API + 历史记录",
-      description: "最新 PC 完整包从官方 API 自动采集，下载地址使用官方 OSS 稳定链接；历史包和补丁保留原有来源。",
+      channel: "鹰角启动器官方 API",
+      description: "最新 PC 完整包从官方 API 自动采集，下载链接使用官方 OSS 地址。",
       upstreamProject: "鹰角启动器官方 API",
       upstreamUrl: "https://launcher.hypergryph.com/api/proxy/batch_proxy",
     },
+    historySource: "历史版本包含旧项目迁移、Wayback 记录补录；部分资源保留标记为镜像的 GitHub 候选链接。",
     officialHosts: ["beyond.hycdn.cn", "beyond-prod.oss-cn-shanghai.aliyuncs.com"],
   },
   {
@@ -221,17 +229,18 @@ const GAME_PROVENANCE_LIST: GameProvenance[] = [
     vendor: "完美世界 (Perfect World)",
     vendorCategory: "perfectworld",
     apkSource: {
-      channel: "完美世界公共运维配置脚本",
-      description: "官方公共数据通道解析与直链动态更新",
+      channel: "完美世界官方游戏下载配置",
+      description: "解析官方 gameDownload.js 配置，提取当前 Android 安装包链接。",
       endpointName: "static.games.wanmei.com/.../yh-gameDownload.js",
     },
     pcSource: {
-      channel: "官方 PatcherSDK 协议",
-      description: "读取官方 config.xml，自动解密 ResList.bin.zip 清单提取文件与补丁",
-      upstreamProject: "完美世界官方发布 CDN",
-      upstreamUrl: "https://yhcdn1.wmupd.com/",
+      channel: "完美世界官方 PatcherSDK",
+      description: "读取官方 config.xml 并跟随版本分支，解码 ResList.bin.zip，提取文件与补丁条目。",
+      upstreamProject: "官方版本配置",
+      upstreamUrl: "https://yhcdn1.wmupd.com/clientRes/publish_PC/Version/Windows/config.xml",
     },
-    officialHosts: ["yhcdn1.wmupd.com", "yhcdn2.wmupd.com"],
+    historySource: "PC 历史版本包含旧项目迁移记录及从官方 ResList 清单人工补录的记录。",
+    officialHosts: ["yhapk.wmupd.com", "yhcdn1.wmupd.com", "yhcdn2.wmupd.com"],
   },
   {
     id: "p5x",
@@ -240,17 +249,17 @@ const GAME_PROVENANCE_LIST: GameProvenance[] = [
     vendor: "完美世界 (Perfect World)",
     vendorCategory: "perfectworld",
     apkSource: {
-      channel: "完美世界公共运维配置脚本",
-      description: "官方公共数据通道解析与直链动态更新",
+      channel: "完美世界官方游戏下载配置",
+      description: "解析官方 gameDownload.js 配置，提取当前 Android 安装包链接。",
       endpointName: "static.games.wanmei.com/.../p5x-gameDownload.js",
     },
     pcSource: {
-      channel: "官方 PatcherSDK 协议",
-      description: "读取官方 config.xml，自动解密 ResList.bin.zip 清单提取文件与补丁",
-      upstreamProject: "完美世界官方发布 CDN",
-      upstreamUrl: "https://nsywl-client-dev1.wmupd.com/",
+      channel: "完美世界官方 PatcherSDK",
+      description: "读取官方 config.xml，解码 ResList.bin.zip，提取文件与补丁条目。",
+      upstreamProject: "官方版本配置",
+      upstreamUrl: "https://nsywl-client-dev1.wmupd.com/clientRes/CN_OB_OFFICIAL/Version/Windows/config.xml",
     },
-    officialHosts: ["nsywl-client-dev1.wmupd.com", "nsywl-client-dev2.wmupd.com"],
+    officialHosts: ["p5xapk.wmupd.com", "nsywl-client-dev1.wmupd.com", "nsywl-client-dev2.wmupd.com"],
   },
   {
     id: "tof",
@@ -259,18 +268,58 @@ const GAME_PROVENANCE_LIST: GameProvenance[] = [
     vendor: "完美世界 (Perfect World)",
     vendorCategory: "perfectworld",
     apkSource: {
-      channel: "完美世界公共运维配置脚本",
-      description: "官方公共数据通道解析与直链动态更新",
+      channel: "完美世界官方游戏下载配置",
+      description: "解析官方 gameDownload.js 配置，提取当前 Android 安装包链接。",
       endpointName: "static.games.wanmei.com/.../ht-gameDownload.js",
     },
     pcSource: {
-      channel: "官方 PatcherSDK 协议",
-      description: "读取官方 config.xml，自动解密 ResList.bin.zip 清单提取文件与补丁",
-      upstreamProject: "完美世界官方发布 CDN",
-      upstreamUrl: "https://htcdn1.wmupd.com/",
+      channel: "完美世界官方 PatcherSDK",
+      description: "读取官方 config.xml，解码 ResList.bin.zip，提取文件与补丁条目。",
+      upstreamProject: "官方版本配置",
+      upstreamUrl: "https://htcdn1.wmupd.com/clientRes/Windows55/Version/Windows/config.xml",
     },
-    officialHosts: ["htcdn1.wmupd.com", "htcdn2.wmupd.com"],
+    historySource: "部分 PC 历史版本来自旧项目迁移，保留原有 PatcherSDK 归档来源。",
+    officialHosts: ["htapk.wmupd.com", "htcdn1.wmupd.com", "htcdn2.wmupd.com"],
   },
+  {
+    id: "abc",
+    name: "崩坏：因缘精灵",
+    subName: "Honkai: Nexus Anima",
+    vendor: "米哈游 (miHoYo)",
+    vendorCategory: "mihoyo",
+    pcSource: {
+      channel: "官方启动器日志与 Sophon 清单（人工归档）",
+      description: "根据 HoYoPlay CBT2 启动器日志和官方 Sophon 清单整理内测资源；尚未接入自动采集。",
+    },
+    officialHosts: ["autopatchcn-beta.bhyyjl.com"],
+  },
+  {
+    id: "azurpromilia",
+    name: "蓝色星原：旅谣",
+    subName: "Azur Promilia",
+    vendor: "蛮啾网络 (Manjuu)",
+    vendorCategory: "manjuu",
+    apkSource: {
+      channel: "蛮啾官方内测 APK（人工归档）",
+      description: "保留官方内测安装包的既有归档，尚未接入自动采集。",
+      endpointName: "syncstation.manjuu.com/azurpromilia/android/...",
+    },
+    pcSource: {
+      channel: "蛮啾官方 PC 启动器接口（既有归档）",
+      description: "既有内测记录来自官方 packageconfig 接口，尚未接入自动采集。",
+      upstreamProject: "官方版本接口",
+      upstreamUrl: "https://api-grp.manjuu.com/pc-launcher/client/gameversion/packageconfig",
+    },
+    officialHosts: ["syncstation.manjuu.com"],
+  },
+];
+
+const VENDOR_FILTERS: { id: GameProvenance["vendorCategory"]; label: string }[] = [
+  { id: "mihoyo", label: "米哈游" },
+  { id: "kuro", label: "库洛游戏" },
+  { id: "hypergryph", label: "鹰角网络" },
+  { id: "perfectworld", label: "完美世界" },
+  { id: "manjuu", label: "蛮啾网络" },
 ];
 
 const filteredList = computed(() => {
@@ -344,7 +393,7 @@ onUnmounted(() => {
             </div>
             <div>
               <div class="header-kicker">DATA SOURCES & PROVENANCE</div>
-              <h2 class="header-title">官方 CDN 与数据溯源说明</h2>
+              <h2 class="header-title">数据来源与历史溯源说明</h2>
             </div>
           </div>
           <button class="modal-close-btn" type="button" aria-label="关闭" @click="emit('close')">
@@ -357,21 +406,21 @@ onUnmounted(() => {
 
         <!-- 弹窗可滚动主体 -->
         <div class="provenance-modal-body">
-          <!-- 官方安全与直链申明 Bento -->
+          <!-- 来源、校验与探活边界 -->
           <section class="provenance-bento-strip">
             <div class="bento-card">
               <div class="bento-icon">🔒</div>
               <div class="bento-meta">
-                <strong>官方原厂直链</strong>
-                <p>本站不托管任何游戏二进制包体，所有 URL 均直指各厂商官方一级 CDN，原汁原味绝无二传或篡改。</p>
+                <strong>官方采集与历史归档</strong>
+                <p>当前自动采集使用官方接口；历史导入可能包含第三方来源或镜像候选，以具体记录为准。本站不持久托管安装包，下载可能经后端代理。</p>
               </div>
             </div>
 
             <div class="bento-card">
               <div class="bento-icon">🛡️</div>
               <div class="bento-meta">
-                <strong>哈希完整性校验</strong>
-                <p>所有入库资源均匹配厂商官方 ETag / MD5 / CRC64 校验签名，支持端侧严格对比。</p>
+                <strong>校验信息与完整性</strong>
+                <p>按资源提供 MD5、CRC64 或 ETag 等元数据，部分记录缺少校验值。支持的文件与分块下载会进行校验，不代表所有归档包体均已完成校验。</p>
               </div>
             </div>
 
@@ -379,10 +428,12 @@ onUnmounted(() => {
               <div class="bento-icon">⚡</div>
               <div class="bento-meta">
                 <strong>定期探活与可用性</strong>
-                <p>后台定时通过 HTTP 206 Range 发起毫秒级可用性探活，剔除或标明失效链接。</p>
+                <p>定时任务按配置运行，普通模式跳过有效期内已验证可用的链接。探活仅反映检测时状态；失效链接保留并标记，不会自动删除。</p>
               </div>
             </div>
           </section>
+
+          <p class="channel-desc">以下为来源渠道概览。部分早期迁移记录的来源信息不完整，不能据当前采集渠道反推历史来源，也不保证可补齐全部历史版本。</p>
 
           <!-- 筛选与搜索工具栏 -->
           <div class="provenance-filter-bar">
@@ -396,36 +447,14 @@ onUnmounted(() => {
                 全部 ({{ GAME_PROVENANCE_LIST.length }})
               </button>
               <button
+                v-for="vendor in VENDOR_FILTERS"
+                :key="vendor.id"
                 type="button"
                 class="filter-tab"
-                :class="{ active: selectedCategory === 'mihoyo' }"
-                @click="selectedCategory = 'mihoyo'"
+                :class="{ active: selectedCategory === vendor.id }"
+                @click="selectedCategory = vendor.id"
               >
-                米哈游 (5)
-              </button>
-              <button
-                type="button"
-                class="filter-tab"
-                :class="{ active: selectedCategory === 'kuro' }"
-                @click="selectedCategory = 'kuro'"
-              >
-                库洛游戏 (2)
-              </button>
-              <button
-                type="button"
-                class="filter-tab"
-                :class="{ active: selectedCategory === 'hypergryph' }"
-                @click="selectedCategory = 'hypergryph'"
-              >
-                鹰角网络 (2)
-              </button>
-              <button
-                type="button"
-                class="filter-tab"
-                :class="{ active: selectedCategory === 'perfectworld' }"
-                @click="selectedCategory = 'perfectworld'"
-              >
-                完美世界 (3)
+                {{ vendor.label }} ({{ GAME_PROVENANCE_LIST.filter((item) => item.vendorCategory === vendor.id).length }})
               </button>
             </div>
 
@@ -475,7 +504,7 @@ onUnmounted(() => {
 
               <div class="card-content-blocks">
                 <!-- 移动端 Android APK 来源 -->
-                <div class="provenance-row">
+                <div v-if="item.apkSource" class="provenance-row">
                   <div class="row-label">
                     <span class="row-icon">📱</span>
                     <span>Android 安装包</span>
@@ -491,7 +520,7 @@ onUnmounted(() => {
                 <div v-if="item.pcSource" class="provenance-row">
                   <div class="row-label">
                     <span class="row-icon">💻</span>
-                    <span>PC 客户端与补丁</span>
+                    <span>PC 资源</span>
                   </div>
                   <div class="row-body">
                     <div class="channel-title-row">
@@ -516,11 +545,21 @@ onUnmounted(() => {
                   </div>
                 </div>
 
-                <!-- 官方 CDN 域名白名单 -->
+                <div v-if="item.historySource" class="provenance-row">
+                  <div class="row-label">
+                    <span class="row-icon">📚</span>
+                    <span>历史来源</span>
+                  </div>
+                  <div class="row-body">
+                    <div class="channel-desc">{{ item.historySource }}</div>
+                  </div>
+                </div>
+
+                <!-- 已核对的部分官方资源域名，不代表完整白名单 -->
                 <div class="provenance-row">
                   <div class="row-label">
                     <span class="row-icon">🌐</span>
-                    <span>官方 CDN 域名</span>
+                    <span>部分官方资源域名</span>
                   </div>
                   <div class="row-body">
                     <div class="host-tags-row">
