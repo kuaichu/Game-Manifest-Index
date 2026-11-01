@@ -106,9 +106,10 @@ describe("site changelog", () => {
     await new Promise((resolve) => window.setTimeout(resolve, 0));
     await nextTick();
     const rows = dialog?.querySelectorAll(".changelog-event");
-    expect(rows?.[0].getAttribute("aria-label")).toContain("原神更新至 6.7.0 版本");
-    expect(rows?.[1].getAttribute("aria-label")).toContain("原神的 5.5.0 版本不可用了");
-    expect(rows?.[1].querySelector(".is-unavailable")?.textContent).toBe("探活确认不可用");
+    expect(rows?.[0].getAttribute("aria-label")).toContain("原神 · Android 6.7.0 · 发现新版本");
+    expect(rows?.[0].querySelector(".changelog-event-dot")).not.toBeNull();
+    expect(rows?.[1].getAttribute("aria-label")).toContain("原神 · Android 5.5.0 · 不可用");
+    expect(rows?.[1].querySelector(".is-unavailable")?.textContent).toBe("不可用");
     expect(dialog?.textContent).not.toContain("崩坏：因缘精灵");
 
     (document.getElementById("changelog-system-tab") as HTMLButtonElement).click();
@@ -156,8 +157,8 @@ describe("site changelog", () => {
 
     const idle = document.querySelector(".changelog-empty-idle");
     expect(document.querySelector(".changelog-data-head")?.textContent).toContain("全站最近动态");
-    expect(idle?.textContent).toContain("STATUS: AWAITING_NEW_EVENTS");
-    expect(idle?.textContent).toContain("暂无数据动态。");
+    expect(idle?.textContent).toContain("最近还没有采集到新动态");
+    expect(idle?.textContent).not.toContain("STATUS");
     expect(idle?.textContent).not.toContain("从现在起");
     expect(idle?.querySelector("svg")).not.toBeNull();
     const refresh = document.querySelector(".changelog-data-head button") as HTMLButtonElement;
@@ -191,14 +192,15 @@ describe("site changelog", () => {
 
     const days = document.querySelectorAll(".changelog-day");
     expect(days).toHaveLength(2);
-    expect(days[0].querySelectorAll(".changelog-event")).toHaveLength(2);
-    expect(days[0].querySelector(".changelog-day-count")?.textContent).toBe("2 条动态");
+    expect(days[0].querySelectorAll(".changelog-event")).toHaveLength(1);
+    expect(days[0].querySelector(".changelog-day-heading")?.textContent).toBe("2026.09.30");
+    expect(days[0].querySelector(".changelog-event-dot")).not.toBeNull();
     expect([...days[0].querySelectorAll(".changelog-platform")].map((node) => node.textContent)).toEqual(["PC", "Android"]);
     expect([...days[0].querySelectorAll(".changelog-version")].map((node) => node.textContent)).toEqual(["3.7.0", "3.7.0"]);
     const time = days[0].querySelector(".changelog-event-time");
     expect(time?.getAttribute("datetime")).toBe(events[0].occurred_at);
     expect(time?.getAttribute("title")).toContain("46");
-    expect(document.querySelector(".changelog-count")?.textContent).toBe("3 条");
+    expect(document.querySelector(".changelog-count")?.textContent).toBe("2 条");
     expect(days[1].querySelector(".changelog-game-icon")?.textContent).toBe("o");
     const image = days[0].querySelector(".changelog-game-icon img")!;
     image.dispatchEvent(new Event("error"));

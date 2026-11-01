@@ -755,6 +755,9 @@ a {
 }
 
 .search-box {
+  /* Wrap decisions use the 220px basis, not the 320px cap, so six mode tabs
+     and the search box still share one row on desktop. */
+  flex: 1 1 220px;
   width: 100%;
   max-width: 320px;
   min-width: 220px;
@@ -8177,6 +8180,46 @@ a {
   }
 }
 
+/* Control strip at medium widths: once version picker + mode tabs + search no
+   longer fit on one line, use two tidy rows (picker and search on top, mode
+   tabs underneath) instead of letting flex-wrap strand the search box on a row
+   of its own. The cut-off depends on how many mode tabs the game has. */
+@media (min-width: 861px) and (max-width: 1439px) {
+  .control-strip.modes-many .mode-field {
+    order: 3;
+    flex: 1 1 100%;
+    justify-items: start;
+  }
+
+  .control-strip.modes-many .search-box {
+    margin-left: auto;
+  }
+}
+
+@media (min-width: 861px) and (max-width: 1279px) {
+  .control-strip.modes-some .mode-field {
+    order: 3;
+    flex: 1 1 100%;
+    justify-items: start;
+  }
+
+  .control-strip.modes-some .search-box {
+    margin-left: auto;
+  }
+}
+
+@media (min-width: 861px) and (max-width: 1039px) {
+  .control-strip.modes-few .mode-field {
+    order: 3;
+    flex: 1 1 100%;
+    justify-items: start;
+  }
+
+  .control-strip.modes-few .search-box {
+    margin-left: auto;
+  }
+}
+
 /* Admin console between 860px and 1040px: keep the two-column workspace but
    stop the hero banner and action rows from squeezing their text columns. */
 @media (max-width: 1040px) {
@@ -8471,6 +8514,7 @@ a {
 
   .search-box {
     display: block !important;
+    flex: none !important;
     width: 100% !important;
     max-width: none !important;
     min-width: 0 !important;

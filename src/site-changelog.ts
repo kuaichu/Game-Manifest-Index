@@ -12,6 +12,18 @@ export interface SiteChangelogDay {
 
 export const siteChangelog: SiteChangelogEntry[] = [
   {
+    id: "2026-11-01-activity-timeline",
+    date: "2026-11-01",
+    title: "数据动态改为紧凑时间线",
+    body: "数据动态按日期分组，日期标题在滚动时固定在顶部，每条记录更紧凑。同一次发布的 PC 与 Android 记录合并为一行，3.3.0 与 3.3 这类写法不同的同一版本也会合并；新增按游戏名、版本号或平台搜索。游戏页的“最近资源变动”同样会把这类发布的两个平台都列出来。",
+  },
+  {
+    id: "2026-11-01-control-strip-and-compare-copy",
+    date: "2026-11-01",
+    title: "优化版本切换栏与对比说明",
+    body: "视图较多的游戏在常见桌面宽度下，搜索框不再单独占一行；空间不足时改为版本与搜索在上、视图切换在下的两行布局。版本对比页的说明改为更易懂的文字。",
+  },
+  {
     id: "2026-10-22-chunk-only-version-browsing",
     date: "2026-10-22",
     title: "修复仅含 Chunk 版本的浏览",
