@@ -1,6 +1,6 @@
 # Game Manifest Index 项目交接文档
 
-更新日期：2026-10-22（Asia/Shanghai）。本文件保留接手所需的入口、基线和未完成事项；工作规则见 [AGENTS.md](AGENTS.md)，分支与晋级规则见 [BRANCHING.md](BRANCHING.md)。本次补齐独立前端合并、服务器部署、GitHub 自动发布及公开日志调整；重新核对本地 / GitHub 提交、两个前台的已发布脚本、公网健康和本机端口。服务器细节采用本日刚完成的部署核对记录，本次文档任务没有再次 SSH 登录或执行业务测试。
+更新日期：2026-11-01（Asia/Shanghai）。本文件保留接手所需的入口、基线和未完成事项；工作规则见 [AGENTS.md](AGENTS.md)，分支与晋级规则见 [BRANCHING.md](BRANCHING.md)。本次记录：服务器已迁至 `10.0.0.213`；独立前端第二次回迁并发布 `main@3e8d11a`；服务器改为**只保留运行文件、不含任何 Git 内容**，部署方式随之改为上传运行文件。服务器细节均为本日 SSH 实际核对结果。
 
 ## 1. 项目与入口
 
@@ -8,7 +8,7 @@ Game Manifest Index 索引游戏资源链接、版本和元数据，不持久托
 
 - 本机目录：`D:\Project\Active\Game Manifest Index`；仓库：<https://github.com/kuaichu/Game-Manifest-Index>。
 - 前台：<https://gmi.yeque.top>，另有 <https://game-manifest-index-v2.pages.dev>；管理页为 `/admin`，前台不提供管理入口。
-- 公网 API：`https://api.yeque.top:9000/gmi/api/v1`；内网 API：`http://10.0.0.234:8000/api/v1`。
+- 公网 API：`https://api.yeque.top:9000/gmi/api/v1`；内网 API：`http://10.0.0.213:8000/api/v1`。旧服务器 `10.0.0.234` 已不再使用，旧记录中的该地址仅为历史。
 
 | 入口 | 职责 |
 | --- | --- |
@@ -31,30 +31,34 @@ Game Manifest Index 索引游戏资源链接、版本和元数据，不持久托
 
 ## 2. 当前基线
 
-以下提交号是 2026-10-22 本次文档任务开始前的基线；纯文档本地合并会改变本地提交号，不改变功能代码。10 月 17 日的后端修复已于今天部署，不再处于“只推送、未部署”状态。
+以下为 2026-11-01 的基线。纯文档提交会改变 `integration/v5` 提交号，但不改变功能代码。
 
-今天将独立前端 `431ff42` 的 UI 与浏览改进三方合入主项目，保留主项目后补的 artifact_id 编辑保护，发布为 `main@dd0156e`。GitHub 推送触发 Cloudflare Pages 自动部署，GitHub 检查已确认成功；两个前台已发布新页面。服务器从 `de4bd1e` 更新到 `dd0156e` 并重启，随后仅同步更新日志到 `90d29d3`，没有再次重启。最新公开日志修正为 `2597c3c`，与服务器只差 `src/site-changelog.ts`，后端源码一致。
+2026-11-01 把独立前端的第二批改动合入主项目：数据动态改为紧凑时间线；“最近资源变动”在 PC 与 Android 版本号写法不同（如 `3.3.0` 与 `3.3`）时，两个平台都会列出；控制栏在中等宽度下不再把搜索框单独挤成一行；版本对比说明改为通俗文字；新增 2 条公开更新日志。过程为：任务分支 `frontend/activity-timeline-and-control-strip@5544101` squash 到 `integration/v5@fb5ba15`，再普通合并为 `main@3e8d11a` 并推送。Cloudflare Pages 检查 success，两个前台已返回新脚本。改动只涉及前端，后端、数据、接口契约、artifact 身份和来源均未改变。
 
-本次文档任务开始前仅保留本地 `main`、`integration/v5`、`integration/apk`、`integration/pc`；今天的前端及日志任务分支均已删除。GitHub 以 main 发布，integration 旧 upstream 显示 gone 不表示需要重建远端分支。
+同日服务器部署：`10.0.0.213:/opt/GMI` 原为 `90d29d3`，224 个代码文件逐一核对一致。用 Git 快进到 `3e8d11a`，未重启（只涉及前端源码）。随后按用户要求删除服务器上全部 Git 内容（`.git/`、`.gitignore`、`.github/`，以及为此临时安装的 git 软件包），并删除运行用不到的前端源码、构建配置、`scripts/`、文档和 40 个测试文件。服务器现在只保留运行文件，详见第 3 节“服务器部署”。
 
-本次只更新 `GMI_V5_global_handoff.md`，从 `integration/v5@79e2e7a` 建立 `backend/handoff-deployed-frontend`，验证后 squash 到 V5、正常合并至本地 main 并保留内部文档排除规则，仅本地提交，不推送或部署。用户原有 `AGENTS.md`、`BRANCHING.md`、`PROJECT_STATUS.md`、`README.md` 四份未提交修改保持原样；PROJECT_STATUS 的旧基线仅作历史背景，内部 README 不得覆盖公开 main README。
+本地分支现状：`main`、`integration/v5`、`integration/apk`、`integration/pc`，以及已 squash、尚未删除的 `frontend/activity-timeline-and-control-strip`（删除需另行授权）。`integration/pc` 与 `integration/apk` 只是落后 V5，没有独有提交；平台任务开始前按 BRANCHING.md 同步。GitHub 以 main 发布，integration 旧 upstream 显示 gone，不表示需要重建远端分支。
+
+用户已长期授权：每次把 `integration/v5` 合并到 `main` 后直接推送 `origin/main`。`AGENTS.md`、`BRANCHING.md`、`PROJECT_STATUS.md`、本交接文档等内部文档一律不进入 `main`。纯内部文档的改动只 squash 到 `integration/v5`，不必为此合并或推送 `main`，以免触发无关的前端发布。
+
+本次文档更新从 `integration/v5@fb5ba15` 建立 `backend/handoff-server-213`，只提交本文件。用户原有 `AGENTS.md`、`BRANCHING.md`、`PROJECT_STATUS.md`、`README.md` 四份未提交修改中，仅把旧服务器地址改为 `10.0.0.213`，并在 AGENTS.md 中补充“服务器只保留运行文件”的约定，均保持未提交，由用户自行确认。
 
 历史分支备份在 `C:/Users/Administrator/.codex/backups/gmi-branches/20261002-710f2140fe7f43bf884c496ae7cdeaa0/before-cleanup.bundle`；最近两轮代码任务备份在 `.cache/unified-backend-fixes/completed-task-branches.bundle`、`.cache/probe-rewrite-completed-tasks.bundle`。备份只用于查阅，不应整支合回当前集成分支。
 
 | 项目 | 最近确认的基线 |
 | --- | --- |
-| 本地功能代码（10 月 22 日） | `integration/v5@79e2e7a`；`integration/apk@dffdc62`；`integration/pc@a159eeb`。平台分支已包含 `bd86d40` 共享探活接口，但未包含今天的前端合并；后续任务开始前按 BRANCHING.md 同步所需共享变更 |
-| 公开代码（10 月 22 日） | 文档任务前本地 main、origin/main 及实时 GitHub main 均为 `2597c3cba51b0c4fbaf395f1062137b06cdc2f95`；main 与 V5 功能源代码一致，整体树差异为 `.gitignore` 和公开分支排除的内部文档。纯文档本地合并后 main 会领先 GitHub，不应推送以触发无关发布 |
-| 服务器代码（本日部署核对） | `/opt/GMI@90d29d3be77d5de30986ad71d57c6a479c19e9f8`。最新 main `2597c3c` 只删减公开更新日志，backend / probe_adapters / url_adapters 与服务器提交一致；后端已包含此前全部修复 |
-| 前台发布（10 月 22 日） | 推送 main 自动触发 Cloudflare Pages。两个前台域名首页均成功，新脚本 `/assets/index-DBjmJJxi.js` 已包含 3 条 10 月 22 日公开日志且没有两条管理台日志；文件名只代表本次快照。`dd0156e` 的 Cloudflare Pages 检查为 completed / success；当前不需要另找 Pages 发布凭据 |
-| 服务器运行环境 | `/opt/GMI/.venv`；10 月 17 日确认 FastAPI `0.136.1`、Starlette `1.0.0`，更早记录为 Debian 12 / Python 3.11.2。今天直接使用该虚拟环境验收 174 项后端测试通过，没有升级依赖或重跑完整环境检查 |
-| 服务器服务（本日部署核对） | `gmi-v5.service`，`/opt/GMI/.venv/bin/python -m uvicorn backend.app:app --host 0.0.0.0 --port 8000 --workers 1`；更新后 active，健康正常，公开游戏列表 14 款。文档任务再次请求公网健康返回 `status=ok` |
-| 服务及环境文件 | `/etc/systemd/system/gmi-v5.service`、`/etc/gmi-v5.env`（历史记录权限 600）；今天部署前后环境文件哈希未变，未输出或提交凭证 |
-| 服务器数据及状态目录 | `/opt/GMI/data`、`/opt/GMI/.cache`；部署窗口核对 1,116 个 data 文件、环境及计划状态哈希未变；不是当前 canonical 版本数，也不代表之后自动采集不再增长 |
-| 线上定时探活（本日部署核对） | 重启后运行中、启用且无错误，保留原 next_run_at；当时下一轮为北京时间 15:53:59。每小时 normal 为此前配置，今日没有改计划；此时间是部署快照，不是文档阅读时的下一轮 |
-| 每日采集配置（10 月 17 日快照） | 当时保存为启用，时间 `08:00`、`13:23`；今天保护原配置不变，没有验证外部触发、时区或漏跑行为 |
-| 本机运行（10 月 22 日） | 本机 8000 健康和 5173 首页请求失败，本次未启动服务。10 月 17 日曾运行 `a00d640` 并验证健康、14 款游戏，为历史本机验收 |
-| 备份约定 | 用户明确本次不需要额外备份旧文件；今天服务器未新建旧代码 / 数据备份，只记录提交并核对哈希。历史 `/root/gmi-selected-downloads-backup-c1b153d` 仅为 10 月 3 日资料，不作为当前部署基线 |
+| 本地功能代码（11 月 1 日） | `integration/v5@fb5ba15`（本文档提交之前）；`integration/apk@dffdc62`；`integration/pc@a159eeb`。平台分支已包含 `bd86d40` 共享探活接口，但未包含 10 月 22 日与 11 月 1 日的前端合并；后续任务开始前按 BRANCHING.md 同步所需共享变更 |
+| 公开代码（11 月 1 日） | 本地 main、origin/main 均为 `3e8d11a256d1cf486f5afb0556acb630da076284`（Release compact activity timeline and control strip fixes）；main 与 V5 功能源码一致，整体树差异仅为 `.gitignore` 和公开分支排除的内部文档 |
+| 服务器代码（11 月 1 日核对） | `10.0.0.213:/opt/GMI`，**无 Git**。运行代码等于 `main@3e8d11a` 中的 `backend/`、`probe_adapters/`、`url_adapters/` 去掉测试文件后的部分（65 个 .py，外加 `backend/requirements.txt`、`url_adapters/endpoints.json`）。`3e8d11a` 与 `90d29d3` 的后端源码相同 |
+| 前台发布（11 月 1 日） | 推送 main 自动触发 Cloudflare Pages，`3e8d11a` 的检查结果为 completed / success。两个前台域名返回同一新脚本 `/assets/index-Bkl6jmDP.js`，已含新对比文案、11 月 1 日两条日志与控制栏样式。文件名只代表本次快照；不需要另找 Pages 发布凭据 |
+| 服务器运行环境（11 月 1 日） | Debian 13 (trixie)；`/opt/GMI/.venv` 为 Python 3.13.5、FastAPI 0.136.1、Starlette 1.0.0、uvicorn 0.53.0，`pip check` 无冲突。同机还运行 model-gallery、github-star-show、cpa-quota-viewer、doudian 等其他服务，GMI 操作只限 `/opt/GMI` 与 gmi-v5 |
+| 服务器服务（11 月 1 日核对） | `gmi-v5.service`，`/opt/GMI/.venv/bin/python -m uvicorn backend.app:app --host 0.0.0.0 --port 8000 --workers 1`；自 2026-10-22 18:45 UTC 起运行（PID 1057）。本次部署和清理均未重启，健康正常，公开游戏列表 14 款 |
+| 服务及环境文件 | `/etc/systemd/system/gmi-v5.service`、`/etc/gmi-v5.env`（权限 600）；本次全程哈希未变，未输出或提交凭证 |
+| 服务器数据及状态目录 | `/opt/GMI/data`（65 MB）、`/opt/GMI/.cache`（43 MB）；本次全程 1,125 个 data 文件摘要、`.cache` 摘要、计划状态均未变。该数量不是 canonical 版本数，之后自动采集还会增长 |
+| 线上定时探活（11 月 1 日核对） | 运行中、启用、无错误，每小时 normal，上次启动于 07:04:55 UTC，下一轮 08:04:55 UTC（北京时间 16:04:55）。此时间为核对时的快照 |
+| 每日采集配置（10 月 17 日快照） | 当时保存为启用，时间 `08:00`、`13:23`；之后各次部署均未改动，未验证外部触发、时区或漏跑行为 |
+| 本机运行（11 月 1 日） | 独立前端 dev server 曾在 `127.0.0.1:5173` 运行并代理到 `10.0.0.213:8000`；主项目本机后端未启动 |
+| 备份约定 | 服务器不保存代码备份；代码以 GitHub 与本机仓库为准。历史 `/root/gmi-selected-downloads-backup-c1b153d`、`/root/gmi-endfield-pc-oss-data-backup-20261003` 属于旧服务器 234，11 月 1 日在 213 的 `/root` 中均不存在 |
 
 **游戏数据以服务器 `/opt/GMI/data` 为准，本地仅供参考。** 同一数据存在差异时一律采用服务器内容，即使本地时间戳更晚。仅本地独有、服务器尚未收录的新数据可增量补充；先确认缺失的身份或条目，再保留服务器已有内容、artifact 身份和来源。完整约定见 `AGENTS.md` 的 Server Data Authority。
 
@@ -62,7 +66,9 @@ Game Manifest Index 索引游戏资源链接、版本和元数据，不持久托
 
 10 月 17 日服务器只读扫描到 data 目录 1,109 个文件，其中符合 `schema_version == 2` 且包含 `artifacts` 的 JSON 记录为 649 条（Android 286、Windows 363），异环 PC 74 条。此处仅统计结构与数量，没有重新执行全量 schema 校验。服务器仍有大量未提交运行数据；不得将服务器工作区当作可以清理或用本地 Git 数据覆盖的代码副本。
 
-10 月 22 日发布时对 1,116 个 data 文件逐项哈希，代码升级与服务重启前后内容均未变；环境、计划与调度状态也保持原样。此次没有上传本地 data、修改官方来源或触发采集 / 探活 / TG；服务恢复后仍由原调度器正常运行。服务器保留既有未提交运行数据，不能用 git reset / clean 清理。
+10 月 22 日发布时对 1,116 个 data 文件逐项哈希，代码升级与服务重启前后内容均未变；环境、计划与调度状态也保持原样。此次没有上传本地 data、修改官方来源或触发采集 / 探活 / TG；服务恢复后仍由原调度器正常运行。
+
+11 月 1 日删除 Git 前核对：服务器 `.git` 只有与 GitHub 一致的 `main`，没有独有提交、stash、tag 或 hook；当时 data 中有 840 个文件与 Git 记录不同，另有大量新采集文件不在 Git 中。这些都是线上运行数据，已原样保留。删除 Git 后不再有“未提交”的概念，`data/` 就是唯一的正式数据，任何部署都不得覆盖、清理或用本地数据替换它。
 
 10 月 3 日以后的主要交付如下；提交用于定位代码，验收记录的适用范围见第 3 节：
 
@@ -78,6 +84,9 @@ Game Manifest Index 索引游戏资源链接、版本和元数据，不持久托
 | 2026-10-17 | `bd86d40`、`dffdc62`、`a159eeb`；V5 `a00d640`，main `cd99c54` | 探活写回接口重写为只生成 current，身份定位与写入归提交层；移除 Android / PC 整记录写回函数、嵌套 persist 事务及整记录深拷贝；修复重复 URL 无法按资源分别写回 |
 | 2026-10-22 | V5 `02cc209`；main `dd0156e` | 合并独立前端管理台重构、Chunk-only 兼容、响应式布局及活动展示；保留主项目 artifact_id 往返传递。推送后前端自动部署，服务器同时上线已验证后端修复 |
 | 2026-10-22 | V5 `bf1ea8c` / `79e2e7a`；main `90d29d3` / `2597c3c` | 补充公开更新日志，随后按用户要求移除管理员相关记录及内部加载说明，最终只保留 Chunk 浏览、窄屏文件布局、活动展示 3 条；前台已生效 |
+| 2026-10-22～25 | 服务器迁移 | gmi-v5 迁到 `10.0.0.213`，自 10-22 18:45 UTC 起在新机运行；`.cache` 中 10-25 的 `*-213.py` 为迁移核对脚本。旧服务器 `10.0.0.234` 不再使用 |
+| 2026-11-01 | V5 `fb5ba15`；main `3e8d11a` | 第二次回迁独立前端：数据动态紧凑时间线、最近资源变动在双平台版本写法不同时都列出、控制栏两行布局、通俗对比说明、2 条公开日志。Pages 自动发布，服务器代码同步 |
+| 2026-11-01 | 服务器清理 | 删除 `/opt/GMI` 中全部 Git 内容和临时安装的 git 软件包；删除前端源码、构建配置、`scripts/`、文档及测试文件，只保留运行文件。数据、状态、环境与服务均未变，未重启 |
 
 ### 后端修复后的维护边界
 
@@ -167,7 +176,9 @@ $env:GMI_TELEGRAM_CHAT_ID = ''
 .\.cache\local-server\venv\Scripts\python.exe -m uvicorn backend.app:app --host 127.0.0.1 --port 8000 --workers 1
 ```
 
-前端已按用户要求独立复制到 `D:\Project\Active\Game Manifest Index-src`，包含 `src`、`public`、包配置、Vite / TypeScript 配置及已安装依赖；该副本交给其他 AI 修改，不能擅自改动；经用户授权的源码合入只在主项目任务分支处理，独立副本保持原样。2026-10-22 再次只读检查确认其 `.env.development.local` 为 `VITE_API_BASE_URL=/api/v1`、`VITE_PROXY_TARGET=http://10.0.0.234:8000`；`vite.config.ts` 从后者读取代理目标，未设置时才回退本机 `127.0.0.1:8000`。当前副本配置指向服务器后端，并非 10 月 17 日最初准备时的本机代理；今天服务器已部署后端修复，但本次未启动副本或进行浏览器交互验证。
+前端在独立目录 `D:\Project\Active\Game Manifest Index-src` 开发。它是一个独立的本地 Git 仓库（只有 `main`，没有远端），包含 `src`、`public`、包配置、Vite / TypeScript 配置及已安装依赖，并有自己的 `docs/CHANGELOG.md`。其 `.env.development.local`（不进 Git）为 `VITE_API_BASE_URL=/api/v1`、`VITE_PROXY_TARGET=http://10.0.0.213:8000`，提交的 `.env.example` 记录同样配置；`vite.config.ts` 读取代理目标，未设置时回退本机 `127.0.0.1:8000`。
+
+回迁方式：以文件为单位，把副本 `main` 中相对上次同步点有变化的 `src/` 文件原样带入主项目的任务分支，跑类型检查、测试和构建后 squash 到 `integration/v5`。主项目自己的前端改动（例如 artifact_id 编辑保护）同步回副本。两边有意保留不同的 `vite.config.ts`（副本含代理变量和轮询监听）与 `tsconfig.json`（副本含 noUnused 检查），不互相覆盖。最近同步点：副本 `main@bab3e62` 对应主项目 `integration/v5@fb5ba15`，此时除上述两个配置文件外，两边前端文件完全一致。
 
 在独立副本目录可执行：
 
@@ -176,7 +187,7 @@ Set-Location 'D:\Project\Active\Game Manifest Index-src'
 npm run dev -- --host 127.0.0.1 --port 5173 --strictPort
 ```
 
-若要切换至本机后端，需明确调整该副本的 `VITE_PROXY_TARGET` 为 `http://127.0.0.1:8000` 并重启 Vite；本次仅记录配置，没有修改副本。旧 `.cache/local-server/processes.json`、`start-local-backend.py` 与此前 8018 / 5188 下载验收服务均属历史辅助材料，不应直接当作当前启动配置；`.cache` 不随代码发布。
+若要切换至本机后端，把该副本的 `VITE_PROXY_TARGET` 改为 `http://127.0.0.1:8000` 并重启 Vite。旧 `.cache/local-server/processes.json`、`start-local-backend.py` 与此前 8018 / 5188 下载验收服务均属历史辅助材料，不应直接当作当前启动配置；`.cache` 不随代码发布。
 
 | 环境变量 | 含义 |
 | --- | --- |
@@ -195,7 +206,33 @@ npm run dev -- --host 127.0.0.1 --port 5173 --strictPort
 npm test -- src/selected-file-download.test.ts src/chunk-file-browser.test.ts
 ```
 
-正式前端由 GitHub main 推送自动触发 Cloudflare Pages 构建发布，无需另行手动 pages deploy 或索取发布凭据。构建使用生产 `VITE_API_BASE_URL=https://api.yeque.top:9000/gmi/api/v1`，生产不依赖 Vite 代理；服务器当前不托管前端 dist。后端是 `/opt/GMI` 下单 worker 的 systemd 服务，HTTPS 与 API 前缀由反向代理处理。代码更新前核对服务器 HEAD / 未提交路径及任务状态，仅快进代码，保留 data、环境和计划；本次用户明确不额外备份旧文件，不将此解释为可以丢弃运行数据。
+正式前端由 GitHub main 推送自动触发 Cloudflare Pages 构建发布，无需另行手动 pages deploy 或索取发布凭据。构建使用生产 `VITE_API_BASE_URL=https://api.yeque.top:9000/gmi/api/v1`，生产不依赖 Vite 代理。验证方式：取两个前台首页引用的 `index-*.js`，检查其中是否包含本次的新代码。
+
+### 服务器部署（2026-11-01 起）
+
+服务器 `10.0.0.213` 上的 `/opt/GMI` **只保留运行文件，不含任何 Git 内容，也不安装 git**。开发全部在本机完成。目录约定：
+
+| 路径 | 内容 | 部署时 |
+| --- | --- | --- |
+| `backend/`、`probe_adapters/`、`url_adapters/` | 运行代码（不含 `test_*.py` / `conftest.py`），含 `backend/requirements.txt`、`url_adapters/endpoints.json` | 用 main 的内容整体替换 |
+| `data/` | 正式游戏数据 | 绝不覆盖、清理或用本地数据替换 |
+| `.cache/` | 管理计划、调度及任务状态、缓存 | 不动 |
+| `.venv/` | Python 运行环境 | 仅在 `requirements.txt` 变化时按需安装 |
+
+服务器不托管前端，不放前端源码、构建配置、`scripts/`、文档或测试。后端是 `/opt/GMI` 下单 worker 的 systemd 服务，HTTPS 与 API 前缀由反向代理处理。
+
+部署步骤：
+
+1. 本机从 `main` 导出三个代码目录：`git archive main backend probe_adapters url_adapters`，再去掉测试文件。
+2. 只读核对：服务 active、健康正常；记录 data 文件数与摘要、`.cache` 摘要、`/etc/gmi-v5.env` 与 service 文件哈希、MainPID。
+3. 上传到 `/tmp` 下的临时目录，替换三个代码目录。上游已删除的文件随整体替换一并消失。
+4. 用 `/opt/GMI/.venv/bin/python` 导入全部非测试模块，检查是否缺文件或缺依赖；`backend.app` 只编译不导入，因为导入时会实例化应用。
+5. 若三个代码目录有变化，`systemctl restart gmi-v5`，确认健康、游戏列表和调度状态正常；纯前端发布不必上传或重启。
+6. 再次核对第 2 步的指纹，确认数据、状态与环境未变；删除服务器与本机的临时文件。
+
+服务器上没有测试文件；如需在服务器环境跑后端测试，把代码和测试一起上传到 `/tmp` 的独立目录，用正式 `.venv` 运行，测完删除，不在 `/opt/GMI` 中运行。
+
+SSH 使用 root 密码登录，主机指纹已在本机 `~/.ssh/known_hosts`。密码只在使用时由用户提供，不写入仓库、脚本或日志。该服务器同时承载其他服务，只操作 `/opt/GMI` 与 gmi-v5。
 
 服务器只读检查：
 
@@ -203,15 +240,21 @@ npm test -- src/selected-file-download.test.ts src/chunk-file-browser.test.ts
 systemctl status gmi-v5 --no-pager
 /opt/GMI/.venv/bin/python -m pip check
 curl --fail --max-time 10 http://127.0.0.1:8000/api/v1/health
+curl --fail --max-time 10 http://127.0.0.1:8000/api/v1/probe/schedule-status
 ```
 
 管理计划及运行状态分别读取 `/api/v1/admin/probe/schedule`、`/api/v1/admin/probe/scheduler`，需 Bearer Token。
 
-2026-10-22 本次文档任务实际核对：
+2026-11-01 已执行的回迁、发布与服务器验证：
 
-- 本地分支及代码树、实时 GitHub main 为 `2597c3c`；独立仓库 clean、HEAD `b4ceef7`，其 API 代理仍指向服务器；用户四份未提交文件保持原样。
-- 两个前台首页和脚本均获取成功，首页 JS 为 `/assets/index-DBjmJJxi.js`；3 条前台日志存在，两条管理台日志已移除。公网健康返回 `status=ok`；本机 8000 / 5173 请求失败，未启动服务。
-- 本次不登录 SSH、不运行浏览器、不重复跑业务测试，不触发采集、探活、通知或部署。以下是同一天已经执行的发布验证，不能将静态资源检查当成真实 UI 验收。
+| 范围 | 实际结果与限制 |
+| --- | --- |
+| 独立副本 | `vue-tsc` 0 错误，28 个文件 / 402 项测试通过，构建通过；同步主项目 artifact_id 保护后为 403 项通过 |
+| 主项目回迁 | 先在临时目录导出 `fcbd2fb` 并打上补丁演练；正式任务分支用主项目自己的 `tsconfig` / `vite.config` 跑 `vue-tsc` 0 错误、403 项通过、构建通过，前台 CSS 产物哈希与副本构建一致 |
+| 浏览器巡检 | 在独立副本连接 213 后端，用 headless Chromium（CDP，无第三方依赖）覆盖 14 款游戏、各数据域最新版本、全部视图模式，共 102 个路由，桌面 1440×1000 与手机 390×844 各跑一遍：无接口错误、JS 异常、网络失败、超过 2 秒的慢请求或页面横向溢出。控制栏另在 1904 / 1440 / 1366 / 1280 / 1200 / 1100 / 1040 / 900 / 390 宽度下逐项测量 |
+| 前台发布 | `3e8d11a` 的 Cloudflare Pages 检查 success；两个域名返回同一个 `index-Bkl6jmDP.js`，含新对比文案、11-01 日志与控制栏样式，旧开发者文案已移除；公网健康 `status=ok`。只核对了脚本内容，没有对生产页面截图 |
+| 服务器部署与清理 | 224 个代码文件与 `90d29d3` 逐一一致，快进到 `3e8d11a` 未重启。删除 Git 内容与开发文件前移入隔离目录，用正式 `.venv` 导入 61 个运行模块全部成功、`app.py` 编译通过后，再删除隔离目录。全程 1,125 个 data 文件、`.cache`、计划、环境、service 文件与 PID 1057 均未变，健康正常、14 款游戏，调度器运行且无错误 |
+| 未验证 | 没有重启后端（后端代码未变），因此精简后的目录未经过一次冷启动；生产页面没有浏览器截图；没有执行管理写入、采集或探活 |
 
 10 月 22 日已执行的合并 / 发布验证：
 
@@ -283,7 +326,9 @@ curl --fail --max-time 10 http://127.0.0.1:8000/api/v1/health
 
 - 每日采集自动触发、外部调度部署、时区及漏跑行为仍为 `UNKNOWN`；保存启用配置不等于任务实际运行。
 - retention、多 worker / 多实例协调未实现；macOS 实际运行未核实。记录 / 索引事务只保证运行异常时回滚，不覆盖断电或强杀进程；未提供崩溃日志恢复机制。
-- 服务器最后确认 `90d29d3`，最新公开 main `2597c3c` 仅多一次日志删减，后端源码一致；不要因提交号不同误判后端未部署。Cloudflare 前台已验证上线，其他云端 CI 三平台结果未核实。
+- 服务器 `10.0.0.213` 运行代码等于 `main@3e8d11a` 的运行部分。服务器上没有 Git，无法用提交号核对；以后需要比对文件哈希。Cloudflare 前台已验证上线，其他云端 CI 三平台结果未核实。
+- 精简后的 `/opt/GMI` 尚未冷启动过：后端进程自 10-22 起一直运行。下次后端发布重启时，留意启动日志 `journalctl -u gmi-v5`。
+- `AGENTS.md`、`PROJECT_STATUS.md` 与内部 `README.md` 中的服务器地址已改为 `10.0.0.213`，但仍处于用户未提交状态；`PROJECT_STATUS.md` 的“当前状态”是 10 月 2 日的快照，分支提交号已过时，最新状态以本文件为准。
 - 本机 Git / HTTPS 历史曾出现证书及 TLS 错误。10 月 17 日及 10 月 22 日代码均已通过凭证管理器成功推送，本次文档核对只执行 `git ls-remote`；不表示全部网络或未来写入始终正常，不修改系统证书、路由或凭证存储绕过问题。
 - 两个域名已验证最新公开脚本和日志，但全部线上视觉、真实管理交互及下载未重新验收；HTTP / source map 比对不能代替浏览器验证，后续浏览器边界遵循 AGENTS.md。
 - 鸣潮 `3.5.0` 历史清单 / 记录缺少可追溯官方来源时间，暂不显示日期，大小正常；其他无法确认官方时间的历史版本也隐藏日期，不编造或借用时间。
