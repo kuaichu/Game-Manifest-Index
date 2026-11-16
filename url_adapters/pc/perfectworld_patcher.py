@@ -46,10 +46,6 @@ class PerfectWorldError(ValueError):
     pass
 
 
-# Stable names retained for callers that used the protocol helper while it
-# lived in the old project.  They do not expose any legacy record shape.
-PerfectWorldManifestError = PerfectWorldError
-
 
 @dataclass(frozen=True)
 class Profile:
