@@ -62,20 +62,20 @@ Debian 13。同机还运行 model-gallery、github-star-show、cpa-quota-viewer�
 - 内网和同源健康检查均为 `status=ok`；公开游戏 14 款。
 - 定时探活 running / enabled / 每小时 normal / 无错误。
 - 最近活动：11-12 异环 PC `1.5.6`，11-11 鸣潮 Android `3.8.0`，11-10 星铁 `4.7.0` 与幻塔 PC `6.5.3`。
-- `10.0.0.213:8080` 和 `gmi.yeque.top` 返回的主脚本都是 `index-D7QmMR1d.js`，与本机从 `main@199f759` 按 selfhost 模式构建的结果同名。
+- `10.0.0.213:8080` 和 `gmi.yeque.top` 返回的主脚本都是 `index-D7QmMR1d.js`，与本机从 `main@199f759` 按 selfhost 模式构建的结果同名。之后发布的 `main@a6741e6`（死代码清理）**尚未部署**到服务器，前后端线上仍是清理前的版本。
 - 未核对：服务器后端文件哈希（最后一次是 11-01 核对，等于 `main@3e8d11a` 的运行部分）、`gmi-web` 服务状态与 Nginx 配置、服务日志。
 
 ## 3. 代码与分支基线
 
 | 分支 | 提交 | 说明 |
 | --- | --- | --- |
-| `main` / `origin/main` | `199f759` | 公开发布线，不含内部文档 |
+| `main` / `origin/main` | `a6741e6` | 公开发布线，不含内部文档 |
 | `integration/v5` | 见 `git log` | 开发基线，含内部文档；功能代码与 `main` 一致 |
-| `integration/apk` | `dffdc62` | 没有独有提交，落后于 V5，平台任务开始前按 BRANCHING.md 同步 |
-| `integration/pc` | `a159eeb` | 同上 |
+| `integration/apk` | `5347998` | 已普通合并进 V5，没有独有提交；平台任务开始前按 BRANCHING.md 同步 |
+| `integration/pc` | `16b940b` | 同上 |
 
 - **未合入**：`backend/telegram-archive-details`，内容是 TG 通知附带各游戏归档详情。属于后端改动，发布时要重启 gmi-v5。
-- **已 squash、分支未删除**（删除需另行授权）：`frontend-self-host`、`frontend-activity-timezone`、`frontend/activity-timeline-and-control-strip`、`backend/handoff-server-213`、`codex/readme-showcase`。
+- **已 squash、分支未删除**（删除需另行授权）：`frontend-self-host`、`frontend-activity-timezone`、`frontend/activity-timeline-and-control-strip`、`backend/handoff-server-213`、`backend/handoff-self-host-frontend`、`backend/handoff-dead-code-cleanup`、`codex/readme-showcase`，以及死代码清理的 `backend/remove-dead-symbols`、`frontend/remove-dead-code`、`apk/remove-legacy-aliases`、`pc/remove-legacy-aliases`。
 - 部分分支挂在 `C:/Users/Administrator/.codex/worktrees/` 下的 worktree 里；`pc/wuwa-resource-packs` 停在 `integration/pc`，没有新提交。另有 2 个 9 月的旧 stash。
 - 本地 integration 分支的 upstream 显示 `gone`，这是预期情况，不需要重建远端分支。
 - 历史分支备份：`C:/Users/Administrator/.codex/backups/gmi-branches/20261002-710f2140fe7f43bf884c496ae7cdeaa0/before-cleanup.bundle`、`.cache/unified-backend-fixes/completed-task-branches.bundle`、`.cache/probe-rewrite-completed-tasks.bundle`。只用于查阅，不整支合回。
@@ -88,7 +88,7 @@ Debian 13。同机还运行 model-gallery、github-star-show、cpa-quota-viewer�
   - 主项目的前端改动，同步回副本，开分支验证后 `--no-ff` 合并到副本 `main`。
   - 不要整目录覆盖：以前整目录覆盖曾丢失 AdminView 中的 `artifact_id`。
 - 两边有意保留不同的配置：副本的 `vite.config.ts` 带代理变量和轮询监听，`tsconfig.json` 带 noUnused 检查。副本 `.env.development.local` 代理到 `http://10.0.0.213:8000`。
-- 最近同步点（11-16）：副本同步提交 `032e338`，经 `--no-ff` 合入副本 `main@c1a6eb6`，对应主项目 `integration/v5@1c02acd`（发布为 `main@199f759`）。同步内容是主项目 11-02 的来源说明修正和北京时间显示；同步后 `src/` 与主项目完全一致，副本的 408 项测试、vue-tsc 和构建都通过。分支 `sync/provenance-from-original` 已合并、尚未删除。
+- 最近同步点（11-16）：副本同步提交 `032e338`，经 `--no-ff` 合入副本 `main@c1a6eb6`，对应主项目 `integration/v5@1c02acd`（发布为 `main@199f759`）。同步内容是主项目 11-02 的来源说明修正和北京时间显示；同步后 `src/` 与主项目完全一致，副本的 408 项测试、vue-tsc 和构建都通过。分支 `sync/provenance-from-original` 已合并、尚未删除。此后主项目 `main@a6741e6` 的前端死代码清理（`src/` 下 9 个文件）还没有同步回副本。
 
 ## 4. 发布流程
 
@@ -105,7 +105,7 @@ Debian 13。同机还运行 model-gallery、github-star-show、cpa-quota-viewer�
 2. 按 `deploy/frontend/README.md` 上传到 `/opt/gmi-web/site/`：先传 assets，再传 HTML，确认新入口健康后再清理旧文件。Nginx 配置有变化时，先校验再 `systemctl reload gmi-web`。纯静态更新不需要重启 gmi-v5。
 3. 验证：`http://10.0.0.213:8080/` 首页引用的 `index-*.js` 与本机构建同名，或包含本次新代码。
 
-`npm run build` 读取 `.env.production` 中已停用的 9000 地址，**产物不能用于部署**。
+`.env.production` 已删除，`npm run build` 现在也默认使用同源 `/api/v1`；正式发布仍以 `build:selfhost` 为准（输出目录与 sourcemap 设置不同）。
 
 ### 后端发布
 
@@ -226,7 +226,8 @@ npm test -- src/selected-file-download.test.ts src/chunk-file-browser.test.ts
 - 每日采集的外部触发、时区、漏跑补偿仍为 `UNKNOWN`。retention、多 worker / 多实例协调未实现。
 - 后端进程自 10-22 起没有重启过（11-01 核对），精简后的 `/opt/GMI` 还没经历过冷启动。下次重启时注意查看 `journalctl -u gmi-v5`。
 - 服务器后端代码自 11-01 起没有再按文件哈希核对过；`gmi-web` 的服务状态、Nginx 配置和外层反代都没有核对过。
-- 已提交的 `.env.production` 仍是 9000 地址，`npm run build` 的产物会指向已停用的 API。是改成同源 `/api/v1` 还是移除这个文件，尚未决定。
+- `main@a6741e6` 的死代码清理尚未部署：前端需按自托管流程构建上传，后端改动只删除了无引用代码，可随下次后端发布一起上传。删除的 CSS 是按"类名在源码中无任何引用"用脚本判定的，页面观感未做浏览器验收。
+- 审查中暂缓的中等置信度项：Chunk 旧接口兜底（`useArchiveArtifactsLoader.ts` 的 `kind: "chunk"` 重试，需重写 `archive-copy.test.ts`）、只有测试在用的 `domain-presentation.ts` 函数与 `api.chunkFiles` / `chunkFileDetail` / `probeUrls`、样式层层覆盖与辅助函数重复（属于重构）。
 - 线上视觉、真实管理写入和大文件 / 整游戏下载没有重新验收；HTTP 和脚本比对不能代替浏览器验收。
 - 部分历史下载已失效，需要官方恢复，例如终末地 PC `0.5.27`（OSS 冻结）、原神 5.5.0 的部分分卷（404）、崩坏3 Android 7.6–7.9 APK。
 - 鸣潮 `3.5.0` 等缺少可靠官方时间的历史版本不显示日期。历史 JSON 和采集编码的乱码问题没有从源头修复。
@@ -254,3 +255,4 @@ npm test -- src/selected-file-download.test.ts src/chunk-file-browser.test.ts
 | 2026-11-07 | main `54662cb` | README 展示截图 |
 | 2026-11 中旬 | 部署变更 | Pages 与 9000 API 停用，改为自托管前端经公网服务器转发（具体日期未记录） |
 | 2026-11-16 | V5 `f79f602`、`1c02acd`；main `199f759` | 合入已上线的北京时间显示与自托管前端配置 |
+| 2026-11-16 | main `a6741e6` | 死代码清理：删除无引用的后端符号、采集器旧别名、前端无用接口方法与 props、135 条无引用 CSS 规则、`.env.production`。约 1,100 行，行为不变；未部署 |
