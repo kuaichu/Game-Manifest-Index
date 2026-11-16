@@ -6,9 +6,9 @@ Game Manifest Index 是一个游戏资源索引与归档项目，收录 Android 
 
 项目提供资源链接与来源信息，**不托管游戏安装包**。
 
-## 界面预览
+本项目由旧仓库 [kuaichu/game-cdn-archive](https://github.com/kuaichu/game-cdn-archive) 重构而来。
 
-以下截图来自在线前台，拍摄于 2026 年 11 月 7 日。
+## 界面预览
 
 ### 版本与资源归档
 
