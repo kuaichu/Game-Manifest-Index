@@ -80,6 +80,150 @@ def collected(patch_versions=("3.5.0", "3.4.0")):
     return km.KuroManifestCollection(config["version"], config, cdns, documents)
 
 
+def resource_pack_fixture():
+    legacy, _, _ = fixture(())
+    packs = {}
+    documents = {}
+    for pack in ("common", "sd", "hd", "uhd"):
+        config = dict(legacy["default"]["config"], version="3.8.0", patchConfig=[])
+        for route in (None, "3.7.1"):
+            path = f"resources/{pack}/" + ("full.json" if route is None else f"{route}.json")
+            document = index(resource=[{
+                "dest": f"Client/{pack}/game.dat", "md5": "a" * 32, "size": 4,
+            }])
+            document["tagGroups"] = {"min": {"exclude_prefixes": ["Client/Saved/Resources/"]}}
+            documents[path] = document
+            item = dict(version="3.8.0" if route is None else route,
+                        indexFile=path, indexFileMd5=hashlib.md5(encoded(document)).hexdigest(),
+                        baseUrl=f"files/{pack}/", size=10, unCompressSize=20)
+            if route is None:
+                config.update(item)
+            else:
+                config["patchConfig"].append(item)
+        packs[pack] = config
+    return {
+        "resourcePacks": packs, "cdnList": legacy["default"]["cdnList"],
+        "bundles": {quality: {"resourcePacks": ["common", quality.lower()]}
+                    for quality in ("SD", "HD", "UHD")},
+    }, documents
+
+
+def collected_resource_packs():
+    launcher, documents = resource_pack_fixture()
+
+    def read(url, timeout):
+        if url == km.RESOURCE_PACKS_URL:
+            return encoded(launcher).decode("latin-1")
+        path = next(path for path in documents if url.endswith("/" + path))
+        return encoded(documents[path]).decode("latin-1")
+
+    with patch.object(km, "read_small", side_effect=read):
+        return km.collect("wuwa", 5)
+
+
+class KuroResourcePackTests(unittest.TestCase):
+    def test_new_default_collects_every_pack_and_patch_without_legacy_fallback(self):
+        launcher, documents = resource_pack_fixture()
+        calls = []
+
+        def read(url, timeout):
+            calls.append(url)
+            if url == km.RESOURCE_PACKS_URL:
+                return encoded(launcher).decode("latin-1")
+            if url.startswith("https://one.test/"):
+                return encoded(index(resource=[])).decode("latin-1")  # Wrong MD5, valid JSON.
+            path = next(path for path in documents if url.endswith("/" + path))
+            return encoded(documents[path]).decode("latin-1")
+
+        with patch.object(km, "read_small", side_effect=read):
+            source = km.collect("wuwa", 5)
+        self.assertEqual(source.version, "3.8.0")
+        self.assertEqual(set(source.resource_packs), {"common", "sd", "hd", "uhd"})
+        self.assertEqual(source.bundles["HD"], ["common", "hd"])
+        self.assertEqual(len(calls), 17)
+        self.assertNotIn(km.LAUNCHER_URL, calls)
+        for documents in source.pack_documents.values():
+            self.assertEqual([route for route, _ in documents], [None, "3.7.1"])
+            self.assertTrue(all(document["provenance"]["source_url"].startswith("https://two.test/")
+                                for _, document in documents))
+            self.assertEqual(documents[0][1]["tagGroups"],
+                             {"min": {"exclude_prefixes": ["Client/Saved/Resources/"]}})
+
+    def test_failed_new_endpoint_or_manifest_never_returns_stale_legacy_version(self):
+        launcher, _ = resource_pack_fixture()
+        for replies in ([OSError("unavailable")],
+                        [encoded(launcher).decode("latin-1"), "{}", "{}", "{}"]):
+            with self.subTest(replies=len(replies)), patch.object(
+                km, "read_small", side_effect=replies,
+            ) as reader, self.assertRaises(AdapterError):
+                km.collect("wuwa", 5)
+            self.assertNotIn(km.LAUNCHER_URL, [call.args[0] for call in reader.call_args_list])
+
+    def test_pack_validation_rejects_inconsistent_versions_names_routes_and_paths(self):
+        mutations = [
+            lambda p: p["resourcePacks"]["sd"].update(version="3.9.0"),
+            lambda p: p["resourcePacks"].update(SD=p["resourcePacks"]["sd"]),
+            lambda p: p["resourcePacks"].update({"../bad": p["resourcePacks"]["sd"]}),
+            lambda p: p["resourcePacks"]["sd"]["patchConfig"].append(
+                p["resourcePacks"]["sd"]["patchConfig"][0]),
+            lambda p: p["resourcePacks"]["sd"]["patchConfig"][0].update(version="../bad"),
+            lambda p: p["resourcePacks"]["sd"].update(indexFile="a/../bad.json"),
+            lambda p: p["resourcePacks"]["sd"].update(baseUrl="a//b/"),
+            lambda p: p["bundles"]["SD"].update(resourcePacks=["common", "missing"]),
+            lambda p: p["bundles"]["SD"].update(resourcePacks=["sd", "sd"]),
+        ]
+        for mutate in mutations:
+            payload, _ = resource_pack_fixture()
+            mutate(payload)
+            with self.subTest(mutate=mutate), self.assertRaises(AdapterError):
+                km._resource_launcher(payload)
+        source = collected_resource_packs()
+        with self.assertRaisesRegex(AdapterError, "bundles"):
+            km.organize(replace(source, bundles=None))
+        source.pack_documents["sd"] = source.pack_documents["sd"][:-1]
+        with self.assertRaisesRegex(AdapterError, "documents"):
+            km.organize(source)
+
+    def test_packs_are_distinct_segments_and_keep_identity_when_order_changes(self):
+        source = collected_resource_packs()
+        record = km.organize(source)
+        validate_v2_record(record)
+        packages = [item for item in record["artifacts"] if item["kind"] == "package"]
+        patches = [item for item in record["artifacts"] if item["kind"] == "patch"]
+        self.assertEqual(len(packages), 4)
+        self.assertEqual(len(patches), 4)
+        self.assertTrue(all(item["package_type"] == "segment" and item["part"] == 1 for item in packages))
+        self.assertEqual(len({item["artifact_id"] for item in record["artifacts"]}), 8)
+        self.assertEqual(len({item["manifest"]["path"] for item in record["artifacts"]}), 8)
+        self.assertTrue(all(item["source"]["source_url"] == km.RESOURCE_PACKS_URL
+                            for item in record["artifacts"]))
+        self.assertEqual(record["provenance"]["source_url"], km.RESOURCE_PACKS_URL)
+        source = replace(source, resource_packs=dict(reversed(list(source.resource_packs.items()))))
+        source.resource_packs["sd"]["size"] = 999
+        reordered = km.organize(source)
+        self.assertEqual({item["name"]: item["artifact_id"] for item in record["artifacts"]},
+                         {item["name"]: item["artifact_id"] for item in reordered["artifacts"]})
+
+    def test_pack_manifests_and_bundle_sidecar_are_written_without_path_collisions(self):
+        source = collected_resource_packs()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            record_path = km.discover_collection(source, root)
+            record = json.loads(record_path.read_text(encoding="utf-8"))
+            base = root / "kuro/wuwa/pc"
+            for item in record["artifacts"]:
+                document = json.loads((base / item["manifest"]["path"]).read_text(encoding="utf-8"))
+                self.assertIn("tagGroups", document)
+            sidecar = json.loads((base / "manifests/3.8.0/resource-packs.json").read_text(encoding="utf-8"))
+            self.assertEqual(sidecar["bundles"]["UHD"]["resourcePacks"], ["common", "uhd"])
+            self.assertEqual(sidecar["resourcePacks"]["sd"]["package"]["manifest"],
+                             "manifests/3.8.0/packs/sd/full.json")
+            self.assertEqual(sidecar["resourcePacks"]["sd"]["patches"]["3.7.1"]["manifest"],
+                             "manifests/3.8.0/packs/sd/patches/3.7.1.json")
+            self.assertFalse((base / "manifests/3.8.0/full.json").exists())
+            self.assertEqual(record["references"], [])  # No invented chunk_manifest reference.
+
+
 class KuroCollectionTests(unittest.TestCase):
     def test_only_wuwa_and_positive_timeout_are_supported(self):
         for game_id in ("pns", "unknown"):

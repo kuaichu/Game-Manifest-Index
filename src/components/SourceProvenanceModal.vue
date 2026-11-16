@@ -162,9 +162,9 @@ const GAME_PROVENANCE_LIST: GameProvenance[] = [
     },
     pcSource: {
       channel: "库洛官方 GameStarter 启动器清单",
-      description: "读取官方启动器配置及资源清单，归档当前 PC 版本的文件和补丁信息。",
+      description: "读取官方启动器配置及资源清单，归档当前 PC 版本的文件和补丁信息。自 3.8.0 起按公共包与 SD / HD / UHD 画质包分别归档。",
       upstreamProject: "官方启动器配置",
-      upstreamUrl: "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json",
+      upstreamUrl: "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/10003_oLNgHF1CESo51DGHN2odtp40e3oI1HfZ/G152/official/index.json",
     },
     historySource: "PC 历史版本包含旧项目迁移记录，部分保留了官方历史清单地址；未记录的发现来源不作推断。",
     officialHosts: ["mirrors-package-mc.aki-game.com", "pcdownload-aliyun.aki-game.com", "pcdownload-qcloud.aki-game.com", "pcdownload-huoshan.aki-game.com"],
