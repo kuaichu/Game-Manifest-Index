@@ -171,10 +171,10 @@ describe("site changelog", () => {
     app.unmount();
   });
 
-  it("groups local calendar dates while preserving both platform events and full timestamps", async () => {
+  it("groups Beijing calendar dates while preserving both platform events and full timestamps", async () => {
     const events: GameActivityEvent[] = [
-      { id: 4, game_id: "wuwa", domain_id: "wuwa-pc", platform: "windows", version: "3.7.0", type: "version_update", occurred_at: "2026-09-30T04:28:46Z" },
-      { id: 3, game_id: "wuwa", domain_id: "wuwa-android", platform: "android", version: "3.7.0", type: "version_update", occurred_at: "2026-09-30T04:28:46Z" },
+      { id: 4, game_id: "wuwa", domain_id: "wuwa-pc", platform: "windows", version: "3.7.0", type: "version_update", occurred_at: "2026-09-29T20:28:46Z" },
+      { id: 3, game_id: "wuwa", domain_id: "wuwa-android", platform: "android", version: "3.7.0", type: "version_update", occurred_at: "2026-09-29T20:28:46Z" },
       { id: 2, game_id: "other", domain_id: "other-pc", platform: "windows", version: "1.0", type: "version_unavailable", occurred_at: "2026-09-28T06:26:39Z" },
     ];
     vi.spyOn(api, "activity").mockResolvedValue({ items: events });
@@ -200,6 +200,9 @@ describe("site changelog", () => {
     const time = days[0].querySelector(".changelog-event-time");
     expect(time?.getAttribute("datetime")).toBe(events[0].occurred_at);
     expect(time?.getAttribute("title")).toContain("46");
+    expect(time?.textContent).toBe("04:28");
+    expect(time?.getAttribute("title")).toContain("北京时间");
+    expect(document.querySelector("#changelog-data-panel")?.textContent).toContain("北京时间（UTC+8）");
     expect(document.querySelector(".changelog-count")?.textContent).toBe("2 条");
     expect(days[1].querySelector(".changelog-game-icon")?.textContent).toBe("o");
     const image = days[0].querySelector(".changelog-game-icon img")!;

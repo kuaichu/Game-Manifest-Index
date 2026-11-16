@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { api, isAbortError } from "../api";
 import { useModalScrollLock } from "../composables/useModalScrollLock";
-import { activityDateKey, gameActivityTime, groupActivityReleases, type ActivityReleaseRow } from "../game-activity";
+import { activityDateKey, gameActivityClock as activityClock, gameActivityTime, groupActivityReleases, type ActivityReleaseRow } from "../game-activity";
 import { gameIcons } from "../game-icons";
 import { groupSiteChangelogByDate, searchSiteChangelog, siteChangelog } from "../site-changelog";
 import type { GameActivityEvent } from "../types";
@@ -74,11 +74,6 @@ const originStyle = computed(() => {
 
 function handleKeydown(event: KeyboardEvent): void {
   if (event.key === "Escape" && props.open) emit("close");
-}
-
-function activityClock(value: string): string {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleTimeString("zh-CN", { hour12: false, hour: "2-digit", minute: "2-digit" });
 }
 
 function activityRowLabel(row: ActivityReleaseRow): string {
@@ -205,6 +200,7 @@ onUnmounted(() => {
             </section>
 
             <section v-else id="changelog-data-panel" role="tabpanel" aria-labelledby="changelog-data-tab">
+              <p class="changelog-result-count">时间统一为北京时间（UTC+8）</p>
               <div class="changelog-data-head">
                 <p>全站最近动态 <span v-if="activity.length" class="changelog-count">{{ activityMatchCount }} 条</span></p>
                 <div class="changelog-data-actions">

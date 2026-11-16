@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { gameActivityPlatform, groupActivityReleases, latestReleaseActivity, normalizeReleaseVersion } from "./game-activity";
+import { activityDateKey, gameActivityClock, gameActivityTime, gameActivityPlatform, groupActivityReleases, latestReleaseActivity, normalizeReleaseVersion } from "./game-activity";
 import type { GameActivityEvent } from "./types";
 
 function event(overrides: Partial<GameActivityEvent> = {}): GameActivityEvent {
@@ -15,6 +15,34 @@ function event(overrides: Partial<GameActivityEvent> = {}): GameActivityEvent {
     ...overrides,
   };
 }
+
+describe("activity Beijing time", () => {
+  it("uses Beijing dates and clocks across UTC midnight boundaries", () => {
+    expect(activityDateKey("2026-11-10T23:15:39Z")).toBe("2026-11-11");
+    expect(gameActivityClock("2026-11-10T23:15:39Z")).toBe("07:15");
+    expect(gameActivityTime("2026-11-10T23:15:39Z")).toContain("07:15:39");
+    expect(gameActivityTime("2026-11-10T23:15:39Z")).toContain("北京时间");
+    expect(activityDateKey("2026-11-10T15:59:59Z")).toBe("2026-11-10");
+    expect(activityDateKey("2026-11-10T16:00:00Z")).toBe("2026-11-11");
+  });
+
+  it("groups releases by Beijing calendar day even across UTC dates", () => {
+    expect(groupActivityReleases([
+      event({ occurred_at: "2026-11-10T23:15:39Z" }),
+      event({ id: 2, platform: "android", occurred_at: "2026-11-11T00:15:39Z" }),
+    ])).toHaveLength(1);
+    expect(groupActivityReleases([
+      event({ occurred_at: "2026-11-10T15:59:59Z" }),
+      event({ id: 2, occurred_at: "2026-11-10T16:00:00Z" }),
+    ])).toHaveLength(2);
+  });
+
+  it("keeps the existing missing-time fallbacks", () => {
+    expect(activityDateKey("bad-date")).toBe("unknown");
+    expect(gameActivityClock("bad-date")).toBe("—");
+    expect(gameActivityTime("bad-date")).toBe("bad-date");
+  });
+});
 
 describe("latestReleaseActivity", () => {
   it("returns nothing for an empty feed", () => {

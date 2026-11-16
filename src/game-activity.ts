@@ -8,7 +8,14 @@ export function gameActivityTitle(event: GameActivityEvent, gameName: string): s
 
 export function gameActivityTime(value: string): string {
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString("zh-CN", { hour12: false });
+  return Number.isNaN(date.getTime()) ? value : `${date.toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", hour12: false })}（北京时间）`;
+}
+
+export function gameActivityClock(value: string): string {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleTimeString("zh-CN", {
+    timeZone: "Asia/Shanghai", hour12: false, hour: "2-digit", minute: "2-digit",
+  });
 }
 
 export function gameActivityPlatform(event: GameActivityEvent): string {
@@ -31,7 +38,11 @@ export interface ActivityReleaseRow {
 export function activityDateKey(value: string): string {
   const time = new Date(value);
   if (Number.isNaN(time.getTime())) return "unknown";
-  return `${time.getFullYear()}-${String(time.getMonth() + 1).padStart(2, "0")}-${String(time.getDate()).padStart(2, "0")}`;
+  const parts = new Intl.DateTimeFormat("en", {
+    timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(time);
+  const part = (type: string) => parts.find((item) => item.type === type)!.value;
+  return `${part("year")}-${part("month")}-${part("day")}`;
 }
 
 /**
