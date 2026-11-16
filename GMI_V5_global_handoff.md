@@ -88,8 +88,7 @@ Debian 13。同机还运行 model-gallery、github-star-show、cpa-quota-viewer�
   - 主项目的前端改动，同步回副本，开分支验证后 `--no-ff` 合并到副本 `main`。
   - 不要整目录覆盖：以前整目录覆盖曾丢失 AdminView 中的 `artifact_id`。
 - 两边有意保留不同的配置：副本的 `vite.config.ts` 带代理变量和轮询监听，`tsconfig.json` 带 noUnused 检查。副本 `.env.development.local` 代理到 `http://10.0.0.213:8000`。
-- 最近同步点：副本 `main@bab3e62` 对应主项目 `fb5ba15`。
-- 副本当前有**未提交**的同步分支 `sync/provenance-from-original`，内容是主项目 11-02 的来源说明修正和 11-16 的北京时间显示。合并后，`src/` 与主项目完全一致；408 项测试、vue-tsc 和构建均通过。待提交并合并到副本 `main`，同时更新副本 README 里的同步点。
+- 最近同步点（11-16）：副本同步提交 `032e338`，经 `--no-ff` 合入副本 `main@c1a6eb6`，对应主项目 `integration/v5@1c02acd`（发布为 `main@199f759`）。同步内容是主项目 11-02 的来源说明修正和北京时间显示；同步后 `src/` 与主项目完全一致，副本的 408 项测试、vue-tsc 和构建都通过。分支 `sync/provenance-from-original` 已合并、尚未删除。
 
 ## 4. 发布流程
 
