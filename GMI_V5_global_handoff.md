@@ -57,13 +57,14 @@ Debian 13。同机还运行 model-gallery、github-star-show、cpa-quota-viewer�
 - 配置 TG 后，只在发现新版本时通知，没有更新时保持静默。Bot Token 在 `/etc/gmi-v5.env` 中。
 - 独立的每日采集计划只保存配置（10-17 快照为启用，`08:00`、`13:23`）。外部触发方式、时区和漏跑行为都是 `UNKNOWN`。
 
-### 最近一次线上核对（2026-11-16，只做了 HTTP 检查，未 SSH）
+### 最近一次部署（2026-11-16，SSH）
 
-- 内网和同源健康检查均为 `status=ok`；公开游戏 14 款。
-- 定时探活 running / enabled / 每小时 normal / 无错误。
-- 最近活动：11-12 异环 PC `1.5.6`，11-11 鸣潮 Android `3.8.0`，11-10 星铁 `4.7.0` 与幻塔 PC `6.5.3`。
-- `10.0.0.213:8080` 和 `gmi.yeque.top` 返回的主脚本都是 `index-D7QmMR1d.js`，与本机从 `main@199f759` 按 selfhost 模式构建的结果同名。之后发布的 `main@a6741e6`（死代码清理）**尚未部署**到服务器，前后端线上仍是清理前的版本。
-- 未核对：服务器后端文件哈希（最后一次是 11-01 核对，等于 `main@3e8d11a` 的运行部分）、`gmi-web` 服务状态与 Nginx 配置、服务日志。
+- 部署前核对：服务器 67 个后端运行文件与 `main@3e8d11a` 逐字节一致，没有仓库外改动；`gmi-v5` 自 10-22 起运行（PID 1057），`gmi-web` 自 11-10 起运行。
+- 前端：从 `main@a6741e6` 执行 `build:selfhost`，先传 assets 再替换 HTML；8080 现返回 `index-CpbNJ5bt.js` / `index-LmcIGynE.css`，入口资源、管理页懒加载资源、SPA 路由与 `/admin` 均为 200；被替换的 4 个旧资源已删除。Nginx 配置未改，未 reload。
+- 后端：暂存目录用正式 `.venv` 导入 64 个模块、编译 `app.py` 通过后整体替换三个代码目录，`systemctl restart gmi-v5`。这是精简后 `/opt/GMI` 的首次冷启动：新 PID 459686，约 1 秒就绪，启动日志无报错；健康 ok、游戏 14 款、调度 `next_run_at` 保留。重启后首轮定时任务按时于 07:21:18 UTC 启动，链接最近检测时间更新到 07:21:53，`error` 为空，日志无警告。部署后 67 个运行文件与 `main@a6741e6` 一致。
+- 保护：部署前后 data（1,144 个文件）、`.cache`、`/etc/gmi-v5.env`、service 文件的摘要均未变；服务器与本机临时文件已清理。
+- 未验证：浏览器页面观感（删除的 CSS 由脚本判定）、真实管理写入。`gmi.yeque.top` 外层只确认返回 200。
+- SSH：本机 OpenSSH 的 askpass 免交互登录不生效，本次用 Python `paramiko` 完成；密码只在使用时提供，不写入任何文件。上传时注意 Git Bash 会把 `/tmp/...` 参数改写成 Windows 路径，需设 `MSYS_NO_PATHCONV=1`；`git archive` 要加 `-c core.autocrlf=false`，否则打包出 CRLF 文件；root 解包需 `tar --no-same-owner`。
 
 ## 3. 代码与分支基线
 
@@ -224,9 +225,8 @@ npm test -- src/selected-file-download.test.ts src/chunk-file-browser.test.ts
 ## 7. 已知问题与未验证项
 
 - 每日采集的外部触发、时区、漏跑补偿仍为 `UNKNOWN`。retention、多 worker / 多实例协调未实现。
-- 后端进程自 10-22 起没有重启过（11-01 核对），精简后的 `/opt/GMI` 还没经历过冷启动。下次重启时注意查看 `journalctl -u gmi-v5`。
-- 服务器后端代码自 11-01 起没有再按文件哈希核对过；`gmi-web` 的服务状态、Nginx 配置和外层反代都没有核对过。
-- `main@a6741e6` 的死代码清理尚未部署：前端需按自托管流程构建上传，后端改动只删除了无引用代码，可随下次后端发布一起上传。删除的 CSS 是按"类名在源码中无任何引用"用脚本判定的，页面观感未做浏览器验收。
+- 外层反代（47 服务器的 openresty / Anubis）配置不在本仓库，未核对。
+- 删除的 CSS 是按"类名在源码中无任何引用"用脚本判定的，页面观感未做浏览器验收。
 - 审查中暂缓的中等置信度项：Chunk 旧接口兜底（`useArchiveArtifactsLoader.ts` 的 `kind: "chunk"` 重试，需重写 `archive-copy.test.ts`）、只有测试在用的 `domain-presentation.ts` 函数与 `api.chunkFiles` / `chunkFileDetail` / `probeUrls`、样式层层覆盖与辅助函数重复（属于重构）。
 - 线上视觉、真实管理写入和大文件 / 整游戏下载没有重新验收；HTTP 和脚本比对不能代替浏览器验收。
 - 部分历史下载已失效，需要官方恢复，例如终末地 PC `0.5.27`（OSS 冻结）、原神 5.5.0 的部分分卷（404）、崩坏3 Android 7.6–7.9 APK。
@@ -255,4 +255,5 @@ npm test -- src/selected-file-download.test.ts src/chunk-file-browser.test.ts
 | 2026-11-07 | main `54662cb` | README 展示截图 |
 | 2026-11 中旬 | 部署变更 | Pages 与 9000 API 停用，改为自托管前端经公网服务器转发（具体日期未记录） |
 | 2026-11-16 | V5 `f79f602`、`1c02acd`；main `199f759` | 合入已上线的北京时间显示与自托管前端配置 |
-| 2026-11-16 | main `a6741e6` | 死代码清理：删除无引用的后端符号、采集器旧别名、前端无用接口方法与 props、135 条无引用 CSS 规则、`.env.production`。约 1,100 行，行为不变；未部署 |
+| 2026-11-16 | main `a6741e6` | 死代码清理：删除无引用的后端符号、采集器旧别名、前端无用接口方法与 props、135 条无引用 CSS 规则、`.env.production`。约 1,100 行，行为不变 |
+| 2026-11-16 | 部署 `main@a6741e6` | 前端自托管上线 `index-CpbNJ5bt.js`；后端替换并重启（精简目录首次冷启动），数据与环境未变 |
