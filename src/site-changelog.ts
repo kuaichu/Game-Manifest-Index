@@ -12,6 +12,18 @@ export interface SiteChangelogDay {
 
 export const siteChangelog: SiteChangelogEntry[] = [
   {
+    id: "2026-11-17-mobile-game-drawer",
+    date: "2026-11-17",
+    title: "手机上切换游戏更好找",
+    body: "手机等小屏幕上，顶部不再只有一排没有名字的游戏小图标，改为显示当前游戏；点一下展开游戏列表，按厂商分组并可搜索游戏名称或代号。",
+  },
+  {
+    id: "2026-11-17-file-toolbar-one-row",
+    date: "2026-11-17",
+    title: "文件列表顶部更紧凑",
+    body: "同时提供完整包文件和 Chunk 分块的版本，“数据来源”和“组件清单”合并到同一行，文件列表能多露出一些。拖动切换视图时，原来的选项会变暗、目标选项变亮，更容易看出松手后会去哪。",
+  },
+  {
     id: "2026-11-17-mode-tab-motion",
     date: "2026-11-17",
     title: "视图切换更顺滑",

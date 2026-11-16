@@ -51,6 +51,8 @@ describe("ArchiveControlStrip", () => {
     tabs[0].dispatchEvent(pointer("pointermove", 150));
     await nextTick();
     expect(tabs[1].classList.contains("drop-target")).toBe(true);
+    // The tab being dragged away from is dimmed so only the target reads as selected.
+    expect(el.querySelector(".mode-tabs")?.classList.contains("drag-retargeted")).toBe(true);
     tabs[0].dispatchEvent(pointer("pointerup", 150));
     tabs[0].dispatchEvent(new MouseEvent("click", { bubbles: true }));
 

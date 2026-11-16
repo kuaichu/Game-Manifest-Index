@@ -587,8 +587,22 @@
 }
 
 .mode-tab.drop-target {
-  color: var(--text);
+  color: #e0f2fe;
   background: rgba(56, 189, 248, 0.08);
+}
+
+/* While the highlight hovers another tab, dim the tab it was dragged away from
+   so only one tab reads as selected. */
+.mode-tabs.drag-retargeted .mode-tab.active {
+  color: var(--muted);
+}
+
+/* Six tabs fold into two rows here; dragging down to the second row would
+   otherwise be taken as a page scroll. Only the active tab blocks scrolling. */
+@media (max-width: 900px) {
+  .mode-tabs.mode-tabs-grid.has-indicator .mode-tab.active {
+    touch-action: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

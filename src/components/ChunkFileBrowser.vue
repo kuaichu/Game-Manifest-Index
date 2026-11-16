@@ -493,7 +493,7 @@ onBeforeUnmount(() => {
 <template>
   <div class="cfb-wrapper">
     <!-- 顶部工具栏：来源模式切换 (当该版本同时具有 Package 和 Chunk 时显示) 与组件身份 -->
-    <div class="cfb-top-toolbar">
+    <div class="cfb-top-toolbar" :class="{ merged: hasPackage && hasChunk && (identities.length > 1 || showDirectoryToggle) }">
       <!-- 来源选择：完整包散文件 vs Chunk 蓝图 -->
       <div v-if="hasPackage && hasChunk" class="cfb-source-switch-group">
         <span class="cfb-toolbar-label">数据来源</span>
