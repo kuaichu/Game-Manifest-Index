@@ -58,11 +58,23 @@ const emit = defineEmits<{
     </div>
     <label v-if="searchableMode" class="search-box">
       <span>搜索</span>
-      <input
-        :value="query"
-        placeholder="文件名 / MD5 / URL"
-        @input="emit('update:query', ($event.target as HTMLInputElement).value)"
-      />
+      <div class="search-input-wrap">
+        <input
+          :value="query"
+          placeholder="文件名 / MD5 / URL"
+          @input="emit('update:query', ($event.target as HTMLInputElement).value)"
+        />
+        <button
+          v-if="query"
+          type="button"
+          class="search-clear-btn"
+          aria-label="清除搜索"
+          title="清除搜索"
+          @click.prevent="emit('update:query', '')"
+        >
+          ✕
+        </button>
+      </div>
     </label>
   </section>
 </template>

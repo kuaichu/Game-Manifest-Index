@@ -114,6 +114,7 @@ const selectedBusy = ref(false);
 const selectedProgress = ref<DirectoryDownloadProgress | null>(null);
 const selectedMessage = ref("");
 const selectedError = ref("");
+const selectionHelpOpen = ref(false);
 const loadedFiles = computed(() => filePage.value?.items.filter((item) => item.type !== "directory") || []);
 const selectedSize = computed(() => [...selectedFiles.value.values()].reduce((sum, size) => sum + size, 0));
 const allLoadedSelected = computed(() => loadedFiles.value.length > 0 && loadedFiles.value.every((item) => selectedFiles.value.has(item.path)));
@@ -638,7 +639,11 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <div v-if="!loading && !error && (loadedFiles.length || selectedFiles.size)" class="cfb-selected-toolbar">
+    <div
+      v-if="!loading && !error && (loadedFiles.length || selectedFiles.size)"
+      class="cfb-selected-toolbar"
+      :class="{ 'is-idle': !selectedPaths.length && !selectedProgress && !selectedMessage && !selectedError }"
+    >
       <label><input type="checkbox" :checked="allLoadedSelected" :disabled="selectedBusy || !loadedFiles.length" @change="toggleLoadedFiles" />全选本页文件</label>
       <span>已选 {{ selectedPaths.length }} 个文件 · {{ formatBytes(selectedSize) }}</span>
       <button type="button" class="cfb-act-btn copy-act" :disabled="selectedBusy || !selectedPaths.length" @click="resetSelection">清空</button>
@@ -646,9 +651,21 @@ onBeforeUnmount(() => {
       <button type="button" class="cfb-act-btn copy-act" :disabled="anyDownloadBusy || !selectedPaths.length" @click="selectedAction('copy')">{{ activeSource === 'chunk' ? '复制合成清单' : '复制官方直链' }}</button>
       <button type="button" class="cfb-act-btn copy-act" :disabled="anyDownloadBusy || !selectedPaths.length" @click="selectedAction('export')">{{ activeSource === 'chunk' ? '导出合成清单 JSON' : '导出官方直链列表' }}</button>
       <button v-if="selectedBusy" type="button" class="cfb-act-btn copy-act" @click="selectedController?.abort()">取消</button>
-      <p>可以跨页勾选；“全选”只选当前页的文件，不含文件夹。切换目录、搜索或组件后会清空已选。下载时会在你选的位置新建一个文件夹，按原目录结构保存，并核对大小和 MD5。</p>
-      <p v-if="!canSaveDirectory">{{ directoryUnavailableReason }} 仍可复制或导出{{ activeSource === 'chunk' ? '合成清单。Chunk 文件要由多个分块拼成，没有可以直接下载的完整文件链接。' : '官方直链列表。' }}</p>
-      <p v-else-if="activeSource === 'chunk'">Chunk 文件由多个分块拼成；导出的 JSON 是拼合用的清单，不是完整文件的下载链接。</p>
+      <button
+        v-if="!selectedPaths.length"
+        type="button"
+        class="cfb-help-toggle"
+        :aria-expanded="selectionHelpOpen"
+        title="查看批量选择与下载说明"
+        @click="selectionHelpOpen = !selectionHelpOpen"
+      >
+        ? 说明
+      </button>
+      <template v-if="selectedPaths.length || selectionHelpOpen">
+        <p>可以跨页勾选；“全选”只选当前页的文件，不含文件夹。切换目录、搜索或组件后会清空已选。下载时会在你选的位置新建一个文件夹，按原目录结构保存，并核对大小和 MD5。</p>
+        <p v-if="!canSaveDirectory">{{ directoryUnavailableReason }} 仍可复制或导出{{ activeSource === 'chunk' ? '合成清单。Chunk 文件要由多个分块拼成，没有可以直接下载的完整文件链接。' : '官方直链列表。' }}</p>
+        <p v-else-if="activeSource === 'chunk'">Chunk 文件由多个分块拼成；导出的 JSON 是拼合用的清单，不是完整文件的下载链接。</p>
+      </template>
       <div v-if="selectedProgress" class="cfb-directory-progress" role="status">
         <span>{{ selectedProgress.stage === 'preparing' ? '读取所选文件详情…' : `已完成 ${selectedProgress.completedFiles} / ${selectedProgress.totalFiles} 个文件 · ${formatBytes(selectedProgress.completedBytes)} / ${formatBytes(selectedProgress.totalBytes)}` }}</span>
         <span v-if="selectedProgress.currentPath">{{ selectedProgress.currentPath }} <template v-if="selectedProgress.chunkProgress">· {{ formatBytes(selectedProgress.chunkProgress.receivedBytes) }} / {{ formatBytes(selectedProgress.chunkProgress.totalBytes) }}</template></span>

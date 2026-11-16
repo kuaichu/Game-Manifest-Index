@@ -40,10 +40,6 @@ const emit = defineEmits<{
           </button>
         </div>
       </div>
-      <div v-if="compareBaseVersion" class="compare-range-field">
-        <span>对比范围</span>
-        <strong>{{ compareBaseDisplayVersion }} → {{ selectedDisplayVersion }}</strong>
-      </div>
       <div v-if="compareBaseVersion" class="compare-base-field">
         <span>基准版本</span>
         <CustomSelect
@@ -52,6 +48,10 @@ const emit = defineEmits<{
           size="small"
           @change="emit('update-base', String($event))"
         />
+      </div>
+      <div v-if="compareBaseVersion" class="compare-range-field">
+        <span>对比范围</span>
+        <strong>{{ compareBaseDisplayVersion }} → {{ selectedDisplayVersion }}</strong>
       </div>
       <p>{{ compareScope === 'files' ? '逐个比对两个版本的文件，路径相同但大小或 MD5 不同的算作修改。' : '逐个比对两个版本的下载包，列出新增、删除和有改动的包。这里只对比大小和校验值，下载链接请到对应页面查看。' }}</p>
     </div>

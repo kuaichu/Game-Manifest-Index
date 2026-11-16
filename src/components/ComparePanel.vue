@@ -64,6 +64,14 @@ async function load(append = false): Promise<void> {
   }
 }
 
+function toggleStatFilter(target: "added" | "removed" | "changed"): void {
+  filter.value = filter.value === target ? "all" : target;
+}
+
+function sizeUnchanged(item: CompareItem): boolean {
+  return Boolean(item.before && item.after && item.before.size === item.after.size);
+}
+
 watch(
   () => [props.domainId, props.fromVersion, props.toVersion, props.kind, props.compareScope, filter.value],
   () => void load(false),
@@ -75,9 +83,34 @@ onBeforeUnmount(() => controller?.abort());
 <template>
   <div class="compare-view">
     <div class="compare-summary" v-if="page">
-      <div class="compare-stat green"><span>+ 新增</span><strong>{{ page.summary.added }} 个</strong></div>
-      <div class="compare-stat rose"><span>− 删除</span><strong>{{ page.summary.removed }} 个</strong></div>
-      <div class="compare-stat violet"><span>~ 修改</span><strong>{{ page.summary.changed }} 个</strong><small>净变化 {{ formatBytes(page.summary.size_delta) }}</small></div>
+      <button
+        type="button"
+        class="compare-stat green"
+        :class="{ active: filter === 'added' }"
+        @click="toggleStatFilter('added')"
+      >
+        <span>+ 新增</span>
+        <strong>{{ page.summary.added }} 个</strong>
+      </button>
+      <button
+        type="button"
+        class="compare-stat rose"
+        :class="{ active: filter === 'removed' }"
+        @click="toggleStatFilter('removed')"
+      >
+        <span>− 删除</span>
+        <strong>{{ page.summary.removed }} 个</strong>
+      </button>
+      <button
+        type="button"
+        class="compare-stat violet"
+        :class="{ active: filter === 'changed' }"
+        @click="toggleStatFilter('changed')"
+      >
+        <span>~ 修改</span>
+        <strong>{{ page.summary.changed }} 个</strong>
+        <small>净变化 {{ formatBytes(page.summary.size_delta) }}</small>
+      </button>
     </div>
     <div class="diff-filter" aria-label="变化类型">
       <button v-for="entry in filters" :key="entry.id" :class="{ active: filter === entry.id }" @click="filter = entry.id">{{ entry.label }}</button>
@@ -88,10 +121,23 @@ onBeforeUnmount(() => controller?.abort());
       <article v-for="(item, index) in items" :key="`${item.change}:${JSON.stringify(item.identity)}`" class="diff-row" :class="`diff-${item.change === 'changed' ? 'modified' : item.change}`">
         <b class="diff-marker">{{ item.change === "added" ? "+" : item.change === "removed" ? "−" : "~" }}</b>
         <div class="diff-body">
-          <div class="diff-title"><strong>{{ item.after?.name || item.before?.name }}</strong><span>{{ index + 1 }}</span></div>
+          <div class="diff-title">
+            <strong>{{ item.after?.name || item.before?.name }}</strong>
+            <span class="diff-index">#{{ index + 1 }}</span>
+          </div>
           <div class="diff-path">{{ itemPath(item) }}</div>
-          <div class="diff-change"><span>size:</span><code>{{ item.before ? formatBytes(item.before.size) : "—" }}</code><span>→</span><code>{{ item.after ? formatBytes(item.after.size) : "—" }}</code></div>
-          <div class="diff-change"><span>checksum:</span><code>{{ item.before?.checksum_value || "—" }}</code><span>→</span><code>{{ item.after?.checksum_value || "—" }}</code></div>
+          <div class="diff-change" :class="{ muted: sizeUnchanged(item) }">
+            <span>大小：</span>
+            <code>{{ item.before ? formatBytes(item.before.size) : "—" }}</code>
+            <span>→</span>
+            <code>{{ item.after ? formatBytes(item.after.size) : "—" }}</code>
+          </div>
+          <div class="diff-change">
+            <span>校验：</span>
+            <code>{{ item.before?.checksum_value || "—" }}</code>
+            <span>→</span>
+            <code>{{ item.after?.checksum_value || "—" }}</code>
+          </div>
         </div>
       </article>
     </div>
