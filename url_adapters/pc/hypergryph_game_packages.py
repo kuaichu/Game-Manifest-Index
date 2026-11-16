@@ -241,10 +241,6 @@ def discover(game_id: str, output_root: Path, timeout: int = 30) -> Path:
     return discover_collection(collect(game_id, timeout), output_root)
 
 
-discover_v2 = discover
-output_v2 = discover
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description="鹰角官方 PC 完整包适配器")
     parser.add_argument("game_id", choices=GAMES)
