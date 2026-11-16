@@ -11,6 +11,7 @@ import re
 import stat
 import tempfile
 from collections.abc import Mapping
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from urllib.parse import urljoin, urlsplit
@@ -23,6 +24,10 @@ from url_adapters.common import AdapterError, curl, print_error
 LAUNCHER_URL = (
     "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/"
     "G152/10003_Y8xXrXk65DqFHEDgApn3cpK5lfczpFx5/index.json"
+)
+RESOURCE_PACKS_URL = (
+    "https://prod-cn-alicdn-gamestarter.kurogame.com/launcher/game/"
+    "10003_oLNgHF1CESo51DGHN2odtp40e3oI1HfZ/G152/official/index.json"
 )
 MAX_JSON_BYTES = 2 * 1024 * 1024
 _MD5 = re.compile(r"^[0-9a-fA-F]{32}$")
@@ -40,6 +45,9 @@ class KuroManifestCollection:
     cdns: list[str]
     documents: list[tuple[str | None, dict[str, object]]]
     launcher_url: str = LAUNCHER_URL
+    resource_packs: dict[str, dict[str, object]] | None = None
+    pack_documents: dict[str, list[tuple[str | None, dict[str, object]]]] | None = None
+    bundles: dict[str, list[str]] | None = None
 
 
 def _string(value: object, field: str) -> str:
@@ -85,8 +93,9 @@ def _safe_url(base: str, path: str) -> str:
     if not isinstance(path, str) or not path or path.startswith(("/", "\\")) or "\\" in path:
         raise AdapterError("Launcher 路径必须是安全的相对路径")
     clean_path = path.rstrip("/")
-    if not clean_path or any(part in {"", ".", ".."} for part in PurePosixPath(clean_path).parts):
-        raise AdapterError("Launcher 路径必须是安全的相对路径")
+    _safe_target(clean_path, "Launcher 路径")
+    if urlsplit(path).query or urlsplit(path).fragment:
+        raise AdapterError("Launcher 路径不能包含 query 或 fragment")
     joined = urljoin(base.rstrip("/") + "/", path)
     if not joined.startswith(base.rstrip("/") + "/"):
         raise AdapterError("Launcher 路径越出 CDN 根目录")
@@ -129,6 +138,7 @@ def _launcher(payload: object) -> tuple[str, dict[str, object], list[str]]:
     if not isinstance(config, Mapping):
         raise AdapterError("Launcher default.config 必须是对象")
     version = _string(config.get("version"), "config.version")
+    _safe_component(version, "version")
     for key in ("indexFile", "baseUrl", "indexFileMd5", "patchType"):
         _string(config.get(key), f"config.{key}")
     if not _MD5.fullmatch(config["indexFileMd5"]):
@@ -144,9 +154,11 @@ def _launcher(payload: object) -> tuple[str, dict[str, object], list[str]]:
             raise AdapterError(f"patchConfig[{i}] 必须是对象")
         for key in ("version", "indexFile", "baseUrl", "indexFileMd5"):
             _string(patch.get(key), f"patchConfig[{i}].{key}")
-        if patch["version"] == version or patch["version"] in patch_versions:
+        _safe_component(patch["version"], "patchConfig.version")
+        route_key = patch["version"].casefold()
+        if route_key == version.casefold() or route_key in patch_versions:
             raise AdapterError("patchConfig version 必须唯一且不同于当前版本")
-        patch_versions.add(patch["version"])
+        patch_versions.add(route_key)
         if not _MD5.fullmatch(patch["indexFileMd5"]):
             raise AdapterError(f"patchConfig[{i}].indexFileMd5 无效")
         _integer(patch.get("size"), f"patchConfig[{i}].size")
@@ -168,7 +180,49 @@ def _launcher(payload: object) -> tuple[str, dict[str, object], list[str]]:
         if url in cdns:
             raise AdapterError("cdnList URL 重复")
         cdns.append(url)
+    for item in [config, *patches]:
+        for base in cdns:
+            _safe_url(base, item["indexFile"])
+            _safe_url(base, item["baseUrl"])
     return version, dict(config), cdns
+
+
+def _resource_launcher(payload: object) -> tuple[
+    str, dict[str, dict[str, object]], list[str], dict[str, list[str]],
+]:
+    if not isinstance(payload, Mapping):
+        raise AdapterError("Launcher 必须是对象")
+    packs = payload.get("resourcePacks")
+    if not isinstance(packs, Mapping) or not packs:
+        raise AdapterError("Launcher resourcePacks 必须是非空对象")
+    normalized = {}
+    versions = set()
+    names = set()
+    for name, config in packs.items():
+        _safe_component(_string(name, "resource pack"), "resource pack")
+        if name.casefold() in names:
+            raise AdapterError("resource pack 名称重复")
+        names.add(name.casefold())
+        version, config, cdns = _launcher({"default": {
+            "config": config, "cdnList": payload.get("cdnList"),
+        }})
+        versions.add(version)
+        normalized[name] = config
+    if len(versions) != 1:
+        raise AdapterError("resourcePacks version 必须一致")
+    bundles = payload.get("bundles")
+    if not isinstance(bundles, Mapping) or not bundles:
+        raise AdapterError("Launcher bundles 必须是非空对象")
+    combinations = {}
+    for name, bundle in bundles.items():
+        _safe_component(_string(name, "bundle"), "bundle")
+        members = bundle.get("resourcePacks") if isinstance(bundle, Mapping) else None
+        if (not isinstance(members, list) or not members
+                or any(not isinstance(member, str) or member not in normalized for member in members)
+                or len(set(members)) != len(members)):
+            raise AdapterError("bundle resourcePacks 必须唯一且引用已有 pack")
+        combinations[name] = list(members)
+    return version, normalized, cdns, combinations
 
 
 def _index_document(
@@ -218,14 +272,46 @@ def _index_document(
         deleteFiles=normalized,
         provenance={"source_kind": "official_sync", "source_url": selected_url},
     )
+    # Launcher install groups are metadata, not a filter: retain every resource.
+    if "tagGroups" in payload:
+        if not isinstance(payload["tagGroups"], Mapping):
+            raise AdapterError("tagGroups 必须是对象")
+        try:
+            json.dumps(payload["tagGroups"], allow_nan=False)
+        except (TypeError, ValueError) as error:
+            raise AdapterError("tagGroups 必须是 JSON 对象") from error
+        result["tagGroups"] = deepcopy(dict(payload["tagGroups"]))
     return result
 
 
 def _validate_collection(collection: KuroManifestCollection) -> None:
     if not isinstance(collection, KuroManifestCollection):
         raise AdapterError("采集结果类型无效")
-    if collection.launcher_url != LAUNCHER_URL:
+    if collection.launcher_url not in {LAUNCHER_URL, RESOURCE_PACKS_URL}:
         raise AdapterError("launcher_url 不是官方 GameStarter endpoint")
+    if collection.resource_packs is not None:
+        if collection.config or collection.documents or collection.launcher_url != RESOURCE_PACKS_URL:
+            raise AdapterError("resource pack collection 与旧式 collection 混用")
+        if not isinstance(collection.bundles, dict):
+            raise AdapterError("resource pack bundles 必须是对象")
+        version, packs, cdns, bundles = _resource_launcher({
+            "resourcePacks": collection.resource_packs,
+            "cdnList": [{"url": url} for url in collection.cdns],
+            "bundles": {name: {"resourcePacks": members}
+                        for name, members in collection.bundles.items()},
+        })
+        if (version != collection.version or packs != collection.resource_packs
+                or cdns != collection.cdns or bundles != collection.bundles):
+            raise AdapterError("resource pack collection 与 launcher 不一致")
+        if not isinstance(collection.pack_documents, dict) or set(collection.pack_documents) != set(packs):
+            raise AdapterError("resource pack documents 不匹配")
+        for name, config in packs.items():
+            _validate_collection(KuroManifestCollection(
+                version, config, cdns, collection.pack_documents[name], collection.launcher_url,
+            ))
+        return
+    if collection.pack_documents is not None or collection.bundles is not None:
+        raise AdapterError("旧式 collection 不应包含 resource pack metadata")
     _safe_component(collection.version, "version")
     version, config, cdns = _launcher({
         "default": {"config": collection.config, "cdnList": [{"url": url} for url in collection.cdns]}
@@ -246,6 +332,8 @@ def _validate_collection(collection: KuroManifestCollection) -> None:
                          "resource", "deleteFiles", "provenance"}
         if route is not None:
             expected_keys.update({"route_from", "route_to"})
+        if "tagGroups" in document:
+            expected_keys.add("tagGroups")
         if set(document) != expected_keys:
             raise AdapterError("manifest document 字段无效")
         if (document.get("schema_version") != 1 or document.get("vendor") != "kuro"
@@ -259,8 +347,11 @@ def _validate_collection(collection: KuroManifestCollection) -> None:
         provenance = document.get("provenance")
         if not isinstance(provenance, Mapping) or provenance.get("source_url") not in allowed_sources:
             raise AdapterError("manifest document source 不是官方 index candidate")
+        index_payload = {"resource": document["resource"], "deleteFiles": document["deleteFiles"]}
+        if "tagGroups" in document:
+            index_payload["tagGroups"] = document["tagGroups"]
         normalized = _index_document(
-            {"resource": document["resource"], "deleteFiles": document["deleteFiles"]},
+            index_payload,
             version=collection.version, route_from=route,
             selected_url=provenance["source_url"],
         )
@@ -273,8 +364,24 @@ def collect(game_id: str = "wuwa", timeout: int = 30) -> KuroManifestCollection:
         raise AdapterError("库洛 PC 适配器只支持 wuwa")
     if isinstance(timeout, bool) or not isinstance(timeout, int) or timeout < 1:
         raise AdapterError("timeout 必须是正整数")
-    launcher, _ = _json(LAUNCHER_URL, timeout, "Launcher")
+    launcher, _ = _json(RESOURCE_PACKS_URL, timeout, "Launcher")
+    if isinstance(launcher, Mapping) and "resourcePacks" in launcher:
+        version, packs, cdns, bundles = _resource_launcher(launcher)
+        documents = {name: _collect_documents(version, config, cdns, timeout)
+                     for name, config in packs.items()}
+        return KuroManifestCollection(
+            version, {}, cdns, [], RESOURCE_PACKS_URL, packs, documents, bundles,
+        )
     version, config, cdns = _launcher(launcher)
+    return KuroManifestCollection(
+        version, config, cdns, _collect_documents(version, config, cdns, timeout),
+        RESOURCE_PACKS_URL,
+    )
+
+
+def _collect_documents(
+    version: str, config: dict[str, object], cdns: list[str], timeout: int,
+) -> list[tuple[str | None, dict[str, object]]]:
     jobs = [(None, config)] + [(str(p["version"]), dict(p)) for p in config["patchConfig"]]
     documents = []
     for route_from, item in jobs:
@@ -299,13 +406,19 @@ def collect(game_id: str = "wuwa", timeout: int = 30) -> KuroManifestCollection:
             route_from=route_from,
             selected_url=selected,
         )))
-    return KuroManifestCollection(version, config, cdns, documents)
+    return documents
+
+
+def _manifest_path(version: str, pack: str | None, route: str | None) -> str:
+    prefix = f"manifests/{version}/" + (f"packs/{pack}/" if pack is not None else "")
+    return prefix + ("full.json" if route is None else f"patches/{route}.json")
 
 
 def _artifact(
     collection: KuroManifestCollection,
     route_from: str | None,
     item: Mapping[str, object],
+    pack: str | None = None,
 ) -> dict[str, object]:
     base_urls = [
         {
@@ -328,7 +441,7 @@ def _artifact(
     source = {
         "source_kind": "official_sync",
         "source_name": "Kuro GameStarter",
-        "source_url": LAUNCHER_URL,
+        "source_url": collection.launcher_url,
     }
     if route_from is None:
         obj = {
@@ -340,7 +453,7 @@ def _artifact(
             "size": item["size"],
             "decompressed_size": item["unCompressSize"],
             "manifest": {
-                "path": f"manifests/{collection.version}/full.json",
+                "path": _manifest_path(collection.version, pack, route_from),
                 "base_urls": base_urls,
             },
             "urls": index_urls,
@@ -358,12 +471,18 @@ def _artifact(
             "size": item["size"],
             "decompressed_size": item["unCompressSize"],
             "manifest": {
-                "path": f"manifests/{collection.version}/patches/{route_from}.json",
+                "path": _manifest_path(collection.version, pack, route_from),
                 "base_urls": base_urls,
             },
             "urls": index_urls,
             "source": source,
         }
+    if pack is not None:
+        label = "common" if pack == "common" else pack.upper()
+        obj["name"] = (f"WutheringWaves-{collection.version}-{label}-resource-pack (bundle component)"
+                       if route_from is None else f"{label}-resource-pack:{route_from}->{collection.version}")
+        if route_from is None:
+            obj.update(package_type="segment", part=1)
     identity = {
         "vendor": "kuro",
         "game_id": "wuwa",
@@ -378,11 +497,8 @@ def _artifact(
 
 def organize(collection: KuroManifestCollection) -> dict[str, object]:
     _validate_collection(collection)
-    patches = {patch["version"]: patch for patch in collection.config["patchConfig"]}
-    artifacts = [
-        _artifact(collection, route, collection.config if route is None else patches[route])
-        for route, _ in collection.documents
-    ]
+    artifacts = [_artifact(collection, route, config, pack)
+                 for pack, route, config, _ in _collection_entries(collection)]
     record = {
         "schema_version": 2,
         "vendor": "kuro",
@@ -398,11 +514,36 @@ def organize(collection: KuroManifestCollection) -> dict[str, object]:
         "provenance": {
             "source_kind": "official_sync",
             "source_name": "Kuro GameStarter",
-            "source_url": LAUNCHER_URL,
+            "source_url": collection.launcher_url,
         },
     }
     validate_v2_record(record)
     return record
+
+
+def _collection_entries(collection: KuroManifestCollection):
+    packs = collection.resource_packs or {None: collection.config}
+    for pack, config in packs.items():
+        patches = {patch["version"]: patch for patch in config["patchConfig"]}
+        documents = collection.documents if pack is None else collection.pack_documents[pack]
+        for route, document in documents:
+            yield pack, route, config if route is None else patches[route], document
+
+
+def _bundle_document(collection: KuroManifestCollection, record: dict[str, object]) -> dict[str, object]:
+    packs = {name: {"package": None, "patches": {}} for name in collection.resource_packs}
+    for (pack, route, _, _), artifact in zip(_collection_entries(collection), record["artifacts"]):
+        entry = {"artifact_id": artifact["artifact_id"], "manifest": artifact["manifest"]["path"]}
+        if route is None:
+            packs[pack]["package"] = entry
+        else:
+            packs[pack]["patches"][route] = entry
+    return {
+        "schema_version": 1, "vendor": "kuro", "game_id": "wuwa", "platform": "windows",
+        "version": collection.version, "resourcePacks": packs,
+        "bundles": {name: {"resourcePacks": members} for name, members in collection.bundles.items()},
+        "provenance": deepcopy(record["provenance"]),
+    }
 
 
 def _safe_dir(parent: Path, name: str) -> Path:
@@ -433,9 +574,17 @@ def discover_collection(collection: KuroManifestCollection, output_root: Path) -
                 directory = root
                 for part in ("kuro", "wuwa", "pc", "manifests", collection.version):
                     directory = _safe_dir(directory, part)
-                for route, document in collection.documents:
-                    target_dir = directory if route is None else _safe_dir(directory, "patches")
-                    filename = "full.json" if route is None else f"{route}.json"
+                documents = [(_manifest_path(collection.version, pack, route), document)
+                             for pack, route, _, document in _collection_entries(collection)]
+                if collection.resource_packs is not None:
+                    documents.append((f"manifests/{collection.version}/resource-packs.json",
+                                      _bundle_document(collection, record)))
+                for relative, document in documents:
+                    parts = PurePosixPath(relative).parts[2:]
+                    target_dir = directory
+                    for part in parts[:-1]:
+                        target_dir = _safe_dir(target_dir, part)
+                    filename = parts[-1]
                     target = target_dir / filename
                     if target.exists() or target.is_symlink():
                         info = os.lstat(target)
