@@ -290,7 +290,7 @@ describe("WuWa file-manifest package and patch cards", () => {
         resource_packs: { ...resourcePacks, selected: options.identity || "100" },
       }));
       const { root, router } = await mountFiles("/games/wuwa/wuwa-pc/3.7.0/files");
-      const chips = () => Array.from(root.querySelectorAll<HTMLButtonElement>(".resource-pack-picker .cfb-chip"));
+      const chips = () => Array.from(root.querySelectorAll<HTMLButtonElement>(".resource-pack-picker .rp-chip"));
       expect(chips().map((chip) => chip.textContent?.replace(/\s+/g, " ").trim())).toEqual([
         "公共包40.00 GB", "SD 画质包20.00 GB", "HD 画质包40.00 GB", "UHD 画质包60.00 GB",
       ]);
@@ -302,6 +302,9 @@ describe("WuWa file-manifest package and patch cards", () => {
       await flush(); await flush();
       expect(tree.mock.calls.at(-1)?.[2]).toMatchObject({ kind: "file", identity: "300" });
       expect(chips()[2].classList.contains("active")).toBe(true);
+      expect(chips()[2].getAttribute("aria-checked")).toBe("true");
+      expect(chips()[0].classList.contains("active")).toBe(false);
+      expect(Array.from(root.querySelectorAll(".rp-bundle.related")).map((item) => item.textContent)).toEqual(["HD 80.00 GB"]);
       expect(root.querySelector(".panel-title-row")?.textContent).toContain("40.00 GB");
 
       // Selection resets to the backend default when the version changes.
