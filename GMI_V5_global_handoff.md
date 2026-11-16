@@ -59,9 +59,11 @@ Debian 13。同机还运行 model-gallery、github-star-show、cpa-quota-viewer�
 
 ### 最近一次部署
 
-- **前端（2026-11-16，`main@ac17c48`）**：只换前端，后端未动、未重启。`build:selfhost` 后先传 assets 再替换 HTML，8080 现返回 `index-C2wDY2Tt.js` / `index-CeBk55oa.css`；管理页样式 `AdminView-Cy9maqkz.css` 只在进入 `/admin` 时加载。入口资源、管理页资源、SPA 路由与 `/admin` 均为 200，经公网的 `/api/v1/health` 为 200；被替换的 4 个旧资源已删除，站点 assets 与构建产物一致。Nginx 未改。
-- **后端（2026-11-16，`main@a6741e6`）**：三个代码目录整体替换并重启 `gmi-v5`，是精简后 `/opt/GMI` 的首次冷启动，启动和首轮定时任务正常；data、`.cache`、`/etc/gmi-v5.env`、service 文件摘要部署前后未变。此后 `main` 的变化只有前端，服务器后端运行文件仍对应 `a6741e6`。
-- 未验证：浏览器页面观感（三次前端重构与 CSS 拆分都没做浏览器验收）、真实管理写入。
+- **当前线上（2026-11-16 晚，`main@7bf705a`）**：前端 `index-uH6FKeDH.js` / `index-BvOrYrZe.css`；后端 67 个运行文件对应 `7bf705a`（`gmi-v5` PID 463572）。
+- **鸣潮 PC 画质包**：库洛旧启动器接口停在 3.7.1，3.8.0 起只在新的 `resourcePacks` 接口发布（经用户批准切换）。11-16 14:09 UTC 只替换 `url_adapters/pc/kuro_manifests.py` 并重启，14:21 的定时轮次采到 3.8.0（4 个画质包可用，54 个补丁中 40 个可用、14 个未判定），同轮也采到安卓 3.8.0。14:33 再只替换 `backend/api_contract.py` 并重启，上线画质包选择器：`artifact-tree` 新增可选 `identity` 和 `resource_packs`（包列表、官方 index 地址、SD / HD / UHD 组合大小）；新格式版本默认包与版本大小改为公共包。替换前均核对服务器运行文件与上次部署提交一致，并在暂存副本中用线上数据只读试跑。
+- **前端历次（11-16）**：三次组件 / 样式拆分、后台内容管理拆分和画质包选择器先后上线，都是先传 assets 再替换 HTML，并删除被替换的旧资源。Nginx 未改。
+- **后端冷启动（11-16，`main@a6741e6`）**：精简后 `/opt/GMI` 的首次整体替换；data、`.cache`、`/etc/gmi-v5.env`、service 文件摘要部署前后未变。
+- 未验证：浏览器页面观感（几次前端重构和画质包选择器都没做浏览器验收；用户 11-16 自行查看过前三次拆分，未发现区别）、真实管理写入。
 - 外层访问：curl 默认 UA 访问 `gmi.yeque.top` 会拿到 Anubis 的 403 挑战页，这是正常现象；用浏览器 UA 返回 200。验证外层时以经公网的 `/api/v1/health` 为准。
 - SSH：本机没有服务器密钥，OpenSSH 的 askpass 免交互登录也不生效，用 Python `paramiko` 完成；密码只在使用时通过环境变量提供，不写入任何文件。上传时注意 Git Bash 会把 `/tmp/...` 参数改写成 Windows 路径，需设 `MSYS_NO_PATHCONV=1`；`git archive` 要加 `-c core.autocrlf=false`，否则打包出 CRLF 文件；root 解包需 `tar --no-same-owner`。
 
@@ -226,6 +228,7 @@ npm test -- src/selected-file-download.test.ts src/chunk-file-browser.test.ts
 - 每日采集的外部触发、时区、漏跑补偿仍为 `UNKNOWN`。retention、多 worker / 多实例协调未实现。
 - 外层反代（47 服务器的 openresty / Anubis）配置不在本仓库，未核对。
 - 删除的 CSS 是按"类名在源码中无任何引用"用脚本判定的；11-16 的组件拆分和 CSS 拆分（后台样式改为只在 `/admin` 加载）靠单元测试、渲染 HTML 比对和选择器核对验证，页面观感都未做浏览器验收。
+- 鸣潮文件视图的搜索早已不可用：搜索走 `/artifacts?kind=file`，后端对鸣潮返回 400 `bad_kind`，未修。画质包选择器的大小沿用全站 1024 进制显示。
 - 本机工作区的 `data/` 有约 318 个未提交改动，是本机后端跑定时任务写入的新版本记录。本地数据只作参考，不要提交，也不要拿去覆盖服务器。
 - 审查中暂缓的中等置信度项：Chunk 旧接口兜底（`useArchiveArtifactsLoader.ts` 的 `kind: "chunk"` 重试，需重写 `archive-copy.test.ts`）、只有测试在用的 `domain-presentation.ts` 函数与 `api.chunkFiles` / `chunkFileDetail` / `probeUrls`、样式层层覆盖与辅助函数重复（属于重构）。
 - 线上视觉、真实管理写入和大文件 / 整游戏下载没有重新验收；HTTP 和脚本比对不能代替浏览器验收。
