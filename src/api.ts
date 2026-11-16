@@ -211,7 +211,7 @@ export const api = {
   artifactTree: (
     domainId: string,
     version: string,
-    options: { kind: string; prefix?: string; cursor?: string | null; limit?: number; state?: string },
+    options: { kind: string; prefix?: string; cursor?: string | null; limit?: number; state?: string; identity?: string },
     signal?: AbortSignal,
   ) => {
     const parameters = new URLSearchParams({
@@ -221,6 +221,7 @@ export const api = {
     });
     if (options.cursor) parameters.set("cursor", options.cursor);
     if (options.state) parameters.set("availability_state", options.state);
+    if (options.identity) parameters.set("identity", options.identity);
     return requestJson<ArtifactTreePage>(`/domains/${encodeURIComponent(domainId)}/versions/${encodeURIComponent(version)}/artifact-tree?${parameters}`, signal);
   },
   compare: (

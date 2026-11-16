@@ -912,3 +912,14 @@
   opacity: 0.4;
 }
 
+
+.resource-pack-picker {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.resource-pack-bundles {
+  margin: 0;
+  font-size: 12.5px;
+}

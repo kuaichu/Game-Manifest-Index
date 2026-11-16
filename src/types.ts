@@ -143,7 +143,22 @@ export interface ArtifactPage {
   total?: number;
 }
 
+export interface ResourcePacks {
+  selected: string;
+  packs: Array<{ pack: string; identity: string; name: string; size: number; manifest_url?: string | null }>;
+  bundles: Array<{ name: string; packs: string[]; size: number }>;
+}
+
+export interface ResourcePacksChange {
+  domainId: string;
+  version: string;
+  resourcePacks: ResourcePacks | null;
+  manifestUrl: string;
+  baseUrl: string;
+}
+
 export interface ArtifactTreePage {
+  resource_packs?: ResourcePacks;
   prefix: string;
   folders: Array<{ name: string; path: string; artifact_count: number; total_size: number }>;
   items: Artifact[];
