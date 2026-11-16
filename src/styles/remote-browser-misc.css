@@ -190,22 +190,6 @@
   font-weight: 600;
 }
 
-/* 表头 Header (弱化层级，辅助定位) */
-.tree-grid-header {
-  display: grid;
-  grid-template-columns: minmax(320px, 1.8fr) minmax(220px, 1fr) 110px 120px;
-  align-items: center;
-  gap: 16px;
-  height: 42px;
-  padding: 0 18px;
-  background: rgba(7, 12, 22, 0.55);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  font-size: 11.5px;
-  font-weight: 600;
-  color: #475569;
-  letter-spacing: 0.03em;
-}
-
 /* 表体 Body */
 .tree-grid-body {
   display: flex;
@@ -234,43 +218,17 @@
 }
 
 .row-main {
-  display: grid;
-  grid-template-columns: minmax(320px, 1.8fr) minmax(220px, 1fr) 110px 120px;
-  align-items: center;
-  gap: 16px;
-  height: 48px;
-  padding: 0 18px;
   cursor: pointer;
   user-select: none;
 }
+
 
 /* 列定义 */
 .col-name {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
-}
-
-.tree-item-icon {
-  width: 20px;
-  height: 20px;
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-}
-
-.tree-item-icon.folder {
-  color: #f59e0b;
-}
-
-.tree-item-icon.file {
-  color: #38bdf8;
-}
-
-.tree-item-icon svg {
-  width: 16px;
-  height: 16px;
 }
 
 .item-foldername,
@@ -298,20 +256,6 @@
   margin-left: 2px;
 }
 
-/* 文件夹行右侧简洁箭头 */
-.folder-enter-chevron {
-  font-size: 18px;
-  line-height: 1;
-  color: #475569;
-  transition: all 0.15s ease;
-  user-select: none;
-}
-
-.tree-grid-row.folder-row:hover .folder-enter-chevron {
-  color: #38bdf8;
-  transform: translateX(3px);
-}
-
 /* 校验值列：无输入框感，纯粹等宽字体，Hover 唤出复制 */
 .col-hash {
   display: flex;
@@ -324,7 +268,7 @@
   align-items: center;
   gap: 6px;
   cursor: pointer;
-  padding: 3px 6px;
+  padding: 2px 6px;
   border-radius: 4px;
   transition: all 0.15s ease;
   max-width: 100%;
@@ -336,9 +280,9 @@
 
 .hash-mono {
   font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-size: 11px;
   color: #64748b;
-  max-width: 140px;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -403,45 +347,6 @@
 /* 下载下拉按钮 (Dropdown Trigger) */
 .download-dropdown {
   position: relative;
-}
-
-.dropdown-trigger-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  height: 28px;
-  padding: 0 10px;
-  border-radius: 6px;
-  background: rgba(56, 189, 248, 0.12);
-  border: 1px solid rgba(56, 189, 248, 0.28);
-  color: #38bdf8;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.dropdown-trigger-btn:hover,
-.dropdown-trigger-btn.active {
-  background: rgba(56, 189, 248, 0.22);
-  border-color: #38bdf8;
-  color: #ffffff;
-  box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
-}
-
-.btn-dl-icon {
-  width: 12px;
-  height: 12px;
-}
-
-.btn-chevron-icon {
-  width: 10px;
-  height: 10px;
-  transition: transform 0.15s ease;
-}
-
-.dropdown-trigger-btn.active .btn-chevron-icon {
-  transform: rotate(180deg);
 }
 
 /* 浮动下拉菜单 (Dropdown Menu) */
@@ -520,64 +425,6 @@
 .menu-item.copy-item:hover {
   background: rgba(255, 255, 255, 0.06);
   color: #f1f5f9;
-}
-
-/* 单入口按钮组 */
-.single-action-group {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.single-download-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  height: 28px;
-  padding: 0 10px;
-  border-radius: 6px;
-  background: rgba(56, 189, 248, 0.12);
-  border: 1px solid rgba(56, 189, 248, 0.28);
-  color: #38bdf8;
-  font-size: 12px;
-  font-weight: 600;
-  text-decoration: none;
-  transition: all 0.15s ease;
-}
-
-.single-download-btn:hover {
-  background: rgba(56, 189, 248, 0.22);
-  border-color: #38bdf8;
-  color: #ffffff;
-}
-
-.single-copy-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #64748b;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.single-copy-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.18);
-  color: #cbd5e1;
-}
-
-.single-copy-btn svg {
-  width: 12.5px;
-  height: 12.5px;
-}
-
-.single-copy-btn svg.check-icon {
-  color: #34d399;
 }
 
 /* ==========================================================================

@@ -17,7 +17,7 @@ from fastapi.testclient import TestClient
 
 from backend.api_contract import create_api_app
 from backend.indexes import rebuild_indexes
-from backend.manifest_readers import ManifestNotFound, ManifestUpstream
+from backend.manifest_readers import ManifestNotFound, ManifestUpstream, list_local_files
 from backend.mihoyo_package_files import PackageFilesUpstream, _ArchiveReader, _scattered_root
 from backend import mihoyo_package_files as package_module
 from backend.schema_v2 import artifact_id
@@ -482,6 +482,18 @@ class MihoyoPackageFilesTests(unittest.TestCase):
         self.write(bad_host)
         rejected = self.client(PackageUpstream(direct=raw)).get("/api/v1/domains/nap-pc/versions/3.1.0/files", params={"source": "package"})
         self.assertEqual(rejected.status_code, 404)
+
+    def test_local_file_listing_puts_directories_before_files(self) -> None:
+        md5 = "0" * 32
+        document = {"files": [
+            {"dest": "a.txt", "size": 1, "md5": md5},
+            {"dest": "Zdir/inner.bin", "size": 2, "md5": md5},
+            {"dest": "b.txt", "size": 3, "md5": md5},
+            {"dest": "adir/inner.bin", "size": 4, "md5": md5},
+        ]}
+        page = list_local_files(document, [])
+        self.assertEqual([(item["type"], item["name"]) for item in page["items"]],
+                         [("directory", "adir"), ("directory", "Zdir"), ("file", "a.txt"), ("file", "b.txt")])
 
 
 if __name__ == "__main__":
