@@ -265,4 +265,58 @@ describe("WuWa file-manifest package and patch cards", () => {
     await flush();
     expect(sizes).not.toContainEqual({ domainId: "wuwa-pc", version: "3.7.0", kind: "file", size: totals["3.7.0"] });
   });
+
+  describe("resource-pack selector", () => {
+    const GB = 1024 ** 3;
+    const resourcePacks = {
+      selected: "100",
+      packs: [
+        { pack: "common", identity: "100", name: "common", size: 40 * GB },
+        { pack: "sd", identity: "200", name: "sd", size: 20 * GB },
+        { pack: "hd", identity: "300", name: "hd", size: 40 * GB },
+        { pack: "uhd", identity: "400", name: "uhd", size: 60 * GB },
+      ],
+      bundles: [
+        { name: "SD", packs: ["common", "sd"], size: 60 * GB },
+        { name: "HD", packs: ["common", "hd"], size: 80 * GB },
+        { name: "UHD", packs: ["common", "uhd"], size: 100 * GB },
+      ],
+    };
+
+    it("shows the selector only when the tree reports resource packs and re-requests with the chosen identity", async () => {
+      const tree = vi.spyOn(api, "artifactTree").mockImplementation(async (_domain, _version, options) => ({
+        ...emptyTree, manifest_total_size: options.identity === "300" ? 40 * GB : 40 * GB + 1,
+        base_urls: [options.identity === "300" ? "https://cdn.example/hd/" : "https://cdn.example/common/"],
+        resource_packs: { ...resourcePacks, selected: options.identity || "100" },
+      }));
+      const { root, router } = await mountFiles("/games/wuwa/wuwa-pc/3.7.0/files");
+      const chips = () => Array.from(root.querySelectorAll<HTMLButtonElement>(".resource-pack-picker .cfb-chip"));
+      expect(chips().map((chip) => chip.textContent?.replace(/\s+/g, " ").trim())).toEqual([
+        "公共包40.00 GB", "SD 画质包20.00 GB", "HD 画质包40.00 GB", "UHD 画质包60.00 GB",
+      ]);
+      expect(root.querySelector(".resource-pack-bundles")?.textContent).toContain("安装组合：SD 60.00 GB · HD 80.00 GB · UHD 100.00 GB（公共包 + 对应画质包）");
+      expect(chips()[0].classList.contains("active")).toBe(true);
+      expect(tree.mock.calls.every(([, , options]) => options.identity === undefined)).toBe(true);
+
+      chips()[2].click();
+      await flush(); await flush();
+      expect(tree.mock.calls.at(-1)?.[2]).toMatchObject({ kind: "file", identity: "300" });
+      expect(chips()[2].classList.contains("active")).toBe(true);
+      expect(root.querySelector(".panel-title-row")?.textContent).toContain("40.00 GB");
+
+      // Selection resets to the backend default when the version changes.
+      await router.push("/games/wuwa/wuwa-pc/3.6.0/files");
+      await flush(); await flush();
+      expect(tree.mock.calls.at(-1)?.[1]).toBe("3.6.0");
+      expect(tree.mock.calls.at(-1)?.[2].identity).toBeUndefined();
+      expect(chips()[0].classList.contains("active")).toBe(true);
+    });
+
+    it("renders no selector for single-package versions", async () => {
+      const tree = vi.spyOn(api, "artifactTree").mockResolvedValue({ ...emptyTree, manifest_total_size: totals["3.7.0"] });
+      const { root } = await mountFiles("/games/wuwa/wuwa-pc/3.7.0/files");
+      expect(root.querySelector(".resource-pack-picker")).toBeNull();
+      expect(tree.mock.calls.every(([, , options]) => options.identity === undefined)).toBe(true);
+    });
+  });
 });

@@ -616,7 +616,7 @@ class ApiContract:
         ]
         selected: dict[str, Any] | None = None
         if identity == "game":
-            selected = next(
+            selected = _kuro_common_pack(record, candidates) or next(
                 (item for item in candidates if item.get("component") == "game" and item.get("package_type") == "full"),
                 next((item for item in candidates if item.get("component") == "game"), None),
             )
@@ -645,13 +645,80 @@ class ApiContract:
             base_urls.append(url)
         return selected, document, base_urls
 
+    def resource_packs(self, domain: DomainData, record: dict[str, Any], selected: dict[str, Any]) -> dict[str, Any] | None:
+        """Quality-pack summary for Kuro resource-pack records; None for single-package records."""
+        packs = {
+            name: item for item in record.get("artifacts", [])
+            if isinstance(item, dict) and (name := _kuro_pack_name(item)) is not None
+        } if record.get("vendor") == "kuro" else {}
+        if not packs:
+            return None
+        try:
+            sidecar = self._load_document(domain, record, f"manifests/{record['version']}/resource-packs.json")
+        except ApiFault:
+            # The picker is optional; a missing or unreadable sidecar must not break file browsing.
+            return None
+        declared = sidecar.get("resourcePacks") if isinstance(sidecar.get("resourcePacks"), dict) else {}
+        by_id = {item.get("artifact_id"): (name, item) for name, item in packs.items()}
+        found: dict[str, dict[str, Any]] = {}
+        for name, entry in declared.items():
+            package = entry.get("package") if isinstance(entry, dict) else None
+            hit = by_id.get(package.get("artifact_id")) if isinstance(package, dict) else None
+            if hit is not None and hit[0] == name:
+                found[name] = hit[1]
+        order = ["common", "sd", "hd", "uhd"]
+        names = sorted(found, key=lambda name: (order.index(name) if name in order else len(order), name))
+        bundles = []
+        raw_bundles = sidecar.get("bundles") if isinstance(sidecar.get("bundles"), dict) else {}
+        for bundle_name in sorted(raw_bundles, key=lambda name: (order.index(name.lower()) if name.lower() in order else len(order), name)):
+            members = raw_bundles[bundle_name].get("resourcePacks") if isinstance(raw_bundles[bundle_name], dict) else None
+            if isinstance(members, list) and members and all(isinstance(m, str) and m in found for m in members):
+                bundles.append({"name": bundle_name, "packs": members, "size": sum(found[m].get("size", 0) for m in members)})
+        return {
+            "selected": str(_stable_id(selected.get("artifact_id"))),
+            "packs": [
+                {
+                    "pack": name, "identity": str(_stable_id(found[name].get("artifact_id"))), "name": found[name].get("name"),
+                    "size": found[name].get("size", 0), "manifest_url": _kuro_pack_index_url(found[name]),
+                }
+                for name in names
+            ],
+            "bundles": bundles,
+        }
+
+
+KURO_PACK_MANIFEST = re.compile(r"/packs/([a-z0-9]+)/full\.json")
+
+
+def _kuro_pack_name(artifact: dict[str, Any]) -> str | None:
+    manifest = artifact.get("manifest")
+    path = manifest.get("path") if isinstance(manifest, dict) else None
+    match = KURO_PACK_MANIFEST.search(path) if isinstance(path, str) else None
+    return match.group(1) if match and artifact.get("component") == "game" else None
+
+
+def _kuro_pack_index_url(artifact: dict[str, Any]) -> str | None:
+    """First official index URL of a pack, for the raw index menu."""
+    for candidate in artifact.get("urls") or []:
+        url = _safe_public_url(candidate.get("url") if isinstance(candidate, dict) else None, allow_query=False)
+        if url is not None and urlsplit(url).hostname in LOCAL_OFFICIAL_HOSTS.get("kuro", frozenset()):
+            return url
+    return None
+
+
+def _kuro_common_pack(record: dict[str, Any], artifacts: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """Default selection for Kuro resource-pack records: the shared `common` pack."""
+    if record.get("vendor") != "kuro":
+        return None
+    return next((item for item in artifacts if _kuro_pack_name(item) == "common"), None)
+
 
 def _primary_artifact(record: dict[str, Any]) -> dict[str, Any] | None:
     artifacts = [item for item in record.get("artifacts", []) if isinstance(item, dict)]
     if record["platform"] == "android":
         selected = next((item for item in artifacts if item.get("kind") == "apk"), None)
     else:
-        selected = next(
+        selected = _kuro_common_pack(record, artifacts) or next(
             (item for item in artifacts if item.get("component") == "game" and item.get("package_type") == "full"),
             next((item for item in artifacts if item.get("component") == "game" and item.get("package_type") == "segment"), None),
         )
@@ -1784,8 +1851,11 @@ def create_api_app(data_root: Path, upstream: Any | None = None, *, state_root: 
     def artifact_tree(
         domain_id: str, version: str, kind: str = "file", prefix: str = "", limit: int = Query(100, ge=1, le=500),
         cursor: str | None = None, availability_state: str | None = None, q: str | None = None,
+        identity: str = "game",
     ) -> dict[str, Any]:
         _cursor(cursor)
+        if SAFE_COMPONENT.fullmatch(identity) is None:
+            fail(400, "bad_identity", "identity 无效")
         if kind not in TREE_KINDS:
             fail(400, "bad_kind", "kind 无效")
         if availability_state is not None and availability_state not in AVAILABILITY_STATES:
@@ -1801,7 +1871,7 @@ def create_api_app(data_root: Path, upstream: Any | None = None, *, state_root: 
                 _cursor(cursor)
                 return {"prefix": prefix, "folders": [], "items": [], "next_cursor": None}
             try:
-                artifact, document, base_urls = service().package_document(domain, record, "game")
+                artifact, document, base_urls = service().package_document(domain, record, identity)
                 page = list_local_files(document, base_urls, prefix, q, limit, cursor)
                 manifest_total_size = sum(item["size"] for item in local_files(document))
             except ApiFault as error:
@@ -1816,7 +1886,11 @@ def create_api_app(data_root: Path, upstream: Any | None = None, *, state_root: 
                 for item in page["items"] if item.get("type") == "directory"
             ]
             items = [tree_artifact(artifact["artifact_id"], item) for item in page["items"] if item.get("type") == "file"]
-            return {"prefix": prefix, "folders": folders, "items": items, "next_cursor": page["next_cursor"], "base_url": base_urls[0] if base_urls else None, "base_urls": base_urls, "manifest_total_size": manifest_total_size, **_file_metadata(record, artifact=artifact, document=document, upstream=service().upstream)}
+            response = {"prefix": prefix, "folders": folders, "items": items, "next_cursor": page["next_cursor"], "base_url": base_urls[0] if base_urls else None, "base_urls": base_urls, "manifest_total_size": manifest_total_size, **_file_metadata(record, artifact=artifact, document=document, upstream=service().upstream)}
+            resource_packs = service().resource_packs(domain, record, artifact)
+            if resource_packs is not None:
+                response["resource_packs"] = resource_packs
+            return response
         scheduled_indices = _scheduled_probe_indices(record)
         public = [
             _public_artifact(record, item, index, scheduled_indices)

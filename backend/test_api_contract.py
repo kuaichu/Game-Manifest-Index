@@ -1324,6 +1324,104 @@ class TemporaryContractTests(unittest.TestCase):
         self.assertFalse(any(route.path.startswith("/api/v1/admin") for route in self.client.app.routes))
 
 
+class KuroResourcePackTests(unittest.TestCase):
+    BASE = "https://pcdownload-aliyun.aki-game.com/files/"
+    SIZES = {"uhd": 700, "sd": 200, "hd": 400, "common": 1000}
+
+    def setUp(self) -> None:
+        self.temp = tempfile.TemporaryDirectory()
+        self.state = tempfile.TemporaryDirectory()
+        self.root = Path(self.temp.name)
+        pc = self.root / "kuro" / "wuwa" / "pc"
+        artifacts = []
+        for pack, size in self.SIZES.items():  # official order: uhd, sd, hd, common
+            item = artifact(f"WutheringWaves-3.8.0-{pack}-resource-pack (bundle component)", size=size, delivery="file_manifest", manifest={
+                "path": f"manifests/3.8.0/packs/{pack}/full.json",
+                "base_urls": [{"url": self.BASE, "provider": "kuro", "source_kind": "official", "priority": 0}],
+            })
+            item.update(package_type="segment", part=1)
+            artifacts.append(item)
+        new = record("kuro", "wuwa", "windows", "3.8.0", artifacts)
+        old = record("kuro", "wuwa", "windows", "3.7.1", [artifact("files.json", size=50, delivery="file_manifest", manifest={
+            "path": "manifests/3.7.1/full.json",
+            "base_urls": [{"url": self.BASE, "provider": "kuro", "source_kind": "official", "priority": 0}],
+        })])
+        write_record(self.root, new)
+        write_record(self.root, old)
+        self.ids = {item["name"].split("-")[2]: item["artifact_id"] for item in new["artifacts"]}
+        header = {"schema_version": 1, "vendor": "kuro", "game_id": "wuwa", "domain_id": "wuwa-pc", "platform": "windows"}
+
+        def write(relative: str, version: str, document: dict) -> None:
+            target = pc / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(json.dumps({**header, "version": version, **document}), encoding="utf-8")
+
+        for pack, size in self.SIZES.items():
+            write(f"manifests/3.8.0/packs/{pack}/full.json", "3.8.0", {"resource": [{"dest": f"Client/{pack}.pak", "size": size, "md5": "a" * 32}]})
+        write("manifests/3.7.1/full.json", "3.7.1", {"resource": [{"dest": "Client/old.pak", "size": 50, "md5": "b" * 32}]})
+        write("manifests/3.8.0/resource-packs.json", "3.8.0", {
+            "resourcePacks": {pack: {"package": {"artifact_id": self.ids[pack], "manifest": f"manifests/3.8.0/packs/{pack}/full.json"}} for pack in self.SIZES},
+            "bundles": {name: {"resourcePacks": ["common", name.lower()]} for name in ("HD", "SD", "UHD")},
+        })
+        rebuild_indexes(self.root)
+        self.client = TestClient(create_api_app(self.root, state_root=Path(self.state.name)))
+
+    def tearDown(self) -> None:
+        self.temp.cleanup()
+        self.state.cleanup()
+
+    def tree(self, version: str, query: str = "") -> dict:
+        response = self.client.get(f"/api/v1/domains/wuwa-pc/versions/{version}/artifact-tree?kind=file{query}")
+        self.assertEqual(response.status_code, 200, response.text)
+        return response.json()
+
+    def names(self, body: dict) -> list[str]:
+        return [item["name"] for item in body["items"]] + [item["path"] for item in body["folders"]]
+
+    def test_default_selects_common_pack_and_lists_packs_and_bundles(self):
+        body = self.tree("3.8.0", "&prefix=Client")
+        self.assertEqual(self.names(body), ["Client/common.pak"])
+        packs = body["resource_packs"]
+        self.assertEqual([item["pack"] for item in packs["packs"]], ["common", "sd", "hd", "uhd"])
+        self.assertEqual(packs["selected"], packs["packs"][0]["identity"])
+        self.assertEqual([item["size"] for item in packs["packs"]], [1000, 200, 400, 700])
+        self.assertEqual(packs["packs"][1]["name"], "WutheringWaves-3.8.0-sd-resource-pack (bundle component)")
+        self.assertEqual(packs["bundles"], [
+            {"name": "SD", "packs": ["common", "sd"], "size": 1200},
+            {"name": "HD", "packs": ["common", "hd"], "size": 1400},
+            {"name": "UHD", "packs": ["common", "uhd"], "size": 1700},
+        ])
+        self.assertEqual(body["manifest_total_size"], 1000)
+
+    def test_explicit_identity_selects_pack(self):
+        packs = self.tree("3.8.0")["resource_packs"]["packs"]
+        hd = next(item for item in packs if item["pack"] == "hd")
+        body = self.tree("3.8.0", f"&prefix=Client&identity={hd['identity']}")
+        self.assertEqual(self.names(body), ["Client/hd.pak"])
+        self.assertEqual(body["resource_packs"]["selected"], hd["identity"])
+        self.assertEqual(body["manifest_total_size"], 400)
+        by_artifact_id = self.tree("3.8.0", f"&prefix=Client&identity={self.ids['uhd']}")
+        self.assertEqual(self.names(by_artifact_id), ["Client/uhd.pak"])
+        self.assertEqual(self.client.get("/api/v1/domains/wuwa-pc/versions/3.8.0/artifact-tree?kind=file&identity=../x").status_code, 400)
+        self.assertEqual(self.tree("3.8.0", "&identity=missing")["items"], [])
+
+    def test_missing_sidecar_keeps_file_browsing_without_picker(self):
+        (self.root / "kuro" / "wuwa" / "pc" / "manifests" / "3.8.0" / "resource-packs.json").unlink()
+        body = self.tree("3.8.0", "&prefix=Client")
+        self.assertEqual(self.names(body), ["Client/common.pak"])
+        self.assertNotIn("resource_packs", body)
+
+    def test_version_detail_follows_common_pack(self):
+        detail = self.client.get("/api/v1/domains/wuwa-pc/versions/3.8.0").json()
+        self.assertEqual(detail["size"], 1000)
+
+    def test_single_package_record_is_unchanged(self):
+        body = self.tree("3.7.1", "&prefix=Client")
+        self.assertEqual(self.names(body), ["Client/old.pak"])
+        self.assertNotIn("resource_packs", body)
+        self.assertEqual(body["manifest_total_size"], 50)
+
+
 class CheckedInContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:

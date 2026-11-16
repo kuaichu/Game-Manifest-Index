@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { api, isAbortError } from "../api";
 import { isAvailabilityActionable, latestLiveProbeTime } from "../domain-presentation";
-import type { Artifact, ArtifactTreePage, AvailabilityState, FileTimeChange } from "../types";
+import type { Artifact, ArtifactTreePage, AvailabilityState, FileTimeChange, ResourcePacksChange } from "../types";
 import AvailabilityBadge from "./AvailabilityBadge.vue";
 import FragmentFileRow from "./FragmentFileRow.vue";
 
@@ -13,6 +13,7 @@ const props = withDefaults(
     kind: string;
     availabilityState?: AvailabilityState;
     allowActions?: boolean;
+    identity?: string;
   }>(),
   { allowActions: false }
 );
@@ -21,6 +22,7 @@ const emit = defineEmits<{
   (e: "probe-time-change", value: string | null): void;
   (e: "manifest-size-change", value: { domainId: string; version: string; kind: string; size: number | null }): void;
   (e: "file-time-change", value: FileTimeChange): void;
+  (e: "resource-packs-change", value: ResourcePacksChange): void;
 }>();
 
 const page = ref<ArtifactTreePage>({ prefix: "", folders: [], items: [], next_cursor: null });
@@ -38,13 +40,14 @@ async function load(prefix: string, append = false): Promise<void> {
   const context = { domainId: props.domainId, version: props.version, kind: props.kind };
   const timeContext = { domainId: context.domainId, version: context.version, source: "package" as const, identity: "game" };
   const availabilityState = props.availabilityState;
+  const identity = props.identity;
   controller?.abort();
   const request = new AbortController();
   controller = request;
   const generation = ++requestGeneration;
   const isCurrent = () => controller === request && generation === requestGeneration
     && props.domainId === context.domainId && props.version === context.version && props.kind === context.kind
-    && props.availabilityState === availabilityState;
+    && props.availabilityState === availabilityState && props.identity === identity;
   append ? (loadingMore.value = true) : (loading.value = true);
   if (!append) {
     emit("probe-time-change", null);
@@ -61,6 +64,7 @@ async function load(prefix: string, append = false): Promise<void> {
         prefix,
         cursor: append ? page.value.next_cursor : null,
         state: context.kind !== "file" ? availabilityState : undefined,
+        identity: context.kind === "file" ? identity : undefined,
         limit: 100,
       },
       request.signal
@@ -72,7 +76,13 @@ async function load(prefix: string, append = false): Promise<void> {
       ...context, size: typeof size === "number" && Number.isSafeInteger(size) && size >= 0 ? size : null,
     });
     emit("probe-time-change", latestLiveProbeTime(page.value.items));
-    if (context.kind === "file") emit("file-time-change", { ...timeContext, fileTime: result.file_time ?? null, timeSource: result.file_time_source });
+    if (context.kind === "file") {
+      emit("file-time-change", { ...timeContext, fileTime: result.file_time ?? null, timeSource: result.file_time_source });
+      emit("resource-packs-change", {
+        domainId: context.domainId, version: context.version, resourcePacks: result.resource_packs ?? null,
+        manifestUrl: result.manifest_urls?.[0] ?? result.manifest_url ?? "", baseUrl: result.base_urls?.[0] ?? result.base_url ?? "",
+      });
+    }
     if (!append) expanded.value = null;
   } catch (reason) {
     if (isAbortError(reason) || !isCurrent()) return;
@@ -121,7 +131,7 @@ function candidateIsActionable(candidate: Artifact["urls"][number]): boolean {
 }
 
 watch(
-  () => [props.domainId, props.version, props.kind],
+  () => [props.domainId, props.version, props.kind, props.identity],
   () => void load("")
 );
 watch(

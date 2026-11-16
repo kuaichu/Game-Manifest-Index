@@ -21,6 +21,7 @@ import ArchiveControlStrip from "../components/archive/ArchiveControlStrip.vue";
 import ArchiveGameSidebar from "../components/archive/ArchiveGameSidebar.vue";
 import ArchivePackageList from "../components/archive/ArchivePackageList.vue";
 import ArchivePatchList from "../components/archive/ArchivePatchList.vue";
+import ArchiveResourcePackPicker from "../components/archive/ArchiveResourcePackPicker.vue";
 import ArchiveWuwaRawIndexMenu from "../components/archive/ArchiveWuwaRawIndexMenu.vue";
 import ArtifactPagination from "../components/ArtifactPagination.vue";
 import ArtifactTree from "../components/ArtifactTree.vue";
@@ -62,6 +63,7 @@ import type {
   ArchiveLead,
   Artifact,
   FileTimeChange,
+  ResourcePacksChange,
   GameActivityEvent,
 } from "../types";
 
@@ -103,6 +105,9 @@ function openProvenanceModal(event?: MouseEvent): void {
 const remoteTreeProbeTime = ref<string | null>(null);
 const remoteManifestSize = ref<{ domainId: string; version: string; kind: string; size: number | null } | null>(null);
 const browserFileTime = ref<FileTimeChange | null>(null);
+// Kuro resource-pack versions: info reported by the file tree; "" selects the backend default (common pack).
+const resourcePacksState = ref<ResourcePacksChange | null>(null);
+const selectedPack = ref("");
 let manifestSizeController: AbortController | null = null;
 let manifestSizeGeneration = 0;
 const globalProbeTime = ref<string | null>(null);
@@ -262,6 +267,7 @@ const isFileTreeMode = computed(
 const usesArtifactTree = computed(() => isFileTreeMode.value && Boolean(query.value.trim()));
 const usesRemoteTree = computed(() => mode.value === "resources" || (isFileTreeMode.value && !query.value.trim()));
 watch(() => [domainId.value, selectedVersion.value, mode.value], () => { browserFileTime.value = null; }, { flush: "sync" });
+watch(() => [domainId.value, selectedVersion.value], () => { selectedPack.value = ""; }, { flush: "sync" });
 const exportArtifactKind = computed(() => artifactKindForMode(mode.value));
 const supportsArtifactField = (field: string) =>
   domainFieldSupport(domain.value, "artifact_fields", field) === "supported";
@@ -401,8 +407,21 @@ const wuwaManifestSize = computed(() => {
     || context.version !== selectedVersion.value || context.kind !== "file") return null;
   return context.size;
 });
+const activeResourcePacks = computed(() => {
+  const state = resourcePacksState.value;
+  return isWuwaFilesMode.value && state?.domainId === domainId.value && state.version === selectedVersion.value
+    ? state : null;
+});
+const activePackIdentity = computed(() => selectedPack.value || activeResourcePacks.value?.resourcePacks?.selected || "");
+function selectResourcePack(identity: string): void {
+  if (identity !== activePackIdentity.value) selectedPack.value = identity;
+}
+function onResourcePacksChange(change: ResourcePacksChange): void {
+  if (!isWuwaFilesMode.value || change.domainId !== domainId.value || change.version !== selectedVersion.value) return;
+  resourcePacksState.value = change;
+}
 watch(
-  () => [domainId.value, selectedVersion.value, mode.value, usesArtifactTree.value, usesChunkFileBrowser.value],
+  () => [domainId.value, selectedVersion.value, mode.value, usesArtifactTree.value, usesChunkFileBrowser.value, selectedPack.value],
   () => {
     manifestSizeController?.abort();
     manifestSizeController = null;
@@ -411,16 +430,21 @@ watch(
     if (!usesArtifactTree.value || usesChunkFileBrowser.value) return;
     const knownTime = browserFileTime.value?.domainId === domainId.value && browserFileTime.value?.version === selectedVersion.value
       && !browserFileTime.value.loading;
-    if (knownTime && (!isWuwaFilesMode.value || wuwaManifestSize.value !== null)) return;
+    if (!activeResourcePacks.value?.resourcePacks && knownTime && (!isWuwaFilesMode.value || wuwaManifestSize.value !== null)) return;
     const context = { domainId: domainId.value, version: selectedVersion.value, kind: "file" };
+    const identity = isWuwaFilesMode.value && selectedPack.value ? selectedPack.value : undefined;
     const request = new AbortController();
     manifestSizeController = request;
     const isCurrent = () => manifestSizeController === request && manifestSizeGeneration === generation
       && mode.value === "files" && usesArtifactTree.value && !usesChunkFileBrowser.value
       && context.domainId === domainId.value && context.version === selectedVersion.value;
-    void api.artifactTree(context.domainId, context.version, { kind: "file", limit: 1 }, request.signal)
+    void api.artifactTree(context.domainId, context.version, { kind: "file", limit: 1, ...(identity ? { identity } : {}) }, request.signal)
       .then((result) => {
         if (!isCurrent()) return;
+        onResourcePacksChange({
+          ...context, resourcePacks: result.resource_packs ?? null,
+          manifestUrl: result.manifest_urls?.[0] ?? result.manifest_url ?? "", baseUrl: result.base_urls?.[0] ?? result.base_url ?? "",
+        });
         onRemoteManifestSizeChange({ ...context, size: result.manifest_total_size ?? null });
         onFileTimeChange({ domainId: context.domainId, version: context.version, source: "package", identity: "game", fileTime: result.file_time ?? null, timeSource: result.file_time_source });
       })
@@ -438,6 +462,8 @@ onBeforeUnmount(() => {
 });
 
 const wuwaManifestUrl = computed(() => {
+  const packs = activeResourcePacks.value?.resourcePacks;
+  if (packs) return packs.packs.find((item) => item.identity === activePackIdentity.value)?.manifest_url || "";
   const meta = selectedSummary.value?.attributes?.manifest_urls;
   if (Array.isArray(meta) && typeof meta[0] === "string") return meta[0];
   const pkgArtifact = artifacts.value.find((a) => a.kind === "package");
@@ -446,6 +472,7 @@ const wuwaManifestUrl = computed(() => {
 });
 
 const wuwaBaseUrl = computed(() => {
+  if (activeResourcePacks.value?.resourcePacks) return activeResourcePacks.value.baseUrl;
   const meta = selectedSummary.value?.attributes?.base_urls;
   if (Array.isArray(meta) && typeof meta[0] === "string") return meta[0];
   const pkgArtifact = artifacts.value.find((a) => a.kind === "package");
@@ -1328,12 +1355,20 @@ async function openArtifactFiles(): Promise<void> {
                 </div>
               </div>
             </template>
+            <ArchiveResourcePackPicker
+              v-if="isWuwaFilesMode && activeResourcePacks?.resourcePacks"
+              :resource-packs="activeResourcePacks.resourcePacks"
+              :selected="activePackIdentity"
+              @select="selectResourcePack"
+            />
             <RemoteArtifactTree
               :domain-id="domain.id"
               :version="selectedVersion"
               :kind="mode === 'resources' ? 'resource' : 'file'"
+              :identity="isWuwaFilesMode && selectedPack ? selectedPack : undefined"
               :availability-state="availabilityStateForRequest"
               :allow-actions="supportsDomainAction('open')"
+              @resource-packs-change="onResourcePacksChange"
               @probe-time-change="onRemoteTreeProbeTimeChange"
               @manifest-size-change="onRemoteManifestSizeChange"
               @file-time-change="onFileTimeChange"
