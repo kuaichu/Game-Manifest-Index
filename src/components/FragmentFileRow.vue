@@ -112,7 +112,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div
-    class="tree-grid-row file-grid-row file-row fragment-file-row"
+    class="tree-grid-row file-grid-row file-row fragment-file-row fl-item"
     :class="{ 'menu-active': menuOpen }"
     tabindex="0"
     role="button"
@@ -120,16 +120,16 @@ onBeforeUnmount(() => {
     @keydown.enter="onRowClick($event)"
   >
     <!-- 主行：列式栅格排列 -->
-    <div class="row-main">
+    <div class="row-main fl-row fl-cols-tree">
       <!-- 列 1: 图标与文件名 -->
       <div class="col-name">
-        <span class="tree-item-icon file" aria-hidden="true">
+        <span class="tree-item-icon file fl-icon is-file" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
             <polyline points="14 2 14 8 20 8" />
           </svg>
         </span>
-        <strong class="item-filename" :title="filename">{{ filename }}</strong>
+        <strong class="item-filename fl-name-text" :title="filename">{{ filename }}</strong>
       </div>
 
       <!-- 列 2: 校验值 (无边框轻量等宽字体 + 点击直接复制) -->
@@ -161,8 +161,9 @@ onBeforeUnmount(() => {
         <div v-if="alternateUrls.length" class="download-dropdown" :class="{ 'is-open': menuOpen }">
           <button
             type="button"
-            class="dropdown-trigger-btn"
+            class="dropdown-trigger-btn fl-act fl-act-primary has-caret"
             :class="{ active: menuOpen }"
+            title="下载"
             @click.stop="toggleMenu"
           >
             <svg class="btn-dl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
@@ -170,7 +171,7 @@ onBeforeUnmount(() => {
               <path d="m7 11 5 5 5-5" />
               <path d="M5 21h14" />
             </svg>
-            <span>下载</span>
+            <span class="visually-hidden">下载</span>
             <svg class="btn-chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <polyline points="6 9 12 15 18 9" />
             </svg>
@@ -232,9 +233,9 @@ onBeforeUnmount(() => {
         </div>
 
         <!-- 单入口模式：直接 [ 下载 ] + [ 复制 ] -->
-        <div v-else class="single-action-group fragment-file-actions">
+        <div v-else class="single-action-group fl-actions fragment-file-actions">
           <a
-            class="single-download-btn"
+            class="single-download-btn fl-act fl-act-primary"
             :href="primaryUrl"
             target="_blank"
             rel="noreferrer"
@@ -245,13 +246,13 @@ onBeforeUnmount(() => {
               <path d="m7 11 5 5 5-5" />
               <path d="M5 21h14" />
             </svg>
-            <span>下载</span>
+            <span class="visually-hidden">下载</span>
             <span class="visually-hidden">打开</span>
             <span class="visually-hidden">官方入口</span>
           </a>
           <button
             type="button"
-            class="single-copy-btn"
+            class="single-copy-btn fl-act"
             :title="copied ? '已复制！' : '复制直链'"
             @click.stop="copyPrimary"
           >

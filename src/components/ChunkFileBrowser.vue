@@ -695,10 +695,10 @@ onBeforeUnmount(() => {
     <div v-else class="cfb-table-container">
       <div class="cfb-grid-table">
         <!-- 表头 Header Row -->
-        <div class="cfb-grid-header">
+        <div class="cfb-grid-header fl-head fl-cols-chunk">
           <div class="cfb-col cfb-col-name">名称</div>
           <div class="cfb-col cfb-col-size">大小</div>
-          <div class="cfb-col cfb-col-chunks">结构 / 分块</div>
+          <div class="cfb-col cfb-col-chunks">分块 / 文件数</div>
           <div class="cfb-col cfb-col-hash">MD5 校验值</div>
           <div class="cfb-col cfb-col-action">操作</div>
         </div>
@@ -708,20 +708,21 @@ onBeforeUnmount(() => {
           <div
             v-for="item in filePage.items"
             :key="item.path"
-            class="cfb-grid-row"
+            class="cfb-grid-row fl-item fl-row fl-cols-chunk"
             :class="item.type === 'directory' ? 'row-is-dir' : 'row-is-file'"
             @click="item.type === 'directory' ? navigateToPath(item.path) : openFileDetail(item)"
           >
             <!-- 1. 名称列 -->
             <div class="cfb-col cfb-col-name">
-              <div class="cfb-name-block">
-                <input v-if="item.type !== 'directory'" class="cfb-file-checkbox" type="checkbox" :aria-label="`选择 ${item.path}`" :checked="selectedFiles.has(item.path)" :disabled="selectedBusy" @click.stop @change="toggleSelected(item)" />
-                <span v-if="item.type === 'directory'" class="cfb-type-icon dir-icon">
+              <div class="cfb-name-block fl-name">
+                <input v-if="item.type !== 'directory'" class="cfb-file-checkbox fl-check" type="checkbox" :aria-label="`选择 ${item.path}`" :checked="selectedFiles.has(item.path)" :disabled="selectedBusy" @click.stop @change="toggleSelected(item)" />
+                <span v-else class="fl-check-slot" aria-hidden="true"></span>
+                <span v-if="item.type === 'directory'" class="cfb-type-icon dir-icon fl-icon is-dir">
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M3 6.5h6l2 2h10v9H3z" />
                   </svg>
                 </span>
-                <span v-else class="cfb-type-icon file-icon">
+                <span v-else class="cfb-type-icon file-icon fl-icon is-file">
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                     <polyline points="14 2 14 8 20 8" />
@@ -729,7 +730,7 @@ onBeforeUnmount(() => {
                 </span>
 
                 <div class="cfb-name-texts">
-                  <strong class="cfb-main-name" :title="item.name">{{ item.name }}</strong>
+                  <strong class="cfb-main-name fl-name-text" :title="item.name">{{ item.name }}</strong>
                   <span v-if="props.searchQuery && item.path !== item.name" class="cfb-sub-path">
                     {{ item.path }}
                   </span>
@@ -744,7 +745,7 @@ onBeforeUnmount(() => {
 
             <!-- 3. 分块数 / 子文件数 -->
             <div class="cfb-col cfb-col-chunks">
-              <span v-if="item.type === 'directory'" class="cfb-badge-dir">
+              <span v-if="item.type === 'directory'" class="cfb-badge-dir fl-muted">
                 {{ (item.file_count || 0).toLocaleString() }} 个文件
               </span>
               <span v-else-if="item.chunk_count !== null && item.chunk_count !== undefined" class="cfb-badge-file">
@@ -760,7 +761,7 @@ onBeforeUnmount(() => {
             <div class="cfb-col cfb-col-hash">
               <code
                 v-if="item.md5 || item.hash"
-                class="cfb-hash-code"
+                class="cfb-hash-code fl-hash"
                 title="点击复制 MD5 校验值"
                 @click.stop="copyText(item.md5 || item.hash || '', 'MD5')"
               >
@@ -774,19 +775,20 @@ onBeforeUnmount(() => {
               <button
                 v-if="item.type === 'directory'"
                 type="button"
-                class="cfb-act-btn dir-act"
+                class="cfb-row-act fl-act"
+                title="进入目录"
                 @click="navigateToPath(item.path)"
               >
-                <span>进入目录</span>
+                <span class="visually-hidden">进入目录</span>
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <polyline points="9 18 15 12 9 6" />
                 </svg>
               </button>
               <template v-else>
-                <div class="cfb-row-action-group">
+                <div class="cfb-row-action-group fl-actions">
                   <a
                     v-if="item.download_url"
-                    class="cfb-act-btn dl-act"
+                    class="cfb-row-act fl-act fl-act-primary"
                     :href="item.download_url"
                     target="_blank"
                     rel="noreferrer"
@@ -797,12 +799,12 @@ onBeforeUnmount(() => {
                       <polyline points="7 10 12 15 17 10" />
                       <line x1="12" y1="15" x2="12" y2="3" />
                     </svg>
-                    <span>下载</span>
+                    <span class="visually-hidden">下载</span>
                   </a>
                   <button
                     v-if="item.download_url"
                     type="button"
-                    class="cfb-act-btn copy-act"
+                    class="cfb-row-act cfb-row-copy fl-act"
                     title="复制文件下载直链"
                     @click="copyText(item.download_url, '直链')"
                   >
@@ -810,15 +812,16 @@ onBeforeUnmount(() => {
                       <rect x="9" y="9" width="11" height="11" rx="2" />
                       <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                     </svg>
-                    <span>复制</span>
+                    <span class="visually-hidden">复制</span>
                   </button>
                   <button
                     v-else
                     type="button"
-                    class="cfb-act-btn file-act"
+                    class="cfb-row-act fl-act"
+                    title="查看分块"
                     @click="openFileDetail(item)"
                   >
-                    <span>查看分块</span>
+                    <span class="visually-hidden">查看分块</span>
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                       <circle cx="12" cy="12" r="3" />
                       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />

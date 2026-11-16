@@ -1386,7 +1386,7 @@ async function openArtifactFiles(): Promise<void> {
           <ArtifactTree v-else-if="usesArtifactTree" :artifacts="artifacts" />
           <div v-else-if="mode === 'files'" class="remote-workspace fragment-file-list">
             <div class="tree-table-wrapper">
-              <div class="tree-grid-header">
+              <div class="tree-grid-header fl-head fl-cols-tree">
                 <div class="col-name">名称</div>
                 <div class="col-hash">校验值</div>
                 <div class="col-size">大小</div>

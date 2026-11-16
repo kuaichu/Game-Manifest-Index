@@ -477,7 +477,8 @@ def _directory_page(
             child["size"] += item["size"]
         else:
             children[child_path] = item
-    ordered = sorted(children.values(), key=lambda item: (item["name"].casefold(), item["name"], item.get("type", "file")))
+    # Directories first, like the mihoyo package listing; then by name.
+    ordered = sorted(children.values(), key=lambda item: (item.get("type", "file") != "directory", item["name"].casefold(), item["name"]))
     page, next_cursor = _page(ordered, limit, cursor)
     return {
         "path": path,

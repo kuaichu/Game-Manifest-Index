@@ -201,7 +201,7 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- 表头 Header -->
-      <div class="tree-grid-header">
+      <div class="tree-grid-header fl-head fl-cols-tree">
         <div class="col-name">名称</div>
         <div class="col-hash">校验值</div>
         <div class="col-size">大小</div>
@@ -214,26 +214,28 @@ onBeforeUnmount(() => {
         <div
           v-for="folder in page.folders"
           :key="folder.path"
-          class="tree-grid-row folder-grid-row folder-row"
+          class="tree-grid-row folder-grid-row folder-row fl-item"
           role="button"
           tabindex="0"
           @click="load(folder.path)"
           @keydown.enter="load(folder.path)"
         >
-          <div class="row-main">
+          <div class="row-main fl-row fl-cols-tree">
             <div class="col-name">
-              <span class="tree-item-icon folder" aria-hidden="true">
+              <span class="tree-item-icon folder fl-icon is-dir" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="currentColor">
                   <path d="M20 5h-8.586L9.707 3.293A1 1 0 0 0 9 3H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z" />
                 </svg>
               </span>
-              <strong class="item-foldername">{{ folder.name }}</strong>
-              <span class="folder-subcount">{{ folder.artifact_count }} 个文件</span>
+              <strong class="item-foldername fl-name-text">{{ folder.name }}</strong>
+              <span class="folder-subcount fl-muted">{{ folder.artifact_count }} 个文件</span>
             </div>
             <div class="col-hash dim-text">—</div>
             <div class="col-size mono-text">{{ formatBytes(folder.total_size) }}</div>
             <div class="col-action">
-              <span class="folder-enter-chevron" aria-hidden="true">›</span>
+              <span class="folder-enter-chevron fl-act" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6" /></svg>
+              </span>
               <span class="visually-hidden">进入</span>
             </div>
           </div>
@@ -242,24 +244,24 @@ onBeforeUnmount(() => {
         <!-- 文件行 -->
         <template v-for="artifact in page.items" :key="artifact.id">
           <FragmentFileRow v-if="!showsUrlDetails" :artifact="artifact" />
-          <div v-else class="tree-grid-row file-grid-row file-row" :class="{ 'is-expanded': expanded === artifact.id }">
-            <div class="row-main" role="button" tabindex="0" @click="toggle(artifact)" @keydown.enter="toggle(artifact)">
+          <div v-else class="tree-grid-row file-grid-row file-row fl-item" :class="{ 'is-expanded': expanded === artifact.id }">
+            <div class="row-main fl-row fl-cols-tree" role="button" tabindex="0" @click="toggle(artifact)" @keydown.enter="toggle(artifact)">
               <div class="col-name">
-                <span class="tree-item-icon file" aria-hidden="true">
+                <span class="tree-item-icon file fl-icon is-file" aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                     <polyline points="14 2 14 8 20 8" />
                   </svg>
                 </span>
-                <strong class="item-filename">{{ filename(artifact) }}</strong>
+                <strong class="item-filename fl-name-text">{{ filename(artifact) }}</strong>
                 <small v-if="artifactPath(artifact)" class="item-subpath">({{ artifactPath(artifact) }})</small>
               </div>
               <div class="col-hash">
-                <span class="hash-code-chip">{{ artifact.checksum_value || '—' }}</span>
+                <span class="hash-code-chip fl-hash is-static">{{ artifact.checksum_value || '—' }}</span>
               </div>
               <div class="col-size mono-text">{{ formatBytes(artifact.size) }}</div>
               <div class="col-action">
-                <span class="expand-trigger" :class="{ open: expanded === artifact.id }">
+                <span class="expand-trigger fl-act" :class="{ open: expanded === artifact.id }">
                   <span class="trigger-label">{{ expanded === artifact.id ? '收起' : `${artifact.urls.length} 个候选` }}</span>
                   <svg class="chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
                     <polyline points="6 9 12 15 18 9" />
