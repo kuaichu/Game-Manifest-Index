@@ -128,3 +128,20 @@ a {
   text-decoration: none;
 }
 
+/* Utility Helpers */
+.text-mono { font-family: var(--font-mono); }
+.text-cyan { color: var(--cyan) !important; }
+.text-amber { color: var(--amber) !important; }
+.text-emerald { color: #10b981 !important; }
+.text-rose { color: var(--rose) !important; }
+.font-bold { font-weight: 800; }
+
+/* ==========================================================================
+   Skeleton Loading Animation
+   ========================================================================== */
+
+@keyframes skeletonShimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+

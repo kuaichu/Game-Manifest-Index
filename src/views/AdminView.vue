@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
+import "../styles/admin-legacy.css";
+import "../styles/admin-responsive.css";
 import "../styles/admin.css";
 import { ApiError, adminApi } from "../api";
 import { adminUiCapabilities } from "../admin-ui-capabilities";
