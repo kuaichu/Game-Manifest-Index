@@ -250,6 +250,7 @@ const directoryComponents = computed(() => (props.chunkDetail?.manifests || []).
   size: manifest.stats?.uncompressed_size || 0,
   supported: Boolean(manifest.chunk_download) && !Object.prototype.hasOwnProperty.call(manifest.chunk_download, "password") && (manifest.chunk_download?.encryption ?? 0) === 0 && [0, 1].includes(manifest.chunk_download?.compression ?? 0),
 })));
+const showDirectoryToggle = computed(() => activeSource.value === "chunk" && directoryComponents.value.length > 0);
 const directorySize = computed(() => directoryComponents.value.filter((item) => directoryIdentities.value.includes(item.key)).reduce((sum, item) => sum + item.size, 0));
 
 watch(() => props.chunkDetail, () => {
@@ -502,7 +503,7 @@ onBeforeUnmount(() => {
             :class="{ active: activeSource === 'package' }"
             @click="setSource('package')"
           >
-            <span>📦 完整包直链 (Package)</span>
+            <span>完整包文件</span>
           </button>
           <button
             type="button"
@@ -510,14 +511,14 @@ onBeforeUnmount(() => {
             :class="{ active: activeSource === 'chunk' }"
             @click="setSource('chunk')"
           >
-            <span>🧩 Chunk 分块蓝图 (Chunk)</span>
+            <span>Chunk 分块</span>
           </button>
         </div>
       </div>
 
       <!-- 组件/语音包分类切换栏 (Chunk 模式多分类时展示) -->
-      <div v-if="identities.length > 1" class="cfb-identities-row">
-        <span class="cfb-toolbar-label">组件清单</span>
+      <div v-if="identities.length > 1 || showDirectoryToggle" class="cfb-identities-row">
+        <span v-if="identities.length > 1" class="cfb-toolbar-label">组件清单</span>
         <template v-if="identities.length > 8">
           <select
             class="cfb-identity-select"
@@ -532,7 +533,7 @@ onBeforeUnmount(() => {
           </select>
           <span class="cfb-identity-summary">{{ identities.length }} 个组件 · 当前 {{ (selectedIdentityItem?.count || 0).toLocaleString() }} 个文件</span>
         </template>
-        <div v-else class="cfb-identity-chips">
+        <div v-else-if="identities.length > 1" class="cfb-identity-chips">
           <button
             v-for="item in identities"
             :key="item.key"
@@ -546,8 +547,8 @@ onBeforeUnmount(() => {
             <b v-if="item.count > 0">{{ item.count.toLocaleString() }}</b>
           </button>
         </div>
+        <button v-if="showDirectoryToggle" class="cfb-directory-toggle" type="button" :aria-expanded="directoryPanelOpen" @click="directoryPanelOpen = !directoryPanelOpen">下载游戏目录</button>
       </div>
-      <button v-if="activeSource === 'chunk' && directoryComponents.length" class="tool-button cfb-directory-toggle" type="button" :aria-expanded="directoryPanelOpen" @click="directoryPanelOpen = !directoryPanelOpen">下载游戏目录</button>
     </div>
 
     <section v-if="directoryPanelOpen" class="cfb-directory-download" aria-label="下载游戏目录">
@@ -645,9 +646,9 @@ onBeforeUnmount(() => {
       <button type="button" class="cfb-act-btn copy-act" :disabled="anyDownloadBusy || !selectedPaths.length" @click="selectedAction('copy')">{{ activeSource === 'chunk' ? '复制合成清单' : '复制官方直链' }}</button>
       <button type="button" class="cfb-act-btn copy-act" :disabled="anyDownloadBusy || !selectedPaths.length" @click="selectedAction('export')">{{ activeSource === 'chunk' ? '导出合成清单 JSON' : '导出官方直链列表' }}</button>
       <button v-if="selectedBusy" type="button" class="cfb-act-btn copy-act" @click="selectedController?.abort()">取消</button>
-      <p>可跨页选择文件，全选只作用于本页，不包含文件夹；切换目录、搜索或资源组件后清空选择。下载在保存位置新建独立子目录，保留完整相对路径并校验大小和 MD5。</p>
-      <p v-if="!canSaveDirectory">{{ directoryUnavailableReason }} 仍可复制或导出{{ activeSource === 'chunk' ? '合成清单；Chunk 需要按配方合成，不是完整文件直链。' : '官方直链列表。' }}</p>
-      <p v-else-if="activeSource === 'chunk'">Chunk 文件按分块配方合成；导出的 JSON 是合成清单，不是完整文件下载链接。</p>
+      <p>可以跨页勾选；“全选”只选当前页的文件，不含文件夹。切换目录、搜索或组件后会清空已选。下载时会在你选的位置新建一个文件夹，按原目录结构保存，并核对大小和 MD5。</p>
+      <p v-if="!canSaveDirectory">{{ directoryUnavailableReason }} 仍可复制或导出{{ activeSource === 'chunk' ? '合成清单。Chunk 文件要由多个分块拼成，没有可以直接下载的完整文件链接。' : '官方直链列表。' }}</p>
+      <p v-else-if="activeSource === 'chunk'">Chunk 文件由多个分块拼成；导出的 JSON 是拼合用的清单，不是完整文件的下载链接。</p>
       <div v-if="selectedProgress" class="cfb-directory-progress" role="status">
         <span>{{ selectedProgress.stage === 'preparing' ? '读取所选文件详情…' : `已完成 ${selectedProgress.completedFiles} / ${selectedProgress.totalFiles} 个文件 · ${formatBytes(selectedProgress.completedBytes)} / ${formatBytes(selectedProgress.totalBytes)}` }}</span>
         <span v-if="selectedProgress.currentPath">{{ selectedProgress.currentPath }} <template v-if="selectedProgress.chunkProgress">· {{ formatBytes(selectedProgress.chunkProgress.receivedBytes) }} / {{ formatBytes(selectedProgress.chunkProgress.totalBytes) }}</template></span>
