@@ -63,7 +63,11 @@ onMounted(() => {
   }
 });
 onBeforeUnmount(() => resizeObserver?.disconnect());
-watch(() => [activeIndex.value, props.visibleModes.length], () => nextTick(measure));
+watch(() => [activeIndex.value, props.visibleModes.length], () => {
+  // Drop references to tabs that no longer exist (e.g. a 6-tab game -> a 3-tab game).
+  tabEls.length = props.visibleModes.length;
+  void nextTick(measure);
+});
 
 // Press and hold the active tab, drag it onto another tab, release to switch.
 const DRAG_THRESHOLD = 6;
@@ -87,7 +91,7 @@ function onPointerDown(event: PointerEvent, index: number): void {
 function tabIndexAt(clientX: number, clientY: number): number {
   let best = -1;
   let bestDistance = Infinity;
-  tabEls.slice(0, props.visibleModes.length).forEach((tab, index) => {
+  tabEls.forEach((tab, index) => {
     const rect = tab.getBoundingClientRect();
     const dx = Math.max(rect.left - clientX, 0, clientX - rect.right);
     const dy = Math.max(rect.top - clientY, 0, clientY - rect.bottom);
@@ -154,7 +158,7 @@ function onTabClick(item: VisibleArchiveMode): void {
       <div
         ref="tabsEl"
         class="mode-tabs"
-        :class="{ 'mode-tabs-grid': visibleModes.length === 6, 'has-indicator': indicator, dragging: drag?.moved }"
+        :class="{ 'mode-tabs-grid': visibleModes.length === 6, 'has-indicator': indicator, dragging: drag?.moved, 'drag-retargeted': drag?.moved && drag.target >= 0 && drag.target !== activeIndex }"
         role="tablist"
         aria-label="数据视图"
         @pointermove="onPointerMove"
