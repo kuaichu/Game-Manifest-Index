@@ -1,0 +1,343 @@
+/* Admin console between 860px and 1040px: keep the two-column workspace but
+   stop the hero banner and action rows from squeezing their text columns. */
+@media (max-width: 1040px) {
+  .admin-main .admin-master-detail {
+    grid-template-columns: minmax(0, 312px) minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .admin-main .admin-form-pane,
+  .admin-main .admin-list-pane {
+    min-width: 0;
+  }
+
+  .admin-main .domain-hero-banner {
+    flex-wrap: wrap;
+    row-gap: 12px;
+  }
+
+  .admin-main .hero-identity,
+  .admin-main .hero-text-block,
+  .admin-main .hero-title-row {
+    min-width: 0;
+  }
+
+  .admin-main .hero-title-row {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+
+  .admin-main .hero-action-buttons {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .admin-main .hero-jump-btn {
+    max-width: 100%;
+    white-space: normal;
+    text-align: left;
+  }
+
+  .admin-main .publish-actions-row,
+  .admin-main .form-actions-bar {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
+  .admin-main .publish-actions-row .actions-right,
+  .admin-main .form-actions-bar .actions-right {
+    width: 100%;
+    margin-left: 0;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .version-header-meta,
+  .version-title-row {
+    min-width: 0;
+  }
+
+  /* 让标题列拿到一整行：动作按钮在窄屏换行，而不是把标题挤成一字一行。 */
+  .version-status-topbar .version-header-meta {
+    flex: 1 1 220px;
+    min-width: 200px;
+  }
+
+  .version-status-topbar {
+    flex-wrap: wrap;
+    row-gap: 10px;
+  }
+
+  .version-header-actions {
+    flex-wrap: wrap;
+    white-space: normal;
+  }
+
+  .version-title-row h2 {
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .admin-main .item-secondary-row {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+}
+
+@media (max-width: 860px) {
+  /* 8. 管理后台移动端适配 */
+  .admin-app {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-rail {
+    position: static;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    height: auto;
+    flex-direction: row;
+    align-items: center;
+    padding: 8px 12px;
+    gap: 8px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line-soft);
+    overflow-x: auto;
+    box-sizing: border-box;
+  }
+
+  .rail-brand {
+    margin-bottom: 0;
+    flex-shrink: 0;
+  }
+
+  .rail-nav-list {
+    flex-direction: row;
+    width: auto;
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow-x: auto;
+    gap: 6px;
+  }
+
+  .rail-foot {
+    margin-top: 0;
+    margin-left: 0;
+    padding-top: 0;
+    border-top: 0;
+    width: auto;
+  }
+
+  .admin-main {
+    padding: 14px 10px 40px;
+    min-width: 0;
+  }
+
+  /* 与 ≤1040px 断点同特异性，确保单列覆盖先声明的两列布局。 */
+  .admin-main .admin-master-detail,
+  .admin-main .content-panels-layout,
+  .admin-main .probe-top-grid {
+    grid-template-columns: 1fr;
+    min-width: 0;
+  }
+
+  .admin-form-pane,
+  .admin-master-detail > *,
+  .content-panels-layout > *,
+  .probe-top-grid > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .admin-main .domain-hero-banner {
+    flex-wrap: wrap;
+  }
+
+  .admin-main .hero-action-buttons {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .admin-main .hero-jump-btn {
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .admin-main .preview-avatar-meta {
+    min-width: 0;
+  }
+
+  .admin-main .preview-meta-desc {
+    overflow-wrap: anywhere;
+  }
+
+  .admin-main .publish-actions-row,
+  .admin-main .form-actions-bar {
+    flex-wrap: wrap;
+  }
+
+  .admin-main .publish-actions-row .actions-right,
+  .admin-main .form-actions-bar .actions-right {
+    width: 100%;
+    min-width: 0;
+    margin-left: 0;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .admin-field-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-app .admin-topbar,
+  .admin-main .hero-identity,
+  .admin-main .preview-avatar-wrap {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .admin-main .admin-form-pane,
+  .admin-main .domain-hero-banner {
+    padding: 14px;
+  }
+
+  
+  .admin-main .hero-title-row,
+  .admin-main .section-card-header,
+  .admin-main .field-label-row {
+    flex-wrap: wrap;
+  }
+
+  .admin-main .hero-text-block,
+  .admin-main .section-header-left,
+  .admin-main .version-stat-group {
+    min-width: 0;
+  }
+
+  .admin-main .hero-title-row h2 {
+    overflow-wrap: anywhere;
+  }
+}
+
+/* ==========================================================================
+   Admin Confirm Dialog (后台确认弹层，替代 window.confirm)
+   ========================================================================== */
+.admin-confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(4, 8, 15, 0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.admin-confirm-dialog {
+  width: 100%;
+  max-width: 460px;
+  display: grid;
+  gap: 12px;
+  padding: 26px 26px 20px;
+  border-radius: 18px;
+  border: 1px solid rgba(56, 189, 248, 0.18);
+  background: linear-gradient(180deg, rgba(17, 24, 39, 0.97) 0%, rgba(11, 17, 28, 0.99) 100%);
+  box-shadow: 0 24px 64px -16px rgba(0, 0, 0, 0.8);
+}
+
+.admin-confirm-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: #7dd3fc;
+  background: rgba(56, 189, 248, 0.12);
+}
+
+.admin-confirm-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.admin-confirm-dialog.is-danger .admin-confirm-icon {
+  color: #fda4af;
+  background: rgba(244, 63, 94, 0.14);
+}
+
+.admin-confirm-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: #e2e8f0;
+}
+
+.admin-confirm-message {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.75;
+  color: #9fb0c8;
+  white-space: pre-line;
+}
+
+.admin-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.admin-confirm-btn {
+  padding: 9px 18px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(148, 163, 184, 0.1);
+  color: #cbd5e1;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.admin-confirm-btn:hover {
+  background: rgba(148, 163, 184, 0.18);
+}
+
+.admin-confirm-btn.is-primary {
+  border-color: transparent;
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  color: #f8fafc;
+  box-shadow: 0 4px 16px rgba(2, 132, 199, 0.35);
+}
+
+.admin-confirm-btn.is-primary:hover {
+  background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
+  box-shadow: 0 6px 20px rgba(56, 189, 248, 0.4);
+}
+
+.admin-confirm-dialog.is-danger .admin-confirm-btn.is-primary {
+  background: linear-gradient(135deg, #e11d48 0%, #9f1239 100%);
+  box-shadow: 0 4px 16px rgba(225, 29, 72, 0.35);
+}
+
+.admin-confirm-dialog.is-danger .admin-confirm-btn.is-primary:hover {
+  background: linear-gradient(135deg, #fb7185 0%, #e11d48 100%);
+}
+
+@media (max-width: 480px) {
+  .admin-confirm-dialog {
+    padding: 22px 18px 16px;
+  }
+
+  .admin-confirm-actions {
+    flex-direction: column-reverse;
+  }
+
+  .admin-confirm-btn {
+    width: 100%;
+  }
+}

@@ -1,0 +1,147 @@
+/* ==========================================================================
+   Game Manifest Index — Modern Design System & Stylesheet
+   ========================================================================== */
+
+:root {
+  color-scheme: dark;
+
+  /* Color Palette - Cyber & Deep Dark */
+  --bg: #0b1019;
+  --bg-subtle: #0f1724;
+  --rail: #0e1522;
+  --side: #131b2a;
+  --panel: #182335;
+  --panel-soft: #1f2d42;
+  --panel-deep: #101826;
+  --deep: var(--panel-deep);
+  --panel-hover: #24344d;
+  
+  /* Borders & Dividers */
+  --line: #2a3b50;
+  --line-soft: rgba(130, 155, 185, 0.16);
+  --line-highlight: rgba(56, 189, 248, 0.4);
+
+  /* Typography */
+  --text: #f1f6ff;
+  --text-secondary: #c2d2e5;
+  --muted: #8397af;
+  --muted-dark: #5c6e83;
+
+  /* Neon & Accent Colors */
+  --blue: #38bdf8;
+  --blue-glow: rgba(56, 189, 248, 0.22);
+  --cyan: #2dd4bf;
+  --cyan-glow: rgba(45, 212, 191, 0.2);
+  --amber: #fbbf24;
+  --amber-glow: rgba(251, 191, 36, 0.2);
+  --green: #34d399;
+  --green-glow: rgba(52, 211, 153, 0.2);
+  --violet: #a78bfa;
+  --violet-glow: rgba(167, 139, 250, 0.2);
+  --rose: #fb7185;
+  --rose-glow: rgba(251, 113, 133, 0.2);
+  
+  /* Elevation Shadows & Glass */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.32);
+  --shadow: 0 12px 36px rgba(0, 0, 0, 0.42);
+  --shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.58);
+  --glow-blue: 0 0 24px var(--blue-glow);
+  --glow-cyan: 0 0 20px var(--cyan-glow);
+  
+  /* Fonts */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", "Menlo", "Monaco", "Consolas", "Liberation Mono", monospace;
+  
+  font-family: var(--font-sans);
+  color: var(--text);
+  background: var(--bg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Screen Reader / Hidden */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  clip-path: inset(50%) !important;
+}
+
+/* Scrollbar customization */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(140, 165, 195, 0.24);
+  border-radius: 999px;
+  transition: background 0.2s;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(140, 165, 195, 0.45);
+}
+
+html {
+  overflow-y: scroll;
+  scroll-behavior: smooth;
+  scrollbar-gutter: stable;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background: 
+    radial-gradient(ellipse 70% 35% at 50% -10%, rgba(56, 189, 248, 0.12), transparent 70%),
+    radial-gradient(ellipse 50% 25% at 90% 15%, rgba(45, 212, 191, 0.08), transparent 60%),
+    linear-gradient(180deg, var(--bg-subtle) 0%, var(--bg) 480px);
+  font-size: 14.5px;
+  line-height: 1.55;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button, input, select, textarea {
+  font: inherit;
+}
+
+button, a {
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: 0;
+  background: transparent;
+}
+
+a {
+  text-decoration: none;
+}
+
+/* Utility Helpers */
+.text-mono { font-family: var(--font-mono); }
+.text-cyan { color: var(--cyan) !important; }
+.text-amber { color: var(--amber) !important; }
+.text-emerald { color: #10b981 !important; }
+.text-rose { color: var(--rose) !important; }
+.font-bold { font-weight: 800; }
+
+/* ==========================================================================
+   Skeleton Loading Animation
+   ========================================================================== */
+
+@keyframes skeletonShimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+

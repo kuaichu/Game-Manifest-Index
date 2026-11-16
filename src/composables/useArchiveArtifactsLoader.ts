@@ -1,7 +1,7 @@
 import { ref, type Ref } from "vue";
 import { api, isAbortError } from "../api";
 import { artifactKindForMode } from "../domain-presentation";
-import type { ArchiveLead, Artifact, VersionRecord, VersionSummary } from "../types";
+import type { ArchiveLead, Artifact, ChunkManifestDetail, ChunkManifestSummaryItem, VersionRecord, VersionSummary } from "../types";
 
 export interface ArchiveArtifactLoadContext {
   domainId: string;
@@ -27,13 +27,7 @@ export interface ArchiveArtifactLoadContext {
 export interface ArchiveArtifactsLoaderOptions {
   getContext: () => ArchiveArtifactLoadContext;
   resetPresentation: () => void;
-  loadChunkState: (
-    context: ArchiveArtifactLoadContext,
-    signal: AbortSignal,
-    isCurrent: () => boolean,
-  ) => Promise<void>;
   setLeads: (leads: ArchiveLead[]) => void;
-  hasChunkManifestData?: () => boolean;
 }
 
 export interface ArchiveArtifactsLoaderState {
@@ -42,6 +36,10 @@ export interface ArchiveArtifactsLoaderState {
   total: Ref<number | null>;
   loadingMore: Ref<boolean>;
   error: Ref<Error | null>;
+  chunkCollection: Ref<ChunkManifestSummaryItem[]>;
+  chunkDetail: Ref<ChunkManifestDetail | null>;
+  chunkLoading: Ref<boolean>;
+  chunkError: Ref<string | null>;
   loadArtifacts: (append: boolean) => Promise<void>;
   invalidate: () => void;
   dispose: () => void;
@@ -114,14 +112,52 @@ export function useArchiveArtifactsLoader(options: ArchiveArtifactsLoaderOptions
   const total = ref<number | null>(null);
   const loadingMore = ref(false);
   const error = ref<Error | null>(null);
+  const chunkCollection = ref<ChunkManifestSummaryItem[]>([]);
+  const chunkDetail = ref<ChunkManifestDetail | null>(null);
+  const chunkLoading = ref(false);
+  const chunkError = ref<string | null>(null);
   let artifactController: AbortController | null = null;
   let artifactRequestId = 0;
+
+  async function loadChunkState(
+    context: ArchiveArtifactLoadContext,
+    signal: AbortSignal,
+    isCurrent: () => boolean,
+  ): Promise<void> {
+    chunkLoading.value = true;
+    chunkError.value = null;
+    try {
+      const [collRes, detailRes] = await Promise.allSettled([
+        api.chunkManifestCollection(context.domainId, signal),
+        api.chunkManifests(context.domainId, context.selectedVersion, signal),
+      ]);
+      if (!isCurrent()) return;
+      if (collRes.status === "fulfilled") {
+        chunkCollection.value = collRes.value?.items || [];
+      } else if (context.mode === "chunks") {
+        chunkCollection.value = [];
+      }
+      if (detailRes.status === "fulfilled") {
+        chunkDetail.value = detailRes.value;
+      } else {
+        chunkDetail.value = null;
+      }
+    } catch (reason) {
+      if (!isAbortError(reason)) {
+        if (context.mode === "files") chunkDetail.value = null;
+        chunkError.value = reason instanceof Error ? reason.message : "读取 Chunk Manifest 失败";
+      }
+    } finally {
+      if (isCurrent()) chunkLoading.value = false;
+    }
+  }
 
   function invalidate(): void {
     artifactController?.abort();
     artifactController = null;
     artifactRequestId += 1;
     loadingMore.value = false;
+    chunkLoading.value = false;
   }
 
   async function loadArtifacts(append: boolean): Promise<void> {
@@ -148,8 +184,8 @@ export function useArchiveArtifactsLoader(options: ArchiveArtifactsLoaderOptions
         nextCursor.value = null;
         total.value = null;
         // Chunk manifests are the authoritative source on current backends.
-        await options.loadChunkState(context, request.signal, isCurrent);
-        if (!isCurrent() || options.hasChunkManifestData?.()) return;
+        await loadChunkState(context, request.signal, isCurrent);
+        if (!isCurrent() || Boolean(chunkDetail.value?.manifests?.length || chunkCollection.value.length)) return;
         // Older backends may only expose chunk artifacts. Keep that fallback,
         // but only after the manifest endpoints produced nothing.
         try {
@@ -176,7 +212,7 @@ export function useArchiveArtifactsLoader(options: ArchiveArtifactsLoaderOptions
         nextCursor.value = null;
         total.value = null;
         if (context.domainAdapter === "hoyo") {
-          await options.loadChunkState(context, request.signal, isCurrent);
+          await loadChunkState(context, request.signal, isCurrent);
         }
         return;
       }
@@ -286,5 +322,18 @@ export function useArchiveArtifactsLoader(options: ArchiveArtifactsLoaderOptions
     }
   }
 
-  return { artifacts, nextCursor, total, loadingMore, error, loadArtifacts, invalidate, dispose: invalidate };
+  return {
+    artifacts,
+    nextCursor,
+    total,
+    loadingMore,
+    error,
+    chunkCollection,
+    chunkDetail,
+    chunkLoading,
+    chunkError,
+    loadArtifacts,
+    invalidate,
+    dispose: invalidate,
+  };
 }
