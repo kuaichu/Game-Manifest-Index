@@ -268,6 +268,17 @@ const usesArtifactTree = computed(() => isFileTreeMode.value && Boolean(query.va
 const usesRemoteTree = computed(() => mode.value === "resources" || (isFileTreeMode.value && !query.value.trim()));
 watch(() => [domainId.value, selectedVersion.value, mode.value], () => { browserFileTime.value = null; }, { flush: "sync" });
 watch(() => [domainId.value, selectedVersion.value], () => { selectedPack.value = ""; }, { flush: "sync" });
+// Fade the panel in when switching tabs. Uses the Web Animations API so nothing is remounted.
+const filePanelEl = ref<HTMLElement | null>(null);
+watch(() => `${domainId.value}:${mode.value}`, (next, previous) => {
+  const panel = filePanelEl.value;
+  if (!panel || !previous || next === previous || typeof panel.animate !== "function") return;
+  if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+  panel.animate(
+    [{ opacity: 0.35, transform: "translateY(6px)" }, { opacity: 1, transform: "none" }],
+    { duration: 220, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" },
+  );
+}, { flush: "post" });
 const exportArtifactKind = computed(() => artifactKindForMode(mode.value));
 const supportsArtifactField = (field: string) =>
   domainFieldSupport(domain.value, "artifact_fields", field) === "supported";
@@ -1092,7 +1103,7 @@ async function openArtifactFiles(): Promise<void> {
         @select-mode="navigateMode"
         @update:query="query = $event"
       />
-      <section id="files" class="file-panel">
+      <section id="files" ref="filePanelEl" class="file-panel">
         <div class="panel-head">
           <div class="panel-header-top">
             <div class="panel-heading-block">
