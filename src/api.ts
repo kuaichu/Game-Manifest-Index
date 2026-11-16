@@ -33,8 +33,6 @@ import type {
   ChunkFilesPage,
   ChunkFileDetail,
   ChunkDownloadPlanPage,
-  RetentionConfig,
-  RetentionStatus,
 } from "./types";
 
 const DEFAULT_API_BASE = "/api/v1";
@@ -392,8 +390,6 @@ export const adminApi = {
         headers: adminApi.auth(token),
       },
     ),
-  editArtifact: (domainId: string, version: string, payload: { action: "upsert" | "delete"; part: number; artifact?: ManualArtifactPayload | null }, token: string, signal?: AbortSignal) =>
-    requestJson<AdminImportResult>(`/admin/domains/${encodeURIComponent(domainId)}/versions/${encodeURIComponent(version)}/artifacts/edit`, signal, { method: "POST", headers: { ...adminApi.auth(token), "Content-Type": "application/json" }, body: JSON.stringify(payload) }),
   addVersion: (domainId: string, payload: ManualVersionPayload, token: string, signal?: AbortSignal) =>
     requestJson<AdminImportResult>(`/admin/domains/${encodeURIComponent(domainId)}/versions`, signal, { method: "POST", headers: { ...adminApi.auth(token), "Content-Type": "application/json" }, body: JSON.stringify(payload) }),
   syncStatus: (token: string, signal?: AbortSignal) =>
@@ -422,21 +418,6 @@ export const adminApi = {
       headers: { ...adminApi.auth(token), "Content-Type": "application/json" },
       body: JSON.stringify({ url, timeout, ...(artifactUrlId ? { artifact_url_id: artifactUrlId } : {}) }),
     }),
-  updateRetentionConfig: (payload: RetentionConfig, token: string, signal?: AbortSignal) =>
-    requestJson<RetentionConfig>("/admin/retention/config", signal, {
-      method: "PUT",
-      headers: { ...adminApi.auth(token), "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    }),
-  getRetentionConfig: (token: string, signal?: AbortSignal) =>
-    requestJson<RetentionConfig>("/admin/retention/config", signal, { headers: adminApi.auth(token) }),
-  runRetention: (token: string, signal?: AbortSignal) =>
-    requestJson<RetentionStatus>("/admin/retention/run", signal, {
-      method: "POST",
-      headers: adminApi.auth(token),
-    }),
-  getRetentionStatus: (token: string, signal?: AbortSignal) =>
-    requestJson<RetentionStatus>("/admin/retention/status", signal, { headers: adminApi.auth(token) }),
   probeUrls: (urls: string[], token: string, timeout = 10, artifactUrlIds: number[] = [], signal?: AbortSignal) =>
     requestJson<{ items: ProbeUrlResult[] }>("/admin/probe/urls", signal, {
       method: "POST",

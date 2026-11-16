@@ -208,25 +208,6 @@ describe("API client", () => {
     expect(options.headers.Authorization).toBe("Bearer admin-secret-token");
   });
 
-  it("uses authenticated retention config/run/status endpoints", async () => {
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify({ cache_days: 30, observation_days: 90, interval_hours: 24 }), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify({ cache_days: 7, observation_days: 180, interval_hours: 1 }), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify({ source: "manual", result: null }), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify({ source: "manual", result: null }), { status: 200 }));
-    vi.stubGlobal("fetch", fetchMock);
-    await adminApi.getRetentionConfig("admin-secret-token");
-    await adminApi.updateRetentionConfig({ cache_days: 7, observation_days: 180, interval_hours: 1 }, "admin-secret-token");
-    await adminApi.runRetention("admin-secret-token");
-    await adminApi.getRetentionStatus("admin-secret-token");
-    expect(fetchMock).toHaveBeenCalledTimes(4);
-    expect(fetchMock.mock.calls[0][0]).toContain("/admin/retention/config");
-    expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe("Bearer admin-secret-token");
-    expect(fetchMock.mock.calls[1][1].method).toBe("PUT");
-    expect(fetchMock.mock.calls[2][0]).toContain("/admin/retention/run");
-    expect(fetchMock.mock.calls[3][0]).toContain("/admin/retention/status");
-  });
-
   it("adds the operation log cursor only for incremental status requests", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ logs: ["new"], log_offset: 1, log_total: 2 }), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
