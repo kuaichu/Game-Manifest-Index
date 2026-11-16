@@ -314,6 +314,10 @@
     display: none !important;
   }
 
+  .search-box-spacer {
+    display: none !important;
+  }
+
   .search-box input {
     height: 34px !important;
     min-height: 34px !important;
