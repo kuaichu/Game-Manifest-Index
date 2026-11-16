@@ -57,27 +57,26 @@ Debian 13。同机还运行 model-gallery、github-star-show、cpa-quota-viewer�
 - 配置 TG 后，只在发现新版本时通知，没有更新时保持静默。Bot Token 在 `/etc/gmi-v5.env` 中。
 - 独立的每日采集计划只保存配置（10-17 快照为启用，`08:00`、`13:23`）。外部触发方式、时区和漏跑行为都是 `UNKNOWN`。
 
-### 最近一次部署（2026-11-16，SSH）
+### 最近一次部署
 
-- 部署前核对：服务器 67 个后端运行文件与 `main@3e8d11a` 逐字节一致，没有仓库外改动；`gmi-v5` 自 10-22 起运行（PID 1057），`gmi-web` 自 11-10 起运行。
-- 前端：从 `main@a6741e6` 执行 `build:selfhost`，先传 assets 再替换 HTML；8080 现返回 `index-CpbNJ5bt.js` / `index-LmcIGynE.css`，入口资源、管理页懒加载资源、SPA 路由与 `/admin` 均为 200；被替换的 4 个旧资源已删除。Nginx 配置未改，未 reload。
-- 后端：暂存目录用正式 `.venv` 导入 64 个模块、编译 `app.py` 通过后整体替换三个代码目录，`systemctl restart gmi-v5`。这是精简后 `/opt/GMI` 的首次冷启动：新 PID 459686，约 1 秒就绪，启动日志无报错；健康 ok、游戏 14 款、调度 `next_run_at` 保留。重启后首轮定时任务按时于 07:21:18 UTC 启动，链接最近检测时间更新到 07:21:53，`error` 为空，日志无警告。部署后 67 个运行文件与 `main@a6741e6` 一致。
-- 保护：部署前后 data（1,144 个文件）、`.cache`、`/etc/gmi-v5.env`、service 文件的摘要均未变；服务器与本机临时文件已清理。
-- 未验证：浏览器页面观感（删除的 CSS 由脚本判定）、真实管理写入。`gmi.yeque.top` 外层只确认返回 200。
-- SSH：本机 OpenSSH 的 askpass 免交互登录不生效，本次用 Python `paramiko` 完成；密码只在使用时提供，不写入任何文件。上传时注意 Git Bash 会把 `/tmp/...` 参数改写成 Windows 路径，需设 `MSYS_NO_PATHCONV=1`；`git archive` 要加 `-c core.autocrlf=false`，否则打包出 CRLF 文件；root 解包需 `tar --no-same-owner`。
+- **前端（2026-11-16，`main@ac17c48`）**：只换前端，后端未动、未重启。`build:selfhost` 后先传 assets 再替换 HTML，8080 现返回 `index-C2wDY2Tt.js` / `index-CeBk55oa.css`；管理页样式 `AdminView-Cy9maqkz.css` 只在进入 `/admin` 时加载。入口资源、管理页资源、SPA 路由与 `/admin` 均为 200，经公网的 `/api/v1/health` 为 200；被替换的 4 个旧资源已删除，站点 assets 与构建产物一致。Nginx 未改。
+- **后端（2026-11-16，`main@a6741e6`）**：三个代码目录整体替换并重启 `gmi-v5`，是精简后 `/opt/GMI` 的首次冷启动，启动和首轮定时任务正常；data、`.cache`、`/etc/gmi-v5.env`、service 文件摘要部署前后未变。此后 `main` 的变化只有前端，服务器后端运行文件仍对应 `a6741e6`。
+- 未验证：浏览器页面观感（三次前端重构与 CSS 拆分都没做浏览器验收）、真实管理写入。
+- 外层访问：curl 默认 UA 访问 `gmi.yeque.top` 会拿到 Anubis 的 403 挑战页，这是正常现象；用浏览器 UA 返回 200。验证外层时以经公网的 `/api/v1/health` 为准。
+- SSH：本机没有服务器密钥，OpenSSH 的 askpass 免交互登录也不生效，用 Python `paramiko` 完成；密码只在使用时通过环境变量提供，不写入任何文件。上传时注意 Git Bash 会把 `/tmp/...` 参数改写成 Windows 路径，需设 `MSYS_NO_PATHCONV=1`；`git archive` 要加 `-c core.autocrlf=false`，否则打包出 CRLF 文件；root 解包需 `tar --no-same-owner`。
 
 ## 3. 代码与分支基线
 
 | 分支 | 提交 | 说明 |
 | --- | --- | --- |
-| `main` / `origin/main` | `a6741e6` | 公开发布线，不含内部文档 |
+| `main` / `origin/main` | `ac17c48` | 公开发布线，不含内部文档 |
 | `integration/v5` | 见 `git log` | 开发基线，含内部文档；功能代码与 `main` 一致 |
 | `integration/apk` | `5347998` | 已普通合并进 V5，没有独有提交；平台任务开始前按 BRANCHING.md 同步 |
 | `integration/pc` | `16b940b` | 同上 |
 
 - **未合入**：`backend/telegram-archive-details`，内容是 TG 通知附带各游戏归档详情。属于后端改动，发布时要重启 gmi-v5。
-- **已 squash、分支未删除**（删除需另行授权）：`frontend-self-host`、`frontend-activity-timezone`、`frontend/activity-timeline-and-control-strip`、`backend/handoff-server-213`、`backend/handoff-self-host-frontend`、`backend/handoff-dead-code-cleanup`、`codex/readme-showcase`，以及死代码清理的 `backend/remove-dead-symbols`、`frontend/remove-dead-code`、`apk/remove-legacy-aliases`、`pc/remove-legacy-aliases`。
-- 部分分支挂在 `C:/Users/Administrator/.codex/worktrees/` 下的 worktree 里；`pc/wuwa-resource-packs` 停在 `integration/pc`，没有新提交。另有 2 个 9 月的旧 stash。
+- 11-16 已按授权删除所有已 squash 或已被取代的任务分支，以及两个干净的 Codex worktree。本地只剩上面三条集成分支、`main`、`backend/telegram-archive-details` 和 `pc/wuwa-resource-packs`。
+- `pc/wuwa-resource-packs` 挂在 `C:/Users/Administrator/.codex/worktrees/wuwa-pc-resource-packs/` 的 worktree 里，分支本身停在 `integration/pc`，但 worktree 里有约 300 行未提交的鸣潮 PC 改动（`url_adapters/pc/kuro_manifests.py` 及测试、README），不要删。另有 2 个 9 月的旧 stash。
 - 本地 integration 分支的 upstream 显示 `gone`，这是预期情况，不需要重建远端分支。
 - 历史分支备份：`C:/Users/Administrator/.codex/backups/gmi-branches/20261002-710f2140fe7f43bf884c496ae7cdeaa0/before-cleanup.bundle`、`.cache/unified-backend-fixes/completed-task-branches.bundle`、`.cache/probe-rewrite-completed-tasks.bundle`。只用于查阅，不整支合回。
 
@@ -89,7 +88,7 @@ Debian 13。同机还运行 model-gallery、github-star-show、cpa-quota-viewer�
   - 主项目的前端改动，同步回副本，开分支验证后 `--no-ff` 合并到副本 `main`。
   - 不要整目录覆盖：以前整目录覆盖曾丢失 AdminView 中的 `artifact_id`。
 - 两边有意保留不同的配置：副本的 `vite.config.ts` 带代理变量和轮询监听，`tsconfig.json` 带 noUnused 检查。副本 `.env.development.local` 代理到 `http://10.0.0.213:8000`。
-- 最近同步点（11-16）：副本同步提交 `032e338`，经 `--no-ff` 合入副本 `main@c1a6eb6`，对应主项目 `integration/v5@1c02acd`（发布为 `main@199f759`）。同步内容是主项目 11-02 的来源说明修正和北京时间显示；同步后 `src/` 与主项目完全一致，副本的 408 项测试、vue-tsc 和构建都通过。分支 `sync/provenance-from-original` 已合并、尚未删除。此后主项目 `main@a6741e6` 的前端死代码清理（`src/` 下 9 个文件）还没有同步回副本。
+- 最近同步点（11-16）：副本同步提交 `032e338`，经 `--no-ff` 合入副本 `main@c1a6eb6`，对应主项目 `integration/v5@1c02acd`（发布为 `main@199f759`）。同步内容是主项目 11-02 的来源说明修正和北京时间显示；同步后 `src/` 与主项目完全一致，副本的 408 项测试、vue-tsc 和构建都通过。分支 `sync/provenance-from-original` 已合并、尚未删除。此后主项目的前端死代码清理（`main@a6741e6`）和组件 / 样式拆分（`main@ac17c48`）都还没有同步回副本；拆分新增和移动了大量文件，同步时按文件逐个带回，不要整目录覆盖。
 
 ## 4. 发布流程
 
@@ -226,7 +225,8 @@ npm test -- src/selected-file-download.test.ts src/chunk-file-browser.test.ts
 
 - 每日采集的外部触发、时区、漏跑补偿仍为 `UNKNOWN`。retention、多 worker / 多实例协调未实现。
 - 外层反代（47 服务器的 openresty / Anubis）配置不在本仓库，未核对。
-- 删除的 CSS 是按"类名在源码中无任何引用"用脚本判定的，页面观感未做浏览器验收。
+- 删除的 CSS 是按"类名在源码中无任何引用"用脚本判定的；11-16 的组件拆分和 CSS 拆分（后台样式改为只在 `/admin` 加载）靠单元测试、渲染 HTML 比对和选择器核对验证，页面观感都未做浏览器验收。
+- 本机工作区的 `data/` 有约 318 个未提交改动，是本机后端跑定时任务写入的新版本记录。本地数据只作参考，不要提交，也不要拿去覆盖服务器。
 - 审查中暂缓的中等置信度项：Chunk 旧接口兜底（`useArchiveArtifactsLoader.ts` 的 `kind: "chunk"` 重试，需重写 `archive-copy.test.ts`）、只有测试在用的 `domain-presentation.ts` 函数与 `api.chunkFiles` / `chunkFileDetail` / `probeUrls`、样式层层覆盖与辅助函数重复（属于重构）。
 - 线上视觉、真实管理写入和大文件 / 整游戏下载没有重新验收；HTTP 和脚本比对不能代替浏览器验收。
 - 部分历史下载已失效，需要官方恢复，例如终末地 PC `0.5.27`（OSS 冻结）、原神 5.5.0 的部分分卷（404）、崩坏3 Android 7.6–7.9 APK。
@@ -257,3 +257,5 @@ npm test -- src/selected-file-download.test.ts src/chunk-file-browser.test.ts
 | 2026-11-16 | V5 `f79f602`、`1c02acd`；main `199f759` | 合入已上线的北京时间显示与自托管前端配置 |
 | 2026-11-16 | main `a6741e6` | 死代码清理：删除无引用的后端符号、采集器旧别名、前端无用接口方法与 props、135 条无引用 CSS 规则、`.env.production`。约 1,100 行，行为不变 |
 | 2026-11-16 | 部署 `main@a6741e6` | 前端自托管上线 `index-CpbNJ5bt.js`；后端替换并重启（精简目录首次冷启动），数据与环境未变 |
+| 2026-11-16 | main `ac17c48` | 前端拆分，行为不变：AdminView 4562→728 行（内容 / 探活面板与 composable）；ArchiveView 2569→1539 行；ChunkFileBrowser 样式外提、详情弹窗独立；`styles.css` 按分区拆到 `src/styles/`；后台样式只在 `/admin` 加载，前台 CSS 184.5→111.6 kB |
+| 2026-11-16 | 部署 `main@ac17c48` | 只更新前端，上线 `index-C2wDY2Tt.js`；后端未动 |
