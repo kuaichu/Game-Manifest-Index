@@ -46,7 +46,6 @@ def discover(
 
 
 discover_v2 = discover
-output_v2 = discover
 
 
 def main() -> int:
