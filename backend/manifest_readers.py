@@ -619,10 +619,6 @@ def _recipe_url(item: Mapping[str, Any], field: str, name: str) -> str:
     return url
 
 
-def _chunk_files(item: Mapping[str, Any], upstream: Upstream) -> list[dict[str, Any]]:
-    return copy.deepcopy(list(_chunk_manifest_data(item, upstream).files))
-
-
 @dataclass(frozen=True)
 class _ChunkManifestData:
     files: tuple[dict[str, Any], ...]
