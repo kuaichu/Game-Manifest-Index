@@ -76,7 +76,7 @@
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
-  padding: 10px 14px;
+  padding: 8px 12px;
   border-radius: 10px;
   background: rgba(15, 23, 42, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.06);
@@ -94,13 +94,14 @@
   width: 100%;
   min-width: 0;
   max-width: 520px;
-  min-height: 36px;
-  padding: 6px 10px;
+  height: 32px;
+  padding: 0 10px;
   border: 1px solid rgba(148, 163, 184, 0.35);
   border-radius: 8px;
   background: #0f172a;
   color: #e2e8f0;
-  font: inherit;
+  font-family: inherit;
+  font-size: 13px;
 }
 
 .cfb-identity-select:focus-visible {
@@ -507,7 +508,29 @@
 
 .cfb-download-error { flex-basis: 100%; color: #fb7185; font-size: 12px; }
 
-.cfb-directory-toggle { align-self: flex-start; margin-inline-start: 14px; }
+/* Sits at the right end of the component row, sized like the selection toolbar buttons. */
+.cfb-directory-toggle {
+  margin-inline-start: auto;
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: rgba(56, 189, 248, 0.08);
+  color: #7dd3fc;
+  font-size: 12.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.cfb-directory-toggle:hover,
+.cfb-directory-toggle[aria-expanded="true"] {
+  background: rgba(56, 189, 248, 0.18);
+  border-color: #38bdf8;
+  color: #e0f2fe;
+}
 .cfb-directory-download {
   display: grid;
   gap: 12px;
@@ -617,7 +640,7 @@
   }
 
   .cfb-directory-toggle {
-    margin-inline-start: 19px;
+    margin-inline-start: 0;
   }
 
   .cfb-identity-chips {
