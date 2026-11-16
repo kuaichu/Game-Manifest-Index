@@ -1,0 +1,25 @@
+[Unit]
+Description=GMI standalone frontend
+After=network.target gmi-v5.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+RuntimeDirectory=gmi-web
+RuntimeDirectoryMode=0755
+ExecStartPre=/opt/gmi-web/bin/nginx -e stderr -t -p /opt/gmi-web/ -c /opt/gmi-web/nginx.conf
+ExecStart=/opt/gmi-web/bin/nginx -e stderr -p /opt/gmi-web/ -c /opt/gmi-web/nginx.conf -g "daemon off;"
+ExecReload=/bin/kill -HUP $MAINPID
+KillSignal=SIGQUIT
+TimeoutStopSec=30
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/run/gmi-web
+
+[Install]
+WantedBy=multi-user.target
