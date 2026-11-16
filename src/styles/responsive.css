@@ -1,0 +1,839 @@
+/* ==========================================================================
+   Responsive Design Breakpoints
+   ========================================================================== */
+
+@media (max-width: 1200px) {
+  .archive-app {
+    grid-template-columns: 240px minmax(0, 1fr);
+  }
+  .main-content {
+    padding: 24px 28px 50px;
+  }
+  .control-strip {
+    padding: 10px 16px;
+    gap: 14px;
+  }
+  .version-picker {
+    width: 160px;
+  }
+  .search-box {
+    width: 260px;
+  }
+  .stats {
+    grid-template-columns: repeat(3, 1fr);
+  }
+            .chunk-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .resource-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 861px) and (max-width: 1000px) {
+  /* Let the six mode tabs wrap instead of hiding the rightmost option. */
+  .mode-tabs {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    overflow: visible;
+  }
+
+  .mode-tab {
+    flex: 0 0 auto;
+  }
+
+  /* The fixed 260px rail leaves too little room for icon + text + actions
+     between 861px and 1000px. Give the text column the full row and move
+     the action buttons underneath it. */
+  .file-card {
+    grid-template-columns: 44px minmax(0, 1fr);
+    row-gap: 10px;
+  }
+
+  .file-card > .file-actions {
+    grid-column: 2;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+}
+
+/* Control strip at medium widths: once version picker + mode tabs + search no
+   longer fit on one line, use two tidy rows (picker and search on top, mode
+   tabs underneath) instead of letting flex-wrap strand the search box on a row
+   of its own. The cut-off depends on how many mode tabs the game has. */
+@media (min-width: 861px) and (max-width: 1439px) {
+  .control-strip.modes-many .mode-field {
+    order: 3;
+    flex: 1 1 100%;
+    justify-items: start;
+  }
+
+  .control-strip.modes-many .search-box {
+    margin-left: auto;
+  }
+}
+
+@media (min-width: 861px) and (max-width: 1279px) {
+  .control-strip.modes-some .mode-field {
+    order: 3;
+    flex: 1 1 100%;
+    justify-items: start;
+  }
+
+  .control-strip.modes-some .search-box {
+    margin-left: auto;
+  }
+}
+
+@media (min-width: 861px) and (max-width: 1039px) {
+  .control-strip.modes-few .mode-field {
+    order: 3;
+    flex: 1 1 100%;
+    justify-items: start;
+  }
+
+  .control-strip.modes-few .search-box {
+    margin-left: auto;
+  }
+}
+
+/* Admin console between 860px and 1040px: keep the two-column workspace but
+   stop the hero banner and action rows from squeezing their text columns. */
+@media (max-width: 1040px) {
+  .admin-main .admin-master-detail {
+    grid-template-columns: minmax(0, 312px) minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .admin-main .admin-form-pane,
+  .admin-main .admin-list-pane {
+    min-width: 0;
+  }
+
+  .admin-main .domain-hero-banner {
+    flex-wrap: wrap;
+    row-gap: 12px;
+  }
+
+  .admin-main .hero-identity,
+  .admin-main .hero-text-block,
+  .admin-main .hero-title-row {
+    min-width: 0;
+  }
+
+  .admin-main .hero-title-row {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+
+  .admin-main .hero-action-buttons {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .admin-main .hero-jump-btn {
+    max-width: 100%;
+    white-space: normal;
+    text-align: left;
+  }
+
+  .admin-main .publish-actions-row,
+  .admin-main .form-actions-bar {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
+  .admin-main .publish-actions-row .actions-right,
+  .admin-main .form-actions-bar .actions-right {
+    width: 100%;
+    margin-left: 0;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .version-header-meta,
+  .version-title-row {
+    min-width: 0;
+  }
+
+  /* 让标题列拿到一整行：动作按钮在窄屏换行，而不是把标题挤成一字一行。 */
+  .version-status-topbar .version-header-meta {
+    flex: 1 1 220px;
+    min-width: 200px;
+  }
+
+  .version-status-topbar {
+    flex-wrap: wrap;
+    row-gap: 10px;
+  }
+
+  .version-header-actions {
+    flex-wrap: wrap;
+    white-space: normal;
+  }
+
+  .version-title-row h2 {
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .admin-main .item-secondary-row {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+}
+
+@media (max-width: 860px) {
+  /* 1. App 布局转为垂直单列 */
+  .archive-app {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  /* 2. 移动端吸顶导航栏 (高 50px) */
+  .game-sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    width: 100%;
+    height: 50px;
+    min-height: 50px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 10px;
+    background: rgba(11, 17, 30, 0.96);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-right: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    box-sizing: border-box;
+  }
+
+  .sidebar-header {
+    flex-direction: row;
+    align-items: center;
+    padding: 0;
+    border-bottom: 0;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .brand-info,
+  .sidebar-search-box {
+    display: none;
+  }
+
+  .brand-badge {
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
+    border-radius: 8px;
+  }
+
+  .sidebar-games-scroll {
+    flex-direction: row;
+    align-items: center;
+    height: 100%;
+    padding: 0 6px;
+    gap: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    flex: 1;
+  }
+
+  .sidebar-games-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  .publisher-group,
+  .publisher-game-list {
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .publisher-header,
+  .sidebar-empty {
+    display: none;
+  }
+
+  .game-nav-item {
+    width: auto;
+    padding: 2px;
+    border-radius: 8px;
+    flex-shrink: 0;
+  }
+
+  .game-item-text {
+    display: none;
+  }
+
+  .game-item-icon-box {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+  }
+
+  .game-item-icon-box img {
+    border-radius: 6px;
+  }
+
+  /* 3. 移动端主内容区 */
+  .main-content {
+    padding: 12px 10px 48px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .topbar {
+    padding: 2px 0 10px;
+    border-bottom: 0;
+    min-height: 0;
+    gap: 2px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .topbar .kicker {
+    font-size: 10px;
+    margin: 0 0 2px;
+  }
+
+  .topbar h1 {
+    font-size: 18px;
+    line-height: 1.25;
+    font-weight: 800;
+  }
+
+  /* 4. 移动端控制栏重构 (垂直紧凑排列，消除空白区域) */
+  .control-strip {
+    position: relative;
+    top: 0;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    padding: 8px 10px !important;
+    margin: 4px 0 10px !important;
+    gap: 8px !important;
+    border-radius: 10px !important;
+    background: rgba(15, 23, 36, 0.7) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    min-height: 0 !important;
+    height: auto !important;
+  }
+
+  .version-picker {
+    display: block !important;
+    width: 100% !important;
+    flex: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .version-picker-label {
+    display: none !important;
+  }
+
+  .select-button {
+    width: 100% !important;
+    min-height: 38px !important;
+    height: 38px !important;
+    padding: 0 12px !important;
+    font-size: 13px !important;
+    font-weight: 800 !important;
+    border-radius: 8px !important;
+    background: rgba(11, 16, 26, 0.9) !important;
+  }
+
+  .mode-field {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    justify-self: auto !important;
+  }
+
+  .mode-tabs {
+    width: 100% !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: flex-start !important;
+    gap: 6px !important;
+    overflow: visible !important;
+    padding-bottom: 2px !important;
+  }
+
+  .mode-tabs::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .mode-tab {
+    flex: 0 0 auto !important;
+    min-height: 34px !important;
+    height: 34px !important;
+    padding: 0 12px !important;
+    font-size: 12.5px !important;
+    font-weight: 750 !important;
+    border-radius: 8px !important;
+    white-space: nowrap !important;
+  }
+
+  .search-box {
+    display: block !important;
+    flex: none !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    justify-self: auto !important;
+  }
+
+  .search-box span {
+    display: none !important;
+  }
+
+  .search-box input {
+    height: 34px !important;
+    min-height: 34px !important;
+    font-size: 12px !important;
+    padding: 0 10px !important;
+    border-radius: 8px !important;
+    background: rgba(11, 16, 26, 0.7) !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* 5. 移动端 SYNC STATUS 卡片极简紧凑化 */
+  .sync-status {
+    margin-bottom: 12px;
+  }
+
+            /* 6. 文件面板与卡片系统 (移动端深度重构) */
+  .file-panel {
+    border-radius: 12px;
+  }
+
+  .file-panel .panel-head {
+    padding: 14px 16px;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+
+  .file-panel .panel-head h2 {
+    font-size: clamp(22px, 5.5vw, 26px);
+    font-weight: 800;
+    line-height: 1.25;
+  }
+
+  /* 删除右上角工具按钮 */
+  .panel-tools {
+    display: none !important;
+  }
+
+  /* 移动端筛选器（水平胶囊滑动，彻底消除单列巨大方块） */
+  .panel-filters-row {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    padding: 10px 12px !important;
+  }
+
+  .filter-group,
+  .availability-toolbar,
+  .category-toolbar {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 5px !important;
+    width: 100% !important;
+    padding: 0 !important;
+    border: none !important;
+    min-height: 0 !important;
+  }
+
+  .filter-group-label {
+    display: block !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    color: var(--muted) !important;
+  }
+
+  .filter-group-chips {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    width: 100% !important;
+    overflow: visible !important;
+    flex-wrap: wrap !important;
+    padding-bottom: 2px !important;
+  }
+
+  .filter-group-chips::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .filter-chip,
+  .availability-toolbar button,
+  .category-toolbar button {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-height: 28px !important;
+    height: 28px !important;
+    padding: 0 11px !important;
+    font-size: 11.5px !important;
+    font-weight: 650 !important;
+    border-radius: 999px !important;
+    white-space: nowrap !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+  }
+
+  .filter-group-divider {
+    display: none !important;
+  }
+
+  .file-list {
+    padding: 12px 14px !important;
+    gap: 12px !important;
+  }
+
+  /* 建议 8: 卡片内边距控制在 16-20px */
+  .file-card {
+    position: relative !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    text-align: left !important;
+    padding: 16px 16px 14px !important;
+    gap: 8px !important;
+    border-radius: 12px !important;
+    box-sizing: border-box !important;
+    margin-bottom: 0 !important;
+  }
+
+  /* 建议 3: 文件图标移到左上，不再单独占据一整行 */
+  .file-card .file-icon {
+    position: absolute !important;
+    top: 16px !important;
+    left: 16px !important;
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    border-radius: 8px !important;
+    margin: 0 !important;
+  }
+
+  .file-card .file-icon svg {
+    width: 16px !important;
+    height: 16px !important;
+  }
+
+  .file-main, .file-body {
+    width: 100% !important;
+    padding-left: 42px !important;
+    min-height: 32px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    text-align: left !important;
+    gap: 4px !important;
+    box-sizing: border-box !important;
+  }
+
+  /* 建议 4: 文件名独占一行，允许换行，避免被压缩 */
+  .file-title {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
+    gap: 6px !important;
+    padding-right: 76px !important; /* 避开右上角可用徽章 */
+    width: 100% !important;
+  }
+
+  .file-title .pill {
+    min-height: 22px !important;
+    height: 22px !important;
+    font-size: 11px !important;
+    padding: 0 8px !important;
+  }
+
+  .file-title .count {
+    font-size: 11px !important;
+    color: #94a3b8 !important;
+  }
+
+  .file-title strong {
+    flex-basis: 100% !important;
+    width: 100% !important;
+    margin-top: 4px !important;
+    font-size: 14.5px !important;
+    font-weight: 800 !important;
+    line-height: 1.4 !important;
+    white-space: normal !important;
+    word-break: break-all !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    color: #f8fafc !important;
+    text-align: left !important;
+  }
+
+  /* 建议 5: “可用”状态放到卡片右上角 */
+  .file-actions .availability {
+    position: absolute !important;
+    top: 16px !important;
+    right: 16px !important;
+    margin: 0 !important;
+    min-height: 24px !important;
+    height: 24px !important;
+    padding: 0 9px !important;
+    font-size: 11.5px !important;
+    font-weight: 850 !important;
+    border-radius: 6px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 2 !important;
+  }
+
+  /* 建议 6: 厂商与时间排布；建议 9: 提高元数据对比度 */
+  .file-meta {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    text-align: left !important;
+    gap: 3px !important;
+    margin-top: 2px !important;
+    padding-left: 0 !important;
+    font-size: 12px !important;
+    line-height: 1.45 !important;
+    color: #cbd5e1 !important;
+  }
+
+  .file-meta span {
+    color: #cbd5e1 !important;
+    text-align: left !important;
+  }
+
+  .file-path {
+    margin-top: 0 !important;
+    font-size: 11.5px !important;
+    line-height: 1.4 !important;
+    color: #94a3b8 !important;
+    text-align: left !important;
+    word-break: break-all !important;
+  }
+
+  /* 建议 7: “复制 URL”和“下载”做成底部两个等宽按钮，高度至少 44px */
+  .file-actions {
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    margin-top: 6px !important;
+    padding-top: 12px !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.07) !important;
+    box-sizing: border-box !important;
+  }
+
+  .file-actions .icon-button,
+  .file-actions .tool-button {
+    flex: 1 1 0 !important;
+    width: 100% !important;
+    min-height: 44px !important;
+    height: 44px !important;
+    font-size: 13px !important;
+    font-weight: 800 !important;
+    border-radius: 8px !important;
+    justify-content: center !important;
+    padding: 0 10px !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .file-actions .icon-button svg,
+  .file-actions .tool-button svg {
+    width: 16px !important;
+    height: 16px !important;
+  }
+
+  .file-actions .icon-button:last-child,
+  .file-actions .tool-button:last-child {
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.32), rgba(2, 132, 199, 0.32)) !important;
+    border: 1px solid rgba(56, 189, 248, 0.55) !important;
+    color: #38bdf8 !important;
+  }
+
+  /* 7. 数据来源与说明卡片 (移动端自适应垂直布局) */
+  .notice {
+    padding: 10px 12px;
+    margin: 6px 0 12px;
+    gap: 6px;
+    border-radius: 8px;
+  }
+
+  .notice strong {
+    font-size: 12.5px;
+  }
+
+        .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+
+        .remote-workspace {
+    padding: 8px;
+    border-radius: 10px;
+  }
+
+  /* 8. 管理后台移动端适配 */
+  .admin-app {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-rail {
+    position: static;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    height: auto;
+    flex-direction: row;
+    align-items: center;
+    padding: 8px 12px;
+    gap: 8px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line-soft);
+    overflow-x: auto;
+    box-sizing: border-box;
+  }
+
+  .rail-brand {
+    margin-bottom: 0;
+    flex-shrink: 0;
+  }
+
+  .rail-nav-list {
+    flex-direction: row;
+    width: auto;
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow-x: auto;
+    gap: 6px;
+  }
+
+  .rail-foot {
+    margin-top: 0;
+    margin-left: 0;
+    padding-top: 0;
+    border-top: 0;
+    width: auto;
+  }
+
+  .admin-main {
+    padding: 14px 10px 40px;
+    min-width: 0;
+  }
+
+  /* 与 ≤1040px 断点同特异性，确保单列覆盖先声明的两列布局。 */
+  .admin-main .admin-master-detail,
+  .admin-main .content-panels-layout,
+  .admin-main .probe-top-grid {
+    grid-template-columns: 1fr;
+    min-width: 0;
+  }
+
+  .admin-form-pane,
+  .admin-master-detail > *,
+  .content-panels-layout > *,
+  .probe-top-grid > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .admin-main .domain-hero-banner {
+    flex-wrap: wrap;
+  }
+
+  .admin-main .hero-action-buttons {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .admin-main .hero-jump-btn {
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .admin-main .preview-avatar-meta {
+    min-width: 0;
+  }
+
+  .admin-main .preview-meta-desc {
+    overflow-wrap: anywhere;
+  }
+
+  .admin-main .publish-actions-row,
+  .admin-main .form-actions-bar {
+    flex-wrap: wrap;
+  }
+
+  .admin-main .publish-actions-row .actions-right,
+  .admin-main .form-actions-bar .actions-right {
+    width: 100%;
+    min-width: 0;
+    margin-left: 0;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .admin-field-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-app .admin-topbar,
+  .admin-main .hero-identity,
+  .admin-main .preview-avatar-wrap {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .admin-main .admin-form-pane,
+  .admin-main .domain-hero-banner {
+    padding: 14px;
+  }
+
+  
+  .admin-main .hero-title-row,
+  .admin-main .section-card-header,
+  .admin-main .field-label-row {
+    flex-wrap: wrap;
+  }
+
+  .admin-main .hero-text-block,
+  .admin-main .section-header-left,
+  .admin-main .version-stat-group {
+    min-width: 0;
+  }
+
+  .admin-main .hero-title-row h2 {
+    overflow-wrap: anywhere;
+  }
+}
+

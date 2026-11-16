@@ -2,17 +2,39 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { api, apiUrl, isAbortError } from "../api";
-import ArtifactTree from "../components/ArtifactTree.vue";
-import ComparePanel from "../components/ComparePanel.vue";
-import FragmentFileRow, { activeFileMenuId } from "../components/FragmentFileRow.vue";
-import RemoteArtifactTree from "../components/RemoteArtifactTree.vue";
-import VersionPicker from "../components/VersionPicker.vue";
-import AvailabilityBadge from "../components/AvailabilityBadge.vue";
-import ChunkManifestView from "../components/ChunkManifestView.vue";
-import ChunkFileBrowser from "../components/ChunkFileBrowser.vue";
-import ArtifactPagination from "../components/ArtifactPagination.vue";
-import CustomSelect from "../components/CustomSelect.vue";
+import {
+  baseUrlFor,
+  formatDate,
+  formatObservedDate,
+  formatRelativeTime,
+  iconForGame,
+  isFileManifestArtifact,
+  manifestUrlFor,
+  observedDate,
+  preferredAvailableUrl,
+  rawArtifactUrl,
+} from "../archive-artifact-helpers";
 import { copyTextToClipboard } from "../clipboard";
+import ArchiveApkList from "../components/archive/ArchiveApkList.vue";
+import ArchiveCompareView from "../components/archive/ArchiveCompareView.vue";
+import ArchiveControlStrip from "../components/archive/ArchiveControlStrip.vue";
+import ArchiveGameSidebar from "../components/archive/ArchiveGameSidebar.vue";
+import ArchivePackageList from "../components/archive/ArchivePackageList.vue";
+import ArchivePatchList from "../components/archive/ArchivePatchList.vue";
+import ArchiveWuwaRawIndexMenu from "../components/archive/ArchiveWuwaRawIndexMenu.vue";
+import ArtifactPagination from "../components/ArtifactPagination.vue";
+import ArtifactTree from "../components/ArtifactTree.vue";
+import ChunkFileBrowser from "../components/ChunkFileBrowser.vue";
+import ChunkManifestView from "../components/ChunkManifestView.vue";
+import FragmentFileRow, { activeFileMenuId } from "../components/FragmentFileRow.vue";
+import ProbeScheduleInfo from "../components/ProbeScheduleInfo.vue";
+import RemoteArtifactTree from "../components/RemoteArtifactTree.vue";
+import SiteChangelogModal from "../components/SiteChangelogModal.vue";
+import SourceProvenanceModal from "../components/SourceProvenanceModal.vue";
+import { useArchiveArtifactsLoader, type ArchiveArtifactLoadContext, type ArchiveArtifactsLoaderState } from "../composables/useArchiveArtifactsLoader";
+import { useArchiveCompare } from "../composables/useArchiveCompare";
+import { useArchiveExport } from "../composables/useArchiveExport";
+import { domainRouteLabel, resolveRouteDomain, useArchiveLoader } from "../composables/useArchiveLoader";
 import {
   artifactKindForMode,
   availabilityStatesForMode,
@@ -20,40 +42,27 @@ import {
   domainActionSupport,
   domainFieldSupport,
   domainModeLabel,
+  formatBytes,
   hoyoArtifactCardPresentation,
   hoyoLanguageLabel,
-  isAvailabilityActionable,
   isChunkOnlyVersion,
   latestLiveProbeTime,
-  preferredArtifactAction,
-  preferredDomainArtifactAction,
   displayVersionLabel,
   routeVersionLabel,
   versionSupportsMode,
 } from "../domain-presentation";
-import { gameIcons } from "../game-icons";
 import {
   gameActivityPlatform,
   gameActivityTime,
   gameActivityTitle,
   latestReleaseActivity,
 } from "../game-activity";
-import { publisherGroups } from "../game-meta";
-import SourceProvenanceModal from "../components/SourceProvenanceModal.vue";
-import SiteChangelogModal from "../components/SiteChangelogModal.vue";
-import ProbeScheduleInfo from "../components/ProbeScheduleInfo.vue";
-import { domainRouteLabel, resolveRouteDomain, useArchiveLoader } from "../composables/useArchiveLoader";
-import { useArchiveArtifactsLoader, type ArchiveArtifactsLoaderState, type ArchiveArtifactLoadContext } from "../composables/useArchiveArtifactsLoader";
 import type {
   ArchiveDomain,
   ArchiveLead,
   Artifact,
-  ChunkManifestDetail,
-  ChunkManifestSummaryItem,
-  Game,
-  GameActivityEvent,
   FileTimeChange,
-  VersionSummary,
+  GameActivityEvent,
 } from "../types";
 
 const route = useRoute();
@@ -100,10 +109,6 @@ const globalProbeTime = ref<string | null>(null);
 const probeTimeClock = ref(Date.now());
 const globalProbeLoaded = ref(false);
 let globalProbeController: AbortController | null = null;
-const chunkCollection = ref<ChunkManifestSummaryItem[]>([]);
-const chunkDetail = ref<ChunkManifestDetail | null>(null);
-const chunkLoading = ref(false);
-const chunkError = ref<string | null>(null);
 const leads = ref<ArchiveLead[]>([]);
 const query = ref(String(route.query.q || ""));
 const initialAvailability = String(route.query.availability || "all");
@@ -113,11 +118,21 @@ const availabilityFilter = ref<"all" | "available" | "unavailable" | "unknown">(
     : "all",
 );
 const toast = ref("");
+let toastTimer: number | null = null;
 const selectedCategory = ref<string>("all");
 const chunkCategoryFilter = ref<string>("all");
 const artifactPage = ref(1);
 const artifactPageSize = ref(50);
 const SEARCHABLE_MODES = new Set(["apk", "chunks", "files", "packages", "patches"]);
+
+function setToast(message: string, durationMs = 1600): void {
+  if (toastTimer !== null) window.clearTimeout(toastTimer);
+  toast.value = message;
+  toastTimer = window.setTimeout(() => {
+    toast.value = "";
+    toastTimer = null;
+  }, durationMs);
+}
 
 let archiveArtifactsLoader: ArchiveArtifactsLoaderState | null = null;
 function loadArtifacts(append: boolean): Promise<void> {
@@ -125,7 +140,6 @@ function loadArtifacts(append: boolean): Promise<void> {
 }
 function invalidateArtifactLoad(): void {
   archiveArtifactsLoader?.invalidate();
-  chunkLoading.value = false;
 }
 
 const {
@@ -189,28 +203,8 @@ const gameNames = computed(() => Object.fromEntries(games.value.map((item) => [
   /[\u3400-\u9fff]/.test(item.name) ? item.name : item.sub_name || item.name,
 ])));
 const domain = computed(() => domains.value.find((item) => item.id === domainId.value) || null);
-const railGroups = computed(() => publisherGroups(games.value));
-const sidebarGameSearch = ref("");
-const filteredRailGroups = computed(() => {
-  const query = sidebarGameSearch.value.trim().toLowerCase();
-  if (!query) return railGroups.value;
-
-  return railGroups.value
-    .map((group) => ({
-      publisher: group.publisher,
-      games: group.games.filter(
-        (g) =>
-          g.name.toLowerCase().includes(query) ||
-          g.sub_name.toLowerCase().includes(query) ||
-          g.id.toLowerCase().includes(query),
-      ),
-    }))
-    .filter((group) => group.games.length > 0);
-});
 const uiModes = computed(() => availableArchiveModes(domains.value));
-const visibleModes = computed(() => {
-  return uiModes.value;
-});
+const visibleModes = computed(() => uiModes.value);
 // Drives the width at which the control strip switches to its two-row layout.
 const controlStripDensity = computed(() => {
   const count = visibleModes.value.length;
@@ -231,61 +225,27 @@ const channelVersions = computed(() => {
     (item) => item.version !== selectedVersion.value && displayVersionLabel(item.version, item.attributes) === base,
   );
 });
-const compareBaseOptions = computed(() =>
-  versions.value.filter((item) => item.version !== selectedVersion.value),
-);
-const compareDomains = computed(() =>
-  domains.value.filter((item) => item.capabilities.includes("compare")),
-);
-function comparePlatformLabel(item: ArchiveDomain): string {
-  if (item.adapter === "android" || item.platform?.toLowerCase() === "android" || item.kind === "apk") {
-    return "Android 官方客户端";
-  }
-  if (item.adapter === "hoyo") {
-    return "HOYO PC 客户端";
-  }
-  if (item.platform?.toLowerCase() === "windows" || item.platform?.toLowerCase() === "pc") {
-    return "PC 客户端";
-  }
-  return item.platform || item.id;
-}
-async function switchCompareDomain(targetDomain: ArchiveDomain): Promise<void> {
-  if (targetDomain.id === domainId.value) return;
-  await navigate({
-    domainId: targetDomain.id,
-    version: selectedVersion.value || targetDomain.latest_version || "",
-    mode: "compare",
-  });
-}
-const compareBaseVersion = computed(() => {
-  const requested = String(route.query.from || "");
-  const requestedItem = versions.value.find(
-    (item) => item.version === requested || routeVersionLabel(item.version) === requested,
-  );
-  if (requestedItem && requestedItem.version !== selectedVersion.value) {
-    return requestedItem.version;
-  }
-  const currentIndex = versions.value.findIndex((item) => item.version === selectedVersion.value);
-  return versions.value[currentIndex + 1]?.version || compareBaseOptions.value[0]?.version || "";
+
+const {
+  compareBaseOptions,
+  compareDomains,
+  compareBaseVersion,
+  compareBaseDisplayVersion,
+  compareScope,
+  switchCompareDomain,
+  updateCompareBase,
+} = useArchiveCompare({
+  route,
+  domains,
+  domain,
+  domainId,
+  versions,
+  selectedVersion,
+  selectedSummary,
+  navigate,
+  replaceQuery,
 });
-function hasHoyoPackageFiles(summary: VersionSummary | null | undefined): boolean {
-  return Number(summary?.artifact_kinds?.package?.count || 0) > 0;
-}
-const compareBaseSummary = computed(
-  () => versions.value.find((item) => item.version === compareBaseVersion.value) || null,
-);
-const compareBaseDisplayVersion = computed(() =>
-  displayVersionLabel(compareBaseVersion.value, compareBaseSummary.value?.attributes),
-);
-const compareScope = computed<"artifacts" | "files">(() => {
-  if (domain.value?.adapter === "perfectworld_patcher" || domain.value?.adapter === "nte" || domain.value?.adapter === "wuwa") {
-    return "files";
-  }
-  if (domain.value?.adapter === "hoyo" && hasHoyoPackageFiles(selectedSummary.value) && hasHoyoPackageFiles(compareBaseSummary.value)) {
-    return "files";
-  }
-  return "artifacts";
-});
+
 const searchableMode = computed(() => SEARCHABLE_MODES.has(mode.value));
 const isGenericFileManifestDomain = computed(() =>
   domain.value?.kind === "files"
@@ -306,10 +266,12 @@ const exportArtifactKind = computed(() => artifactKindForMode(mode.value));
 const supportsArtifactField = (field: string) =>
   domainFieldSupport(domain.value, "artifact_fields", field) === "supported";
 const supportsDomainAction = (action: string) => domainActionSupport(domain.value, action);
-const isMetadataOnlyDomain = (candidate: ArchiveDomain | null) =>
-  candidate?.game_id === "azurpromilia"
-  && candidate.capability_contract?.live_probe === false
-  && candidate.capability_contract?.availability_source_kinds?.includes("metadata_inference");
+const isMetadataOnlyDomain = (candidate: ArchiveDomain | null): boolean =>
+  Boolean(
+    candidate?.game_id === "azurpromilia"
+    && candidate.capability_contract?.live_probe === false
+    && candidate.capability_contract?.availability_source_kinds?.includes("metadata_inference"),
+  );
 const canExportArtifacts = computed(() => mode.value !== "files" && mode.value !== "apk" && Boolean(exportArtifactKind.value));
 const canExportUrls = computed(
   () => canExportArtifacts.value && (supportsDomainAction("download") || supportsDomainAction("open") || supportsArtifactField("urls")),
@@ -328,39 +290,6 @@ const availabilityStateForRequest = computed(() =>
     ? undefined
     : availabilityFilter.value,
 );
-
-async function loadChunkState(
-  context: ArchiveArtifactLoadContext,
-  signal: AbortSignal,
-  isCurrent: () => boolean,
-): Promise<void> {
-  chunkLoading.value = true;
-  chunkError.value = null;
-  try {
-    const [collRes, detailRes] = await Promise.allSettled([
-      api.chunkManifestCollection(context.domainId, signal),
-      api.chunkManifests(context.domainId, context.selectedVersion, signal),
-    ]);
-    if (!isCurrent()) return;
-    if (collRes.status === "fulfilled") {
-      chunkCollection.value = collRes.value?.items || [];
-    } else if (context.mode === "chunks") {
-      chunkCollection.value = [];
-    }
-    if (detailRes.status === "fulfilled") {
-      chunkDetail.value = detailRes.value;
-    } else {
-      chunkDetail.value = null;
-    }
-  } catch (reason) {
-    if (!isAbortError(reason)) {
-      if (context.mode === "files") chunkDetail.value = null;
-      chunkError.value = reason instanceof Error ? reason.message : "读取 Chunk Manifest 失败";
-    }
-  } finally {
-    if (isCurrent()) chunkLoading.value = false;
-  }
-}
 
 const loadedArchiveArtifacts = useArchiveArtifactsLoader({
   getContext: (): ArchiveArtifactLoadContext => ({
@@ -388,14 +317,22 @@ const loadedArchiveArtifacts = useArchiveArtifactsLoader({
     chunkCategoryFilter.value = "all";
     remoteTreeProbeTime.value = null;
   },
-  loadChunkState,
-  hasChunkManifestData: () => Boolean(chunkDetail.value?.manifests?.length || chunkCollection.value.length),
   setLeads: (loadedLeads) => {
     leads.value = loadedLeads;
   },
 });
 archiveArtifactsLoader = loadedArchiveArtifacts;
-const { artifacts, nextCursor, total: artifactTotal, loadingMore, error } = loadedArchiveArtifacts;
+const {
+  artifacts,
+  nextCursor,
+  total: artifactTotal,
+  loadingMore,
+  error,
+  chunkCollection,
+  chunkDetail,
+  chunkLoading,
+  chunkError,
+} = loadedArchiveArtifacts;
 
 function selectArtifactPage(page: number): void {
   artifactPage.value = page;
@@ -439,18 +376,22 @@ const displayedAvailabilityFilters = computed(() => {
   }
   return list;
 });
-const exportUrlsCount = computed(() => {
-  const states = availabilityStatesForMode(selectedSummary.value, mode.value);
-  return states.available ?? 0;
-});
 
-const exportUrlsLabel = computed(() => {
-  if (mode.value === "chunks") {
-    const count = chunkDetail.value?.manifests?.length || artifacts.value.length || 0;
-    return count > 0 ? `导出 Manifest 链接 · ${count}` : "导出 Manifest 链接";
-  }
-  const count = exportUrlsCount.value;
-  return count > 0 ? `导出可用 URL · ${count}` : "导出 URL";
+const { exportUrlsLabel, exportArtifacts } = useArchiveExport({
+  gameId,
+  domainId,
+  domain,
+  selectedVersion,
+  selectedSummary,
+  mode,
+  query,
+  searchableMode,
+  exportArtifactKind,
+  canExportArtifacts,
+  canExportUrls,
+  artifacts,
+  chunkDetail,
+  setToast,
 });
 
 const isWuwaFilesMode = computed(() => domain.value?.adapter === "wuwa" && mode.value === "files");
@@ -495,9 +436,6 @@ onBeforeUnmount(() => {
   manifestSizeController = null;
   manifestSizeGeneration += 1;
 });
-const rawIndexMenuOpen = ref(false);
-const copiedManifestUrl = ref(false);
-const copiedBaseUrl = ref(false);
 
 const wuwaManifestUrl = computed(() => {
   const meta = selectedSummary.value?.attributes?.manifest_urls;
@@ -515,70 +453,8 @@ const wuwaBaseUrl = computed(() => {
   return "";
 });
 
-const wuwaManifestShort = computed(() => {
-  if (!wuwaManifestUrl.value) return "indexFile.json";
-  try {
-    const parsed = new URL(wuwaManifestUrl.value);
-    const pathParts = parsed.pathname.split("/").filter(Boolean);
-    return pathParts.at(-1) || "indexFile.json";
-  } catch {
-    return "indexFile.json";
-  }
-});
-
-const wuwaBaseUrlShort = computed(() => {
-  if (!wuwaBaseUrl.value) return "pcdownload-aliyun.../zip/";
-  try {
-    const parsed = new URL(wuwaBaseUrl.value);
-    const hostPrefix = parsed.hostname.split(".")[0] || "";
-    return `${hostPrefix}.../zip/`;
-  } catch {
-    return ".../zip/";
-  }
-});
-
-async function copyWuwaManifestUrl(): Promise<void> {
-  if (wuwaManifestUrl.value) {
-    await copyUrl(wuwaManifestUrl.value);
-    copiedManifestUrl.value = true;
-    setTimeout(() => {
-      copiedManifestUrl.value = false;
-    }, 1800);
-  }
-}
-
-async function copyWuwaBaseUrl(): Promise<void> {
-  if (wuwaBaseUrl.value) {
-    await copyUrl(wuwaBaseUrl.value);
-    copiedBaseUrl.value = true;
-    setTimeout(() => {
-      copiedBaseUrl.value = false;
-    }, 1800);
-  }
-}
-
-function toggleRawIndexMenu(): void {
-  rawIndexMenuOpen.value = !rawIndexMenuOpen.value;
-  if (rawIndexMenuOpen.value) {
-    activeFileMenuId.value = null;
-    window.dispatchEvent(new CustomEvent("gmi-close-file-menus"));
-  }
-}
-
-function onWindowRawIndexClick(e: MouseEvent): void {
-  const target = e.target as HTMLElement | null;
-  if (!target?.closest(".raw-manifest-dropdown")) {
-    rawIndexMenuOpen.value = false;
-  }
-}
-
-function onCloseRawIndex(): void {
-  rawIndexMenuOpen.value = false;
-}
-
 function onWindowKeyDown(e: KeyboardEvent): void {
   if (e.key === "Escape") {
-    rawIndexMenuOpen.value = false;
     activeFileMenuId.value = null;
   }
 }
@@ -681,12 +557,6 @@ const footerProbeArtifacts = computed(() => {
   }
   return displayedArtifacts.value;
 });
-
-function formatChecksum(artifact: Artifact): string {
-  if (!artifact.checksum_value) return "—";
-  const type = (artifact.checksum_type || (artifact.checksum_value.length === 32 ? "MD5" : "CRC64")).toUpperCase();
-  return `${type}: ${artifact.checksum_value}`;
-}
 
 const panelEyebrow = computed(() => {
   if (mode.value === "resources") {
@@ -917,97 +787,11 @@ function switchToFiles(): void {
   if (domain.value) void navigateMode(domain.value, "files");
 }
 
-function saveTextFile(filename: string, content: string, type: string): void {
-  const href = URL.createObjectURL(new Blob([content], { type }));
-  const anchor = document.createElement("a");
-  anchor.href = href;
-  anchor.download = filename;
-  anchor.click();
-  window.setTimeout(() => URL.revokeObjectURL(href), 0);
-}
-
-async function exportArtifacts(format: "urls" | "json"): Promise<void> {
-  if (!canExportArtifacts.value || (format === "urls" && !canExportUrls.value)) return;
-  const exportController = new AbortController();
-  try {
-    if (mode.value === "chunks") {
-      const stem = `${gameId.value}-${selectedVersion.value}-chunk-manifests`;
-      if (format === "json") {
-        const payload = chunkDetail.value || {
-          domain_id: domainId.value,
-          version: selectedVersion.value,
-          manifests: artifacts.value,
-        };
-        saveTextFile(`${stem}.json`, `${JSON.stringify(payload, null, 2)}\n`, "application/json;charset=utf-8");
-        toast.value = "已生成 1 项 Chunk Manifest JSON";
-      } else {
-        const urls: string[] = [];
-        if (chunkDetail.value?.manifests?.length) {
-          for (const m of chunkDetail.value.manifests) {
-            const prefix = m.manifest_download?.url_prefix || "";
-            const id = m.manifest?.id || m.manifest_id || "";
-            if (prefix && id) urls.push(`${prefix.replace(/\/+$/, "")}/${id}`);
-          }
-        } else {
-          for (const art of artifacts.value) {
-            const url = artifactDownloadUrl(art) || preferredDomainArtifactAction(domain.value, art, "download")?.url || rawArtifactUrl(art);
-            if (url) urls.push(url);
-          }
-        }
-        saveTextFile(`${stem}.urls.txt`, `${urls.join("\n")}\n`, "text/plain;charset=utf-8");
-        toast.value = `已生成 ${urls.length} 项 Manifest URL 列表`;
-      }
-      return;
-    }
-    if (mode.value === "apk") {
-      const record = await api.versionRecord(domainId.value, selectedVersion.value, exportController.signal);
-      const stem = `${gameId.value}-${selectedVersion.value}-${mode.value}`;
-      if (format === "json") {
-        saveTextFile(`${stem}.json`, `${JSON.stringify(record, null, 2)}\n`, "application/json;charset=utf-8");
-      } else {
-        saveTextFile(`${stem}.urls.txt`, `${record.url}\n`, "text/plain;charset=utf-8");
-      }
-      toast.value = `已生成 1 项${format === "json" ? " JSON" : " URL 列表"}`;
-      return;
-    }
-    const rows = await api.allArtifacts(
-      domainId.value,
-      selectedVersion.value,
-      {
-        kind: exportArtifactKind.value,
-        query: searchableMode.value ? query.value.trim() : "",
-      },
-      exportController.signal,
-    );
-    const stem = `${gameId.value}-${selectedVersion.value}-${mode.value}`;
-    if (format === "json") {
-      saveTextFile(`${stem}.json`, `${JSON.stringify(rows, null, 2)}\n`, "application/json;charset=utf-8");
-    } else {
-      const content = rows
-        .map((item) => artifactDownloadUrl(item) || preferredDomainArtifactAction(domain.value, item, "download")?.url || rawArtifactUrl(item))
-        .filter((url): url is string => Boolean(url))
-        .join("\n");
-      saveTextFile(`${stem}.urls.txt`, `${content}\n`, "text/plain;charset=utf-8");
-    }
-    toast.value = `已生成 ${rows.length} 项${format === "json" ? " JSON" : " 批量 URL 文件"}`;
-  } catch (reason) {
-    toast.value = reason instanceof Error ? reason.message : "生成导出文件失败";
-  } finally {
-    window.setTimeout(() => {
-      toast.value = "";
-    }, 2400);
-  }
-}
-
 async function replaceQuery(name: "q" | "availability" | "from", value: string): Promise<void> {
   const next = { ...route.query };
   if (value && value !== "all") next[name] = value;
   else delete next[name];
   await router.replace({ name: "archive", params: route.params, query: next });
-}
-
-function updateCompareBase(value: string): void {
-  void replaceQuery("from", routeVersionLabel(value));
 }
 
 let searchTimer: number | null = null;
@@ -1081,7 +865,7 @@ watch(
   ([name, gId]) => {
     if (name) {
       document.title = `${name} · 官方文件索引 | GMI`;
-      const icon = gId ? iconFor(gId) : undefined;
+      const icon = gId ? iconForGame(games.value, gId) : undefined;
       if (icon) updateFavicon(icon);
     } else {
       document.title = "GMI - 游戏资源索引";
@@ -1128,9 +912,7 @@ function onAvailabilityStorageInvalidated(event: StorageEvent): void {
 onMounted(() => {
   loadRegistry();
   void loadGlobalProbeTime();
-  window.addEventListener("click", onWindowRawIndexClick);
   window.addEventListener("keydown", onWindowKeyDown);
-  window.addEventListener("gmi-close-raw-index", onCloseRawIndex);
   window.addEventListener("gmi-availability-invalidated", onAvailabilityInvalidated);
   window.addEventListener("storage", onAvailabilityStorageInvalidated);
 });
@@ -1139,38 +921,12 @@ onBeforeUnmount(() => {
   globalProbeController?.abort();
   disposeArchiveLoader();
   if (searchTimer !== null) window.clearTimeout(searchTimer);
-  window.removeEventListener("click", onWindowRawIndexClick);
+  if (toastTimer !== null) window.clearTimeout(toastTimer);
   window.removeEventListener("keydown", onWindowKeyDown);
-  window.removeEventListener("gmi-close-raw-index", onCloseRawIndex);
   window.removeEventListener("gmi-availability-invalidated", onAvailabilityInvalidated);
   window.removeEventListener("storage", onAvailabilityStorageInvalidated);
 });
 
-function formatBytes(value: number): string {
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  let size = value,
-    unit = 0;
-  while (size >= 1024 && unit < units.length - 1) {
-    size /= 1024;
-    unit += 1;
-  }
-  return `${size.toFixed(unit ? 2 : 0)} ${units[unit]}`;
-}
-
-function shortName(item: Game): string {
-  return item.id.slice(0, 3).toUpperCase();
-}
-function iconFor(id: string): string | undefined {
-  const source = games.value.find((item) => item.id === id)?.icon_source?.trim();
-  if (source?.startsWith("builtin:")) return gameIcons[source.slice("builtin:".length)] || gameIcons[id];
-  return source || gameIcons[id];
-}
-function useFallbackIcon(event: Event, id: string): void {
-  const image = event.currentTarget as HTMLImageElement;
-  const fallback = gameIcons[id];
-  if (fallback && image.src !== fallback) image.src = fallback;
-  else image.hidden = true;
-}
 function modeLabel(item: ArchiveDomain | null | undefined, capability: string): string {
   return domainModeLabel(item, capability);
 }
@@ -1190,80 +946,17 @@ function leadClassificationLabel(lead: ArchiveLead): string {
 function leadActionAllowed(lead: ArchiveLead, action: "open" | "copy"): boolean {
   return domainActionSupport(domain.value, action) && lead.urls[0]?.current_facts.action_allowed === true;
 }
-function formatDate(value?: string | null): string {
-  if (!value) return "—";
-  const date = new Date(value);
-  const parts = new Intl.DateTimeFormat("zh-CN", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  })
-    .formatToParts(date)
-    .reduce<Record<string, string>>((result, part) => {
-      if (part.type !== "literal") result[part.type] = part.value;
-      return result;
-    }, {});
-  return `${parts.year}.${parts.month}.${parts.day} ${parts.hour}:${parts.minute}`;
-}
-function formatRelativeTime(value?: string | null, now = Date.now()): string {
-  const date = observedDate(value);
-  if (!date) return "-";
-  const seconds = Math.max(0, Math.round((now - date.getTime()) / 1000));
-  if (seconds < 60) return "刚刚";
-  const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `${minutes} 分钟前`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours} 小时前`;
-  const days = Math.round(hours / 24);
-  if (days < 30) return `${days} 天前`;
-  return formatDate(value);
-}
-function observedDate(value?: string | null): Date | null {
-  if (!value) return null;
-  const normalized = /(?:z|[+-]\d\d:\d\d)$/i.test(value) ? value : `${value}Z`;
-  const date = new Date(normalized);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-function formatObservedDate(value?: string | null): string {
-  if (value && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value.replaceAll("-", ".");
-  const date = observedDate(value);
-  if (!date) return "—";
-  const parts = new Intl.DateTimeFormat("zh-CN", {
-    timeZone: "Asia/Shanghai",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  })
-    .formatToParts(date)
-    .reduce<Record<string, string>>((result, part) => {
-      if (part.type !== "literal") result[part.type] = part.value;
-      return result;
-    }, {});
-  return `${parts.year}.${parts.month}.${parts.day} ${parts.hour}:${parts.minute}`;
-}
 async function copyArtifactUrl(artifact: Artifact): Promise<void> {
-  const url = preferredAvailableUrl(artifact, "copy") || rawArtifactUrl(artifact) || artifact.urls[0]?.url;
+  const url = preferredAvailableUrl(domain.value, artifact, "copy") || rawArtifactUrl(artifact) || artifact.urls[0]?.url;
   await copyUrl(url);
 }
 async function copyUrl(url?: string): Promise<void> {
   if (!url) return;
-  toast.value = (await copyTextToClipboard(url)) ? "链接已复制" : "复制失败，请手动复制";
-  window.setTimeout(() => {
-    toast.value = "";
-  }, 1600);
+  setToast((await copyTextToClipboard(url)) ? "链接已复制" : "复制失败，请手动复制");
 }
 async function onCopyChunkUrl(url: string, label = "链接"): Promise<void> {
   if (!url) return;
-  toast.value = (await copyTextToClipboard(url)) ? `${label}已复制` : "复制失败，请手动复制";
-  window.setTimeout(() => {
-    toast.value = "";
-  }, 1600);
+  setToast((await copyTextToClipboard(url)) ? `${label}已复制` : "复制失败，请手动复制");
 }
 function onRemoteTreeProbeTimeChange(value: string | null): void {
   remoteTreeProbeTime.value = value;
@@ -1280,23 +973,6 @@ function onRemoteManifestSizeChange(context: { domainId: string; version: string
     ...context, size: typeof size === "number" && Number.isSafeInteger(size) && size >= 0 ? size : null,
   };
 }
-function candidateUrl(artifact: Artifact, sourceKind: string) {
-  return artifact.urls.find((item) => item.source_kind === sourceKind);
-}
-function rawArtifactUrl(artifact: Artifact): string | undefined {
-  return artifact.urls[0]?.url;
-}
-function isFileManifestArtifact(artifact: Artifact): boolean {
-  return artifact.attributes?.delivery_mode === "file_manifest";
-}
-function manifestUrlFor(artifact: Artifact): string | undefined {
-  const urls = artifact.attributes?.manifest_urls;
-  return Array.isArray(urls) && typeof urls[0] === "string" ? urls[0] : (typeof artifact.attributes?.manifest_url === "string" ? artifact.attributes.manifest_url : undefined);
-}
-function baseUrlFor(artifact: Artifact): string | undefined {
-  const urls = artifact.attributes?.base_urls;
-  return Array.isArray(urls) && typeof urls[0] === "string" ? urls[0] : undefined;
-}
 async function copyManifestUrl(artifact: Artifact): Promise<void> {
   await copyUrl(manifestUrlFor(artifact));
 }
@@ -1305,63 +981,6 @@ async function copyBaseUrl(artifact: Artifact): Promise<void> {
 }
 async function openArtifactFiles(): Promise<void> {
   await navigate({ mode: "files" });
-}
-function artifactIsAvailable(artifact: Artifact): boolean {
-  const current = preferredArtifactAction(artifact)?.current || artifact.urls[0]?.current;
-  if (current?.state === "available") return true;
-  if (preferredAvailableUrl(artifact) || actionableCandidate(artifact, "official")) return true;
-  return false;
-}
-function artifactDownloadUrl(artifact: Artifact): string | undefined {
-  if (!artifactIsAvailable(artifact)) return undefined;
-  return preferredAvailableUrl(artifact)
-    || actionableCandidate(artifact, "official")?.url
-    || artifact.urls.find((u) => u.current?.state === "available")?.url
-    || rawArtifactUrl(artifact);
-}
-function preferredAvailableUrl(artifact: Artifact, action: "open" | "copy" | "download" = "download"): string | undefined {
-  return preferredDomainArtifactAction(domain.value, artifact, action)?.url;
-}
-function actionableCandidate(artifact: Artifact, sourceKind: string) {
-  const candidate = candidateUrl(artifact, sourceKind);
-  return domainActionSupport(domain.value, "open") &&
-    candidate &&
-    isAvailabilityActionable(candidate.current, candidate.url)
-    ? candidate
-    : undefined;
-}
-function patchRouteText(artifact: Artifact): string {
-  const from = String(artifact.attributes.route_from || "");
-  const to = String(artifact.attributes.route_to || "");
-  return from && to ? `${from} -> ${to}` : String(artifact.attributes.route || "更新路线未知");
-}
-function packageLabel(artifact?: Artifact): string {
-  if (selectedSummary.value?.provenance?.source_kind === "legacy_migration") return "历史归档资源清单";
-  if (domain.value?.adapter === "arknights") return "官方完整分卷";
-  if (domain.value?.adapter === "hoyo" && artifact) return hoyoArtifactCardPresentation(artifact, selectedVersion.value).label;
-  if (domain.value?.adapter === "wuwa" || (artifact && isFileManifestArtifact(artifact))) return "官方资源清单";
-  return "官方完整包";
-}
-function apkSourceSize(artifact: Artifact): number | null {
-  const value = artifact.attributes.source_size;
-  return typeof value === "number" && value > 0 ? value : null;
-}
-
-function hoyoPatchLabel(artifact: Artifact): string {
-  return hoyoArtifactCardPresentation(artifact, selectedVersion.value).label;
-}
-function patchRouteLabel(name: string): string {
-  return name.replace("→", "->");
-}
-function patchBasePath(artifact: Artifact): string {
-  const raw = artifact.urls[0]?.url;
-  if (!raw) return "—";
-  try {
-    const path = decodeURIComponent(new URL(raw, window.location.origin).pathname).replace(/^\/+/, "");
-    return path.replace(/indexFile\.json$/i, "resources/");
-  } catch {
-    return raw;
-  }
 }
 </script>
 
@@ -1396,67 +1015,11 @@ function patchBasePath(artifact: Artifact): string {
     <p>当前没有可公开查询的版本。</p>
   </main>
   <div v-else class="archive-app">
-    <aside class="game-sidebar" aria-label="游戏导航">
-      <div class="sidebar-header">
-        <div class="sidebar-brand">
-          <img class="brand-badge" src="/project-icon.svg" alt="GMI" />
-          <div class="brand-info">
-            <strong>游戏资源索引</strong>
-            <span>Game Manifest Index</span>
-          </div>
-        </div>
-        <div class="sidebar-search-box">
-          <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="11" cy="11" r="7" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <input
-            v-model="sidebarGameSearch"
-            class="sidebar-search-input"
-            placeholder="搜索游戏名称 / 代号…"
-          />
-          <span v-if="sidebarGameSearch" class="clear-search-btn" @click="sidebarGameSearch = ''">✕</span>
-        </div>
-      </div>
-
-      <div class="sidebar-games-scroll">
-        <div v-if="filteredRailGroups.length === 0" class="sidebar-empty">
-          未找到匹配的游戏
-        </div>
-        <div v-for="group in filteredRailGroups" :key="group.publisher" class="publisher-group">
-          <div class="publisher-header">
-            <span>{{ group.publisher }}</span>
-            <small class="publisher-count">{{ group.games.length }}</small>
-          </div>
-          <div class="publisher-game-list">
-            <button
-              v-for="item in group.games"
-              :key="item.id"
-              class="game-nav-item"
-              :class="{ active: item.id === gameId }"
-              type="button"
-              @click="navigate({ gameId: item.id, domainId: '', version: '', mode: '' })"
-            >
-              <div class="game-item-icon-box">
-                <img
-                  v-if="iconFor(item.id)"
-                  :class="{ 'endfield-icon': item.id === 'endfield' }"
-                  :src="iconFor(item.id)"
-                  :alt="item.name"
-                  @error="useFallbackIcon($event, item.id)"
-                />
-                <span v-else>{{ shortName(item) }}</span>
-              </div>
-              <div class="game-item-text">
-                <strong class="game-item-name">{{ item.name }}</strong>
-                <span class="game-item-sub">{{ item.sub_name || item.id }}</span>
-              </div>
-            </button>
-          </div>
-        </div>
-      </div>
-
-    </aside>
+    <ArchiveGameSidebar
+      :games="games"
+      :game-id="gameId"
+      @select-game="navigate({ gameId: $event, domainId: '', version: '', mode: '' })"
+    />
     <main class="main-content">
       <header id="home" class="topbar">
         <div>
@@ -1487,38 +1050,21 @@ function patchBasePath(artifact: Artifact): string {
           </li>
         </ol>
       </section>
-      <section class="control-strip" :class="controlStripDensity">
-        <VersionPicker
-          :versions="versions"
-          :model-value="selectedVersion"
-          :domain="domain"
-          :mode="mode"
-          :label-override="mode === 'legacy' ? '候选线索' : undefined"
-          :show-availability="mode !== 'files' && !suppressAvailabilityPresentation"
-          @select="navigate({ version: $event })"
-        />
-        <div class="mode-field">
-          <div class="mode-tabs" :class="{ 'mode-tabs-grid': visibleModes.length === 6 }" role="tablist" aria-label="数据视图">
-            <button
-              v-for="item in visibleModes"
-              :key="`${item.domain.id}:${item.capability}`"
-              class="mode-tab"
-              :class="{
-                active: item.capability === 'compare'
-                  ? mode === 'compare'
-                  : (item.domain.id === domainId && item.capability === mode)
-              }"
-              @click="navigateMode(item.domain, item.capability)"
-            >
-              {{ modeLabel(item.domain, item.capability) }}
-            </button>
-          </div>
-        </div>
-        <label v-if="searchableMode" class="search-box">
-          <span>搜索</span>
-          <input v-model="query" placeholder="文件名 / MD5 / URL" />
-        </label>
-      </section>
+      <ArchiveControlStrip
+        :versions="versions"
+        :selected-version="selectedVersion"
+        :domain="domain"
+        :domain-id="domainId"
+        :mode="mode"
+        :visible-modes="visibleModes"
+        :control-strip-density="controlStripDensity"
+        :searchable-mode="searchableMode"
+        :query="query"
+        :suppress-availability-presentation="suppressAvailabilityPresentation"
+        @select-version="navigate({ version: $event })"
+        @select-mode="navigateMode"
+        @update:query="query = $event"
+      />
       <section id="files" class="file-panel">
         <div class="panel-head">
           <div class="panel-header-top">
@@ -1536,79 +1082,12 @@ function patchBasePath(artifact: Artifact): string {
               </div>
             </div>
             <div v-if="canExportArtifacts || currentVersionApiUrl || mode === 'compare' || mode === 'legacy' || isWuwaFilesMode" class="panel-tools">
-              <!-- 鸣潮文件列表模式：统一收拢为 [ 原始索引 ▾ ] -->
-              <div v-if="isWuwaFilesMode" class="raw-manifest-dropdown">
-                <button
-                  type="button"
-                  class="tool-button raw-index-btn"
-                  :class="{ active: rawIndexMenuOpen }"
-                  @click.stop="toggleRawIndexMenu"
-                >
-                  <span>索引信息</span>
-                  <svg class="raw-chevron-icon" :class="{ open: rawIndexMenuOpen }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <polyline points="6 9 12 15 18 9" />
-                  </svg>
-                </button>
-
-                <div v-if="rawIndexMenuOpen" class="raw-index-card" @click.stop>
-                  <div class="raw-index-card-header">
-                    <strong>索引信息</strong>
-                    <span class="raw-index-card-sub">官方 Manifest 索引源</span>
-                  </div>
-
-                  <!-- 清单 URL -->
-                  <div class="raw-index-item">
-                    <span class="raw-index-item-label">清单 URL</span>
-                    <div class="raw-index-item-row">
-                      <span class="raw-index-item-url" :title="wuwaManifestUrl || '暂无'">{{ wuwaManifestShort }}</span>
-                      <button
-                        type="button"
-                        class="raw-index-item-btn"
-                        :disabled="!wuwaManifestUrl"
-                        @click="copyWuwaManifestUrl"
-                      >
-                        {{ copiedManifestUrl ? '已复制' : '复制' }}
-                      </button>
-                    </div>
-                  </div>
-
-                  <!-- 资源根目录 -->
-                  <div class="raw-index-item">
-                    <span class="raw-index-item-label">资源根目录</span>
-                    <div class="raw-index-item-row">
-                      <span class="raw-index-item-url" :title="wuwaBaseUrl || '暂无'">{{ wuwaBaseUrlShort }}</span>
-                      <button
-                        type="button"
-                        class="raw-index-item-btn"
-                        :disabled="!wuwaBaseUrl"
-                        @click="copyWuwaBaseUrl"
-                      >
-                        {{ copiedBaseUrl ? '已复制' : '复制' }}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div class="raw-index-divider"></div>
-
-                  <!-- 查看原始 JSON -->
-                  <a
-                    v-if="wuwaManifestUrl"
-                    class="raw-index-json-link"
-                    :href="wuwaManifestUrl"
-                    target="_blank"
-                    rel="noreferrer"
-                    @click="rawIndexMenuOpen = false"
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                      <polyline points="15 3 21 3 21 9" />
-                      <line x1="10" y1="14" x2="21" y2="3" />
-                    </svg>
-                    <span>查看原始 JSON</span>
-                  </a>
-                </div>
-              </div>
-
+              <ArchiveWuwaRawIndexMenu
+                v-if="isWuwaFilesMode"
+                :manifest-url="wuwaManifestUrl"
+                :base-url="wuwaBaseUrl"
+                @copy-url="copyUrl"
+              />
               <!-- 其他常规模式下的 [查看 JSON] / [导出 URL] -->
               <template v-else>
                 <a
@@ -1775,47 +1254,19 @@ function patchBasePath(artifact: Artifact): string {
           </article>
         </div>
         <div v-else-if="mode === 'legacy'" class="empty">没有候选线索记录。</div>
-        <div v-else-if="mode === 'compare'" class="compare-shell">
-          <div class="compare-toolbar">
-            <div v-if="compareDomains.length > 1" class="compare-platform-field">
-              <span>对比平台</span>
-              <div class="compare-platform-tabs" role="tablist" aria-label="对比平台选择">
-                <button
-                  v-for="item in compareDomains"
-                  :key="item.id"
-                  type="button"
-                  class="compare-platform-tab"
-                  :class="{ active: item.id === domainId }"
-                  @click="switchCompareDomain(item)"
-                >
-                  {{ comparePlatformLabel(item) }}
-                </button>
-              </div>
-            </div>
-            <div v-if="compareBaseVersion" class="compare-range-field">
-              <span>对比范围</span>
-              <strong>{{ compareBaseDisplayVersion }} → {{ selectedDisplayVersion }}</strong>
-            </div>
-            <div v-if="compareBaseVersion" class="compare-base-field">
-              <span>基准版本</span>
-              <CustomSelect
-                :model-value="compareBaseVersion"
-                :options="compareBaseOptions.map((item) => ({ label: displayVersionLabel(item.version, item.attributes), value: item.version }))"
-                size="small"
-                @change="updateCompareBase(String($event))"
-              />
-            </div>
-            <p>{{ compareScope === 'files' ? '逐个比对两个版本的文件，路径相同但大小或 MD5 不同的算作修改。' : '逐个比对两个版本的下载包，列出新增、删除和有改动的包。这里只对比大小和校验值，下载链接请到对应页面查看。' }}</p>
-          </div>
-          <ComparePanel
-            v-if="compareBaseVersion"
-            :domain-id="domainId"
-            :from-version="compareBaseVersion"
-            :to-version="selectedVersion"
-            :compare-scope="compareScope"
-          />
-          <div v-else class="empty">当前版本没有可用的对比基准。</div>
-        </div>
+        <ArchiveCompareView
+          v-else-if="mode === 'compare'"
+          :domain-id="domainId"
+          :selected-version="selectedVersion"
+          :selected-display-version="selectedDisplayVersion"
+          :compare-domains="compareDomains"
+          :compare-base-version="compareBaseVersion"
+          :compare-base-display-version="compareBaseDisplayVersion"
+          :compare-base-options="compareBaseOptions"
+          :compare-scope="compareScope"
+          @switch-domain="switchCompareDomain"
+          @update-base="updateCompareBase"
+        />
         <div v-else-if="mode === 'manifest' && artifacts.length" class="manifest-table">
           <div class="manifest-head">
             <span>路径</span>
@@ -1917,534 +1368,53 @@ function patchBasePath(artifact: Artifact): string {
               </button>
             </div>
           </div>
-          <div v-else-if="mode === 'apk'" class="file-list">
-            <article v-for="(artifact, index) in displayedArtifacts" :key="artifact.id" class="file-card">
-              <div class="file-icon">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="m21 8-9-5-9 5 9 5 9-5Z" />
-                  <path d="M3 8v8l9 5 9-5V8" />
-                  <path d="M12 13v8" />
-                </svg>
-              </div>
-              <div class="file-main">
-                <div class="file-title">
-                  <span class="pill">官方安装包</span>
-                  <span class="count">{{ index + 1 }}/{{ displayedArtifacts.length }}</span>
-                  <strong>{{ artifact.name }}</strong>
-                </div>
-                <div class="file-meta">
-                  <span>{{ formatBytes(artifact.size || apkSourceSize(artifact) || 0) }}</span>
-                  <span v-if="artifact.checksum_value">{{ (artifact.checksum_type || 'CRC64').toUpperCase() }}: {{ artifact.checksum_value }}</span>
-                  <span v-if="artifact.attributes.artifact_variant">渠道 {{ artifact.attributes.artifact_variant }}</span>
-                </div>
-              </div>
-               <div class="file-actions">
-                  <AvailabilityBadge
-                    v-if="!suppressAvailabilityPresentation"
-                    :value="preferredArtifactAction(artifact)?.current || artifact.urls[0]?.current || null"
-                  />
-                  <button
-                    v-if="preferredAvailableUrl(artifact, 'copy') || (suppressAvailabilityPresentation && rawArtifactUrl(artifact))"
-                    class="icon-button"
-                    @click="suppressAvailabilityPresentation ? copyUrl(rawArtifactUrl(artifact)) : copyArtifactUrl(artifact)"
-                  >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <rect x="9" y="9" width="11" height="11" rx="2" />
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                  </svg>
-                  <span>复制链接</span>
-                </button>
-                <button
-                  v-else-if="rawArtifactUrl(artifact)"
-                  class="icon-button"
-                  @click="copyUrl(rawArtifactUrl(artifact))"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <rect x="9" y="9" width="11" height="11" rx="2" />
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                  </svg>
-                  <span>复制链接</span>
-                </button>
-                <a
-                  v-if="preferredAvailableUrl(artifact)"
-                  class="icon-button"
-                  :href="preferredAvailableUrl(artifact)"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M12 3v12" />
-                    <path d="m7 10 5 5 5-5" />
-                    <path d="M5 21h14" />
-                  </svg>
-                  <span>下载</span>
-                </a>
-                <a
-                  v-else-if="artifactDownloadUrl(artifact)"
-                  class="icon-button"
-                  :href="artifactDownloadUrl(artifact)"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M12 3v12" />
-                    <path d="m7 10 5 5 5-5" />
-                    <path d="M5 21h14" />
-                  </svg>
-                  <span>下载</span>
-                </a>
-                <button
-                  v-else-if="!suppressAvailabilityPresentation"
-                  class="icon-button is-disabled is-locked"
-                  disabled
-                  type="button"
-                  title="链接已失效，不可直接下载"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                  </svg>
-                  <span>下载</span>
-                </button>
-                <a
-                  v-if="actionableCandidate(artifact, 'archive')"
-                  class="icon-button mirror-link"
-                  :href="actionableCandidate(artifact, 'archive')?.url"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M12 3v12" />
-                    <path d="m7 10 5 5 5-5" />
-                    <path d="M5 21h14" />
-                  </svg>
-                  <span>归档路径</span>
-                </a>
-              </div>
-            </article>
-          </div>
-          <div v-else-if="mode === 'packages' && usesPreferredUrlPresentation && domain?.adapter !== 'wuwa'" class="file-list package-list endfield-list">
-            <article v-for="(artifact, index) in artifacts" :key="artifact.id" class="file-card package-card">
-              <div class="file-icon">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="m21 8-9-5-9 5 9 5 9-5Z" />
-                  <path d="M3 8v8l9 5 9-5V8" />
-                  <path d="M12 13v8" />
-                </svg>
-              </div>
-              <div class="file-main">
-                <div class="file-title">
-                  <span class="pill">{{ candidateUrl(artifact, 'mirror') ? '完整分卷' : '官方完整分卷' }}</span>
-                  <span class="count">{{ artifact.part || index + 1 }}/{{ selectedSummary?.artifact_kinds?.package?.count || artifacts.length }}</span>
-                  <strong>{{ artifact.name }}</strong>
-                </div>
-                <div class="file-meta">
-                  <span v-if="supportsArtifactField('size')">{{ formatBytes(artifact.size) }}</span>
-                  <span v-if="supportsArtifactField('checksum') && artifact.checksum_value"># {{ artifact.checksum_value }}</span>
-                </div>
-              </div>
-              <div class="file-actions endfield-actions">
-                <AvailabilityBadge :value="preferredArtifactAction(artifact)?.current || artifact.urls[0]?.current || null" />
-                <button
-                  v-if="preferredAvailableUrl(artifact, 'copy')"
-                  class="icon-button"
-                  @click="copyUrl(preferredAvailableUrl(artifact, 'copy'))"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <rect x="9" y="9" width="11" height="11" rx="2" />
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                  </svg>
-                  <span>复制链接</span>
-                </button>
-                <a
-                  v-if="actionableCandidate(artifact, 'official')"
-                  class="icon-button"
-                  :href="actionableCandidate(artifact, 'official')?.url"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M12 3v12" />
-                    <path d="m7 10 5 5 5-5" />
-                    <path d="M5 21h14" />
-                  </svg>
-                  <span>下载</span>
-                </a>
-                <a
-                  v-if="actionableCandidate(artifact, 'mirror')"
-                  class="icon-button mirror-link"
-                  :href="actionableCandidate(artifact, 'mirror')?.url"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M12 3v12" />
-                    <path d="m7 10 5 5 5-5" />
-                    <path d="M5 21h14" />
-                  </svg>
-                  <span>镜像</span>
-                </a>
-                <button
-                  v-if="!preferredAvailableUrl(artifact) && !actionableCandidate(artifact, 'official') && !actionableCandidate(artifact, 'mirror')"
-                  class="icon-button is-disabled is-locked"
-                  disabled
-                  type="button"
-                  title="链接已失效，不可直接下载"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                  </svg>
-                  <span>下载</span>
-                </button>
-                <button
-                  v-if="!preferredAvailableUrl(artifact) && rawArtifactUrl(artifact)"
-                  class="icon-button"
-                  @click="copyUrl(rawArtifactUrl(artifact))"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <rect x="9" y="9" width="11" height="11" rx="2" />
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                  </svg>
-                  <span>复制链接</span>
-                </button>
-              </div>
-            </article>
-          <ArtifactPagination :page="artifactPage" :total="artifactTotal || 0" :page-size="artifactPageSize" :loading="loadingMore" @update:page="selectArtifactPage" @update:page-size="selectArtifactPageSize" />
-          </div>
-          <div v-else-if="mode === 'packages'" class="file-list package-list">
-            <article v-for="(artifact, index) in displayedArtifacts" :key="artifact.id" class="file-card package-card">
-              <div class="file-icon">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="m21 8-9-5-9 5 9 5 9-5Z" />
-                  <path d="M3 8v8l9 5 9-5V8" />
-                  <path d="M12 13v8" />
-                </svg>
-              </div>
-              <div class="file-main">
-                <div class="file-title">
-                  <span class="pill">{{ packageLabel(artifact) }}</span>
-                  <span class="count">{{ index + 1 }}/{{ displayedArtifacts.length }}</span>
-                  <strong>{{ artifact.name }}</strong>
-                </div>
-                <div class="file-meta">
-                  <span>{{ formatBytes(artifact.size) }}</span>
-                  <span v-if="artifact.checksum_value">{{ formatChecksum(artifact) }}</span>
-                  <span v-if="artifact.attributes?.language">{{ hoyoLanguageLabel(artifact.attributes.language) }}</span>
-                </div>
-              </div>
-              <div class="file-actions">
-                <template v-if="domain?.adapter === 'wuwa' && isFileManifestArtifact(artifact)">
-                  <button class="icon-button" type="button" @click="openArtifactFiles"><span>查看清单</span></button>
-                  <button v-if="manifestUrlFor(artifact)" class="icon-button" type="button" @click="copyManifestUrl(artifact)"><span>复制清单链接</span></button>
-                  <button v-if="baseUrlFor(artifact)" class="icon-button" type="button" @click="copyBaseUrl(artifact)"><span>复制资源文件根目录</span></button>
-                </template>
-                <template v-else>
-                <AvailabilityBadge v-if="!suppressAvailabilityPresentation" :value="preferredArtifactAction(artifact)?.current || artifact.urls[0]?.current || null" />
-                <button
-                  v-if="preferredAvailableUrl(artifact, 'copy')"
-                  class="icon-button"
-                  @click="copyArtifactUrl(artifact)"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <rect x="9" y="9" width="11" height="11" rx="2" />
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                  </svg>
-                  <span>复制链接</span>
-                </button>
-                <button
-                  v-else-if="rawArtifactUrl(artifact)"
-                  class="icon-button"
-                  @click="copyUrl(rawArtifactUrl(artifact))"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <rect x="9" y="9" width="11" height="11" rx="2" />
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                  </svg>
-                  <span>复制链接</span>
-                </button>
-                <a
-                  v-if="preferredAvailableUrl(artifact)"
-                  class="icon-button"
-                  :href="preferredAvailableUrl(artifact)"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M12 3v12" />
-                    <path d="m7 10 5 5 5-5" />
-                    <path d="M5 21h14" />
-                  </svg>
-                  <span>下载</span>
-                </a>
-                <button
-                  v-else-if="!suppressAvailabilityPresentation"
-                  class="icon-button is-disabled is-locked"
-                  disabled
-                  type="button"
-                  title="链接已失效，不可直接下载"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                  </svg>
-                  <span>下载</span>
-                </button>
-                </template>
-              </div>
-            </article>
-          <ArtifactPagination :page="artifactPage" :total="artifactTotal || 0" :page-size="artifactPageSize" :loading="loadingMore" @update:page="selectArtifactPage" @update:page-size="selectArtifactPageSize" />
-          </div>
-          <div v-else-if="mode === 'patches' && usesPreferredUrlPresentation && domain?.adapter !== 'wuwa'" class="file-list patch-route-list endfield-list">
-            <article v-for="(artifact, index) in displayedArtifacts" :key="artifact.id" class="file-card patch-route-card">
-              <div class="file-icon">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="m21 8-9-5-9 5 9 5 9-5Z" />
-                  <path d="M3 8v8l9 5 9-5V8" />
-                  <path d="M12 13v8" />
-                </svg>
-              </div>
-              <div class="file-main">
-                <div class="file-title">
-                  <span class="pill">更新分卷</span>
-                  <span class="count">{{ index + 1 }}/{{ displayedArtifacts.length }}</span>
-                  <strong>{{ artifact.name }}</strong>
-                </div>
-                <div class="file-meta">
-                  <span v-if="supportsArtifactField('size')">{{ formatBytes(artifact.size) }}</span>
-                  <span v-if="supportsArtifactField('checksum') && artifact.checksum_value"># {{ artifact.checksum_value }}</span>
-                  <span v-if="patchRouteText(artifact)">{{ patchRouteText(artifact) }}</span>
-                </div>
-              </div>
-              <div class="file-actions endfield-actions">
-                <AvailabilityBadge :value="preferredArtifactAction(artifact)?.current || artifact.urls[0]?.current || null" />
-                <button
-                  v-if="preferredAvailableUrl(artifact, 'copy')"
-                  class="icon-button"
-                  @click="copyUrl(preferredAvailableUrl(artifact, 'copy'))"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <rect x="9" y="9" width="11" height="11" rx="2" />
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                  </svg>
-                  <span>复制链接</span>
-                </button>
-                <button
-                  v-else-if="rawArtifactUrl(artifact)"
-                  class="icon-button"
-                  @click="copyUrl(rawArtifactUrl(artifact))"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <rect x="9" y="9" width="11" height="11" rx="2" />
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                  </svg>
-                  <span>复制链接</span>
-                </button>
-                <a
-                  v-if="actionableCandidate(artifact, 'official')"
-                  class="icon-button"
-                  :href="actionableCandidate(artifact, 'official')?.url"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M12 3v12" />
-                    <path d="m7 10 5 5 5-5" />
-                    <path d="M5 21h14" />
-                  </svg>
-                  <span>下载</span>
-                </a>
-                <a
-                  v-if="actionableCandidate(artifact, 'mirror')"
-                  class="icon-button mirror-link"
-                  :href="actionableCandidate(artifact, 'mirror')?.url"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M12 3v12" />
-                    <path d="m7 10 5 5 5-5" />
-                    <path d="M5 21h14" />
-                  </svg>
-                  <span>镜像</span>
-                </a>
-                <button
-                  v-if="!preferredAvailableUrl(artifact) && !actionableCandidate(artifact, 'official') && !actionableCandidate(artifact, 'mirror')"
-                  class="icon-button is-disabled is-locked"
-                  disabled
-                  type="button"
-                  title="链接已失效，不可直接下载"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                  </svg>
-                  <span>下载</span>
-                </button>
-              </div>
-            </article>
-          <ArtifactPagination :page="artifactPage" :total="artifactTotal || 0" :page-size="artifactPageSize" :loading="loadingMore" @update:page="selectArtifactPage" @update:page-size="selectArtifactPageSize" />
-          </div>
-          <div v-else-if="mode === 'patches' && domain?.adapter === 'wuwa'" class="file-list patch-route-list">
-            <article v-for="(artifact, index) in displayedArtifacts" :key="artifact.id" class="file-card patch-route-card">
-              <div class="file-icon">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="m21 8-9-5-9 5 9 5 9-5Z" />
-                  <path d="M3 8v8l9 5 9-5V8" />
-                  <path d="M12 13v8" />
-                </svg>
-              </div>
-              <div class="file-main">
-                <div class="file-title">
-                  <span class="pill">更新路线</span>
-                  <span class="count">{{ index + 1 }}/{{ displayedArtifacts.length }}</span>
-                  <strong>{{ patchRouteLabel(artifact.name) }}</strong>
-                </div>
-                <div class="file-meta">
-                  <span>{{ formatBytes(artifact.size) }}</span>
-                  <span># {{ artifact.checksum_value || '—' }}</span>
-                  <span v-if="patchBasePath(artifact)">{{ patchBasePath(artifact) }}</span>
-                </div>
-              </div>
-              <div class="file-actions">
-                <template v-if="isFileManifestArtifact(artifact)">
-                  <button class="icon-button" type="button" @click="openArtifactFiles"><span>查看清单</span></button>
-                  <button v-if="manifestUrlFor(artifact)" class="icon-button" type="button" @click="copyManifestUrl(artifact)"><span>复制清单链接</span></button>
-                  <button v-if="baseUrlFor(artifact)" class="icon-button" type="button" @click="copyBaseUrl(artifact)"><span>复制资源文件根目录</span></button>
-                </template>
-                <template v-else>
-                <AvailabilityBadge :value="preferredArtifactAction(artifact)?.current || artifact.urls[0]?.current || null" />
-                <button
-                  v-if="preferredAvailableUrl(artifact, 'copy')"
-                  class="icon-button"
-                  @click="copyArtifactUrl(artifact)"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <rect x="9" y="9" width="11" height="11" rx="2" />
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                  </svg>
-                  <span>复制链接</span>
-                </button>
-                <button
-                  v-else-if="rawArtifactUrl(artifact)"
-                  class="icon-button"
-                  @click="copyUrl(rawArtifactUrl(artifact))"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <rect x="9" y="9" width="11" height="11" rx="2" />
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                  </svg>
-                  <span>复制链接</span>
-                </button>
-                <a
-                  v-if="preferredAvailableUrl(artifact)"
-                  class="icon-button"
-                  :href="preferredAvailableUrl(artifact)"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M12 3v12" />
-                    <path d="m7 10 5 5 5-5" />
-                    <path d="M5 21h14" />
-                  </svg>
-                  <span>下载</span>
-                </a>
-                <button
-                  v-else
-                  class="icon-button is-disabled is-locked"
-                  disabled
-                  type="button"
-                  title="链接已失效，不可直接下载"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                  </svg>
-                  <span>下载</span>
-                </button>
-                </template>
-              </div>
-            </article>
-          <ArtifactPagination :page="artifactPage" :total="artifactTotal || 0" :page-size="artifactPageSize" :loading="loadingMore" @update:page="selectArtifactPage" @update:page-size="selectArtifactPageSize" />
-          </div>
-          <div v-else-if="mode === 'patches' && domain?.adapter === 'hoyo'" class="file-list patch-route-list">
-            <article v-for="(artifact, index) in displayedArtifacts" :key="artifact.id" class="file-card package-card">
-              <div class="file-icon">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="m21 8-9-5-9 5 9 5 9-5Z" />
-                  <path d="M3 8v8l9 5 9-5V8" />
-                  <path d="M12 13v8" />
-                </svg>
-              </div>
-              <div class="file-main">
-                <div class="file-title">
-                  <span class="pill">{{ hoyoPatchLabel(artifact) }}</span>
-                  <span class="count">{{ index + 1 }}/{{ displayedArtifacts.length }}</span>
-                  <strong>{{ artifact.name }}</strong>
-                </div>
-                <div class="file-meta">
-                  <span>{{ formatBytes(artifact.size) }}</span>
-                  <span v-if="artifact.checksum_value">{{ formatChecksum(artifact) }}</span>
-                  <span v-if="artifact.attributes.route_from && (artifact.attributes.route_to || selectedVersion)">{{ displayVersionLabel(String(artifact.attributes.route_from)) }} -> {{ displayVersionLabel(String(artifact.attributes.route_to || selectedVersion)) }}</span>
-                  <span v-if="artifact.attributes.language">{{ hoyoLanguageLabel(artifact.attributes.language) }}</span>
-                </div>
-              </div>
-              <div class="file-actions">
-                <AvailabilityBadge :value="preferredArtifactAction(artifact)?.current || artifact.urls[0]?.current || null" />
-                <button
-                  v-if="preferredAvailableUrl(artifact, 'copy')"
-                  class="icon-button"
-                  @click="copyArtifactUrl(artifact)"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <rect x="9" y="9" width="11" height="11" rx="2" />
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                  </svg>
-                  <span>复制链接</span>
-                </button>
-                <button
-                  v-else-if="rawArtifactUrl(artifact)"
-                  class="icon-button"
-                  @click="copyUrl(rawArtifactUrl(artifact))"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <rect x="9" y="9" width="11" height="11" rx="2" />
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                  </svg>
-                  <span>复制链接</span>
-                </button>
-                <a
-                  v-if="preferredAvailableUrl(artifact)"
-                  class="icon-button"
-                  :href="preferredAvailableUrl(artifact)"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M12 3v12" />
-                    <path d="m7 10 5 5 5-5" />
-                    <path d="M5 21h14" />
-                  </svg>
-                  <span>下载</span>
-                </a>
-                <button
-                  v-else
-                  class="icon-button is-disabled is-locked"
-                  disabled
-                  type="button"
-                  title="链接已失效，不可直接下载"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                  </svg>
-                  <span>下载</span>
-                </button>
-              </div>
-            </article>
-          <ArtifactPagination :page="artifactPage" :total="artifactTotal || 0" :page-size="artifactPageSize" :loading="loadingMore" @update:page="selectArtifactPage" @update:page-size="selectArtifactPageSize" />
-          </div>
+          <ArchiveApkList
+            v-else-if="mode === 'apk'"
+            :artifacts="displayedArtifacts"
+            :domain="domain"
+            :suppress-availability-presentation="suppressAvailabilityPresentation"
+            @copy-url="copyUrl"
+            @copy-artifact-url="copyArtifactUrl"
+          />
+          <ArchivePackageList
+            v-else-if="mode === 'packages'"
+            :artifacts="artifacts"
+            :displayed-artifacts="displayedArtifacts"
+            :domain="domain"
+            :selected-summary="selectedSummary"
+            :selected-version="selectedVersion"
+            :uses-preferred-url-presentation="usesPreferredUrlPresentation"
+            :suppress-availability-presentation="suppressAvailabilityPresentation"
+            :artifact-page="artifactPage"
+            :artifact-total="artifactTotal || 0"
+            :artifact-page-size="artifactPageSize"
+            :loading-more="loadingMore"
+            @copy-url="copyUrl"
+            @copy-artifact-url="copyArtifactUrl"
+            @copy-manifest-url="copyManifestUrl"
+            @copy-base-url="copyBaseUrl"
+            @open-files="openArtifactFiles"
+            @update:page="selectArtifactPage"
+            @update:page-size="selectArtifactPageSize"
+          />
+          <ArchivePatchList
+            v-else-if="mode === 'patches' && (usesPreferredUrlPresentation || domain?.adapter === 'wuwa' || domain?.adapter === 'hoyo')"
+            :displayed-artifacts="displayedArtifacts"
+            :domain="domain"
+            :selected-version="selectedVersion"
+            :uses-preferred-url-presentation="usesPreferredUrlPresentation"
+            :artifact-page="artifactPage"
+            :artifact-total="artifactTotal || 0"
+            :artifact-page-size="artifactPageSize"
+            :loading-more="loadingMore"
+            @copy-url="copyUrl"
+            @copy-artifact-url="copyArtifactUrl"
+            @copy-manifest-url="copyManifestUrl"
+            @copy-base-url="copyBaseUrl"
+            @open-files="openArtifactFiles"
+            @update:page="selectArtifactPage"
+            @update:page-size="selectArtifactPageSize"
+          />
           <div v-else class="file-list">
             <article v-for="artifact in displayedArtifacts" :key="artifact.id" class="file-card">
               <span class="file-icon">
@@ -2468,7 +1438,7 @@ function patchBasePath(artifact: Artifact): string {
               </div>
               <div class="file-actions">
                 <button
-                  v-if="preferredAvailableUrl(artifact, 'copy')"
+                  v-if="preferredAvailableUrl(domain, artifact, 'copy')"
                   class="icon-button"
                   @click="copyArtifactUrl(artifact)"
                 >
@@ -2490,9 +1460,9 @@ function patchBasePath(artifact: Artifact): string {
                   <span>{{ artifact.attributes?.delivery_mode === 'file_manifest' ? '复制清单链接' : '复制链接' }}</span>
                 </button>
                 <a
-                  v-if="preferredAvailableUrl(artifact)"
+                  v-if="preferredAvailableUrl(domain, artifact)"
                   class="icon-button"
-                  :href="preferredAvailableUrl(artifact)"
+                  :href="preferredAvailableUrl(domain, artifact)"
                   target="_blank"
                   rel="noreferrer"
                 >
@@ -2532,7 +1502,7 @@ function patchBasePath(artifact: Artifact): string {
                 </button>
               </div>
             </article>
-          <ArtifactPagination :page="artifactPage" :total="artifactTotal || 0" :page-size="artifactPageSize" :loading="loadingMore" @update:page="selectArtifactPage" @update:page-size="selectArtifactPageSize" />
+            <ArtifactPagination :page="artifactPage" :total="artifactTotal || 0" :page-size="artifactPageSize" :loading="loadingMore" @update:page="selectArtifactPage" @update:page-size="selectArtifactPageSize" />
           </div>
         </template>
       </section>
