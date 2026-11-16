@@ -108,7 +108,13 @@ function useFallbackIcon(event: Event, id: string): void {
         @click="drawerOpen = !drawerOpen"
       >
         <span class="mobile-game-icon">
-          <img v-if="currentGame && iconFor(currentGame.id)" :src="iconFor(currentGame.id)" alt="" @error="useFallbackIcon($event, currentGame.id)" />
+          <img
+            v-if="currentGame && iconFor(currentGame.id)"
+            :class="{ 'endfield-icon': currentGame.id === 'endfield' }"
+            :src="iconFor(currentGame.id)"
+            alt=""
+            @error="useFallbackIcon($event, currentGame.id)"
+          />
           <span v-else-if="currentGame">{{ shortName(currentGame) }}</span>
         </span>
         <span class="mobile-game-name">{{ currentGame?.name || "选择游戏" }}</span>
@@ -137,7 +143,13 @@ function useFallbackIcon(event: Event, id: string): void {
               @click="selectFromDrawer(item.id)"
             >
               <span class="mobile-game-icon">
-                <img v-if="iconFor(item.id)" :src="iconFor(item.id)" alt="" @error="useFallbackIcon($event, item.id)" />
+                <img
+                  v-if="iconFor(item.id)"
+                  :class="{ 'endfield-icon': item.id === 'endfield' }"
+                  :src="iconFor(item.id)"
+                  alt=""
+                  @error="useFallbackIcon($event, item.id)"
+                />
                 <span v-else>{{ shortName(item) }}</span>
               </span>
               <span class="mobile-drawer-text">
@@ -149,6 +161,7 @@ function useFallbackIcon(event: Event, id: string): void {
         </div>
       </div>
     </div>
+    </Teleport>
 
     <div class="sidebar-games-scroll">
       <div v-if="filteredRailGroups.length === 0" class="sidebar-empty">
@@ -186,7 +199,6 @@ function useFallbackIcon(event: Event, id: string): void {
         </div>
       </div>
     </div>
-    </Teleport>
   </aside>
 </template>
 
@@ -316,11 +328,16 @@ function useFallbackIcon(event: Event, id: string): void {
     border-color: var(--blue);
   }
 
+  .mobile-drawer-search input::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
   .mobile-drawer-search button {
     position: absolute;
     top: 50%;
     right: 20px;
-    transform: translateY(-40%);
+    transform: translateY(-45%);
     color: var(--muted);
     font-size: 12px;
   }
