@@ -59,7 +59,7 @@ Debian 13。同机还运行 model-gallery、github-star-show、cpa-quota-viewer�
 
 ### 最近一次部署
 
-- **当前线上（2026-11-16 晚，`main@7bf705a`）**：前端 `index-uH6FKeDH.js` / `index-BvOrYrZe.css`；后端 67 个运行文件对应 `7bf705a`（`gmi-v5` PID 463572）。
+- **当前线上（2026-11-16 14:57 UTC，`main@d7b0a90`）**：前端 `index-DQsTE-Lr.js` / `index-B0IreZd2.css`；后端 67 个运行文件对应 `d7b0a90`（`gmi-v5` PID 464019）。此前同日还上线了画质包选中样式修复、11 月更新日志（含旧条目改写为大白话），以及两套文件列表统一样式（目录置顶、列对齐、紧凑行高、悬停显示的图标操作；后端只改 `manifest_readers.py` 的目录排序）。页面观感均未做浏览器验收。
 - **鸣潮 PC 画质包**：库洛旧启动器接口停在 3.7.1，3.8.0 起只在新的 `resourcePacks` 接口发布（经用户批准切换）。11-16 14:09 UTC 只替换 `url_adapters/pc/kuro_manifests.py` 并重启，14:21 的定时轮次采到 3.8.0（4 个画质包可用，54 个补丁中 40 个可用、14 个未判定），同轮也采到安卓 3.8.0。14:33 再只替换 `backend/api_contract.py` 并重启，上线画质包选择器：`artifact-tree` 新增可选 `identity` 和 `resource_packs`（包列表、官方 index 地址、SD / HD / UHD 组合大小）；新格式版本默认包与版本大小改为公共包。替换前均核对服务器运行文件与上次部署提交一致，并在暂存副本中用线上数据只读试跑。
 - **前端历次（11-16）**：三次组件 / 样式拆分、后台内容管理拆分和画质包选择器先后上线，都是先传 assets 再替换 HTML，并删除被替换的旧资源。Nginx 未改。
 - **后端冷启动（11-16，`main@a6741e6`）**：精简后 `/opt/GMI` 的首次整体替换；data、`.cache`、`/etc/gmi-v5.env`、service 文件摘要部署前后未变。
