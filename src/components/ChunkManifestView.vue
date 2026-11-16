@@ -1,15 +1,13 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
-import type { ArchiveDomain, Artifact, ChunkManifestDetail, ChunkManifestEntry, ChunkManifestSummaryItem, Game } from "../types";
+import { computed } from "vue";
+import type { ArchiveDomain, Artifact, ChunkManifestDetail, ChunkManifestEntry } from "../types";
 import { formatBytes, formatObservedDate, hoyoLanguageLabel, preferredArtifactAction, preferredDomainArtifactAction, repairMojibake } from "../domain-presentation";
 import AvailabilityBadge from "./AvailabilityBadge.vue";
 
 const props = defineProps<{
   domain: ArchiveDomain | null;
-  game: Game | null;
   version: string;
   chunkDetail: ChunkManifestDetail | null;
-  chunkCollection: ChunkManifestSummaryItem[];
   artifacts?: Artifact[];
   categoryFilter?: string;
   loading: boolean;
@@ -17,12 +15,10 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: "select-version", version: string): void;
   (e: "copy-url", url: string, label?: string): void;
 }>();
 
-const internalCategoryFilter = ref<string>("all");
-const activeFilter = computed(() => props.categoryFilter ?? internalCategoryFilter.value);
+const activeFilter = computed(() => props.categoryFilter ?? "all");
 
 function preferredAvailableUrl(artifact: Artifact, action: "open" | "copy" = "open"): string | undefined {
   return preferredDomainArtifactAction(props.domain, artifact, action)?.url;
@@ -428,39 +424,6 @@ function copyText(text: string, label: string): void {
   gap: 10px;
 }
 
-.summary-metric {
-  min-height: 68px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: rgba(14, 22, 35, 0.85);
-  padding: 10px 14px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.metric-label {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 750;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-}
-
-.metric-val {
-  margin-top: 4px;
-  color: var(--cyan);
-  font-size: 14.5px;
-  font-weight: 850;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.metric-val.mono {
-  font-family: var(--font-mono);
-}
-
 /* --- 筛选控制栏 --- */
 .chunk-filters-toolbar {
   display: flex;
@@ -472,16 +435,6 @@ function copyText(text: string, label: string): void {
   padding-top: 12px;
 }
 
-.collection-toggle-btn {
-  font-size: 12px;
-}
-
-.collection-toggle-btn.active {
-  border-color: rgba(56, 189, 248, 0.6);
-  background: rgba(56, 189, 248, 0.15);
-  color: #fff;
-}
-
 /* --- 版本库表格与抽屉 --- */
 .chunk-collection-section,
 .chunk-collection-drawer {
@@ -491,24 +444,15 @@ function copyText(text: string, label: string): void {
   padding: 16px 20px;
 }
 
-.section-head,
 .drawer-header {
   margin-bottom: 12px;
 }
 
-.section-head h4,
 .drawer-header h4 {
   margin: 0;
   font-size: 14px;
   font-weight: 800;
   color: #f8fafc;
-}
-
-.drawer-tip {
-  font-size: 12px;
-  color: var(--muted);
-  margin-top: 4px;
-  display: block;
 }
 
 .chunk-table-wrapper {
@@ -536,58 +480,6 @@ function copyText(text: string, label: string): void {
   border-bottom: 1px solid var(--line-soft);
   color: #e2e8f0;
   white-space: nowrap;
-}
-
-.chunk-table tr.is-active-row {
-  background: rgba(56, 189, 248, 0.08);
-}
-
-.version-tag {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 6px;
-  background: rgba(148, 163, 184, 0.15);
-  color: #f1f5f9;
-  font-family: var(--font-mono);
-  font-weight: 800;
-  font-size: 12px;
-}
-
-.version-tag.current-tag {
-  background: rgba(56, 189, 248, 0.25);
-  border: 1px solid rgba(56, 189, 248, 0.6);
-  color: #38bdf8;
-}
-
-.build-id-code {
-  font-family: var(--font-mono);
-  color: #93c5fd;
-  font-size: 11.5px;
-}
-
-.tags-row {
-  display: flex;
-  gap: 5px;
-}
-
-.mini-chip {
-  padding: 1px 6px;
-  border-radius: 4px;
-  background: rgba(148, 163, 184, 0.12);
-  color: #94a3b8;
-  font-size: 11px;
-}
-
-.mini-chip.lang-chip {
-  background: rgba(167, 139, 250, 0.15);
-  color: #c4b5fd;
-}
-
-.mini-btn {
-  min-width: 68px;
-  min-height: 28px;
-  padding: 0 10px;
-  font-size: 11.5px;
 }
 
 /* --- Manifest 卡片列表 --- */

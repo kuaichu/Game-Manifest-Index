@@ -8,8 +8,6 @@ from threading import RLock, local
 
 
 DATA_LOCK = RLock()
-CACHE_LOCK = RLock()
-RETENTION_LOCK = RLock()
 _HELD_DATA_LOCKS = local()
 
 

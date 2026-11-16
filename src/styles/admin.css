@@ -243,12 +243,6 @@
   box-shadow: none;
 }
 
-.admin-main .preview-meta-title {
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 600;
-}
-
 .admin-main .preview-meta-desc {
   color: var(--text-secondary);
   font-size: 12px;
@@ -275,7 +269,6 @@
   background: transparent;
 }
 
-.admin-main .version-portal-box,
 .admin-main .visibility-toggle-card {
   min-height: 0;
   padding: 0;
@@ -287,11 +280,6 @@
   color: var(--text-secondary);
   font-size: 12px;
   font-weight: 600;
-}
-
-.admin-main .sort-tag-val {
-  color: var(--muted);
-  font-size: 11.5px;
 }
 
 /* 模块页：能力矩阵与原始能力输入保持同一层 */
@@ -444,9 +432,6 @@
 }
 
 /* 排序快捷值与步进器并排时不再重复展示权重数字 */
-.admin-main .sort-tag-val {
-  display: none;
-}
 
 /* ==========================================================================
    Admin Config Surface Refresh (v2) — 第六轮：平台分段的换行修正
@@ -511,9 +496,6 @@
    ========================================================================== */
 
 /* 分组头退成安静的标题，版本行才是可点目标 */
-.admin-main .major-group {
-  margin-bottom: 2px;
-}
 
 .admin-main .major-group-header {
   padding: 6px 10px;
@@ -534,12 +516,6 @@
   background: transparent;
   border-color: transparent;
   color: var(--text-secondary);
-}
-
-.admin-main .major-group-header .version-count-inline,
-.admin-main .major-group-header .group-count {
-  color: var(--muted-dark);
-  font-size: 11px;
 }
 
 .admin-main .version-master-item .version-item-title {
@@ -579,20 +555,9 @@
   border-radius: 14px;
 }
 
-.admin-main .op-stat-card.is-highlight,
 .admin-main .op-stat-card.active {
   border-color: rgba(56, 189, 248, 0.32);
   background: rgba(56, 189, 248, 0.1);
-}
-
-.admin-main .op-progress-card {
-  border-color: transparent;
-  background: rgba(24, 35, 53, 0.55);
-  border-radius: 14px;
-}
-
-.admin-main .op-run-btn {
-  border-radius: 12px;
 }
 
 .admin-main .probe-card .card-title-group h3 {

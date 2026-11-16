@@ -131,10 +131,8 @@ describe("ChunkManifestView component", () => {
 
     const app = createApp(ChunkManifestView, {
       domain: { id: "hk4e-pc", game_id: "hk4e", kind: "packages", platform: "windows", capabilities: ["packages", "chunks", "archive"], adapter: "hoyo", version_count: 44, latest_version: "5.5.0" },
-      game: { id: "hk4e", name: "原神", sub_name: "Genshin Impact", platform: "android", icon_source: "", version_count: 55, latest_version: "7.0.0" },
       version: "5.5.0",
       chunkDetail: mockDetail,
-      chunkCollection: mockCollection,
       loading: false,
       onCopyUrl: (url: string) => {
         copiedUrl = url;
@@ -171,10 +169,8 @@ describe("ChunkManifestView component", () => {
     // Test game filter
     const appGame = createApp(ChunkManifestView, {
       domain: { id: "hk4e-pc", game_id: "hk4e", kind: "packages", platform: "windows", capabilities: ["packages", "chunks", "archive"], adapter: "hoyo", version_count: 44, latest_version: "5.5.0" },
-      game: { id: "hk4e", name: "原神", sub_name: "Genshin Impact", platform: "android", icon_source: "", version_count: 55, latest_version: "7.0.0" },
       version: "5.5.0",
       chunkDetail: mockDetail,
-      chunkCollection: mockCollection,
       categoryFilter: "game",
       loading: false,
     });
@@ -188,10 +184,8 @@ describe("ChunkManifestView component", () => {
     // Test voice filter
     const appVoice = createApp(ChunkManifestView, {
       domain: { id: "hk4e-pc", game_id: "hk4e", kind: "packages", platform: "windows", capabilities: ["packages", "chunks", "archive"], adapter: "hoyo", version_count: 44, latest_version: "5.5.0" },
-      game: { id: "hk4e", name: "原神", sub_name: "Genshin Impact", platform: "android", icon_source: "", version_count: 55, latest_version: "7.0.0" },
       version: "5.5.0",
       chunkDetail: mockDetail,
-      chunkCollection: mockCollection,
       categoryFilter: "zh-cn",
       loading: false,
     });
@@ -209,10 +203,8 @@ describe("ChunkManifestView component", () => {
 
     const app = createApp(ChunkManifestView, {
       domain: { id: "hk4e-pc", game_id: "hk4e", kind: "packages", platform: "windows", capabilities: ["packages", "chunks", "archive"], adapter: "hoyo", version_count: 44, latest_version: "5.5.0" },
-      game: { id: "hk4e", name: "原神", sub_name: "Genshin Impact", platform: "android", icon_source: "", version_count: 55, latest_version: "7.0.0" },
       version: "1.0.0", // version without chunks
       chunkDetail: null,
-      chunkCollection: mockCollection,
       loading: false,
     });
 

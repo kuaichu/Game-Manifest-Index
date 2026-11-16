@@ -1520,36 +1520,6 @@ onBeforeUnmount(() => {
   font-size: 12.5px;
 }
 
-.cfb-action-link-btn {
-  margin-top: 4px;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 14px;
-  border-radius: 6px;
-  border: 1px solid rgba(56, 189, 248, 0.25);
-  background: rgba(56, 189, 248, 0.06);
-  color: #38bdf8;
-  font-size: 12px;
-  font-weight: 650;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.cfb-action-link-btn:hover {
-  background: rgba(56, 189, 248, 0.16);
-  border-color: #38bdf8;
-  color: #fff;
-}
-
-.cfb-action-link-btn svg {
-  width: 12px;
-  height: 12px;
-  stroke: currentColor;
-  stroke-width: 2.5;
-  fill: none;
-}
-
 .cfb-empty-icon {
   width: 36px;
   height: 36px;
@@ -2246,17 +2216,6 @@ onBeforeUnmount(() => {
 
 @media (max-width: 860px) {
   /* 1. 顶部工具栏与数据源切换 */
-  .cfb-toolbar {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-  }
-
-  .cfb-source-switch {
-    width: 100%;
-    display: flex;
-    gap: 6px;
-  }
 
   .cfb-source-pill {
     flex: 1 1 0;
@@ -2360,18 +2319,6 @@ onBeforeUnmount(() => {
     grid-template-columns: 1fr 1fr;
     gap: 8px;
     padding: 12px;
-  }
-
-  .cfb-meta-card {
-    padding: 8px 10px;
-  }
-
-  .cfb-meta-val {
-    font-size: 12.5px;
-  }
-
-  .cfb-chunk-grid-table {
-    min-width: 580px;
   }
 
   .cfb-chunk-grid-header,

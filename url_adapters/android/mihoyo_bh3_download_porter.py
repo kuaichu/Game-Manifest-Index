@@ -18,8 +18,6 @@ def collect(
         "mihoyo", game_id, source_url,
         version=version, version_code=version_code, timeout=timeout, platform=None,
     )
-    if record.get("platform") is None:
-        record = {**record, "platform": "android"}
     return MihoyoApkCollection(
         source_url=source_url,
         record=record,
@@ -35,7 +33,6 @@ def discover(
 
 
 discover_v2 = discover
-output_v2 = discover
 
 
 def main() -> int:

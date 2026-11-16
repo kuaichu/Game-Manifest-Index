@@ -1258,9 +1258,6 @@ async function copyUrl(url?: string): Promise<void> {
     toast.value = "";
   }, 1600);
 }
-async function onSelectChunkVersion(targetVersion: string): Promise<void> {
-  await navigate({ version: targetVersion, mode: "chunks" });
-}
 async function onCopyChunkUrl(url: string, label = "链接"): Promise<void> {
   if (!url) return;
   toast.value = (await copyTextToClipboard(url)) ? `${label}已复制` : "复制失败，请手动复制";
@@ -1836,15 +1833,12 @@ function patchBasePath(artifact: Artifact): string {
         <div v-else-if="mode === 'chunks'" class="chunk-manifest-wrapper">
           <ChunkManifestView
             :domain="domain"
-            :game="game"
             :version="selectedDisplayVersion"
             :chunk-detail="chunkDetail"
-            :chunk-collection="chunkCollection"
             :artifacts="artifacts"
             :category-filter="chunkCategoryFilter"
             :loading="loading || chunkLoading"
             :error="chunkError"
-            @select-version="onSelectChunkVersion"
             @copy-url="onCopyChunkUrl"
           />
         </div>

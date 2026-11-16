@@ -38,7 +38,6 @@ RECORD_PATH = re.compile(r"^data/([^/]+)/([^/]+)/pc/([^/]+)\.json$")
 MANIFEST_PATH = re.compile(r"^data/([^/]+)/([^/]+)/pc/(manifests|chunk-manifests)/([^/]+)\.json$")
 SEGMENT_SUFFIX = re.compile(r"\.(\d{3})$")
 MD5 = re.compile(r"^[0-9a-fA-F]{32}$")
-SAFE_PART = re.compile(r"^[^/\\]+$")
 CURRENT_KEYS = ("state", "http_code", "checked_at", "response_size", "etag", "crc64", "last_modified", "final_url")
 RECORD_PROVENANCE_KEYS = ("source_kind", "source_name", "source_url", "source_repo", "source_commit", "imported_at")
 

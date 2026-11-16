@@ -103,12 +103,8 @@ def organize_apk(collection: MihoyoApkCollection) -> dict[str, Any]:
     return output
 
 
-organize = organize_apk
-
-
 __all__ = [
     "MihoyoApkCollection",
     "MihoyoApkOrganizationError",
-    "organize",
     "organize_apk",
 ]

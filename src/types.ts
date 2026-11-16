@@ -306,11 +306,6 @@ export interface SyncSchedule {
   times: string[];
 }
 
-export interface SyncRunResponse {
-  status: string;
-  log_path?: string;
-}
-
 export interface ProbeUrlResult {
   artifact_url_id?: number | null;
   url: string;
@@ -378,29 +373,6 @@ export interface PublicProbeScheduleStatus {
   last_started_at: string | null;
   error: string | null;
   evidence_ttl_hours: number;
-}
-
-export interface RetentionConfig {
-  cache_days: number;
-  observation_days: number;
-  interval_hours: number;
-}
-
-export interface RetentionRunResult {
-  cache_deleted: number;
-  temp_deleted: number;
-  operation_deleted: number;
-  observations_deleted: number;
-  errors: number;
-  skipped: number;
-}
-
-export interface RetentionStatus {
-  started_at: string | null;
-  finished_at: string | null;
-  source: "startup" | "scheduled" | "manual" | string;
-  result: RetentionRunResult | null;
-  error: string | null;
 }
 
 export interface ProbeStatus {

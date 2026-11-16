@@ -125,14 +125,8 @@ def organize_hypergryph_apk(collection: HypergryphApkCollection) -> dict[str, An
     return output
 
 
-organize = organize_hypergryph_apk
-organize_apk = organize_hypergryph_apk
-
-
 __all__ = [
     "HypergryphApkCollection",
     "HypergryphApkOrganizationError",
-    "organize",
-    "organize_apk",
     "organize_hypergryph_apk",
 ]
