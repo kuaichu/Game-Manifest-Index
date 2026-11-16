@@ -101,14 +101,8 @@ def organize_kuro_apk(collection: KuroApkCollection) -> dict[str, Any]:
     return output
 
 
-organize = organize_kuro_apk
-organize_apk = organize_kuro_apk
-
-
 __all__ = [
     "KuroApkCollection",
     "KuroApkOrganizationError",
-    "organize",
-    "organize_apk",
     "organize_kuro_apk",
 ]

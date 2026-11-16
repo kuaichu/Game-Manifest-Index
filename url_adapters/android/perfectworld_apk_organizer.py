@@ -101,14 +101,8 @@ def organize_perfectworld_apk(collection: PerfectWorldApkCollection) -> dict[str
     return output
 
 
-organize = organize_perfectworld_apk
-organize_apk = organize_perfectworld_apk
-
-
 __all__ = [
     "PerfectWorldApkCollection",
     "PerfectWorldApkOrganizationError",
-    "organize",
-    "organize_apk",
     "organize_perfectworld_apk",
 ]
