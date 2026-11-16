@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite --host",
     "build": "vue-tsc --noEmit && vite build",
+    "build:selfhost": "vue-tsc --noEmit && vite build --mode selfhost --outDir .cache/selfhost/dist --sourcemap false",
     "preview": "vite preview --host",
     "test": "vitest run"
   },
