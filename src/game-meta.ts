@@ -24,15 +24,9 @@ export const gameMeta: Record<string, GameMeta> = {
   endfield: { publisher: "鹰角网络", releaseDate: "2026-01-22" },
   pns: { publisher: "库洛游戏", releaseDate: "2019-12-05" },
   wuwa: { publisher: "库洛游戏", releaseDate: "2024-05-22" },
-  bluearchive: { publisher: "悠星", releaseDate: "2021-02-04" },
-  aethergazer: { publisher: "勇仕网络", releaseDate: "2022-04-22" },
   tof: { publisher: "完美世界", releaseDate: "2021-12-16" },
   p5x: { publisher: "完美世界", releaseDate: "2025-01-09" },
   nte: { publisher: "完美世界", releaseDate: "2026-04-23" },
-  reverse1999: { publisher: "深蓝互动", releaseDate: "2023-05-31" },
-  snowbreak: { publisher: "西山居", releaseDate: "2023-07-20" },
-  gf2: { publisher: "散爆网络", releaseDate: "2023-12-07" },
-  calabiyau: { publisher: "创梦天地", releaseDate: "2024-02-01" },
   // App Store currently exposes a future placeholder release date for the beta listing.
   // Keep the confirmed publisher while sorting this title after dated releases.
   azurpromilia: { publisher: "蛮啾网络", releaseDate: "9999-12-31" },

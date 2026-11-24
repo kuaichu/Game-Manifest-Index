@@ -229,9 +229,9 @@ describe("API client", () => {
     expect(options.headers.Authorization).toBe("Bearer admin-secret-token");
   });
 
-  it("sends POST to probeUrl and probeUrls with JSON body", async () => {
+  it("sends POST to probeUrl with JSON body", async () => {
     const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(
-      new Response(JSON.stringify({ url: "https://example.com/test.zip", ok: true, status: 200, items: [] }), {
+      new Response(JSON.stringify({ url: "https://example.com/test.zip", ok: true, status: 200 }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       }),
@@ -246,15 +246,6 @@ describe("API client", () => {
     expect(url).toContain("/admin/probe/url");
     expect(options.method).toBe("POST");
     expect(JSON.parse(options.body)).toEqual({ url: "https://example.com/test.zip", timeout: 10, artifact_url_id: 42 });
-
-    await adminApi.probeUrls(["https://example.com/test.zip"], "test-token", 10, [42]);
-    const [batchUrl, batchOptions] = fetchMock.mock.calls[1];
-    expect(batchUrl).toContain("/admin/probe/urls");
-    expect(JSON.parse(batchOptions.body)).toEqual({
-      urls: ["https://example.com/test.zip"],
-      timeout: 10,
-      artifact_url_ids: [42],
-    });
   });
 
   it("starts, polls, and cancels an admin operation", async () => {
@@ -310,58 +301,6 @@ describe("API client", () => {
     await adminApi.cancelOperation("job-1", "test-token");
     expect(fetchMock.mock.calls[2][0]).toContain("/admin/operations/job-1/cancel");
     expect(fetchMock.mock.calls[2][1].method).toBe("POST");
-  });
-
-  it("queries chunkFiles with search parameters and path", async () => {
-    const mockFiles = {
-      identity: "game",
-      path: "YuanShen_Data",
-      q: "global",
-      items: [{ name: "global-metadata.dat", path: "YuanShen_Data/global-metadata.dat", size: 1024, hash: "abc", chunk_count: 1, type: "file" as const }],
-      total: 1,
-      next_cursor: null,
-    };
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(mockFiles), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    }));
-    vi.stubGlobal("fetch", fetchMock);
-
-    const res = await api.chunkFiles("hk4e-pc", "7.0.0", "game", { path: "YuanShen_Data", q: "global", limit: 50, cursor: "0" });
-    expect(res.items.length).toBe(1);
-    expect(res.items[0].name).toBe("global-metadata.dat");
-
-    const [url] = fetchMock.mock.calls[0];
-    expect(url).toContain("/domains/hk4e-pc/versions/7.0.0/chunk-manifests/game/files");
-    expect(url).toContain("path=YuanShen_Data");
-    expect(url).toContain("q=global");
-    expect(url).toContain("limit=50");
-    expect(url).toContain("cursor=0");
-  });
-
-  it("fetches chunkFileDetail for a single file", async () => {
-    const mockDetail = {
-      identity: "game",
-      name: "YuanShen.exe",
-      path: "YuanShen.exe",
-      size: 431085976,
-      hash: "e1114eb3dd032ff9162fbd97e252f717",
-      chunk_count: 308,
-      chunks: [{ name: "chunk_1", hash: "hash_1", offset: 0, size: 12345, size_decompressed: 23456 }],
-    };
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(mockDetail), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    }));
-    vi.stubGlobal("fetch", fetchMock);
-
-    const res = await api.chunkFileDetail("hk4e-pc", "7.0.0", "game", "YuanShen.exe");
-    expect(res.name).toBe("YuanShen.exe");
-    expect(res.chunks?.length).toBe(1);
-
-    const [url] = fetchMock.mock.calls[0];
-    expect(url).toContain("/domains/hk4e-pc/versions/7.0.0/chunk-manifests/game/file");
-    expect(url).toContain("path=YuanShen.exe");
   });
 
   it("queries versionFiles with source and identity parameters", async () => {

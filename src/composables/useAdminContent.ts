@@ -1003,7 +1003,6 @@ export function useAdminContent(shell: AdminShell, deps: AdminContentDeps) {
 
   return {
     versionList,
-    ...versionList,
     versions,
     contentSubTab,
     editableLoaded,

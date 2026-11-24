@@ -48,7 +48,6 @@ function mockAdminApi(platform: "android" | "windows", pcAvailability: "availabl
       sort_order: 0,
     }],
   } as never);
-  vi.spyOn(adminApi, "syncStatus").mockResolvedValue(null as never);
   vi.spyOn(adminApi, "syncRunStatus").mockResolvedValue(null as never);
   vi.spyOn(adminApi, "versions").mockResolvedValue({
     items: [{

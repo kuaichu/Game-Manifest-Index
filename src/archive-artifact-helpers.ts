@@ -149,27 +149,6 @@ export function formatDate(value?: string | null): string {
   return `${parts.year}.${parts.month}.${parts.day} ${parts.hour}:${parts.minute}`;
 }
 
-export function formatObservedDate(value?: string | null): string {
-  if (value && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value.replaceAll("-", ".");
-  const date = observedDate(value);
-  if (!date) return "—";
-  const parts = new Intl.DateTimeFormat("zh-CN", {
-    timeZone: "Asia/Shanghai",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  })
-    .formatToParts(date)
-    .reduce<Record<string, string>>((result, part) => {
-      if (part.type !== "literal") result[part.type] = part.value;
-      return result;
-    }, {});
-  return `${parts.year}.${parts.month}.${parts.day} ${parts.hour}:${parts.minute}`;
-}
-
 export function formatRelativeTime(value?: string | null, now = Date.now()): string {
   const date = observedDate(value);
   if (!date) return "-";

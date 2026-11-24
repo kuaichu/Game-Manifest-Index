@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { api, isAbortError } from "../api";
-import { isAvailabilityActionable, latestLiveProbeTime } from "../domain-presentation";
+import { formatBytes, isAvailabilityActionable, latestLiveProbeTime } from "../domain-presentation";
 import type { Artifact, ArtifactTreePage, AvailabilityState, FileTimeChange, ResourcePacksChange } from "../types";
 import AvailabilityBadge from "./AvailabilityBadge.vue";
 import FragmentFileRow from "./FragmentFileRow.vue";
@@ -105,17 +105,6 @@ async function load(prefix: string, append = false): Promise<void> {
 
 function goCrumb(index: number): void {
   void load(crumbs.value.slice(0, index + 1).join("/"));
-}
-
-function formatBytes(value: number): string {
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  let size = value;
-  let unit = 0;
-  while (size >= 1024 && unit < units.length - 1) {
-    size /= 1024;
-    unit += 1;
-  }
-  return `${size.toFixed(unit ? 2 : 0)} ${units[unit]}`;
 }
 
 function filename(item: Artifact): string {

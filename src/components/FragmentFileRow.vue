@@ -1,13 +1,52 @@
 <script lang="ts">
-import { ref } from "vue";
+import { ref, watch } from "vue";
 
 // 页面级唯一打开的菜单 ID（确保整个表格同一时间只能有 1 个菜单处于打开状态，杜绝重叠）
 export const activeFileMenuId = ref<number | string | null>(null);
+
+let mountedRowCount = 0;
+let globalListenersAttached = false;
+
+function onWindowClick(e: MouseEvent): void {
+  const target = e.target as HTMLElement | null;
+  if (!target?.closest(".download-dropdown")) {
+    activeFileMenuId.value = null;
+  }
+}
+
+function onKeyDown(e: KeyboardEvent): void {
+  if (e.key === "Escape") {
+    activeFileMenuId.value = null;
+  }
+}
+
+function onGlobalCloseFileMenus(): void {
+  activeFileMenuId.value = null;
+}
+
+function syncGlobalListeners(): void {
+  if (typeof window === "undefined") return;
+  const shouldAttach = mountedRowCount > 0 && activeFileMenuId.value !== null;
+  if (shouldAttach && !globalListenersAttached) {
+    window.addEventListener("click", onWindowClick);
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("gmi-close-file-menus", onGlobalCloseFileMenus);
+    globalListenersAttached = true;
+  } else if (!shouldAttach && globalListenersAttached) {
+    window.removeEventListener("click", onWindowClick);
+    window.removeEventListener("keydown", onKeyDown);
+    window.removeEventListener("gmi-close-file-menus", onGlobalCloseFileMenus);
+    globalListenersAttached = false;
+  }
+}
+
+watch(activeFileMenuId, syncGlobalListeners, { flush: "sync" });
 </script>
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref as vueRef } from "vue";
 import { copyTextToClipboard } from "../clipboard";
+import { formatBytes } from "../domain-presentation";
 import type { Artifact } from "../types";
 
 const props = defineProps<{ artifact: Artifact; showPath?: boolean }>();
@@ -26,17 +65,6 @@ const availabilityLabel = computed(() => (isAvailable.value ? "可用" : "链接
 const checksum = computed(() => props.artifact.checksum_value || "—");
 
 const copyLabel = computed(() => (alternateUrls.value.length ? "复制官方入口" : "复制链接"));
-
-function formatBytes(value: number): string {
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  let size = value;
-  let unit = 0;
-  while (size >= 1024 && unit < units.length - 1) {
-    size /= 1024;
-    unit += 1;
-  }
-  return `${size.toFixed(unit ? 2 : 0)} ${units[unit]}`;
-}
 
 async function copyPrimary(): Promise<void> {
   await copyTextToClipboard(primaryUrl.value);
@@ -80,33 +108,17 @@ function onRowClick(e?: Event): void {
   }
 }
 
-function onWindowClick(e: MouseEvent): void {
-  const target = e.target as HTMLElement | null;
-  if (!target?.closest(".download-dropdown")) {
-    activeFileMenuId.value = null;
-  }
-}
-
-function onKeyDown(e: KeyboardEvent): void {
-  if (e.key === "Escape") {
-    activeFileMenuId.value = null;
-  }
-}
-
-function onGlobalCloseFileMenus(): void {
-  activeFileMenuId.value = null;
-}
-
 onMounted(() => {
-  window.addEventListener("click", onWindowClick);
-  window.addEventListener("keydown", onKeyDown);
-  window.addEventListener("gmi-close-file-menus", onGlobalCloseFileMenus);
+  mountedRowCount += 1;
+  syncGlobalListeners();
 });
 
 onBeforeUnmount(() => {
-  window.removeEventListener("click", onWindowClick);
-  window.removeEventListener("keydown", onKeyDown);
-  window.removeEventListener("gmi-close-file-menus", onGlobalCloseFileMenus);
+  mountedRowCount = Math.max(0, mountedRowCount - 1);
+  if (mountedRowCount === 0 || activeFileMenuId.value === props.artifact.id) {
+    activeFileMenuId.value = null;
+  }
+  syncGlobalListeners();
 });
 </script>
 

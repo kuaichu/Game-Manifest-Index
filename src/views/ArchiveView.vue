@@ -5,7 +5,6 @@ import { api, apiUrl, isAbortError } from "../api";
 import {
   baseUrlFor,
   formatDate,
-  formatObservedDate,
   formatRelativeTime,
   iconForGame,
   isFileManifestArtifact,
@@ -39,10 +38,12 @@ import {
   artifactKindForMode,
   availabilityStatesForMode,
   availableArchiveModes,
+  deliveryLabel,
   domainActionSupport,
   domainFieldSupport,
   domainModeLabel,
   formatBytes,
+  formatObservedDate,
   hoyoArtifactCardPresentation,
   hoyoLanguageLabel,
   isChunkOnlyVersion,
@@ -1429,7 +1430,7 @@ async function openArtifactFiles(): Promise<void> {
               <div class="file-body">
                 <div class="file-title">
                   <strong>{{ artifact.name }}</strong>
-                  <span class="pill">{{ artifact.attributes?.delivery_mode === 'file_manifest' ? (artifact.kind === 'patch' ? '更新资源清单' : '官方资源清单') : artifact.kind }}</span>
+                  <span class="pill">{{ deliveryLabel(artifact) }}</span>
                 </div>
                 <div class="file-meta">
                   <span>{{ formatBytes(artifact.size) }}</span>

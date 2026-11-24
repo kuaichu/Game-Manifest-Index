@@ -350,19 +350,6 @@ export interface SyncRunStatus {
   } | null;
 }
 
-export interface AdminSyncStatus {
-  approved_snapshots: string[];
-  latest_snapshot: string | null;
-  latest_refresh: {
-    status?: string;
-    started_at?: string;
-    completed_at?: string;
-    families?: Record<string, { status?: string }>;
-    failures?: Record<string, unknown>;
-    exit_code?: number;
-  } | null;
-}
-
 export interface ProbeSchedule {
   enabled: boolean;
   interval_hours: number;

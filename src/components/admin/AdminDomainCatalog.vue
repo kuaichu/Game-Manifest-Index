@@ -198,7 +198,6 @@ function adjustSort(delta: number): void { emit("adjust-sort", delta); }
     :search-query="searchQuery"
     search-placeholder="搜索游戏、模块 ID 或类型…"
     :item-count="filteredDomains.length"
-    empty-icon=""
     empty-title="未找到匹配的数据模块"
     empty-hint="可点击上方「新增模块」创建入口"
     @start="startDomain"

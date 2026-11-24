@@ -25,7 +25,6 @@ import { useAvailabilityInvalidation } from "../composables/useAvailabilityInval
 import type {
   AdminCatalog,
   AdminDomain,
-  AdminSyncStatus,
 } from "../types";
 
 const TOKEN_STORAGE_KEY = "game-manifest-index-web-admin-token-v1";
@@ -102,7 +101,6 @@ const domainSearchQuery = ref("");
 
 const selectedGameId = ref("");
 const selectedDomainId = ref("");
-const syncStatus = ref<AdminSyncStatus | null>(null);
 const newGame = ref(false);
 const newDomain = ref(false);
 
@@ -167,7 +165,8 @@ const content = useAdminContent(shell, { stopProbePolling: probe.stopProbePollin
 
 const { stopProbePolling, openProbe, loadSyncRunStatus } = probe;
 const { stopOperationPolling, resumeAdminOperation } = ops;
-const { versions, selectedVersion, loadEditableVersion, openContent, handleGlobalDropdownClick } = content;
+const { versions, loadEditableVersion, openContent, versionList } = content;
+const { selectedVersion, handleGlobalDropdownClick } = versionList;
 
 async function refreshAllData(): Promise<void> {
   await withLoading(async (signal) => {
@@ -243,7 +242,6 @@ async function login(): Promise<void> {
     await loadCatalog(signal);
     localStorage.setItem(TOKEN_STORAGE_KEY, token.value.trim());
     authenticated.value = true;
-    syncStatus.value = await adminApi.syncStatus(token.value.trim(), signal).catch(() => null);
     await loadSyncRunStatus();
     await resumeAdminOperation();
   });
@@ -258,7 +256,6 @@ function logout(): void {
   authenticated.value = false;
   catalog.value = { games: [], domains: [] };
   versions.value = [];
-  syncStatus.value = null;
 }
 
 onMounted(async () => {
@@ -269,7 +266,6 @@ onMounted(async () => {
       await loadCatalog(signal);
       localStorage.setItem(TOKEN_STORAGE_KEY, token.value.trim());
       authenticated.value = true;
-      syncStatus.value = await adminApi.syncStatus(token.value.trim(), signal).catch(() => null);
       await loadSyncRunStatus();
       await resumeAdminOperation();
     });
