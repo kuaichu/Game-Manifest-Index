@@ -6,6 +6,7 @@ import "../styles/admin-responsive.css";
 import "../styles/admin.css";
 import { ApiError, adminApi } from "../api";
 import { adminUiCapabilities } from "../admin-ui-capabilities";
+import { copyTextToClipboard } from "../clipboard";
 import { gameIcons } from "../game-icons";
 import AdminGameCatalog from "../components/admin/AdminGameCatalog.vue";
 import AdminDomainCatalog from "../components/admin/AdminDomainCatalog.vue";
@@ -107,10 +108,9 @@ const newDomain = ref(false);
 
 async function copyText(text: string): Promise<void> {
   if (!text) return;
-  try {
-    await navigator.clipboard.writeText(text);
+  if (await copyTextToClipboard(text)) {
     success.value = `已复制到剪贴板：${text}`;
-  } catch {
+  } else {
     error.value = "复制失败，请手动选择复制。";
   }
 }

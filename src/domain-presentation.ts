@@ -25,7 +25,7 @@ export function archiveSourceLabel(adapter: string | undefined, sourceKind?: unk
   if (adapter === "hoyo") return "HoYo 官方版本清单";
   if (adapter === "patchersdk") return "PatcherSDK ResList";
   if (adapter === "perfectworld_patcher") return "完美世界官方 PatcherSDK";
-  if (adapter === "nte") return "幻塔官方 ResList";
+  if (adapter === "nte") return "异环官方 ResList";
   if (adapter === "android") return "官方安装包直链";
   if (adapter === "resources") return "官方资源清单";
   return "官方 CDN 清单";

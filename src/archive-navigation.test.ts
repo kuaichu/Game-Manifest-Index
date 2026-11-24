@@ -138,7 +138,8 @@ describe("archive cross-game navigation", () => {
     unmountApp(app);
   });
 
-  it("fetches file dates for an initial Perfect World tree search without an extra normal-tree request", async () => {
+  it("fetches file dates and results via artifactTree for an initial Perfect World tree search", async () => {
+    const artifacts = vi.spyOn(api, "artifacts").mockResolvedValue(emptyPage as never);
     vi.spyOn(api, "games").mockResolvedValue([{ id: "pw", name: "完美世界" }] as never);
     vi.spyOn(api, "domains").mockResolvedValue([{
       id: "pw-pc", game_id: "pw", kind: "files", platform: "windows", adapter: "perfectworld_patcher",
@@ -149,7 +150,6 @@ describe("archive cross-game navigation", () => {
       observed_at: "2026-08-01T00:00:00Z", imported_at: "2026-08-03T00:00:00Z",
       artifact_kinds: { file: { count: 1, size: 10 } }, attributes: {},
     }] as never);
-    vi.spyOn(api, "artifacts").mockResolvedValue(emptyPage as never);
     const tree = vi.spyOn(api, "artifactTree").mockResolvedValue({ prefix: "", folders: [], items: [], next_cursor: null,
       file_time: "2026-09-29T20:00:03Z", file_time_source: "manifest" });
     const router = createRouter({ history: createMemoryHistory(), routes: [{ path: "/games/:gameId/:domainId?/:version?/:mode?", name: "archive", component: ArchiveView }] });
@@ -159,11 +159,39 @@ describe("archive cross-game navigation", () => {
     await flushUpdates(); await flushUpdates();
     expect(root.querySelector(".panel-meta-inline")?.textContent).toContain("文件时间2026.09.30 04:00");
     expect(tree).toHaveBeenCalledTimes(1);
-    expect(tree).toHaveBeenLastCalledWith("pw-pc", "1.0.0", { kind: "file", limit: 1 }, expect.any(AbortSignal));
+    expect(tree).toHaveBeenLastCalledWith("pw-pc", "1.0.0", expect.objectContaining({ kind: "file", prefix: "", query: "Client", limit: 100 }), expect.any(AbortSignal));
+    expect(artifacts).not.toHaveBeenCalled();
     await router.push("/games/pw/pw-pc/1.0.0/files");
     await flushUpdates(); await flushUpdates();
     expect(tree).toHaveBeenCalledTimes(2);
+    expect(tree).toHaveBeenLastCalledWith("pw-pc", "1.0.0", expect.objectContaining({ kind: "file", prefix: "", query: undefined, limit: 100 }), expect.any(AbortSignal));
     expect(root.querySelector(".panel-meta-inline")?.textContent).toContain("文件时间2026.09.30 04:00");
+    unmountApp(app);
+  });
+
+  it("renders resources eyebrow and platform/Unity summary from actual game and attributes", async () => {
+    vi.spyOn(api, "games").mockResolvedValue([{ id: "custom", name: "测试游戏", sub_name: "Custom Game", icon_source: "", sort_order: 0 }] as never);
+    vi.spyOn(api, "domains").mockResolvedValue([{
+      id: "custom-resources", game_id: "custom", kind: "resources", platform: "windows", adapter: "resources",
+      capabilities: ["resources"], version_count: 2, latest_version: "1.1.0",
+    }] as never);
+    vi.spyOn(api, "versions").mockResolvedValue([
+      { version: "1.1.0", current_revision_id: 2, revision_count: 1, observed_at: null, artifact_count: 5, packed_size: 100, unpacked_size: 100, artifact_kinds: { resource: { count: 5, size: 100 } }, availability_states: {}, attributes: {} },
+      { version: "1.0.0", current_revision_id: 1, revision_count: 1, observed_at: null, artifact_count: 5, packed_size: 100, unpacked_size: 100, artifact_kinds: { resource: { count: 5, size: 100 } }, availability_states: {}, attributes: { unity_version: "2021.3.18f1" } },
+    ] as never);
+    vi.spyOn(api, "artifactTree").mockResolvedValue({ prefix: "", folders: [], items: [], next_cursor: null } as never);
+    const router = createRouter({ history: createMemoryHistory(), routes: [{ path: "/games/:gameId/:domainId?/:version?/:mode?", name: "archive", component: ArchiveView }] });
+    await router.push("/games/custom/custom-resources/1.1.0/resources"); await router.isReady();
+    const root = document.createElement("div"); document.body.appendChild(root);
+    const app = trackedApp(); app.use(router); app.mount(root);
+    await flushUpdates(); await flushUpdates();
+    expect(root.querySelector(".file-panel .kicker")?.textContent).toBe("测试游戏 Windows resources");
+    expect(root.querySelector(".resource-summary")?.textContent).toContain("平台Windows");
+    expect(root.querySelector(".resource-summary")?.textContent).not.toContain("2022.3.62f3");
+    expect(root.querySelector(".resource-summary")?.textContent).not.toContain("Aether Gazer");
+    await router.push("/games/custom/custom-resources/1.0.0/resources");
+    await flushUpdates(); await flushUpdates();
+    expect(root.querySelector(".resource-summary")?.textContent).toContain("Unity2021.3.18f1");
     unmountApp(app);
   });
 

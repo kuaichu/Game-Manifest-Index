@@ -92,13 +92,16 @@ describe("API client", () => {
     expect(fetchMock.mock.calls[0][0]).toBe("https://api.example.test/gmi/api/v1/admin/catalog");
   });
 
-  it("passes availability filters to the remote artifact tree", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+  it("passes availability and search filters to the remote artifact tree", async () => {
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(JSON.stringify({
       prefix: "", folders: [], items: [], next_cursor: null,
-    }), { status: 200, headers: { "Content-Type": "application/json" } }));
+    }), { status: 200, headers: { "Content-Type": "application/json" } })));
     vi.stubGlobal("fetch", fetchMock);
-    await api.artifactTree("wuwa-pc", "3.5.0", { kind: "file", state: "available" });
+    await api.artifactTree("wuwa-pc", "3.5.0", { kind: "file", state: "available", query: "Client.exe" });
     expect(fetchMock.mock.calls[0][0]).toContain("availability_state=available");
+    expect(fetchMock.mock.calls[0][0]).toContain("q=Client.exe");
+    await api.artifactTree("wuwa-pc", "3.5.0", { kind: "file", query: "" });
+    expect(fetchMock.mock.calls[1][0]).not.toContain("q=");
   });
 
   it("requests server-side comparisons with filters and cursor pagination", async () => {

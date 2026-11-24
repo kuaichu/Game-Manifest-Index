@@ -169,7 +169,7 @@ describe("archive route state", () => {
     const mixedDomain = {
       ...domain,
       kind: "mixed",
-      capabilities: ["files", "legacy", "archive", "compare", "manifest", "resources"],
+      capabilities: ["files", "legacy", "archive", "compare", "manifest", "resources", "chunks"],
     };
     vi.spyOn(api, "games").mockResolvedValue([game] as never);
     vi.spyOn(api, "domains").mockResolvedValue([mixedDomain] as never);
@@ -179,8 +179,10 @@ describe("archive route state", () => {
     vi.spyOn(api, "compare").mockResolvedValue({ from_version: "1.0", to_version: "2.0", summary: { added: 0, removed: 0, changed: 0, size_delta: 0 }, items: [], next_cursor: null } as never);
     vi.spyOn(api, "artifacts").mockResolvedValue({ items: [], next_cursor: null } as never);
     vi.spyOn(api, "artifactTree").mockResolvedValue({ prefix: "", folders: [], items: [], next_cursor: null } as never);
+    vi.spyOn(api, "chunkManifestCollection").mockResolvedValue({ items: [] } as never);
+    vi.spyOn(api, "chunkManifests").mockResolvedValue({ manifests: [] } as never);
 
-    for (const currentMode of ["legacy", "archive", "compare", "manifest", "resources"]) {
+    for (const currentMode of ["legacy", "archive", "compare", "manifest", "resources", "chunks"]) {
       const router = testRouter();
       await router.push(`/games/demo/demo-pc/2.0/${currentMode}?q=stale`); await router.isReady();
       const root = document.createElement("div"); document.body.appendChild(root);

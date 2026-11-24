@@ -3,6 +3,7 @@ import { ApiError, adminApi } from "../api";
 import { supportsApkVersionEditor, manualVersionSavedMessage } from "../admin-ui-capabilities";
 import { formatBytes } from "../admin-format";
 import { formatFileTimeLabel, isoToLocalInput, localInputToIso } from "../admin-date-time";
+import { copyTextToClipboard } from "../clipboard";
 import {
   type EditableArtifactDraft,
   type VersionDraft,
@@ -245,10 +246,9 @@ export function useAdminContent(shell: AdminShell, deps: AdminContentDeps) {
 
   async function copyUrl(url: string): Promise<void> {
     if (!url) return;
-    try {
-      await navigator.clipboard.writeText(url);
+    if (await copyTextToClipboard(url)) {
       success.value = "下载链接已成功复制到剪贴板！";
-    } catch {
+    } else {
       error.value = "复制链接失败，请手动选择复制。";
     }
   }

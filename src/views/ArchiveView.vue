@@ -24,7 +24,6 @@ import ArchivePatchList from "../components/archive/ArchivePatchList.vue";
 import ArchiveResourcePackPicker from "../components/archive/ArchiveResourcePackPicker.vue";
 import ArchiveWuwaRawIndexMenu from "../components/archive/ArchiveWuwaRawIndexMenu.vue";
 import ArtifactPagination from "../components/ArtifactPagination.vue";
-import ArtifactTree from "../components/ArtifactTree.vue";
 import ChunkFileBrowser from "../components/ChunkFileBrowser.vue";
 import ChunkManifestView from "../components/ChunkManifestView.vue";
 import FragmentFileRow, { activeFileMenuId } from "../components/FragmentFileRow.vue";
@@ -108,8 +107,6 @@ const browserFileTime = ref<FileTimeChange | null>(null);
 // Kuro resource-pack versions: info reported by the file tree; "" selects the backend default (common pack).
 const resourcePacksState = ref<ResourcePacksChange | null>(null);
 const selectedPack = ref("");
-let manifestSizeController: AbortController | null = null;
-let manifestSizeGeneration = 0;
 const globalProbeTime = ref<string | null>(null);
 const probeTimeClock = ref(Date.now());
 const globalProbeLoaded = ref(false);
@@ -128,7 +125,7 @@ const selectedCategory = ref<string>("all");
 const chunkCategoryFilter = ref<string>("all");
 const artifactPage = ref(1);
 const artifactPageSize = ref(50);
-const SEARCHABLE_MODES = new Set(["apk", "chunks", "files", "packages", "patches"]);
+const SEARCHABLE_MODES = new Set(["apk", "files", "packages", "patches"]);
 
 function setToast(message: string, durationMs = 1600): void {
   if (toastTimer !== null) window.clearTimeout(toastTimer);
@@ -264,8 +261,7 @@ const isFileTreeMode = computed(
     || isGenericFileManifestDomain.value
   ),
 );
-const usesArtifactTree = computed(() => isFileTreeMode.value && Boolean(query.value.trim()));
-const usesRemoteTree = computed(() => mode.value === "resources" || (isFileTreeMode.value && !query.value.trim()));
+const usesRemoteTree = computed(() => mode.value === "resources" || (isFileTreeMode.value && !usesChunkFileBrowser.value));
 watch(() => [domainId.value, selectedVersion.value, mode.value], () => { browserFileTime.value = null; }, { flush: "sync" });
 watch(() => [domainId.value, selectedVersion.value], () => { selectedPack.value = ""; }, { flush: "sync" });
 // Fade the panel in when switching tabs. Uses the Web Animations API so nothing is remounted.
@@ -327,12 +323,11 @@ const loadedArchiveArtifacts = useArchiveArtifactsLoader({
     channelVersions: channelVersions.value,
     searchableMode: searchableMode.value,
     usesRemoteTree: usesRemoteTree.value,
-    usesArtifactTree: usesArtifactTree.value,
   }),
   resetPresentation: () => {
     selectedCategory.value = "all";
     chunkCategoryFilter.value = "all";
-    remoteTreeProbeTime.value = null;
+    if (!usesRemoteTree.value) remoteTreeProbeTime.value = null;
   },
   setLeads: (loadedLeads) => {
     leads.value = loadedLeads;
@@ -431,46 +426,6 @@ function onResourcePacksChange(change: ResourcePacksChange): void {
   if (!isWuwaFilesMode.value || change.domainId !== domainId.value || change.version !== selectedVersion.value) return;
   resourcePacksState.value = change;
 }
-watch(
-  () => [domainId.value, selectedVersion.value, mode.value, usesArtifactTree.value, usesChunkFileBrowser.value, selectedPack.value],
-  () => {
-    manifestSizeController?.abort();
-    manifestSizeController = null;
-    const generation = ++manifestSizeGeneration;
-    // Search uses the local tree. Fetch metadata once when its remote browser is absent.
-    if (!usesArtifactTree.value || usesChunkFileBrowser.value) return;
-    const knownTime = browserFileTime.value?.domainId === domainId.value && browserFileTime.value?.version === selectedVersion.value
-      && !browserFileTime.value.loading;
-    if (!activeResourcePacks.value?.resourcePacks && knownTime && (!isWuwaFilesMode.value || wuwaManifestSize.value !== null)) return;
-    const context = { domainId: domainId.value, version: selectedVersion.value, kind: "file" };
-    const identity = isWuwaFilesMode.value && selectedPack.value ? selectedPack.value : undefined;
-    const request = new AbortController();
-    manifestSizeController = request;
-    const isCurrent = () => manifestSizeController === request && manifestSizeGeneration === generation
-      && mode.value === "files" && usesArtifactTree.value && !usesChunkFileBrowser.value
-      && context.domainId === domainId.value && context.version === selectedVersion.value;
-    void api.artifactTree(context.domainId, context.version, { kind: "file", limit: 1, ...(identity ? { identity } : {}) }, request.signal)
-      .then((result) => {
-        if (!isCurrent()) return;
-        onResourcePacksChange({
-          ...context, resourcePacks: result.resource_packs ?? null,
-          manifestUrl: result.manifest_urls?.[0] ?? result.manifest_url ?? "", baseUrl: result.base_urls?.[0] ?? result.base_url ?? "",
-        });
-        onRemoteManifestSizeChange({ ...context, size: result.manifest_total_size ?? null });
-        onFileTimeChange({ domainId: context.domainId, version: context.version, source: "package", identity: "game", fileTime: result.file_time ?? null, timeSource: result.file_time_source });
-      })
-      .catch(() => {
-        if (isCurrent() && wuwaManifestSize.value === null) onRemoteManifestSizeChange({ ...context, size: null });
-        if (isCurrent()) onFileTimeChange({ domainId: context.domainId, version: context.version, source: "package", identity: "game", fileTime: null });
-      });
-  },
-  { immediate: true },
-);
-onBeforeUnmount(() => {
-  manifestSizeController?.abort();
-  manifestSizeController = null;
-  manifestSizeGeneration += 1;
-});
 
 const wuwaManifestUrl = computed(() => {
   const packs = activeResourcePacks.value?.resourcePacks;
@@ -589,16 +544,22 @@ function chunkArtifactMatchesFilter(artifact: Artifact): boolean {
 const footerProbeArtifacts = computed(() => {
   if (mode.value === "chunks") return artifacts.value.filter(chunkArtifactMatchesFilter);
   if (usesRemoteTree.value || (mode.value === "files" && (domain.value?.adapter === "hoyo" || isGenericFileManifestDomain.value))) return [];
-  if (usesArtifactTree.value) return artifacts.value;
   if (["packages", "patches"].includes(mode.value) && usesPreferredUrlPresentation.value && domain.value?.adapter !== "wuwa") {
     return artifacts.value;
   }
   return displayedArtifacts.value;
 });
 
+const displayGameName = computed(() => {
+  const current = game.value;
+  if (!current) return gameId.value;
+  return /[\u3400-\u9fff]/.test(current.name) ? current.name : current.sub_name || current.name;
+});
 const panelEyebrow = computed(() => {
   if (mode.value === "resources") {
-    return gameId.value === "endfield" ? "Endfield Windows resources" : "Aether Gazer resources";
+    return gameId.value === "endfield"
+      ? "Endfield Windows resources"
+      : `${displayGameName.value || gameId.value} Windows resources`;
   }
   if (["patchersdk", "perfectworld_patcher"].includes(domain.value?.adapter || "") && mode.value === "files") return `${gameId.value.toUpperCase()} files`;
   if (domain.value?.adapter === "arknights" && mode.value === "packages") return "Arknights packages";
@@ -614,11 +575,6 @@ const panelTitle = computed(() => {
   if (mode.value === "archive") return `${selectedDisplayVersion.value} 归档信息`;
   if (mode.value === "legacy") return "候选线索";
   return `${selectedDisplayVersion.value} ${modeLabel(domain.value, mode.value)}`;
-});
-const displayGameName = computed(() => {
-  const current = game.value;
-  if (!current) return gameId.value;
-  return /[\u3400-\u9fff]/.test(current.name) ? current.name : current.sub_name || current.name;
 });
 
 const fileTimeMetadata = computed(() => {
@@ -1361,8 +1317,8 @@ async function openArtifactFiles(): Promise<void> {
                   <strong>{{ formatBytes(selectedSummary.artifact_kinds.resource?.size || 0) }}</strong>
                 </div>
                 <div>
-                  <span>{{ gameId === 'endfield' ? '平台' : 'Unity' }}</span>
-                  <strong>{{ gameId === 'endfield' ? 'Windows' : selectedSummary.attributes.unity_version || '2022.3.62f3' }}</strong>
+                  <span>{{ selectedSummary.attributes.unity_version ? 'Unity' : '平台' }}</span>
+                  <strong>{{ selectedSummary.attributes.unity_version || 'Windows' }}</strong>
                 </div>
               </div>
             </template>
@@ -1377,6 +1333,7 @@ async function openArtifactFiles(): Promise<void> {
               :version="selectedVersion"
               :kind="mode === 'resources' ? 'resource' : 'file'"
               :identity="isWuwaFilesMode && selectedPack ? selectedPack : undefined"
+              :query="mode === 'files' ? query.trim() : undefined"
               :availability-state="availabilityStateForRequest"
               :allow-actions="supportsDomainAction('open')"
               @resource-packs-change="onResourcePacksChange"
@@ -1394,7 +1351,6 @@ async function openArtifactFiles(): Promise<void> {
               {{ domain?.adapter === 'hoyo' && mode === 'packages' ? '该分类下没有压缩包直链' : '没有符合当前条件的归档记录。' }}
             </template>
           </div>
-          <ArtifactTree v-else-if="usesArtifactTree" :artifacts="artifacts" />
           <div v-else-if="mode === 'files'" class="remote-workspace fragment-file-list">
             <div class="tree-table-wrapper">
               <div class="tree-grid-header fl-head fl-cols-tree">

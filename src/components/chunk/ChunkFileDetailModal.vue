@@ -389,7 +389,7 @@ onBeforeUnmount(() => {
         <!-- 弹窗底部 -->
         <div class="cfb-modal-bottom">
           <span class="cfb-foot-note">
-            {{ fileDetail?.chunks?.length ? '* Chunk 数据使用 LZ4 / ZSTD 压缩算法。下载后按 Manifest 蓝图解压即可还原为该文件的对应扇区。' : '* 官方散文件直链来自米哈游官方下载服务器，无需解压即可直接提取使用。' }}
+            {{ fileDetail?.chunks?.length ? '* Chunk 数据使用 LZ4 / ZSTD 压缩算法。下载后按 Manifest 蓝图解压即可还原为该文件的对应扇区。' : '* 官方散文件直链来自官方下载服务器，无需解压即可直接提取使用。' }}
           </span>
           <button
             type="button"

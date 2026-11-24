@@ -10,10 +10,14 @@ describe("formatBytes", () => {
     expect(formatBytes(82.83 * 1024 ** 3)).toBe("82.83 GB");
   });
 
-  it("returns a dash for missing values", () => {
+  it("returns a dash for missing, negative, or non-finite values", () => {
     expect(formatBytes(null)).toBe("—");
     expect(formatBytes(undefined)).toBe("—");
     expect(formatBytes(Number.NaN)).toBe("—");
+    expect(formatBytes(Number.POSITIVE_INFINITY)).toBe("—");
+    expect(formatBytes(Number.NEGATIVE_INFINITY)).toBe("—");
+    expect(formatBytes(-1)).toBe("—");
+    expect(formatBytes(-1024)).toBe("—");
   });
 
   it("caps oversized values at the largest unit", () => {

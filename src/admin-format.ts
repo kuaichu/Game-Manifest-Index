@@ -1,12 +1,12 @@
 const BYTE_UNITS = ["B", "KB", "MB", "GB", "TB"] as const;
 
 export function formatBytes(bytes: number | null | undefined): string {
-  if (bytes === null || bytes === undefined || Number.isNaN(bytes)) return "—";
+  if (bytes === null || bytes === undefined || !Number.isFinite(bytes) || bytes < 0) return "—";
   if (bytes === 0) return "0 B";
   const k = 1024;
-  const index = Math.min(
-    Math.floor(Math.log(bytes) / Math.log(k)),
-    BYTE_UNITS.length - 1,
+  const index = Math.max(
+    0,
+    Math.min(Math.floor(Math.log(bytes) / Math.log(k)), BYTE_UNITS.length - 1),
   );
   return `${(bytes / Math.pow(k, index)).toFixed(2)} ${BYTE_UNITS[index]}`;
 }

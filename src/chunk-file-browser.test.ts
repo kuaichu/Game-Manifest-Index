@@ -838,4 +838,64 @@ describe("ChunkFileBrowser", () => {
     app.unmount();
     host.remove();
   });
+
+  it("copies via fallback on non-HTTPS LAN, reports copy failures, and shows vendor-neutral direct-file footnote", async () => {
+    const origClip = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+    const origExec = Object.getOwnPropertyDescriptor(document, "execCommand");
+    vi.spyOn(api, "versionFiles").mockResolvedValue(mockPackageFiles);
+    vi.spyOn(api, "versionFileDetail").mockResolvedValue({
+      source: "package", identity: "game", name: "YuanShen.exe", path: "YuanShen.exe",
+      size: 5382648, md5: "55d27e108ff16e2fcdd8bade44431e1d",
+      download_url: "https://syncstation.manjuu.com/target/YuanShen.exe",
+    });
+    const execCommand = vi.fn().mockReturnValue(true);
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: undefined });
+    Object.defineProperty(document, "execCommand", { configurable: true, value: execCommand });
+
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const router = createTestRouter();
+    await router.push("/");
+    await router.isReady();
+    const app = createApp(ChunkFileBrowser, {
+      domainId: "azurpromilia-pc", version: "0.3.0.6", game: null, domain: null, chunkDetail: null,
+      versionSummary: { version: "0.3.0.6", current_revision_id: 1, revision_count: 1, observed_at: null,
+        artifact_count: 1, packed_size: 0, unpacked_size: 0, availability_states: {}, attributes: {},
+        artifact_kinds: { package: { count: 1, size: 0 } } },
+    });
+    app.use(router);
+    app.mount(host);
+    try {
+      await flushUpdates();
+      // Row copy button uses fallback execCommand("copy")
+      host.querySelector<HTMLButtonElement>(".cfb-row-copy")!.click();
+      await flushUpdates();
+      expect(execCommand).toHaveBeenCalledWith("copy");
+      expect(host.textContent).toContain("已复制 直链");
+
+      // Selected toolbar copy uses fallback and handles false return
+      host.querySelector<HTMLInputElement>(".cfb-file-checkbox")!.click();
+      await flushUpdates();
+      execCommand.mockReturnValueOnce(false);
+      const copySelected = [...host.querySelectorAll<HTMLButtonElement>(".cfb-selected-toolbar button")]
+        .find((button) => button.textContent === "复制官方直链")!;
+      copySelected.click();
+      await flushUpdates();
+      expect(host.querySelector(".cfb-selected-toolbar")?.textContent).toContain("复制失败");
+
+      // Direct-file modal footnote is vendor-neutral
+      (host.querySelector(".row-is-file") as HTMLElement).click();
+      await flushUpdates();
+      const footnote = document.body.querySelector(".cfb-foot-note")?.textContent || "";
+      expect(footnote).toContain("官方散文件直链来自官方下载服务器");
+      expect(footnote).not.toContain("米哈游");
+    } finally {
+      app.unmount();
+      host.remove();
+      if (origClip) Object.defineProperty(navigator, "clipboard", origClip);
+      else Reflect.deleteProperty(navigator, "clipboard");
+      if (origExec) Object.defineProperty(document, "execCommand", origExec);
+      else Reflect.deleteProperty(document, "execCommand");
+    }
+  });
 });

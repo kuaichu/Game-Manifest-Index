@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { api, isAbortError } from "../api";
+import { copyTextToClipboard } from "../clipboard";
 import { formatBytes, hoyoLanguageLabel, isChunkOnlyVersion, repairMojibake } from "../domain-presentation";
 import { saveBlob } from "../chunk-download";
 import { downloadChunkDirectory, type DirectoryDownloadProgress } from "../chunk-directory-download";
@@ -169,8 +170,16 @@ async function selectedAction(action: "download" | "copy" | "export"): Promise<v
       const files = await selectedFilePlan(context);
       if (!isCurrent()) return;
       const output = selectedFileExport(context, files);
-      if (action === "copy") await navigator.clipboard.writeText(output.text);
-      else saveBlob(new Blob([output.text], { type: output.mime }), `selected-${context.version}.${output.extension}`);
+      if (action === "copy") {
+        const copied = await copyTextToClipboard(output.text);
+        if (!isCurrent()) return;
+        if (!copied) {
+          selectedError.value = "复制失败，请手动复制或改用导出功能。";
+          return;
+        }
+      } else {
+        saveBlob(new Blob([output.text], { type: output.mime }), `selected-${context.version}.${output.extension}`);
+      }
       if (isCurrent()) selectedMessage.value = `已${action === "copy" ? "复制" : "导出"} ${files.length} 个文件的${context.source === "chunk" ? "合成清单" : "官方直链"}`;
     }
   } catch (error) {
@@ -199,12 +208,16 @@ const canSaveFile = computed(() => typeof window !== "undefined" && typeof (wind
 
 let listController: AbortController | null = null;
 let requestId = 0;
+let toastTimer: number | null = null;
 
-function copyText(text: string, label: string): void {
-  void navigator.clipboard.writeText(text);
-  toastMessage.value = `已复制 ${label}`;
-  window.setTimeout(() => {
+async function copyText(text: string, label: string): Promise<void> {
+  if (!text) return;
+  const copied = await copyTextToClipboard(text);
+  if (toastTimer !== null) window.clearTimeout(toastTimer);
+  toastMessage.value = copied ? `已复制 ${label}` : "复制失败，请手动复制";
+  toastTimer = window.setTimeout(() => {
     toastMessage.value = "";
+    toastTimer = null;
   }, 2000);
 }
 
@@ -487,6 +500,7 @@ onBeforeUnmount(() => {
   listController?.abort();
   directoryController.value?.abort();
   selectedController.value?.abort();
+  if (toastTimer !== null) window.clearTimeout(toastTimer);
 });
 </script>
 

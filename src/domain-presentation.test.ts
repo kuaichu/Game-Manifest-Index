@@ -10,6 +10,7 @@ describe("WuWa historical provenance presentation", () => {
     } as unknown as VersionSummary;
     expect(archiveSourceLabel("wuwa", summary.provenance?.source_kind)).toBe("历史迁移/社区归档资源");
     expect(archiveSourceLabel("wuwa", "official_launcher")).toBe("鸣潮官方启动器索引");
+    expect(archiveSourceLabel("nte")).toBe("异环官方 ResList");
   });
 });
 import { deliveryLabel } from "./domain-presentation";

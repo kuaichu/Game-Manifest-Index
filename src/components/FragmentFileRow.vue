@@ -10,7 +10,7 @@ import { computed, onBeforeUnmount, onMounted, ref as vueRef } from "vue";
 import { copyTextToClipboard } from "../clipboard";
 import type { Artifact } from "../types";
 
-const props = defineProps<{ artifact: Artifact }>();
+const props = defineProps<{ artifact: Artifact; showPath?: boolean }>();
 const menuOpen = computed(() => activeFileMenuId.value === props.artifact.id);
 const copied = vueRef(false);
 const hashCopied = vueRef(false);
@@ -130,6 +130,7 @@ onBeforeUnmount(() => {
           </svg>
         </span>
         <strong class="item-filename fl-name-text" :title="filename">{{ filename }}</strong>
+        <small v-if="showPath && normalizedPath !== filename" class="item-subpath">({{ normalizedPath }})</small>
       </div>
 
       <!-- 列 2: 校验值 (无边框轻量等宽字体 + 点击直接复制) -->
