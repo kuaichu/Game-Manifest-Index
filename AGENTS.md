@@ -7,11 +7,30 @@ preserves verified behavior.
 
 1. Follow `BRANCHING.md` first. It is the highest repository-level authority for branch,
    merge, and promotion rules.
-2. Treat the current Git state and checked-in files as authoritative. Historical handoff
-   notes are context, not permission to override the repository.
+2. Treat the current Git state and checked-in code and rules as authoritative. Game data
+   follows the Server Data Authority below. Historical handoff notes are context, not
+   permission to override the repository.
 3. Do not guess unknown product semantics. Check existing code, tests, data, and validated
    snapshots. If evidence is still missing, mark the point `UNKNOWN` and stop that part of
    the task.
+
+## Server Data Authority
+
+- The live game data on `10.0.0.213` under `/opt/GMI/data` is authoritative. Local `data/`
+  is reference material, even when local timestamps are later. (The former server
+  `10.0.0.234` is retired.)
+- The server keeps runtime files only: `backend/`, `probe_adapters/`, `url_adapters/`
+  (without tests), `data/`, `.cache/` and `.venv/`. Never put Git metadata, the `git`
+  package, frontend sources, build config, scripts, docs or tests there. All development
+  happens locally; deploy by uploading the runtime directories exported from `main`.
+- When the same data differs between server and local copies, use the server copy. Do not
+  overwrite server data with local records, indexes, manifests, or probe evidence.
+- Local-only new data may supplement the server. Confirm that it is absent using the
+  existing identities and data structure, and add only the missing data while preserving
+  server-owned content, artifact identity, and source provenance.
+- Before synchronization, compare the current server and local data. Git commits or old
+  snapshots do not replace the live server baseline. This rule does not authorize a
+  synchronization or server write by itself.
 
 ## Branch Discipline
 

@@ -7,7 +7,7 @@ This repository uses branches as short-lived development and validation lanes.
 
 - `main`
   - Final trusted V5 product state.
-  - Keep empty during migration and development.
+  - The initial empty migration baseline is historical; this branch now holds validated releases.
   - Only merge from `integration/v5` after full validation.
 
 - `integration/v5`
