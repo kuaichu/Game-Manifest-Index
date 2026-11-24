@@ -19,7 +19,7 @@ from typing import Any
 
 import certifi
 
-from backend.api_contract import GAME_CATALOG
+from backend.catalog_registry import GAME_CATALOG
 
 
 LOGGER = logging.getLogger(__name__)

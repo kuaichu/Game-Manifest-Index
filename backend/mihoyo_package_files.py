@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote, urlsplit, urlunsplit
 
+from backend.catalog_registry import OFFICIAL_PACKAGE_HOSTS, PACKAGE_HOSTS_BY_GAME
 from backend.fs_safety import atomic_write_bytes, is_ordinary, stat_is_ordinary
 from backend.manifest_readers import (
     ManifestBadRequest,
@@ -55,21 +56,6 @@ SCATTERED_ROOTS = {
     "bh3": "PC/extract",
 }
 PACKAGE_DIRS = {"hkrpg": "/PC/download", "nap": "/VolumeZip", "bh3": "/PC"}
-OFFICIAL_PACKAGE_HOSTS = frozenset(
-    {
-        "autopatchcn.yuanshen.com",
-        "autopatchcn.bhsr.com",
-        "autopatchcn.juequling.com",
-        "autopatchcn.bh3.com",
-        "bundle.bh3.com",
-    }
-)
-PACKAGE_HOSTS_BY_GAME = {
-    "hk4e": frozenset({"autopatchcn.yuanshen.com"}),
-    "hkrpg": frozenset({"autopatchcn.bhsr.com"}),
-    "nap": frozenset({"autopatchcn.juequling.com"}),
-    "bh3": frozenset({"autopatchcn.bh3.com", "bundle.bh3.com"}),
-}
 
 
 class PackageFilesError(ManifestError):
@@ -708,5 +694,7 @@ def file_detail(state_root: Path, record: Mapping[str, Any], game_id: str, versi
 
 
 __all__ = [
-    "PackageFilesBadRequest", "PackageFilesCacheError", "PackageFilesError", "PackageFilesNotFound", "PackageFilesTimeout", "PackageFilesUnsupported", "PackageFilesUpstream", "file_detail", "list_files", "package_files",
+    "OFFICIAL_PACKAGE_HOSTS", "PACKAGE_HOSTS_BY_GAME", "PackageFilesBadRequest", "PackageFilesCacheError",
+    "PackageFilesError", "PackageFilesNotFound", "PackageFilesTimeout", "PackageFilesUnsupported",
+    "PackageFilesUpstream", "file_detail", "list_files", "package_files",
 ]

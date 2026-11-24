@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
+from backend.catalog_registry import VENDORS
 from backend.fs_safety import (
     SAFE_COMPONENT,
     atomic_write_text,
@@ -19,7 +20,6 @@ from backend.storage_locks import DATA_LOCK, data_file_lock
 
 
 CATALOG_CONFIG_NAME = "catalog.admin.json"
-VENDORS = ("mihoyo", "hypergryph", "kuro", "perfectworld", "manjuu")
 DOMAIN_KINDS = frozenset({"apk", "packages", "patches", "chunks", "files", "resources", "mixed"})
 CAPABILITIES = frozenset({"apk", "packages", "patches", "chunks", "files", "resources", "archive", "compare"})
 
@@ -207,16 +207,31 @@ def save_config(root: Path, config: Mapping[str, Mapping[str, Mapping[str, Any]]
             atomic_write_text(path, raw)
 
 
-def configured_games(root: Path) -> dict[str, dict[str, Any]]:
-    return load_config(root)["games"]
+def configured_games(
+    root: Path,
+    *,
+    config: Mapping[str, Mapping[str, dict[str, Any]]] | None = None,
+) -> dict[str, dict[str, Any]]:
+    loaded = load_config(root) if config is None else config
+    return dict(loaded["games"])
 
 
-def configured_domains(root: Path) -> dict[str, dict[str, Any]]:
-    return load_config(root)["domains"]
+def configured_domains(
+    root: Path,
+    *,
+    config: Mapping[str, Mapping[str, dict[str, Any]]] | None = None,
+) -> dict[str, dict[str, Any]]:
+    loaded = load_config(root) if config is None else config
+    return dict(loaded["domains"])
 
 
-def game_catalog(root: Path, static_catalog: Sequence[tuple[str, str, str]]) -> list[dict[str, Any]]:
-    config = load_config(root)
+def game_catalog(
+    root: Path,
+    static_catalog: Sequence[tuple[str, str, str]],
+    *,
+    config: Mapping[str, Mapping[str, dict[str, Any]]] | None = None,
+) -> list[dict[str, Any]]:
+    loaded = load_config(root) if config is None else config
     games: list[dict[str, Any]] = []
     seen: set[str] = set()
     for order, (game_id, name, sub_name) in enumerate(static_catalog):
@@ -230,21 +245,33 @@ def game_catalog(root: Path, static_catalog: Sequence[tuple[str, str, str]]) -> 
             "sort_order": order,
             "vendor": _normalize_vendor(None, Path(root), game_id),
         }
-        base.update(config["games"].get(game_id, {}))
+        base.update(loaded["games"].get(game_id, {}))
         games.append(base)
         seen.add(game_id)
-    extras = [game for game in config["games"].values() if game["id"] not in seen]
+    extras = [game for game in loaded["games"].values() if game["id"] not in seen]
     games.extend(sorted(extras, key=lambda item: (item.get("sort_order", 0), item["id"])))
     return games
 
 
-def game_ids(root: Path, static_catalog: Sequence[tuple[str, str, str]]) -> tuple[str, ...]:
-    return tuple(game["id"] for game in game_catalog(root, static_catalog))
+def game_ids(
+    root: Path,
+    static_catalog: Sequence[tuple[str, str, str]],
+    *,
+    config: Mapping[str, Mapping[str, dict[str, Any]]] | None = None,
+) -> tuple[str, ...]:
+    return tuple(game["id"] for game in game_catalog(root, static_catalog, config=config))
 
 
-def configured_nondefault_pc_domains(root: Path, vendor: str, game_id: str) -> tuple[str, ...]:
+def configured_nondefault_pc_domains(
+    root: Path,
+    vendor: str,
+    game_id: str,
+    *,
+    config: Mapping[str, Mapping[str, dict[str, Any]]] | None = None,
+) -> tuple[str, ...]:
+    domains = load_config(root)["domains"] if config is None else config["domains"]
     result = []
-    for domain in configured_domains(root).values():
+    for domain in domains.values():
         if (
             domain["vendor"] == vendor
             and domain["game_id"] == game_id
@@ -255,8 +282,17 @@ def configured_nondefault_pc_domains(root: Path, vendor: str, game_id: str) -> t
     return tuple(sorted(result))
 
 
-def is_configured_nondefault_pc_domain(root: Path, vendor: str, game_id: str, domain_id: str) -> bool:
-    return domain_id in configured_nondefault_pc_domains(root, vendor, game_id)
+def is_configured_nondefault_pc_domain(
+    root: Path,
+    vendor: str,
+    game_id: str,
+    domain_id: str,
+    *,
+    config: Mapping[str, Mapping[str, dict[str, Any]]] | None = None,
+) -> bool:
+    return domain_id in configured_nondefault_pc_domains(
+        root, vendor, game_id, config=config,
+    )
 
 
 def domain_directory(root: Path, domain: Mapping[str, Any]) -> Path:

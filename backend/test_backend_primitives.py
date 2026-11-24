@@ -14,6 +14,15 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from backend import (
+    api_contract,
+    catalog_admin,
+    catalog_registry,
+    inventory_loader,
+    manifest_readers,
+    mihoyo_package_files,
+    version_admin,
+)
 from backend.fs_safety import (
     FILE_ATTRIBUTE_REPARSE_POINT,
     UnsafePathError,
@@ -26,12 +35,15 @@ from backend.fs_safety import (
     is_safe_component,
     require_safe_component,
 )
+from backend.indexes import rebuild_index
 from backend.probe_policy import (
     PROBE_EVIDENCE_TTL,
     parse_probe_checked_at,
     stable_id,
     stable_url_id,
 )
+from backend.schema_v2 import artifact_id, validate_v2_record
+from backend.version_store import write_v2_record
 
 
 class FsSafetyTests(unittest.TestCase):
@@ -151,7 +163,15 @@ class ProbePolicyAndDecouplingTests(unittest.TestCase):
                             violations.append((path.name, node.module, alias.name))
         self.assertEqual(violations, [])
 
-        for entry in ("import backend.admin_probe", "import backend.api_contract", "import backend.admin_operations"):
+        for entry in (
+            "import backend.catalog_registry",
+            "import backend.inventory_loader",
+            "import backend.public_projection",
+            "import backend.admin_probe",
+            "import backend.api_contract",
+            "import backend.admin_operations",
+            "import backend.telegram_notify",
+        ):
             completed = subprocess.run(
                 [sys.executable, "-c", entry],
                 cwd=backend_dir.parent,
@@ -161,6 +181,83 @@ class ProbePolicyAndDecouplingTests(unittest.TestCase):
                 check=False,
             )
             self.assertEqual(completed.returncode, 0, completed.stderr)
+
+    def test_catalog_registry_is_single_source_of_truth(self) -> None:
+        self.assertIs(catalog_admin.VENDORS, catalog_registry.VENDORS)
+        self.assertIs(manifest_readers.OFFICIAL_SOPHON_HOSTS, catalog_registry.OFFICIAL_SOPHON_HOSTS)
+        self.assertIs(mihoyo_package_files.OFFICIAL_PACKAGE_HOSTS, catalog_registry.OFFICIAL_PACKAGE_HOSTS)
+        self.assertIs(mihoyo_package_files.PACKAGE_HOSTS_BY_GAME, catalog_registry.PACKAGE_HOSTS_BY_GAME)
+        self.assertIs(api_contract.GAME_CATALOG, catalog_registry.GAME_CATALOG)
+        self.assertIs(api_contract.VENDORS, catalog_registry.VENDORS)
+        self.assertIs(api_contract.ApiFault, inventory_loader.ApiFault)
+
+    def test_catalog_config_loaded_once_per_inventory_and_catalog_projection(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "data"
+            state = Path(directory) / "state"
+            root.mkdir()
+            item = {
+                "kind": "apk",
+                "component": "game",
+                "package_type": "full",
+                "delivery_mode": "direct",
+                "name": "game.apk",
+                "size": 10,
+                "urls": [{"url": "https://example.test/game.apk", "provider": "fixture", "source_kind": "official", "priority": 0}],
+            }
+            rec = {
+                "schema_version": 2,
+                "vendor": "mihoyo",
+                "game_id": "hk4e",
+                "domain_id": "hk4e-android",
+                "platform": "android",
+                "channel": "official",
+                "version": "1.0.0",
+                "version_code": 1,
+                "file_time": "2026-01-01T00:00:00Z",
+                "artifacts": [item],
+                "references": [],
+                "is_visible": True,
+                "provenance": {"source_kind": "official_sync", "source_name": "fixture"},
+            }
+            identity = {k: rec[k] for k in ("vendor", "game_id", "domain_id", "platform", "channel", "version")}
+            item["artifact_id"] = artifact_id(item, record_identity=identity)
+            validate_v2_record(rec)
+            write_v2_record(rec, root)
+            rebuild_index(root, "mihoyo", "hk4e", "android")
+            catalog_admin.save_config(
+                root,
+                {
+                    "games": {"demo": {"name": "Demo", "platform": "windows", "vendor": "mihoyo"}},
+                    "domains": {"demo-extra": {"game_id": "demo", "kind": "resources", "platform": "windows", "vendor": "mihoyo"}},
+                },
+            )
+            catalog_admin.ensure_domain_directory(
+                root,
+                catalog_admin.configured_domains(root)["demo-extra"],
+            )
+
+            contract = api_contract.ApiContract(root, state_root=state)
+            with patch.object(catalog_admin, "load_config", wraps=catalog_admin.load_config) as spy:
+                first = contract.inventory()
+                self.assertEqual(spy.call_count, 1)
+                second = contract.inventory()
+                self.assertEqual(spy.call_count, 1)
+                self.assertEqual(second, first)
+
+            with patch.object(catalog_admin, "load_config", wraps=catalog_admin.load_config) as spy:
+                projection = version_admin.catalog_projection(root)
+                self.assertEqual(spy.call_count, 1)
+                self.assertIn("demo", {g["id"] for g in projection["games"]})
+
+            with patch.object(version_admin, "catalog_projection", wraps=version_admin.catalog_projection) as proj_spy:
+                updated = version_admin.update_game(
+                    root,
+                    "demo",
+                    {"id": "demo", "name": "Demo 2", "sub_name": "", "platform": "windows", "icon_source": "builtin:demo", "is_enabled": True, "sort_order": 5},
+                )
+                self.assertEqual(updated["name"], "Demo 2")
+                self.assertEqual(proj_spy.call_count, 2)
 
 
 if __name__ == "__main__":

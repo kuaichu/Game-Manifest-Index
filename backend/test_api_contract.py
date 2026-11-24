@@ -17,9 +17,15 @@ import httpx
 import zstandard
 from fastapi.testclient import TestClient
 
-from backend.api_contract import ApiContract, ApiFault, _file_metadata, _public_artifact, _summary, create_api_app
+from backend import catalog_admin
+from backend.api_contract import ApiContract, ApiFault, create_api_app
 from backend.app import app
 from backend.indexes import read_index, rebuild_indexes
+from backend.public_projection import (
+    file_metadata as _file_metadata,
+    public_artifact as _public_artifact,
+    version_summary as _summary,
+)
 from backend.manifest_readers import (
     HttpUpstream,
     ManifestNotFound,
@@ -277,6 +283,86 @@ class TemporaryContractTests(unittest.TestCase):
         self.assertEqual(contract.domain("hk4e-pc").domain_id, "hk4e-pc")
         with self.assertRaises(ApiFault):
             contract.inventory()
+
+    def test_inventory_stat_snapshot_cache_hits_and_invalidates_on_mutations(self):
+        contract = ApiContract(self.root, state_root=Path(self.state.name))
+        initial = contract.inventory()
+        self.assertIn("hk4e-pc", initial)
+
+        with patch("backend.inventory_loader.validate_v2_record", side_effect=AssertionError("cache miss on unchanged state")):
+            self.assertEqual(contract.inventory(), initial)
+            self.assertEqual(contract.domain("hk4e-pc"), initial["hk4e-pc"])
+
+        caller_copy = contract.inventory()
+        caller_copy.pop("hk4e-pc")
+        self.assertIn("hk4e-pc", contract.inventory())
+
+        record_path = self.root / "mihoyo" / "hk4e" / "pc" / "2.0.0.json"
+        saved_record = record_path.read_bytes()
+        updated_record = json.loads(saved_record.decode("utf-8"))
+        updated_record["artifacts"][0]["urls"][0]["current"] = {"state": "available", "http_code": 200, "checked_at": "2026-08-29T02:00:00Z"}
+        write_record(self.root, updated_record)
+        rebuild_indexes(self.root)
+        self.assertEqual(
+            contract.inventory()["hk4e-pc"].records[0]["artifacts"][0]["urls"][0]["current"]["checked_at"],
+            "2026-08-29T02:00:00Z",
+        )
+
+        record_path.write_text("{corrupt", encoding="utf-8")
+        with self.assertRaises(ApiFault) as record_err:
+            contract.inventory()
+        self.assertEqual(record_err.exception.code, "corrupt_record")
+        record_path.write_bytes(saved_record)
+        rebuild_indexes(self.root)
+        self.assertIn("hk4e-pc", contract.inventory())
+
+        index_path = self.root / "mihoyo" / "hk4e" / "android" / "index.json"
+        bad_index = json.loads(index_path.read_text(encoding="utf-8"))
+        bad_index["game_id"] = "mismatch-game"
+        index_path.write_text(json.dumps(bad_index), encoding="utf-8")
+        with self.assertRaises(ApiFault) as index_err:
+            contract.inventory()
+        self.assertEqual(index_err.exception.code, "index_mismatch")
+        rebuild_indexes(self.root)
+        self.assertIn("hk4e-android", contract.inventory())
+
+        catalog_admin.save_config(
+            self.root,
+            {
+                "games": {},
+                "domains": {
+                    "hk4e-pc": {
+                        "game_id": "hk4e",
+                        "kind": "packages",
+                        "platform": "windows",
+                        "is_enabled": False,
+                    }
+                },
+            },
+        )
+        self.assertNotIn("hk4e-pc", contract.inventory())
+
+        catalog_path = self.root / "catalog.admin.json"
+        catalog_path.write_text("{corrupt-catalog", encoding="utf-8")
+        with self.assertRaises(ApiFault) as cfg_err:
+            contract.inventory()
+        self.assertEqual(cfg_err.exception.code, "corrupt_catalog_config")
+        catalog_path.unlink()
+        self.assertIn("hk4e-pc", contract.inventory())
+
+        link_path = self.root / "mihoyo" / "hk4e" / "pc" / "9.9.9.json"
+        try:
+            os.symlink(record_path, link_path)
+        except OSError:
+            pass
+        else:
+            try:
+                with self.assertRaises(ApiFault) as sym_err:
+                    contract.inventory()
+                self.assertEqual(sym_err.exception.code, "unsafe_data_path")
+            finally:
+                link_path.unlink()
+            self.assertIn("hk4e-pc", contract.inventory())
 
     def test_domain_retains_requested_identity_and_index_validation(self):
         path = self.root / "mihoyo" / "hk4e" / "pc" / "index.json"

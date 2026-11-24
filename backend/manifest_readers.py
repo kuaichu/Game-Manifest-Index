@@ -28,6 +28,8 @@ import zstandard
 from google.protobuf import descriptor_pb2, descriptor_pool, message_factory
 from google.protobuf.message import DecodeError
 
+from backend.catalog_registry import OFFICIAL_SOPHON_HOSTS
+
 
 MAX_MANIFEST_BYTES = 64 * 1024 * 1024
 MAX_MANIFEST_DECOMPRESSED_BYTES = 128 * 1024 * 1024
@@ -58,16 +60,6 @@ def retained_size(value: Any) -> int:
 
 
 _retained_size = retained_size
-
-
-OFFICIAL_SOPHON_HOSTS = frozenset(
-    {
-        "autopatchcn.yuanshen.com",
-        "autopatchcn.bhsr.com",
-        "autopatchcn.juequling.com",
-        "autopatchcn.bh3.com",
-    }
-)
 
 
 class ManifestError(Exception):
@@ -869,7 +861,7 @@ def chunk_content(document: Mapping[str, Any], identity: str, name: str, upstrea
 
 __all__ = [
     "HttpUpstream", "ManifestBadRequest", "ManifestCorrupt", "ManifestError", "ManifestNotFound",
-    "ManifestTimeout", "ManifestUpstream", "chunk_content", "chunk_download_plan_items", "chunk_file_detail",
-    "directory_page", "list_chunk_files", "list_local_files", "local_file_detail", "local_files",
-    "retained_size", "strict_relative_posix",
+    "ManifestTimeout", "ManifestUpstream", "OFFICIAL_SOPHON_HOSTS", "chunk_content", "chunk_download_plan_items",
+    "chunk_file_detail", "directory_page", "list_chunk_files", "list_local_files", "local_file_detail", "local_files",
+    "normalize_file_time", "retained_size", "strict_relative_posix",
 ]
