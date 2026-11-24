@@ -52,28 +52,28 @@
     justify-content: flex-end;
   }
 
-  .version-header-meta,
-  .version-title-row {
+  .admin-main .version-header-meta,
+  .admin-main .version-title-row {
     min-width: 0;
   }
 
   /* 让标题列拿到一整行：动作按钮在窄屏换行，而不是把标题挤成一字一行。 */
-  .version-status-topbar .version-header-meta {
+  .admin-main .version-status-topbar .version-header-meta {
     flex: 1 1 220px;
     min-width: 200px;
   }
 
-  .version-status-topbar {
+  .admin-main .version-status-topbar {
     flex-wrap: wrap;
     row-gap: 10px;
   }
 
-  .version-header-actions {
+  .admin-main .version-header-actions {
     flex-wrap: wrap;
     white-space: normal;
   }
 
-  .version-title-row h2 {
+  .admin-main .version-title-row h2 {
     overflow-wrap: anywhere;
     white-space: normal;
   }
@@ -141,10 +141,10 @@
     min-width: 0;
   }
 
-  .admin-form-pane,
-  .admin-master-detail > *,
-  .content-panels-layout > *,
-  .probe-top-grid > * {
+  .admin-main .admin-form-pane,
+  .admin-main .admin-master-detail > *,
+  .admin-main .content-panels-layout > *,
+  .admin-main .probe-top-grid > * {
     min-width: 0;
     max-width: 100%;
   }
@@ -185,7 +185,9 @@
     justify-content: flex-end;
   }
 
-  .admin-field-grid {
+  .admin-main .admin-field-grid,
+  .admin-main .admin-field-grid.compact-3col,
+  .admin-main .admin-field-grid.compact-4col {
     grid-template-columns: 1fr;
   }
 }

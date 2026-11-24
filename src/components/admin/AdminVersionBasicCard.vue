@@ -29,7 +29,7 @@ const draft = toRef(props, "draft");
       :class="isCreateMode ? 'compact-4col' : 'compact-3col'"
     >
       <label v-if="isCreateMode" class="admin-field">
-        <span class="field-label">版本号 <small class="field-sublabel">version</small> <b class="text-rose">*</b></span>
+        <span class="field-label">版本号 <b class="text-rose">*</b></span>
         <input
           v-model="draft.version"
           class="admin-input"

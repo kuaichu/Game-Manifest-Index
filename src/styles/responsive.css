@@ -329,12 +329,7 @@
     box-sizing: border-box !important;
   }
 
-  /* 5. 移动端 SYNC STATUS 卡片极简紧凑化 */
-  .sync-status {
-    margin-bottom: 12px;
-  }
-
-            /* 6. 文件面板与卡片系统 (移动端深度重构) */
+  /* 5. 文件面板与卡片系统 (移动端深度重构) */
   .file-panel {
     border-radius: 12px;
   }

@@ -591,7 +591,7 @@ onUnmounted(() => {
               github.com/kuaichu/Game-Manifest-Index ↗
             </a>
           </div>
-          <button type="button" class="admin-btn primary small close-action-btn" @click="emit('close')">
+          <button type="button" class="close-action-btn" @click="emit('close')">
             <span>关闭窗口</span>
           </button>
         </footer>

@@ -760,13 +760,13 @@
   color: #7dd3fc;
 }
 
-.provenance-modal-footer .admin-btn {
+.provenance-modal-footer .close-action-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   min-height: 32px;
-  padding: 0 12px;
+  padding: 6px 18px;
   border-radius: 9px;
   font-size: 12px;
   font-weight: 800;
@@ -780,125 +780,9 @@
   flex-shrink: 0;
 }
 
-.provenance-modal-footer .admin-btn:hover {
+.provenance-modal-footer .close-action-btn:hover {
   background: linear-gradient(135deg, rgba(56, 189, 248, 0.45), rgba(2, 132, 199, 0.6));
   border-color: var(--blue);
   box-shadow: 0 0 16px var(--blue-glow);
-}
-
-.close-action-btn {
-  padding: 6px 18px !important;
-}
-
-/* The four-column file tree needs ~854px. Below that, stack the checksum
-   and size under the name so the action column never leaves the viewport. */
-@media (max-width: 1220px) {
-  .remote-tree-container .tree-table-wrapper,
-  .fragment-file-list .tree-table-wrapper {
-    overflow: hidden;
-  }
-
-  .remote-tree-container .tree-grid-header,
-  .fragment-file-list .tree-grid-header {
-    display: none;
-  }
-
-  .remote-tree-container .row-main,
-  .fragment-file-list .row-main,
-  .fragment-tree-files .row-main {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      "name action"
-      "hash size";
-    height: auto;
-    min-height: 40px;
-    padding: 6px 12px;
-    gap: 3px 10px;
-  }
-
-  .remote-tree-container .row-main .col-name,
-  .fragment-file-list .row-main .col-name,
-  .fragment-tree-files .row-main .col-name {
-    grid-area: name;
-  }
-
-  .remote-tree-container .row-main .col-action,
-  .fragment-file-list .row-main .col-action,
-  .fragment-tree-files .row-main .col-action {
-    grid-area: action;
-    justify-self: end;
-  }
-
-  .remote-tree-container .row-main .col-hash,
-  .fragment-file-list .row-main .col-hash,
-  .fragment-tree-files .row-main .col-hash {
-    grid-area: hash;
-    min-width: 0;
-    overflow: hidden;
-  }
-
-  .remote-tree-container .row-main .col-size,
-  .fragment-file-list .row-main .col-size,
-  .fragment-tree-files .row-main .col-size {
-    grid-area: size;
-    justify-self: end;
-  }
-
-  .remote-tree-container .row-main .hash-code-chip,
-  .remote-tree-container .row-main .hash-mono,
-  .fragment-file-list .row-main .hash-code-chip,
-  .fragment-file-list .row-main .hash-mono,
-  .fragment-tree-files .row-main .hash-code-chip,
-  .fragment-tree-files .row-main .hash-mono {
-    display: block;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-}
-
-@media (max-width: 640px) {
-  .compare-toolbar {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .compare-toolbar .compare-base-field {
-    min-width: 0;
-  }
-
-  .compare-toolbar select {
-    width: 100%;
-  }
-}
-
-@media (max-width: 480px) {
-  .compare-summary {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* Six-tab pages use an even grid instead of flex-wrap so both rows are
-   filled and there is no lopsided empty area after "版本对比". */
-@media (max-width: 900px) {
-  .mode-tabs.mode-tabs-grid {
-    display: grid !important;
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-    gap: 6px !important;
-    width: 100% !important;
-  }
-
-  .mode-tabs.mode-tabs-grid .mode-tab {
-    width: 100% !important;
-    min-width: 0 !important;
-    padding: 0 8px !important;
-    text-align: center;
-  }
-}
-
-@media (max-width: 360px) {
-  .mode-tabs.mode-tabs-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  }
 }
 

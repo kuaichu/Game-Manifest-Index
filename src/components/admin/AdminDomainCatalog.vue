@@ -120,14 +120,14 @@ const currentDomainGameName = computed(() => {
 });
 
 const domainCapabilityOptions = [
-  { key: "packages", label: "packages 完整包", desc: "完整游戏客户端离线分卷/压缩包" },
-  { key: "files", label: "files 散文件", desc: "分块离散文件及清单直链" },
-  { key: "patches", label: "patches 补丁", desc: "游戏小版本增量与差分补丁" },
-  { key: "chunks", label: "chunks 块存储", desc: "Chunk 流式分块与哈希元数据" },
-  { key: "apk", label: "apk 安装包", desc: "移动端官方原版与渠道安装包" },
-  { key: "resources", label: "resources 资源", desc: "游戏客户端运行时资源与扩展包" },
-  { key: "archive", label: "archive 归档", desc: "全部历史版本数据全量归档浏览" },
-  { key: "compare", label: "compare 对比", desc: "跨版本文件 / 资源差异对比" },
+  { key: "packages", label: "packages 完整包" },
+  { key: "files", label: "files 散文件" },
+  { key: "patches", label: "patches 补丁" },
+  { key: "chunks", label: "chunks 块存储" },
+  { key: "apk", label: "apk 安装包" },
+  { key: "resources", label: "resources 资源" },
+  { key: "archive", label: "archive 归档" },
+  { key: "compare", label: "compare 对比" },
 ];
 
 const selectedCapabilityLabels = computed(() =>
@@ -249,9 +249,6 @@ function adjustSort(delta: number): void { emit("adjust-sort", delta); }
           <span class="item-kind-pill" :class="item.kind">{{ item.kind }}</span>
           <span class="item-adapter-pill">{{ item.adapter }}</span>
         </div>
-      </div>
-      <div class="item-slot-right">
-        <span class="item-sort-badge" title="显示排序权重">#{{ item.sort_order }}</span>
       </div>
     </button>
 
@@ -473,7 +470,6 @@ function adjustSort(delta: number): void { emit("adjust-sort", delta); }
                     <span class="cap-key">{{ cap.key }}</span>
                     <span class="cap-check-dot"></span>
                   </div>
-                  <span class="cap-desc">{{ cap.desc }}</span>
                 </button>
               </div>
               <p class="cap-selection-summary">

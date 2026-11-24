@@ -384,104 +384,6 @@ function copyText(text: string, label: string): void {
   max-width: 500px;
 }
 
-.chunk-empty-actions {
-  margin-top: 4px;
-}
-
-.chunk-switch-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 16px;
-  border-radius: 6px;
-  border: 1px solid rgba(56, 189, 248, 0.25);
-  background: rgba(56, 189, 248, 0.06);
-  color: #38bdf8;
-  font-size: 12px;
-  font-weight: 650;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.chunk-switch-btn:hover {
-  background: rgba(56, 189, 248, 0.16);
-  border-color: #38bdf8;
-  color: #fff;
-}
-
-.chunk-switch-btn svg {
-  width: 12px;
-  height: 12px;
-  stroke: currentColor;
-  stroke-width: 2.5;
-  fill: none;
-}
-
-/* --- 指标概览栏 (Summary Bar) --- */
-.chunk-summary-bar {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 10px;
-}
-
-/* --- 筛选控制栏 --- */
-.chunk-filters-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  flex-wrap: wrap;
-  border-top: 1px solid var(--line-soft);
-  padding-top: 12px;
-}
-
-/* --- 版本库表格与抽屉 --- */
-.chunk-collection-section,
-.chunk-collection-drawer {
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: rgba(11, 18, 29, 0.9);
-  padding: 16px 20px;
-}
-
-.drawer-header {
-  margin-bottom: 12px;
-}
-
-.drawer-header h4 {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 800;
-  color: #f8fafc;
-}
-
-.chunk-table-wrapper {
-  overflow-x: auto;
-  margin-top: 8px;
-}
-
-.chunk-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12.5px;
-  text-align: left;
-}
-
-.chunk-table th {
-  padding: 8px 12px;
-  color: var(--muted);
-  font-weight: 750;
-  border-bottom: 1px solid var(--line);
-  white-space: nowrap;
-}
-
-.chunk-table td {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--line-soft);
-  color: #e2e8f0;
-  white-space: nowrap;
-}
-
 /* --- Manifest 卡片列表 --- */
 .chunk-manifests-grid {
   display: flex;
@@ -750,9 +652,6 @@ function copyText(text: string, label: string): void {
 }
 
 @media (max-width: 1100px) {
-  .chunk-summary-bar {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
   .card-metrics-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -768,9 +667,6 @@ function copyText(text: string, label: string): void {
 }
 
 @media (max-width: 640px) {
-  .chunk-summary-bar {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
   .card-metrics-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;

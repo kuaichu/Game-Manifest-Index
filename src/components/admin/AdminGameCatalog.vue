@@ -147,9 +147,6 @@ function copyText(value: string): void { emit("copy-text", value); }
           <span v-if="item.sub_name" class="item-sub-name">{{ item.sub_name }}</span>
         </div>
       </div>
-      <div class="item-slot-right">
-        <span class="item-sort-badge" title="显示排序权重">#{{ item.sort_order }}</span>
-      </div>
     </button>
 
     <template #form>

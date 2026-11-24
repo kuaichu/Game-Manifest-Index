@@ -597,11 +597,33 @@
   color: var(--muted);
 }
 
-/* Six tabs fold into two rows here; dragging down to the second row would
-   otherwise be taken as a page scroll. Only the active tab blocks scrolling. */
+/* Six-tab pages use an even grid instead of flex-wrap so both rows are
+   filled and there is no lopsided empty area after "版本对比". Dragging down
+   to the second row would otherwise be taken as a page scroll; only the active
+   tab blocks scrolling. */
 @media (max-width: 900px) {
+  .mode-tabs.mode-tabs-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+    width: 100% !important;
+  }
+
+  .mode-tabs.mode-tabs-grid .mode-tab {
+    width: 100% !important;
+    min-width: 0 !important;
+    padding: 0 8px !important;
+    text-align: center;
+  }
+
   .mode-tabs.mode-tabs-grid.has-indicator .mode-tab.active {
     touch-action: none;
+  }
+}
+
+@media (max-width: 360px) {
+  .mode-tabs.mode-tabs-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }
 
@@ -612,18 +634,8 @@
 }
 
 /* ==========================================================================
-   Sync Status, Stats & Overview
+   Stats & Overview
    ========================================================================== */
-
-/* --- Sync Status Card --- */
-.sync-status {
-  margin: 18px 0;
-}
-
-@keyframes radarPulse {
-  0% { transform: scale(0.6); opacity: 1; }
-  100% { transform: scale(2.2); opacity: 0; }
-}
 
 /* --- Stats Grid --- */
 .stats {
@@ -633,7 +645,6 @@
   margin: 18px 0 14px;
 }
 
-/* --- Module Details --- */
 /* --- Notice Banner & Source Links --- */
 .notice {
   display: flex;

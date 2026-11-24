@@ -758,3 +758,71 @@
   pointer-events: none;
   opacity: 0.4;
 }
+
+/* The four-column file tree needs ~854px. Below that, stack the checksum
+   and size under the name so the action column never leaves the viewport. */
+@media (max-width: 1220px) {
+  .remote-tree-container .tree-table-wrapper,
+  .fragment-file-list .tree-table-wrapper {
+    overflow: hidden;
+  }
+
+  .remote-tree-container .tree-grid-header,
+  .fragment-file-list .tree-grid-header {
+    display: none;
+  }
+
+  .remote-tree-container .row-main,
+  .fragment-file-list .row-main,
+  .fragment-tree-files .row-main {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "name action"
+      "hash size";
+    height: auto;
+    min-height: 40px;
+    padding: 6px 12px;
+    gap: 3px 10px;
+  }
+
+  .remote-tree-container .row-main .col-name,
+  .fragment-file-list .row-main .col-name,
+  .fragment-tree-files .row-main .col-name {
+    grid-area: name;
+  }
+
+  .remote-tree-container .row-main .col-action,
+  .fragment-file-list .row-main .col-action,
+  .fragment-tree-files .row-main .col-action {
+    grid-area: action;
+    justify-self: end;
+  }
+
+  .remote-tree-container .row-main .col-hash,
+  .fragment-file-list .row-main .col-hash,
+  .fragment-tree-files .row-main .col-hash {
+    grid-area: hash;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .remote-tree-container .row-main .col-size,
+  .fragment-file-list .row-main .col-size,
+  .fragment-tree-files .row-main .col-size {
+    grid-area: size;
+    justify-self: end;
+  }
+
+  .remote-tree-container .row-main .hash-code-chip,
+  .remote-tree-container .row-main .hash-mono,
+  .fragment-file-list .row-main .hash-code-chip,
+  .fragment-file-list .row-main .hash-mono,
+  .fragment-tree-files .row-main .hash-code-chip,
+  .fragment-tree-files .row-main .hash-mono {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
