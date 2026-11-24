@@ -88,6 +88,23 @@ def _has_browsable_reference(record: Mapping[str, Any]) -> bool:
     return False
 
 
+KURO_PACK_MANIFEST = re.compile(r"/packs/([a-z0-9]+)/full\.json")
+
+
+def _kuro_common_pack(record: Mapping[str, Any], artifacts: list[Mapping[str, Any]]) -> Mapping[str, Any] | None:
+    if record.get("vendor") != "kuro":
+        return None
+    for artifact in artifacts:
+        if artifact.get("component") != "game":
+            continue
+        manifest = artifact.get("manifest")
+        path = manifest.get("path") if isinstance(manifest, Mapping) else None
+        match = KURO_PACK_MANIFEST.search(path) if isinstance(path, str) else None
+        if match and match.group(1) == "common":
+            return artifact
+    return None
+
+
 def _entry(record: Mapping[str, Any], platform: str) -> dict[str, Any] | None:
     artifacts = record.get("artifacts")
     if not isinstance(artifacts, list):
@@ -99,8 +116,12 @@ def _entry(record: Mapping[str, Any], platform: str) -> dict[str, Any] | None:
             return None
     else:
         game = [a for a in artifacts if isinstance(a, Mapping) and a.get("component") == "game"]
-        full = [a for a in game if a.get("package_type") == "full"]
-        chosen = full or [a for a in game if a.get("package_type") == "segment"]
+        common_pack = _kuro_common_pack(record, game)
+        if common_pack is not None:
+            chosen = [common_pack]
+        else:
+            full = [a for a in game if a.get("package_type") == "full"]
+            chosen = full or [a for a in game if a.get("package_type") == "segment"]
         if not chosen:
             chosen = [a for a in artifacts if isinstance(a, Mapping) and a.get("kind") == "resource"]
         if not chosen and not _has_browsable_reference(record):

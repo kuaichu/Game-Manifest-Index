@@ -19,7 +19,7 @@ from fastapi.testclient import TestClient
 
 from backend.api_contract import ApiContract, ApiFault, _file_metadata, _public_artifact, _summary, create_api_app
 from backend.app import app
-from backend.indexes import rebuild_indexes
+from backend.indexes import read_index, rebuild_indexes
 from backend.manifest_readers import (
     HttpUpstream,
     ManifestNotFound,
@@ -1323,6 +1323,25 @@ class TemporaryContractTests(unittest.TestCase):
     def test_no_admin_routes(self):
         self.assertFalse(any(route.path.startswith("/api/v1/admin") for route in self.client.app.routes))
 
+    def test_multi_part_segment_archive_still_sums_sizes_in_index(self):
+        parts = []
+        for part, size in ((1, 110), (2, 140)):
+            item = artifact(
+                f"YuanShen_5.6.0.zip.00{part}",
+                delivery="archive",
+                size=size,
+                current={"state": "available", "http_code": 200},
+            )
+            item.update(package_type="segment", part=part)
+            parts.append(item)
+        write_record(self.root, record("mihoyo", "hk4e", "windows", "5.6.0", parts))
+        rebuild_indexes(self.root)
+        index = read_index(self.root / "mihoyo" / "hk4e" / "pc" / "index.json")
+        entry = next(item for item in index["versions"] if item["version"] == "5.6.0")
+        self.assertEqual(entry["size"], 250)
+        self.assertIs(entry["available"], True)
+        self.get("/api/v1/domains/hk4e-pc/versions")
+
 
 class KuroResourcePackTests(unittest.TestCase):
     BASE = "https://pcdownload-aliyun.aki-game.com/files/"
@@ -1420,6 +1439,61 @@ class KuroResourcePackTests(unittest.TestCase):
         self.assertEqual(self.names(body), ["Client/old.pak"])
         self.assertNotIn("resource_packs", body)
         self.assertEqual(body["manifest_total_size"], 50)
+
+    def test_index_uses_common_pack_only_and_rejects_summed_size(self):
+        index_file = self.root / "kuro" / "wuwa" / "pc" / "index.json"
+        index = read_index(index_file)
+        by_version = {item["version"]: item for item in index["versions"]}
+        self.assertEqual(by_version["3.8.0"]["size"], self.SIZES["common"])
+        self.assertNotEqual(by_version["3.8.0"]["size"], sum(self.SIZES.values()))
+        self.assertIsNone(by_version["3.8.0"]["available"])
+        self.assertEqual(by_version["3.7.1"]["size"], 50)
+        self.assertEqual(self.client.get("/api/v1/domains/wuwa-pc/versions").status_code, 200)
+
+        record_file = self.root / "kuro" / "wuwa" / "pc" / "3.8.0.json"
+        stored = json.loads(record_file.read_text(encoding="utf-8"))
+        pack_currents = {
+            "uhd": {"state": "unavailable", "http_code": 404},
+            "sd": {"state": "unknown", "http_code": 503},
+            "hd": {"state": "unavailable", "http_code": 403},
+            "common": {"state": "available", "http_code": 200, "checked_at": "2026-08-29T01:00:00Z"},
+        }
+        for item in stored["artifacts"]:
+            pack = item["name"].split("-")[2]
+            item["urls"][0]["current"] = pack_currents[pack]
+        record_file.write_text(json.dumps(stored), encoding="utf-8")
+        rebuild_indexes(self.root)
+
+        rebuilt = read_index(index_file)
+        entry = next(item for item in rebuilt["versions"] if item["version"] == "3.8.0")
+        self.assertEqual(entry["size"], self.SIZES["common"])
+        self.assertIs(entry["available"], True)
+        self.assertEqual(self.client.get("/api/v1/domains/wuwa-pc/versions").status_code, 200)
+
+        for item in stored["artifacts"]:
+            pack = item["name"].split("-")[2]
+            item["urls"][0]["current"] = (
+                {"state": "unavailable", "http_code": 404}
+                if pack == "common"
+                else {"state": "available", "http_code": 200}
+            )
+        record_file.write_text(json.dumps(stored), encoding="utf-8")
+        rebuild_indexes(self.root)
+
+        rebuilt_unavailable = read_index(index_file)
+        entry_unavailable = next(item for item in rebuilt_unavailable["versions"] if item["version"] == "3.8.0")
+        self.assertEqual(entry_unavailable["size"], self.SIZES["common"])
+        self.assertIs(entry_unavailable["available"], False)
+        self.assertEqual(self.client.get("/api/v1/domains/wuwa-pc/versions").status_code, 200)
+
+        entry_unavailable["size"] = sum(self.SIZES.values())
+        index_file.write_text(json.dumps(rebuilt_unavailable), encoding="utf-8")
+        mismatch = self.client.get("/api/v1/domains/wuwa-pc/versions")
+        self.assertEqual(mismatch.status_code, 500, mismatch.text)
+        self.assertEqual(mismatch.json()["error"]["code"], "index_mismatch")
+        with self.assertRaises(ApiFault) as ctx:
+            ApiContract(self.root, state_root=Path(self.state.name)).domain("wuwa-pc")
+        self.assertEqual((ctx.exception.status, ctx.exception.code), (500, "index_mismatch"))
 
 
 class CheckedInContractTests(unittest.TestCase):
