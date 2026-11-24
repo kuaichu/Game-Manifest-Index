@@ -411,7 +411,7 @@ class MihoyoPackageFilesTests(unittest.TestCase):
         files = [{"path": "sample", "chunks": []}]
         meta = {"fetch_mode": "package_zip_member", "download_base": None}
         fingerprint = ((1, 2, 3, 4, 5),)
-        entry_bytes = package_module._retained_size((fingerprint, files, meta))
+        entry_bytes = package_module.retained_size((fingerprint, files, meta))
         with patch.object(package_module, "MAX_VERIFIED_CACHE_BYTES", entry_bytes):
             package_module._remember_verified("one", fingerprint, files, meta)
             package_module._remember_verified("two", fingerprint, files, meta)

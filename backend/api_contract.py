@@ -7,14 +7,12 @@ never returned directly.
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import re
-import stat
 from copy import deepcopy
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
@@ -30,8 +28,9 @@ from backend import catalog_admin
 from backend.activity_store import ActivityStore
 from backend.admin_probe import candidates as scheduled_probe_candidates
 from backend.catalog_admin import CatalogConfigError
-from backend.indexes import IndexReadError, _entry as index_entry, read_index
 from backend.domain_registry import nondefault_pc_domains
+from backend.fs_safety import SAFE_COMPONENT, is_ordinary, is_safe_component
+from backend.indexes import IndexReadError, index_entry, read_index, version_key
 from backend.manifest_readers import (
     HttpUpstream,
     ManifestBadRequest,
@@ -63,6 +62,7 @@ from backend.mihoyo_package_files import (
     file_detail as mihoyo_package_file_detail,
     package_files as mihoyo_package_files,
 )
+from backend.probe_policy import PROBE_EVIDENCE_TTL, parse_probe_checked_at, stable_id
 from backend.schema_v2 import SchemaValidationError, artifact_identity_key, validate_v2_record
 from backend.storage_locks import DATA_LOCK
 from url_adapters.service import DISCOVERERS, PC_DISCOVERERS
@@ -71,7 +71,6 @@ from url_adapters.service import DISCOVERERS, PC_DISCOVERERS
 MAX_RECORD_BYTES = 8 * 1024 * 1024
 MAX_INDEX_BYTES = 2 * 1024 * 1024
 MAX_DOCUMENT_BYTES = 16 * 1024 * 1024
-SAFE_COMPONENT = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 VENDORS = ("mihoyo", "hypergryph", "kuro", "perfectworld", "manjuu")
 PLATFORMS = (("android", "android"), ("pc", "windows"))
 ARTIFACT_KINDS = frozenset({"apk", "package", "patch", "resource"})
@@ -120,15 +119,6 @@ def fail(status: int, code: str, message: str, details: Any = None) -> None:
     raise ApiFault(status, code, message, details)
 
 
-def _ordinary(path: Path, *, directory: bool) -> bool:
-    try:
-        info = os.lstat(path)
-    except OSError:
-        return False
-    expected = stat.S_ISDIR(info.st_mode) if directory else stat.S_ISREG(info.st_mode)
-    return expected and not stat.S_ISLNK(info.st_mode) and not (getattr(info, "st_file_attributes", 0) & 0x400)
-
-
 def _present(path: Path) -> bool:
     try:
         os.lstat(path)
@@ -139,18 +129,12 @@ def _present(path: Path) -> bool:
         raise ApiFault(500, "unsafe_data_path", "数据路径无法检查") from error
 
 
-def _version_key(value: str) -> tuple[int, ...]:
-    numbers = tuple(int(part) for part in re.findall(r"\d+", value))
-    return numbers or (0,)
-
-
-def _stable_id(*parts: object) -> int:
-    material = "\x1f".join(str(part) for part in parts).encode("utf-8")
-    return int(hashlib.sha256(material).hexdigest()[:12], 16)
+_version_key = version_key
+_stable_id = stable_id
 
 
 def _safe_component(value: str, *, not_found: bool = False) -> str:
-    if not isinstance(value, str) or SAFE_COMPONENT.fullmatch(value) is None:
+    if not is_safe_component(value):
         if not_found:
             fail(404, "not_found", "资源不存在")
         fail(400, "bad_path", "路径参数无效")
@@ -263,7 +247,7 @@ class ApiContract:
             raise ApiFault(500, "corrupt_catalog_config", "目录配置损坏") from error
 
     def _read_json(self, path: Path, limit: int, code: str) -> dict[str, Any]:
-        if not _ordinary(path, directory=False):
+        if not is_ordinary(path, directory=False):
             fail(500, code, "归档数据损坏")
         try:
             if path.stat().st_size > limit:
@@ -283,13 +267,13 @@ class ApiContract:
         except ManifestBadRequest as error:
             raise ApiFault(500, "corrupt_manifest", "Manifest 路径无效") from error
         current = base
-        if not _ordinary(current, directory=True):
+        if not is_ordinary(current, directory=True):
             fail(500, "corrupt_manifest", "Manifest 路径不安全")
         parts = relative.split("/")
         for index, part in enumerate(parts):
             current = current / part
             is_last = index == len(parts) - 1
-            if not _ordinary(current, directory=not is_last):
+            if not is_ordinary(current, directory=not is_last):
                 fail(500, "corrupt_manifest", "Manifest 路径不安全")
         try:
             if base.resolve() not in current.resolve().parents:
@@ -304,7 +288,7 @@ class ApiContract:
         """Load one explicitly registered non-default PC domain."""
         if not _present(directory):
             return None
-        if not _ordinary(directory, directory=True):
+        if not is_ordinary(directory, directory=True):
             fail(500, "unsafe_data_path", "数据目录不安全")
         try:
             children = list(directory.iterdir())
@@ -314,7 +298,7 @@ class ApiContract:
         for path in children:
             if path.name == "index.json":
                 continue
-            if path.suffix != ".json" or not _ordinary(path, directory=False):
+            if path.suffix != ".json" or not is_ordinary(path, directory=False):
                 fail(500, "unsafe_data_path", "归档文件不安全")
             record = self._read_json(path, MAX_RECORD_BYTES, "corrupt_record")
             try:
@@ -333,7 +317,7 @@ class ApiContract:
             if record.get("is_visible") is not False:
                 records.append(record)
         index_path = directory / "index.json"
-        if not _ordinary(index_path, directory=False):
+        if not is_ordinary(index_path, directory=False):
             if _present(index_path):
                 fail(500, "corrupt_index", "版本索引损坏")
             if records:
@@ -373,8 +357,8 @@ class ApiContract:
                 fail(500, "index_mismatch", "版本索引摘要不匹配")
         indexed = set(indexed_versions)
         ordered = [by_version[version] for version in indexed_versions]
-        ordered.extend(sorted((record for record in records if record["version"] not in indexed), key=lambda item: _version_key(item["version"]), reverse=True))
-        ordered.sort(key=lambda item: _version_key(item["version"]), reverse=True)
+        ordered.extend(sorted((record for record in records if record["version"] not in indexed), key=lambda item: version_key(item["version"]), reverse=True))
+        ordered.sort(key=lambda item: version_key(item["version"]), reverse=True)
         if not ordered:
             return None
         return DomainData(vendor, game_id, "pc", "windows", domain_id, directory, tuple(ordered))
@@ -389,20 +373,20 @@ class ApiContract:
             return self._inventory_unlocked(requested_domain)
 
     def _inventory_unlocked(self, requested_domain: str | None = None) -> dict[str, DomainData]:
-        if not _ordinary(self.data_root, directory=True):
+        if not is_ordinary(self.data_root, directory=True):
             fail(500, "data_root_invalid", "数据目录不可用")
         result: dict[str, DomainData] = {}
         for vendor in VENDORS:
             vendor_root = self.data_root / vendor
             if not _present(vendor_root):
                 continue
-            if not _ordinary(vendor_root, directory=True):
+            if not is_ordinary(vendor_root, directory=True):
                 fail(500, "unsafe_data_path", "数据目录不安全")
             for game_id in self._game_ids():
                 game_root = vendor_root / game_id
                 if not _present(game_root):
                     continue
-                if not _ordinary(game_root, directory=True):
+                if not is_ordinary(game_root, directory=True):
                     fail(500, "unsafe_data_path", "数据目录不安全")
                 for disk_platform, platform in PLATFORMS:
                     domain_id = f"{game_id}-{'android' if platform == 'android' else 'pc'}"
@@ -411,12 +395,12 @@ class ApiContract:
                     directory = game_root / disk_platform
                     if not _present(directory):
                         continue
-                    if not _ordinary(directory, directory=True):
+                    if not is_ordinary(directory, directory=True):
                         fail(500, "unsafe_data_path", "数据目录不安全")
                     if domain_id in result:
                         fail(500, "duplicate_domain", "归档域归属冲突")
                     index_path = directory / "index.json"
-                    if not _ordinary(index_path, directory=False):
+                    if not is_ordinary(index_path, directory=False):
                         if _present(index_path):
                             fail(500, "corrupt_index", "版本索引损坏")
                         # Core intentionally removes an index when every
@@ -429,9 +413,9 @@ class ApiContract:
                             raise ApiFault(500, "corrupt_data", "归档目录无法读取") from error
                         has_visible_record = False
                         for path in children:
-                            if _ordinary(path, directory=True):
+                            if is_ordinary(path, directory=True):
                                 continue
-                            if path.suffix != ".json" or not _ordinary(path, directory=False):
+                            if path.suffix != ".json" or not is_ordinary(path, directory=False):
                                 fail(500, "unsafe_data_path", "归档文件不安全")
                             record = self._read_json(path, MAX_RECORD_BYTES, "corrupt_record")
                             try:
@@ -480,9 +464,9 @@ class ApiContract:
                     for path in children:
                         if path.name == "index.json":
                             continue
-                        if _ordinary(path, directory=True):
+                        if is_ordinary(path, directory=True):
                             continue
-                        if path.suffix != ".json" or not _ordinary(path, directory=False):
+                        if path.suffix != ".json" or not is_ordinary(path, directory=False):
                             fail(500, "unsafe_data_path", "归档文件不安全")
                         record = self._read_json(path, MAX_RECORD_BYTES, "corrupt_record")
                         try:
@@ -515,8 +499,8 @@ class ApiContract:
                         if not _index_entry_matches(item, by_version[item["version"]], platform):
                             fail(500, "index_mismatch", "版本索引摘要不匹配")
                     unindexed_versions = [version for version in visible_versions if version not in set(indexed_versions)]
-                    records = [by_version[version] for version in indexed_versions + sorted(unindexed_versions, key=_version_key, reverse=True)]
-                    records.sort(key=lambda item: _version_key(item["version"]), reverse=True)
+                    records = [by_version[version] for version in indexed_versions + sorted(unindexed_versions, key=version_key, reverse=True)]
+                    records.sort(key=lambda item: version_key(item["version"]), reverse=True)
                     domain_config = self._catalog_domains().get(domain_id)
                     if domain_config is not None and domain_config.get("is_enabled") is False:
                         continue
@@ -526,7 +510,7 @@ class ApiContract:
             domains_root = self.data_root / vendor / game_id / "pc" / "domains"
             if not _present(domains_root):
                 continue
-            if not _ordinary(domains_root, directory=True):
+            if not is_ordinary(domains_root, directory=True):
                 fail(500, "unsafe_data_path", "数据目录不安全")
             for domain_id in (
                 *nondefault_pc_domains(vendor, game_id),
@@ -740,25 +724,7 @@ def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-# Live-probe evidence for URLs in the scheduled rotation counts as verified
-# for 20 hours after checked_at, then stays visible as stale. Terminal or
-# otherwise excluded URLs retain their concrete state without a stale timer.
-PROBE_EVIDENCE_TTL = timedelta(hours=20)
-
-
-def _probe_checked_at(current: dict[str, Any]) -> tuple[str, datetime] | None:
-    # Only a UTC ISO-8601 timestamp, exactly the shape the probe adapters
-    # persist, proves this current was written by a completed live probe.
-    value = current.get("checked_at")
-    if not isinstance(value, str) or re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z", value) is None:
-        return None
-    try:
-        parsed = datetime.fromisoformat(value[:-1] + "+00:00")
-    except ValueError:
-        return None
-    if parsed.utcoffset() != timedelta(0):
-        return None
-    return value, parsed
+_probe_checked_at = parse_probe_checked_at
 
 
 def _public_current(current: Any, *, rotation_eligible: bool = True) -> dict[str, Any] | None:
@@ -769,7 +735,7 @@ def _public_current(current: Any, *, rotation_eligible: bool = True) -> dict[str
     http_code = current.get("http_code") if isinstance(current.get("http_code"), int) and not isinstance(current.get("http_code"), bool) else None
     if http_code == 403:
         state = "unavailable"
-    probe = _probe_checked_at(current)
+    probe = parse_probe_checked_at(current)
     now = _utc_now()
     evidence_status = "unverified"
     source_kind = "canonical_current"
@@ -1116,7 +1082,7 @@ def _file_metadata(
     return {"file_time": modified, "file_time_source": source if modified is not None else None}
 
 
-def _summary(record: dict[str, Any]) -> dict[str, Any]:
+def version_summary(record: dict[str, Any]) -> dict[str, Any]:
     scheduled_indices = _scheduled_probe_indices(record)
     artifacts = [
         _public_artifact(record, item, index, scheduled_indices)
@@ -1168,6 +1134,9 @@ def _summary(record: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+_summary = version_summary
+
+
 def _domain_adapter(domain: DomainData) -> str:
     if domain.domain_id == "endfield-resources":
         return "endfield-resources"
@@ -1192,7 +1161,7 @@ def _domain_adapter(domain: DomainData) -> str:
     return "generic"
 
 
-def _domain_projection(domain: DomainData, sort_order: int) -> dict[str, Any]:
+def domain_projection(domain: DomainData, sort_order: int) -> dict[str, Any]:
     artifacts = [item for record in domain.records for item in record.get("artifacts", []) if isinstance(item, dict)]
     kinds = {item.get("kind") for item in artifacts}
     has_chunk = any(any(isinstance(ref, dict) and ref.get("kind") == "chunk_manifest" for ref in record.get("references", [])) for record in domain.records)
@@ -1261,6 +1230,9 @@ def _domain_projection(domain: DomainData, sort_order: int) -> dict[str, Any]:
         "is_enabled": True,
         "sort_order": sort_order,
     }
+
+
+_domain_projection = domain_projection
 
 
 def _compare_artifact(artifact: dict[str, Any]) -> dict[str, Any]:
@@ -1419,7 +1391,7 @@ def create_api_app(data_root: Path, upstream: Any | None = None, *, state_root: 
                         current = candidate.get("current")
                         if not isinstance(current, dict):
                             continue
-                        checked = _probe_checked_at(current)
+                        checked = parse_probe_checked_at(current)
                         if checked is None:
                             continue
                         if latest is None or checked[1] > latest[0]:
@@ -1491,7 +1463,7 @@ def create_api_app(data_root: Path, upstream: Any | None = None, *, state_root: 
         configured = service()._catalog_domains()
         result = []
         for index, domain in enumerate(domains):
-            projection = _domain_projection(domain, game_by_id[game_id].get("sort_order", 0) * 10 + index)
+            projection = domain_projection(domain, game_by_id[game_id].get("sort_order", 0) * 10 + index)
             projection.update({
                 key: value
                 for key, value in configured.get(domain.domain_id, {}).items()
@@ -1504,7 +1476,7 @@ def create_api_app(data_root: Path, upstream: Any | None = None, *, state_root: 
 
     @app.get("/api/v1/domains/{domain_id}/versions")
     def versions(domain_id: str) -> dict[str, Any]:
-        return {"items": [_summary(record) for record in service().domain(domain_id).records]}
+        return {"items": [version_summary(record) for record in service().domain(domain_id).records]}
 
     @app.get("/api/v1/domains/{domain_id}/versions/{version}")
     def version_detail(domain_id: str, version: str) -> dict[str, Any]:
@@ -1948,4 +1920,16 @@ def create_api_app(data_root: Path, upstream: Any | None = None, *, state_root: 
     return app
 
 
-__all__ = ["ApiContract", "ApiFault", "GAME_CATALOG", "create_api_app"]
+__all__ = [
+    "ApiContract",
+    "ApiFault",
+    "DomainData",
+    "GAME_CATALOG",
+    "GAME_IDS",
+    "MAX_RECORD_BYTES",
+    "VENDORS",
+    "create_api_app",
+    "domain_projection",
+    "fail",
+    "version_summary",
+]

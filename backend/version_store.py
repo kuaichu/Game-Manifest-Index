@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import json
 import os
-import stat
-import tempfile
 from collections.abc import Mapping
 from contextlib import contextmanager
 from copy import deepcopy
@@ -13,10 +11,19 @@ from pathlib import Path
 from threading import local
 from typing import Any
 
-from backend.catalog_admin import is_configured_nondefault_pc_domain
 from backend import indexes
-from backend.schema_v2 import RECORD_IDENTITY_FIELDS, record_identity, validate_v2_record
+from backend.catalog_admin import is_configured_nondefault_pc_domain
 from backend.domain_registry import is_nondefault_pc_domain
+from backend.fs_safety import (
+    atomic_write_bytes,
+    atomic_write_text,
+    disk_platform,
+    domain_directory,
+    is_ordinary,
+    require_safe_component,
+    stat_is_ordinary,
+)
+from backend.schema_v2 import RECORD_IDENTITY_FIELDS, record_identity, validate_v2_record
 from backend.storage_locks import DATA_LOCK, data_file_lock
 
 
@@ -28,16 +35,7 @@ _TRANSACTIONS = local()
 
 
 def _safe_component(value: Any, field: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise VersionStoreError(f"{field} 必须是非空路径组件")
-    forbidden = set('<>:"/\\|?*')
-    if value in {".", ".."} or any(char in value for char in forbidden) or any(ord(char) < 32 for char in value):
-        raise VersionStoreError(f"{field} 不是安全的路径组件")
-    return value
-
-
-def _is_reparse_or_link(path: Path, mode: int) -> bool:
-    return stat.S_ISLNK(mode) or bool(getattr(os.lstat(path), "st_file_attributes", 0) & 0x400)
+    return require_safe_component(value, field, VersionStoreError)
 
 
 def _directory(parent: Path, name: str) -> Path:
@@ -49,7 +47,7 @@ def _directory(parent: Path, name: str) -> Path:
         info = os.lstat(path)
     except OSError as error:
         raise VersionStoreError(f"无法检查输出目录：{path}") from error
-    if _is_reparse_or_link(path, info.st_mode) or not stat.S_ISDIR(info.st_mode):
+    if not stat_is_ordinary(info, directory=True):
         raise VersionStoreError(f"输出目录不安全：{path}")
     return path
 
@@ -59,20 +57,21 @@ def v2_record_path(record: Mapping[str, Any], root: Path) -> Path:
     vendor = _safe_component(record.get("vendor"), "vendor")
     game_id = _safe_component(record.get("game_id"), "game_id")
     version = _safe_component(record.get("version"), "version")
-    disk_platform = {"android": "android", "windows": "pc"}.get(record.get("platform"))
-    if disk_platform is None:
-        raise VersionStoreError("platform 不是支持的 v2 平台")
+    try:
+        disk = disk_platform(record.get("platform"))
+    except ValueError as error:
+        raise VersionStoreError("platform 不是支持的 v2 平台") from error
     domain_id = _safe_component(record.get("domain_id"), "domain_id")
-    default_domain = f"{game_id}-{'android' if disk_platform == 'android' else 'pc'}"
-    base = Path(root) / vendor / game_id / disk_platform
-    if domain_id == default_domain:
-        return base / f"{version}.json"
-    if disk_platform == "pc" and (
-        is_nondefault_pc_domain(vendor, game_id, domain_id)
-        or is_configured_nondefault_pc_domain(root, vendor, game_id, domain_id)
+    default_domain = f"{game_id}-{'android' if disk == 'android' else 'pc'}"
+    if domain_id != default_domain and not (
+        disk == "pc"
+        and (
+            is_nondefault_pc_domain(vendor, game_id, domain_id)
+            or is_configured_nondefault_pc_domain(root, vendor, game_id, domain_id)
+        )
     ):
-        return base / "domains" / domain_id / f"{version}.json"
-    raise VersionStoreError("domain_id 不是已注册的 v2 数据域")
+        raise VersionStoreError("domain_id 不是已注册的 v2 数据域")
+    return domain_directory(root, vendor, game_id, record["platform"], domain_id) / f"{version}.json"
 
 
 _LEGACY_IDENTITY_FIELDS = ("vendor", "game_id", "platform", "version")
@@ -102,7 +101,7 @@ def _read_existing_record(path: Path) -> dict[str, Any]:
         raise
     except OSError as error:
         raise VersionStoreError(f"无法检查 v2 目标路径：{path}") from error
-    if _is_reparse_or_link(path, info.st_mode) or not stat.S_ISREG(info.st_mode):
+    if not stat_is_ordinary(info):
         raise VersionStoreError(f"v2 目标路径不是普通文件：{path}")
     try:
         existing = json.loads(path.read_text(encoding="utf-8"))
@@ -119,50 +118,43 @@ def _prepare_output_root(root: Path) -> None:
         root_info = os.lstat(root)
     except OSError as error:
         raise VersionStoreError(f"无法准备 v2 输出根目录：{root}") from error
-    if _is_reparse_or_link(root, root_info.st_mode) or not stat.S_ISDIR(root_info.st_mode):
+    if not stat_is_ordinary(root_info, directory=True):
         raise VersionStoreError(f"v2 输出根目录不安全：{root}")
+    cache_dir = root / ".cache"
     try:
-        (root / ".cache").mkdir(exist_ok=True)
+        cache_dir.mkdir(exist_ok=True)
     except OSError as error:
-        raise VersionStoreError(f"无法准备 v2 文件锁目录：{root / '.cache'}") from error
+        raise VersionStoreError(f"无法准备 v2 文件锁目录：{cache_dir}") from error
+    if not is_ordinary(cache_dir, directory=True):
+        raise VersionStoreError(f"v2 文件锁目录不安全：{cache_dir}")
 
 
 def _write_v2_record_locked(
     record: Mapping[str, Any], root: Path, target: Path, *, overwrite: bool,
 ) -> Path:
     """Write one record while the caller holds both storage locks."""
-    platform_dir = _prepare_v2_target_directory_locked(root, target)
+    _prepare_v2_target_directory_locked(root, target)
     path = target
-    if path.exists() or path.is_symlink():
+    try:
+        target_info = os.lstat(path)
+    except FileNotFoundError:
+        target_info = None
+    except OSError as error:
+        raise VersionStoreError(f"无法检查目标文件：{path}") from error
+    if target_info is not None:
         if not overwrite:
             raise FileExistsError(f"v2 记录已存在（默认不覆盖）：{path}")
-        try:
-            target_info = os.lstat(path)
-        except OSError as error:
-            raise VersionStoreError(f"无法检查目标文件：{path}") from error
-        if _is_reparse_or_link(path, target_info.st_mode) or not stat.S_ISREG(target_info.st_mode):
+        if not stat_is_ordinary(target_info):
             raise VersionStoreError(f"目标文件不安全：{path}")
 
     raw = json.dumps(record, ensure_ascii=False, indent=2) + "\n"
-    descriptor, temporary = tempfile.mkstemp(prefix=path.name + ".", dir=platform_dir)
-    try:
-        with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as stream:
-            stream.write(raw)
-            stream.flush()
-            os.fsync(stream.fileno())
-        os.replace(temporary, path)
-    finally:
-        try:
-            os.unlink(temporary)
-        except FileNotFoundError:
-            pass
+    atomic_write_text(path, raw)
     return path
 
 
 def _prepare_v2_target_directory_locked(root: Path, target: Path) -> Path:
     """Check the canonical directory chain while the caller holds the locks."""
-    root_info = os.lstat(root)
-    if _is_reparse_or_link(root, root_info.st_mode) or not stat.S_ISDIR(root_info.st_mode):
+    if not is_ordinary(root, directory=True):
         raise VersionStoreError(f"v2 输出根目录不安全：{root}")
     relative_parts = target.relative_to(root).parts
     current = root
@@ -247,7 +239,7 @@ def _file_snapshot(path: Path) -> bytes | None:
         info = os.lstat(path)
     except FileNotFoundError:
         return None
-    if _is_reparse_or_link(path, info.st_mode) or not stat.S_ISREG(info.st_mode):
+    if not stat_is_ordinary(info):
         raise VersionStoreError(f"事务目标不是普通文件：{path}")
     return path.read_bytes()
 
@@ -256,15 +248,7 @@ def _restore_snapshot(path: Path, content: bytes | None) -> None:
     if content is None:
         path.unlink(missing_ok=True)
         return
-    descriptor, temporary = tempfile.mkstemp(prefix=path.name + ".restore.", dir=path.parent)
-    try:
-        with os.fdopen(descriptor, "wb") as stream:
-            stream.write(content)
-            stream.flush()
-            os.fsync(stream.fileno())
-        os.replace(temporary, path)
-    finally:
-        Path(temporary).unlink(missing_ok=True)
+    atomic_write_bytes(path, content)
 
 
 @contextmanager

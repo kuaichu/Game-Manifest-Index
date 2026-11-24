@@ -5,12 +5,12 @@ from __future__ import annotations
 import json
 import os
 import re
-import stat
-import tempfile
 from copy import deepcopy
 from pathlib import Path
 from threading import RLock
 from typing import Any, Mapping
+
+from backend.fs_safety import UnsafePathError, atomic_write_bytes, ensure_directory, is_ordinary
 
 
 MAX_STATE_BYTES = 2 * 1024 * 1024
@@ -55,41 +55,6 @@ class AdminStateError(RuntimeError):
     """Admin state cannot be read or written safely."""
 
 
-def _unsafe(path: Path, mode: int) -> bool:
-    return stat.S_ISLNK(mode) or bool(getattr(os.lstat(path), "st_file_attributes", 0) & 0x400)
-
-
-def _ensure_directory(path: Path) -> Path:
-    path = path.absolute()
-    current = Path(path.anchor)
-    parts = path.parts[1:] if path.anchor else path.parts
-    for part in parts:
-        current = current / part
-        try:
-            info = os.lstat(current)
-        except FileNotFoundError:
-            try:
-                current.mkdir()
-                info = os.lstat(current)
-            except OSError as error:
-                raise AdminStateError("cannot create admin state directory") from error
-        except OSError as error:
-            raise AdminStateError("admin state root is unavailable") from error
-        if _unsafe(current, info.st_mode) or not stat.S_ISDIR(info.st_mode):
-            raise AdminStateError("admin state path contains a symlink/reparse point")
-    return path
-
-
-def _ordinary(path: Path) -> bool:
-    try:
-        info = os.lstat(path)
-    except FileNotFoundError:
-        return False
-    except OSError as error:
-        raise AdminStateError("cannot inspect admin state file") from error
-    return stat.S_ISREG(info.st_mode) and not _unsafe(path, info.st_mode)
-
-
 class AdminStateStore:
     """Thread-safe, bounded, atomic persistence below a dedicated state root."""
 
@@ -100,15 +65,24 @@ class AdminStateStore:
     def _path(self, name: str) -> Path:
         if name not in {"schedules", "latest_operation", "probe_scheduler"}:
             raise ValueError("unknown admin state document")
-        directory = _ensure_directory(self.root / "admin")
+        try:
+            directory = ensure_directory(self.root / "admin")
+        except UnsafePathError as error:
+            raise AdminStateError("admin state path contains a symlink/reparse point") from error
+        except OSError as error:
+            raise AdminStateError("cannot create admin state directory") from error
         return directory / f"{name}.json"
 
     def read(self, name: str) -> dict[str, Any] | None:
         with self._lock:
             path = self._path(name)
-            if not path.exists() and not path.is_symlink():
-                return None
-            if not _ordinary(path):
+            if not is_ordinary(path):
+                try:
+                    os.lstat(path)
+                except FileNotFoundError:
+                    return None
+                except OSError as error:
+                    raise AdminStateError("cannot inspect admin state file") from error
                 raise AdminStateError("admin state file is not an ordinary file")
             try:
                 if path.stat().st_size > MAX_STATE_BYTES:
@@ -129,22 +103,19 @@ class AdminStateStore:
             raise AdminStateError("admin state document is too large")
         with self._lock:
             path = self._path(name)
-            if (path.exists() or path.is_symlink()) and not _ordinary(path):
-                raise AdminStateError("admin state file is not an ordinary file")
-            descriptor, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
-            try:
-                with os.fdopen(descriptor, "wb") as stream:
-                    stream.write(encoded)
-                    stream.flush()
-                    os.fsync(stream.fileno())
-                os.replace(temporary, path)
-            except OSError as error:
-                raise AdminStateError("cannot persist admin state") from error
-            finally:
+            if not is_ordinary(path):
                 try:
-                    os.unlink(temporary)
+                    os.lstat(path)
                 except FileNotFoundError:
                     pass
+                except OSError as error:
+                    raise AdminStateError("cannot inspect admin state file") from error
+                else:
+                    raise AdminStateError("admin state file is not an ordinary file")
+            try:
+                atomic_write_bytes(path, encoded)
+            except OSError as error:
+                raise AdminStateError("cannot persist admin state") from error
 
     def schedules(self) -> dict[str, Any]:
         stored = self.read("schedules") or {}

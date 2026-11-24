@@ -14,8 +14,8 @@ from uuid import uuid4
 
 from backend.activity_store import ActivityStore
 from backend.admin_probe import ADMIN_PROBE_LOCK, AdminProbeDataError, CandidateFilter, candidates, probe_records, selected_records
-from backend.api_contract import PROBE_EVIDENCE_TTL, _probe_checked_at
 from backend.admin_state import AdminStateError, AdminStateStore, BoundedItems
+from backend.probe_policy import PROBE_EVIDENCE_TTL, parse_probe_checked_at
 from backend.telegram_notify import notify_operation
 from url_adapters.service import DISCOVERERS, PC_DISCOVERERS, discover_games
 
@@ -129,7 +129,7 @@ def _scheduled_candidate_filter(mode: str, now: datetime, known_urls: frozenset[
             return False
         if mode == "full":
             return True
-        checked = _probe_checked_at(current)
+        checked = parse_probe_checked_at(current)
         if checked is not None and checked[1] <= now and now - checked[1] < PROBE_EVIDENCE_TTL:
             return False
         return True

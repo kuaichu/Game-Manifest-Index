@@ -38,7 +38,7 @@ MAX_FILE_TIME_CACHE_ENTRIES = 64
 FILE_TIME_CACHE_TTL = 600
 
 
-def _retained_size(value: Any) -> int:
+def retained_size(value: Any) -> int:
     """Estimate retained Python object bytes, counting shared objects only once."""
     seen: set[int] = set()
 
@@ -55,6 +55,9 @@ def _retained_size(value: Any) -> int:
         return total
 
     return size(value)
+
+
+_retained_size = retained_size
 
 
 OFFICIAL_SOPHON_HOSTS = frozenset(
@@ -229,7 +232,7 @@ class HttpUpstream:
             return pending.result()
         try:
             value = loader()
-            value_bytes = _retained_size((value.files, value.chunk_sizes, value.total_size, value.file_time))
+            value_bytes = retained_size((value.files, value.chunk_sizes, value.total_size, value.file_time))
         except BaseException as error:
             with self._chunk_manifest_lock:
                 self._chunk_manifest_inflight.pop(key, None)
@@ -428,11 +431,11 @@ def strict_relative_posix(value: Any, *, allow_empty: bool = False) -> str:
 
 
 def _page(items: Sequence[dict[str, Any]], limit: int, cursor: str | None) -> tuple[list[dict[str, Any]], str | None]:
-    if limit < 1 or limit > 500:
+    if isinstance(limit, bool) or not isinstance(limit, int) or limit < 1 or limit > 500:
         raise ManifestBadRequest("limit 无效")
     if cursor is None:
         offset = 0
-    elif not re.fullmatch(r"0|[1-9][0-9]*", cursor):
+    elif not isinstance(cursor, str) or not re.fullmatch(r"0|[1-9][0-9]*", cursor):
         raise ManifestBadRequest("cursor 无效")
     else:
         offset = int(cursor)
@@ -441,7 +444,7 @@ def _page(items: Sequence[dict[str, Any]], limit: int, cursor: str | None) -> tu
     return page, next_cursor
 
 
-def _directory_page(
+def directory_page(
     files: Sequence[dict[str, Any]], path: str, q: str | None, limit: int, cursor: str | None
 ) -> dict[str, Any]:
     path = strict_relative_posix(path, allow_empty=True)
@@ -456,7 +459,7 @@ def _directory_page(
         return {
             "path": path,
             "q": q,
-            "items": [{key: value for key, value in item.items() if key != "chunks"} for item in page],
+            "items": [{"type": "file", **{key: value for key, value in item.items() if key != "chunks"}} for item in page],
             "total": len(selected),
             "next_cursor": next_cursor,
             "totals": {"files": len(selected), "directories": 0, "size": sum(item["size"] for item in selected)},
@@ -466,6 +469,8 @@ def _directory_page(
         if not item["path"].startswith(prefix):
             continue
         remainder = item["path"][len(prefix) :]
+        if not remainder:
+            continue
         first, separator, _ = remainder.partition("/")
         child_path = prefix + first
         if separator:
@@ -492,6 +497,9 @@ def _directory_page(
             "size": sum(item.get("size", 0) for item in ordered),
         },
     }
+
+
+_directory_page = directory_page
 
 
 def _local_files(document: Mapping[str, Any], base_urls: list[str]) -> list[dict[str, Any]]:
@@ -544,7 +552,7 @@ def list_local_files(
     document: Mapping[str, Any], base_urls: list[str], path: str = "", q: str | None = None,
     limit: int = 100, cursor: str | None = None,
 ) -> dict[str, Any]:
-    return _directory_page(_local_files(document, base_urls), path, q, limit, cursor)
+    return directory_page(_local_files(document, base_urls), path, q, limit, cursor)
 
 
 def local_files(document: Mapping[str, Any], base_urls: list[str] | None = None) -> list[dict[str, Any]]:
@@ -769,7 +777,7 @@ def list_chunk_files(
 ) -> dict[str, Any]:
     item = _find_chunk_entry(document, identity)
     data = _chunk_manifest_data(item, upstream)
-    result = _directory_page(data.files, path, q, limit, cursor)
+    result = directory_page(data.files, path, q, limit, cursor)
     result["identity"] = item.get("matching_field") or (item.get("manifest") or {}).get("id")
     result["fetch_mode"] = "upstream_manifest"
     result["file_time"] = data.file_time
@@ -861,6 +869,7 @@ def chunk_content(document: Mapping[str, Any], identity: str, name: str, upstrea
 
 __all__ = [
     "HttpUpstream", "ManifestBadRequest", "ManifestCorrupt", "ManifestError", "ManifestNotFound",
-    "ManifestTimeout", "ManifestUpstream", "chunk_content", "chunk_download_plan_items", "chunk_file_detail", "list_chunk_files",
-    "list_local_files", "local_file_detail", "local_files", "strict_relative_posix",
+    "ManifestTimeout", "ManifestUpstream", "chunk_content", "chunk_download_plan_items", "chunk_file_detail",
+    "directory_page", "list_chunk_files", "list_local_files", "local_file_detail", "local_files",
+    "retained_size", "strict_relative_posix",
 ]

@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import copy
 import json
-import os
-import stat
 from functools import wraps
 from pathlib import Path
 from typing import Any, Mapping
 
+from backend import catalog_admin
 from backend.admin_probe import ADMIN_PROBE_LOCK, stable_url_id, valid_probe_url
 from backend.api_contract import (
     GAME_CATALOG,
@@ -17,14 +16,14 @@ from backend.api_contract import (
     MAX_RECORD_BYTES,
     VENDORS,
     DomainData,
-    _domain_projection,
-    _summary as public_summary,
-    _version_key,
+    domain_projection,
     fail,
+    version_summary as public_summary,
 )
-from backend import catalog_admin
 from backend.catalog_admin import CatalogConfigError
 from backend.domain_registry import is_nondefault_pc_domain, nondefault_pc_domains
+from backend.fs_safety import disk_platform, domain_directory, is_ordinary, is_safe_component
+from backend.indexes import version_key
 from backend.schema_v2 import artifact_id, validate_v2_record
 from backend.storage_locks import DATA_LOCK, data_file_lock
 from backend.version_store import record_index_transaction, write_v2_record
@@ -45,48 +44,16 @@ ARTIFACT_ATTRIBUTE_FIELDS = (
 )
 
 
-def _safe_component(value: Any) -> bool:
-    return (
-        isinstance(value, str)
-        and value == value.strip()
-        and bool(value)
-        and value not in {".", ".."}
-        and not any(char in value for char in '<>:"/\\|?*')
-        and not any(ord(char) < 32 for char in value)
-    )
-
-
-def _ordinary(path: Path, *, directory: bool = False) -> bool:
-    try:
-        info = os.lstat(path)
-    except OSError:
-        return False
-    expected = stat.S_ISDIR(info.st_mode) if directory else stat.S_ISREG(info.st_mode)
-    return (
-        expected
-        and not stat.S_ISLNK(info.st_mode)
-        and not bool(getattr(info, "st_file_attributes", 0) & 0x400)
-    )
-
-
 def _exists_or_link(path: Path) -> bool:
     return path.exists() or path.is_symlink()
 
 
-def _disk_platform(platform: str) -> str:
-    if platform == "android":
-        return "android"
-    if platform == "windows":
-        return "pc"
-    raise ValueError("unsupported platform")
-
-
 def domain_info(root: Path, domain_id: str) -> tuple[str, str, str, Path]:
-    if not _safe_component(domain_id):
+    if not is_safe_component(domain_id):
         fail(404, "domain_not_found", "归档域不存在")
 
     root = Path(root)
-    if not _ordinary(root, directory=True):
+    if not is_ordinary(root, directory=True):
         fail(500, "unsafe_data_path", "数据目录不安全")
     matches: list[tuple[str, str, str, Path]] = []
     valid_game_ids = set(GAME_IDS) | set(catalog_admin.configured_games(root))
@@ -94,9 +61,8 @@ def domain_info(root: Path, domain_id: str) -> tuple[str, str, str, Path]:
         game_id, suffix = domain_id.rsplit("-", 1)
         if game_id in valid_game_ids and suffix in {"android", "pc"}:
             platform = "android" if suffix == "android" else "windows"
-            disk = _disk_platform(platform)
             for vendor in VENDORS:
-                candidate = root / vendor / game_id / disk
+                candidate = domain_directory(root, vendor, game_id, platform, domain_id)
                 if _exists_or_link(candidate):
                     matches.append((vendor, game_id, platform, candidate))
             if not matches:
@@ -120,7 +86,7 @@ def domain_info(root: Path, domain_id: str) -> tuple[str, str, str, Path]:
                 candidate = (
                     catalog_admin.domain_directory(root, domain)
                     if configured and domain is not None
-                    else root / vendor / game_id / "pc" / "domains" / domain_id
+                    else domain_directory(root, vendor, game_id, "windows", domain_id)
                 )
                 if _exists_or_link(candidate):
                     matches.append((vendor, game_id, "windows", candidate))
@@ -135,13 +101,13 @@ def domain_info(root: Path, domain_id: str) -> tuple[str, str, str, Path]:
     current = root
     for part in directory.relative_to(root).parts:
         current = current / part
-        if not _ordinary(current, directory=True):
+        if not is_ordinary(current, directory=True):
             fail(500, "unsafe_data_path", "数据目录不安全")
     return vendor, game_id, platform, directory
 
 
 def _read_record(path: Path) -> dict[str, Any]:
-    if not _ordinary(path):
+    if not is_ordinary(path):
         fail(500, "corrupt_data", "归档数据损坏")
     try:
         if path.stat().st_size > MAX_RECORD_BYTES:
@@ -181,13 +147,13 @@ def _check_path_identity(
 def read_record(
     root: Path, domain_id: str, version: str,
 ) -> tuple[dict[str, Any], Path, tuple[str, str, str]]:
-    if not _safe_component(version):
+    if not is_safe_component(version):
         fail(404, "version_not_found", "版本不存在")
     vendor, game_id, platform, directory = domain_info(root, domain_id)
     path = directory / f"{version}.json"
     if not _exists_or_link(path):
         fail(404, "version_not_found", "版本不存在")
-    if not _ordinary(path):
+    if not is_ordinary(path):
         fail(500, "unsafe_data_path", "版本路径不安全")
     record = _read_record(path)
     _check_path_identity(
@@ -209,7 +175,7 @@ def scan_domain(
     for path in sorted(directory.glob("*.json"), key=lambda item: item.name):
         if path.name == "index.json":
             continue
-        if not _ordinary(path):
+        if not is_ordinary(path):
             fail(500, "unsafe_data_path", "归档文件不安全")
         record = _read_record(path)
         _check_path_identity(
@@ -221,7 +187,7 @@ def scan_domain(
             domain_id=domain_id,
         )
         records.append(record)
-    records.sort(key=lambda item: _version_key(item["version"]), reverse=True)
+    records.sort(key=lambda item: version_key(item["version"]), reverse=True)
     return vendor, game_id, platform, directory, records
 
 
@@ -426,7 +392,7 @@ def build_manual_record(root: Path, domain_id: str, payload: Mapping[str, Any]) 
     vendor, game_id, platform, _ = domain_info(root, domain_id)
     version = payload.get("version")
     raw_artifacts = payload.get("artifacts")
-    if not _safe_component(version) or not isinstance(raw_artifacts, list) or not raw_artifacts:
+    if not is_safe_component(version) or not isinstance(raw_artifacts, list) or not raw_artifacts:
         fail(422, "validation_error", "version 和 artifacts 为必填项")
     attributes = payload.get("attributes") if isinstance(payload.get("attributes"), Mapping) else {}
     channel = payload.get("channel") or attributes.get("channel") or "official"
@@ -588,16 +554,16 @@ def catalog_projection(root: Path) -> dict[str, Any]:
     for game_order, game_id in enumerate(game_ids):
         domain_ids = [
             f"{game_id}-{'android' if platform == 'android' else 'pc'}"
-            for disk, platform in (("android", "android"), ("pc", "windows"))
+            for _, platform in (("android", "android"), ("pc", "windows"))
             if any(
-                _exists_or_link(Path(root) / vendor / game_id / disk)
+                _exists_or_link(domain_directory(root, vendor, game_id, platform))
                 for vendor in VENDORS
             )
         ]
         for vendor in VENDORS:
             configured = catalog_admin.configured_nondefault_pc_domains(root, vendor, game_id)
             for domain_id in (*nondefault_pc_domains(vendor, game_id), *configured):
-                directory = Path(root) / vendor / game_id / "pc" / "domains" / domain_id
+                directory = domain_directory(root, vendor, game_id, "windows", domain_id)
                 if _exists_or_link(directory) or domain_id in configured_domains:
                     domain_ids.append(domain_id)
         for domain_id in configured_domains:
@@ -610,10 +576,10 @@ def catalog_projection(root: Path) -> dict[str, Any]:
             seen_domains.add(domain_id)
             vendor, _, _, directory, records = scan_domain(root, domain_id)
             platform = records[0]["platform"] if records else domain_info(root, domain_id)[2]
-            disk = _disk_platform(platform)
+            disk = disk_platform(platform)
             domain = DomainData(vendor, game_id, disk, platform, domain_id, directory, tuple(records))
             if records:
-                projection = _domain_projection(domain, game_order * 10 + domain_order)
+                projection = domain_projection(domain, game_order * 10 + domain_order)
             else:
                 projection = {
                     "id": domain_id,
@@ -642,7 +608,7 @@ def catalog_projection(root: Path) -> dict[str, Any]:
             versions = [record["version"] for record in records]
             if game["latest_version"] is not None:
                 versions.append(game["latest_version"])
-            game["latest_version"] = max(versions, key=_version_key) if versions else None
+            game["latest_version"] = max(versions, key=version_key) if versions else None
     for game in games:
         platforms = game_platforms[game["id"]]
         if len(platforms) == 1 and game.get("platform") == "multi":
@@ -692,7 +658,7 @@ def create_game(root: Path, payload: Mapping[str, Any]) -> dict[str, Any]:
 
 @_catalog_mutation
 def update_game(root: Path, game_id: str, payload: Mapping[str, Any]) -> dict[str, Any]:
-    if not _safe_component(game_id):
+    if not is_safe_component(game_id):
         fail(404, "game_not_found", "游戏不存在")
     config = _catalog_config(root)
     games, _ = _catalog_index(root)
@@ -722,7 +688,7 @@ def update_game(root: Path, game_id: str, payload: Mapping[str, Any]) -> dict[st
 
 @_catalog_mutation
 def delete_game(root: Path, game_id: str) -> None:
-    if not _safe_component(game_id):
+    if not is_safe_component(game_id):
         fail(404, "game_not_found", "游戏不存在")
     config = _catalog_config(root)
     games, domains = _catalog_index(root)
@@ -760,7 +726,7 @@ def create_domain(root: Path, payload: Mapping[str, Any]) -> dict[str, Any]:
 
 @_catalog_mutation
 def update_domain(root: Path, domain_id: str, payload: Mapping[str, Any]) -> dict[str, Any]:
-    if not _safe_component(domain_id):
+    if not is_safe_component(domain_id):
         fail(404, "domain_not_found", "归档域不存在")
     config = _catalog_config(root)
     games, domains = _catalog_index(root)
@@ -791,7 +757,7 @@ def update_domain(root: Path, domain_id: str, payload: Mapping[str, Any]) -> dic
 
 @_catalog_mutation
 def delete_domain(root: Path, domain_id: str) -> None:
-    if not _safe_component(domain_id):
+    if not is_safe_component(domain_id):
         fail(404, "domain_not_found", "归档域不存在")
     config = _catalog_config(root)
     _, domains = _catalog_index(root)

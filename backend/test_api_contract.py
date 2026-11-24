@@ -1087,7 +1087,11 @@ class TemporaryContractTests(unittest.TestCase):
         self.assertEqual(child["items"][0]["name"], "Client/Bin/a.dll")
         self.assertEqual(child["manifest_total_size"], 12)
         filtered = self.get("/api/v1/domains/wuwa-pc/versions/1.0.0/artifact-tree?kind=file&q=root.exe&limit=1").json()
+        self.assertEqual([item["name"] for item in filtered["items"]], ["root.exe"])
+        self.assertEqual(filtered["folders"], [])
         self.assertEqual(filtered["manifest_total_size"], 12)
+        nested_search = self.get("/api/v1/domains/wuwa-pc/versions/1.0.0/artifact-tree?kind=file&q=a.dll").json()
+        self.assertEqual([item["name"] for item in nested_search["items"]], ["Client/Bin/a.dll"])
         next_page = self.get("/api/v1/domains/wuwa-pc/versions/1.0.0/artifact-tree?kind=file&limit=1&cursor=1").json()
         self.assertEqual(next_page["manifest_total_size"], 12)
 
@@ -1439,6 +1443,24 @@ class KuroResourcePackTests(unittest.TestCase):
         self.assertEqual(self.names(body), ["Client/old.pak"])
         self.assertNotIn("resource_packs", body)
         self.assertEqual(body["manifest_total_size"], 50)
+
+    def test_search_query_returns_matching_files_for_default_and_selected_pack(self):
+        default_search = self.tree("3.8.0", "&q=.pak")
+        self.assertEqual(default_search["folders"], [])
+        self.assertEqual([item["name"] for item in default_search["items"]], ["Client/common.pak"])
+        self.assertEqual(default_search["items"][0]["kind"], "file")
+        self.assertEqual(default_search["manifest_total_size"], 1000)
+
+        packs = default_search["resource_packs"]["packs"]
+        hd = next(item for item in packs if item["pack"] == "hd")
+        hd_search = self.tree("3.8.0", f"&q=hd.pak&identity={hd['identity']}")
+        self.assertEqual(hd_search["folders"], [])
+        self.assertEqual([item["name"] for item in hd_search["items"]], ["Client/hd.pak"])
+        self.assertEqual(hd_search["resource_packs"]["selected"], hd["identity"])
+        self.assertEqual(hd_search["manifest_total_size"], 400)
+
+        single_search = self.tree("3.7.1", "&q=old.pak")
+        self.assertEqual([item["name"] for item in single_search["items"]], ["Client/old.pak"])
 
     def test_index_uses_common_pack_only_and_rejects_summed_size(self):
         index_file = self.root / "kuro" / "wuwa" / "pc" / "index.json"
