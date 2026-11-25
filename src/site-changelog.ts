@@ -12,6 +12,12 @@ export interface SiteChangelogDay {
 
 export const siteChangelog: SiteChangelogEntry[] = [
   {
+    id: "2026-11-25-azurpromilia-auto-sync",
+    date: "2026-11-25",
+    title: "新增《蓝色星原：旅谣》PC 与 Android 自动收录",
+    body: "《蓝色星原：旅谣》国服 Android 安装包与 PC 安装分片、文件清单现已接入官方渠道自动发现收录，并支持检测链接是否可用；发现新版本时会自动同步更新。已有的内测历史记录不受影响。",
+  },
+  {
     id: "2026-11-17-mobile-game-drawer",
     date: "2026-11-17",
     title: "手机上切换游戏更好找",
