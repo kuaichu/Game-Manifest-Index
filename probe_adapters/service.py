@@ -25,6 +25,55 @@ from probe_adapters.common import (
 from probe_adapters.registry import PC_ADAPTERS, adapter_for
 
 
+def _url_filename(url: str) -> str:
+    return unquote(Path(urlsplit(url).path).name)
+
+
+def _preflight_result(
+    adapter: Any, url: str, *, platform: str | None, vendor: str | None,
+    game_id: str | None, expected_size: int | None, context: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    preflight = getattr(adapter, "preflight", None) if adapter else None
+    if not preflight:
+        return None
+    static = preflight(url, platform=platform, vendor=vendor, game_id=game_id, context=context)
+    return _static_result(adapter, url, platform, expected_size, static) if static is not None else None
+
+
+def _probe_range(
+    url: str, timeout: int,
+) -> tuple[int, dict[str, str], str, bytes, int | None, int, bytes]:
+    try:
+        observation = probe_url(url, timeout)
+    except ProbeError as error:
+        if error.status != 403:
+            raise
+        # An HTTP 403 already establishes unavailability, even when the
+        # transport fails while reading its response body.
+        observation = ProbeObservation(
+            403, error.headers, error.final_url or url, error.prefix,
+            transport_returncode=error.returncode,
+            bytes_received=len(error.body or error.prefix), body=error.body,
+        )
+    status, headers, final_url, prefix = observation
+    transport_returncode = getattr(observation, "transport_returncode", 0)
+    bytes_received = getattr(observation, "bytes_received", len(prefix))
+    response_body = getattr(observation, "body", prefix)
+    return status, headers, final_url, prefix, transport_returncode, bytes_received, response_body
+
+
+def _classify_head_fallback(
+    adapter: Any, status: int, url: str, headers: dict[str, str], *,
+    expected_size: int | None, error: ProbeError,
+) -> dict[str, Any] | None:
+    classify_head = getattr(adapter, "classify_head_fallback", None)
+    if not classify_head:
+        return None
+    return classify_head(
+        status, _url_filename(url), headers, expected_size=expected_size, error=error,
+    )
+
+
 def probe(
     url: str,
     *,
@@ -46,29 +95,20 @@ def probe(
         if platform is not None:
             raise
         adapter = None
-    preflight = getattr(adapter, "preflight", None) if adapter else None
-    static = preflight(
-        url, platform=platform, vendor=vendor, game_id=game_id, context=context,
-    ) if preflight else None
-    if static is not None:
-        return _static_result(adapter, url, platform, expected_size, static)
+    static_result = _preflight_result(
+        adapter, url,
+        platform=platform, vendor=vendor, game_id=game_id,
+        expected_size=expected_size, context=context,
+    )
+    if static_result is not None:
+        return static_result
+
+    fallback_decision: dict[str, Any] | None = None
     try:
-        try:
-            observation = probe_url(url, timeout)
-        except ProbeError as error:
-            if error.status != 403:
-                raise
-            # An HTTP 403 already establishes unavailability, even when the
-            # transport fails while reading its response body.
-            observation = ProbeObservation(
-                403, error.headers, error.final_url or url, error.prefix,
-                transport_returncode=error.returncode,
-                bytes_received=len(error.body or error.prefix), body=error.body,
-            )
-        status, headers, final_url, prefix = observation
-        transport_returncode = getattr(observation, "transport_returncode", 0)
-        bytes_received = getattr(observation, "bytes_received", len(prefix))
-        response_body = getattr(observation, "body", prefix)
+        (
+            status, headers, final_url, prefix,
+            transport_returncode, bytes_received, response_body,
+        ) = _probe_range(url, timeout)
     except ProbeError as error:
         fallback = getattr(adapter, "allows_head_fallback", None) if adapter else None
         if not fallback or not fallback(url, error):
@@ -78,45 +118,34 @@ def probe(
         try:
             status, headers, final_url = probe_head(url, timeout)
         except ProbeError as head_error:
-            classify_head = getattr(adapter, "classify_head_fallback", None)
-            original_filename = unquote(Path(urlsplit(error.final_url or url).path).name)
-            fallback_decision = classify_head(
-                error.status or 0,
-                original_filename,
-                error.headers,
-                expected_size=expected_size,
-                error=error,
-            ) if classify_head else None
-            if fallback_decision is None:
-                setattr(head_error, "adapter", adapter.NAME)
-                raise
             status = error.status or 0
             headers = error.headers
             final_url = error.final_url or url
+            if _classify_head_fallback(
+                adapter, status, final_url, headers,
+                expected_size=expected_size, error=error,
+            ) is None:
+                setattr(head_error, "adapter", adapter.NAME)
+                raise
         redirected_adapter = adapter_for(vendor, game_id, final_url, platform)
-        final_static = getattr(redirected_adapter, "preflight", None)
-        if final_static:
-            decision = final_static(
-                final_url, platform=platform, vendor=vendor, game_id=game_id, context=context,
-            )
-            if decision is not None:
-                return _static_result(redirected_adapter, final_url, platform, expected_size, decision)
-        filename = unquote(Path(urlsplit(final_url).path).name)
-        classify_head = getattr(redirected_adapter, "classify_head_fallback", None)
-        fallback_decision = classify_head(
-            status,
-            filename,
-            headers,
-            expected_size=expected_size,
-            error=error,
-        ) if classify_head else None
+        static_result = _preflight_result(
+            redirected_adapter, final_url,
+            platform=platform, vendor=vendor, game_id=game_id,
+            expected_size=expected_size, context=context,
+        )
+        if static_result is not None:
+            return static_result
+        fallback_decision = _classify_head_fallback(
+            redirected_adapter, status, final_url, headers,
+            expected_size=expected_size, error=error,
+        )
         if fallback_decision is None:
-            error = ProbeError(
+            fallback_error = ProbeError(
                 f"HEAD fallback 无法确认资源（HTTP {status}）",
                 status=status, headers=headers, final_url=final_url,
             )
-            setattr(error, "adapter", adapter.NAME)
-            raise error
+            setattr(fallback_error, "adapter", adapter.NAME)
+            raise fallback_error
         prefix = b""
         adapter = redirected_adapter
         transport_returncode = getattr(error, "returncode", None)
@@ -124,44 +153,47 @@ def probe(
         response_body = b""
     else:
         adapter = adapter_for(vendor, game_id, final_url, platform)
-        final_static = getattr(adapter, "preflight", None)
-        if final_static and status != 403:
-            decision = final_static(
-                final_url, platform=platform, vendor=vendor, game_id=game_id, context=context,
+        if status != 403:
+            static_result = _preflight_result(
+                adapter, final_url,
+                platform=platform, vendor=vendor, game_id=game_id,
+                expected_size=expected_size, context=context,
             )
-            if decision is not None:
-                return _static_result(adapter, final_url, platform, expected_size, decision)
-    filename = unquote(Path(urlsplit(final_url).path).name)
+            if static_result is not None:
+                return static_result
+
+    filename = _url_filename(final_url)
     content_type = headers.get("content-type", "")
     observed_size = content_size(status, headers)
     response_decision = classify_oss_archive_response(status, headers, response_body)
     availability = getattr(adapter, "availability", None)
     if status == 403:
         available = False
-    elif 'fallback_decision' in locals():
+    elif fallback_decision is not None:
         available = fallback_decision["available"]
     elif response_decision is not None:
         available = response_decision["available"]
     elif availability:
-        try:
-            available = availability(
-                status,
-                filename,
-                prefix,
-                observed_size=observed_size,
-                expected_size=expected_size,
-                transport_returncode=transport_returncode,
-                bytes_received=bytes_received,
-            )
-        except TypeError as error:
-            # Keep existing vendor adapters with the original three-argument
-            # contract working while HoYo adapters consume size evidence.
-            if "unexpected keyword argument" not in str(error):
-                raise
-            available = availability(status, filename, prefix)
+        available = availability(
+            status,
+            filename,
+            prefix,
+            observed_size=observed_size,
+            expected_size=expected_size,
+            transport_returncode=transport_returncode,
+            bytes_received=bytes_received,
+        )
     else:
         confirmed = status in {200, 206} and filename.lower().endswith(".apk") and "html" not in content_type.lower()
         available = True if confirmed else False if status in {404, 410} else None
+
+    decision_meta = (
+        fallback_decision
+        if fallback_decision is not None
+        else response_decision
+        if response_decision is not None
+        else {}
+    )
     checked_at = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
     result = {
         "adapter": adapter.NAME,
@@ -169,11 +201,12 @@ def probe(
         "url": final_url,
         "filename": filename,
         "http_code": (
-            None if 'fallback_decision' in locals()
+            None
+            if fallback_decision is not None
             and fallback_decision.get("source_kind") == "official_storage_metadata"
             else status
         ),
-        "metadata_http_code": status if 'fallback_decision' in locals() else None,
+        "metadata_http_code": status if fallback_decision is not None else None,
         "available": available,
         "checked_at": checked_at,
         "content_type": content_type or None,
@@ -185,24 +218,9 @@ def probe(
         "md5": content_md5(headers.get("content-md5")),
         "last_modified": headers.get("last-modified"),
         "file_time": file_time(final_url, headers, adapter.URL_TIME),
-        "reason": (
-            fallback_decision.get("reason", f"HTTP {status}")
-            if 'fallback_decision' in locals()
-            else response_decision.get("reason", f"HTTP {status}")
-            if response_decision is not None else f"HTTP {status}"
-        ),
-        "confidence": (
-            fallback_decision.get("confidence", "high")
-            if 'fallback_decision' in locals()
-            else response_decision.get("confidence", "high")
-            if response_decision is not None else "high"
-        ),
-        "source_kind": (
-            fallback_decision.get("source_kind", "live_probe")
-            if 'fallback_decision' in locals()
-            else response_decision.get("source_kind", "live_probe")
-            if response_decision is not None else "live_probe"
-        ),
+        "reason": decision_meta.get("reason", f"HTTP {status}"),
+        "confidence": decision_meta.get("confidence", "high"),
+        "source_kind": decision_meta.get("source_kind", "live_probe"),
         "transport_returncode": transport_returncode,
         "bytes_received": bytes_received,
     }
@@ -224,7 +242,7 @@ def _static_result(
     static: dict[str, object],
 ) -> dict[str, Any]:
     checked_at = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
-    filename = unquote(Path(urlsplit(url).path).name)
+    filename = _url_filename(url)
     return {
         "adapter": adapter.NAME,
         "platform": platform or ("windows" if adapter in PC_ADAPTERS else "android"),
