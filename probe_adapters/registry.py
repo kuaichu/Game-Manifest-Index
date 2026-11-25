@@ -10,6 +10,7 @@ from probe_adapters.android import (
     hypergryph_endfield_hycdn,
     kuro_pns_txcdn,
     kuro_wuwa_mc_cdn,
+    manjuu_syncstation,
     mihoyo_autopatch,
     mihoyo_bh2_benghuai,
     mihoyo_bh3_cdn,
@@ -36,6 +37,7 @@ ANDROID_ADAPTERS = (
     kuro_wuwa_mc_cdn,
     kuro_pns_txcdn,
     perfectworld_webops,
+    manjuu_syncstation,
 )
 PC_ADAPTERS = (
     hypergryph_arknights,
