@@ -8,7 +8,6 @@ import type {
   AdminImportResult,
   AdminOperationJob,
   AdminOperationPayload,
-  AdminSyncStatus,
   SyncRunStatus,
   SyncSchedule,
   ArchiveDomain,
@@ -211,7 +210,7 @@ export const api = {
   artifactTree: (
     domainId: string,
     version: string,
-    options: { kind: string; prefix?: string; cursor?: string | null; limit?: number; state?: string; identity?: string },
+    options: { kind: string; prefix?: string; cursor?: string | null; limit?: number; state?: string; identity?: string; query?: string },
     signal?: AbortSignal,
   ) => {
     const parameters = new URLSearchParams({
@@ -220,6 +219,7 @@ export const api = {
       limit: String(options.limit || 100),
     });
     if (options.cursor) parameters.set("cursor", options.cursor);
+    if (options.query) parameters.set("q", options.query);
     if (options.state) parameters.set("availability_state", options.state);
     if (options.identity) parameters.set("identity", options.identity);
     return requestJson<ArtifactTreePage>(`/domains/${encodeURIComponent(domainId)}/versions/${encodeURIComponent(version)}/artifact-tree?${parameters}`, signal);
@@ -297,35 +297,6 @@ export const api = {
       signal,
     );
   },
-  chunkFiles: (
-    domainId: string,
-    version: string,
-    identity: string,
-    params?: { path?: string; q?: string; limit?: number; cursor?: string | null },
-    signal?: AbortSignal,
-  ) => {
-    const search = new URLSearchParams();
-    if (params?.path !== undefined && params.path !== null && params.path !== "") search.set("path", params.path);
-    if (params?.q) search.set("q", params.q);
-    if (params?.limit) search.set("limit", String(params.limit));
-    if (params?.cursor) search.set("cursor", params.cursor);
-    const qs = search.toString();
-    return requestJson<ChunkFilesPage>(
-      `/domains/${encodeURIComponent(domainId)}/versions/${encodeURIComponent(version)}/chunk-manifests/${encodeURIComponent(identity)}/files${qs ? `?${qs}` : ""}`,
-      signal,
-    );
-  },
-  chunkFileDetail: (
-    domainId: string,
-    version: string,
-    identity: string,
-    path: string,
-    signal?: AbortSignal,
-  ) =>
-    requestJson<ChunkFileDetail>(
-      `/domains/${encodeURIComponent(domainId)}/versions/${encodeURIComponent(version)}/chunk-manifests/${encodeURIComponent(identity)}/file?path=${encodeURIComponent(path)}`,
-      signal,
-    ),
   chunkDownloadPlan: (
     domainId: string,
     version: string,
@@ -393,8 +364,6 @@ export const adminApi = {
     ),
   addVersion: (domainId: string, payload: ManualVersionPayload, token: string, signal?: AbortSignal) =>
     requestJson<AdminImportResult>(`/admin/domains/${encodeURIComponent(domainId)}/versions`, signal, { method: "POST", headers: { ...adminApi.auth(token), "Content-Type": "application/json" }, body: JSON.stringify(payload) }),
-  syncStatus: (token: string, signal?: AbortSignal) =>
-    requestJson<AdminSyncStatus>("/admin/sync-status", signal, { headers: adminApi.auth(token) }),
   syncRunStatus: (token: string, signal?: AbortSignal) =>
     requestJson<SyncRunStatus>("/admin/sync/status", signal, { headers: adminApi.auth(token) }),
   syncSchedule: (token: string, signal?: AbortSignal) =>
@@ -418,12 +387,6 @@ export const adminApi = {
       method: "POST",
       headers: { ...adminApi.auth(token), "Content-Type": "application/json" },
       body: JSON.stringify({ url, timeout, ...(artifactUrlId ? { artifact_url_id: artifactUrlId } : {}) }),
-    }),
-  probeUrls: (urls: string[], token: string, timeout = 10, artifactUrlIds: number[] = [], signal?: AbortSignal) =>
-    requestJson<{ items: ProbeUrlResult[] }>("/admin/probe/urls", signal, {
-      method: "POST",
-      headers: { ...adminApi.auth(token), "Content-Type": "application/json" },
-      body: JSON.stringify({ urls, timeout, ...(artifactUrlIds.length ? { artifact_url_ids: artifactUrlIds } : {}) }),
     }),
   probeVersion: (domainId: string, version: string, token: string, signal?: AbortSignal) =>
     requestJson<{ domain_id: string; version: string; summary: unknown }>(

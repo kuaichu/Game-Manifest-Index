@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { api } from "../api";
+import { formatObservedDate } from "../domain-presentation";
 import type { PublicProbeScheduleStatus } from "../types";
 
 defineProps<{ checkedTime: string; globalTime: boolean }>();
@@ -18,17 +19,6 @@ const statusText = computed(() => {
   if (!status.running) return "定时检查未运行";
   return `每 ${status.interval_hours} 小时检查新版本`;
 });
-function displayTime(value: string | null): string {
-  if (!value || !Number.isFinite(Date.parse(value))) return "暂无记录";
-  const parts = new Intl.DateTimeFormat("zh-CN", {
-    timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", hour12: false,
-  }).formatToParts(new Date(value)).reduce((parts, part) => {
-    parts[part.type] = part.value;
-    return parts;
-  }, {} as Record<string, string>);
-  return `${parts.year}.${parts.month}.${parts.day} ${parts.hour}:${parts.minute}`;
-}
 async function refresh(): Promise<void> {
   controller?.abort();
   if (timeout !== null) clearTimeout(timeout);
@@ -65,8 +55,8 @@ onBeforeUnmount(() => {
   <div class="probe-schedule-info">
     <div class="probe-schedule-row">
       <span class="probe-schedule-badge" :class="{ 'probe-schedule-error': schedule?.error }">{{ statusText }}</span>
-      <span v-if="schedule?.last_started_at" class="probe-schedule-time">最近任务启动：{{ displayTime(schedule.last_started_at) }}</span>
-      <span v-if="schedule?.enabled && schedule?.next_run_at" class="probe-schedule-time">下次计划：{{ displayTime(schedule.next_run_at) }}</span>
+      <span v-if="schedule?.last_started_at" class="probe-schedule-time">最近任务启动：{{ formatObservedDate(schedule.last_started_at, "暂无记录") }}</span>
+      <span v-if="schedule?.enabled && schedule?.next_run_at" class="probe-schedule-time">下次计划：{{ formatObservedDate(schedule.next_run_at, "暂无记录") }}</span>
     </div>
     <div v-if="checkedTime">{{ globalTime ? '全站链接最近实际检测' : '当前页面链接最近实际检测' }}：<b>{{ checkedTime }}</b></div>
     <details class="probe-schedule-help">

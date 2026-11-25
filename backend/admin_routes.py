@@ -17,6 +17,15 @@ from backend.admin_probe import AdminProbeDataError, probe_direct, probe_public_
 from backend.admin_state import AdminStateError, AdminStateStore
 from backend.api_contract import ApiContract, fail
 from backend import version_admin
+from backend.admin_catalog_service import (
+    catalog_projection,
+    create_domain as create_admin_domain,
+    create_game as create_admin_game,
+    delete_domain as delete_admin_domain,
+    delete_game as delete_admin_game,
+    update_domain as update_admin_domain,
+    update_game as update_admin_game,
+)
 from probe_adapters.service import current_from_result as default_current
 from probe_adapters.service import probe as default_probe
 from url_adapters.service import DISCOVERERS, PC_DISCOVERERS
@@ -435,7 +444,7 @@ def create_admin_router(
     # records must remain manageable even though the public inventory excludes them.
     @router.get("/catalog", dependencies=protected)
     def get_admin_catalog() -> dict[str, Any]:
-        return version_admin.catalog_projection(Path(data_root))
+        return catalog_projection(Path(data_root))
 
     @router.get("/domains/{domain_id}/versions", dependencies=protected)
     def get_admin_versions(domain_id: str) -> dict[str, Any]:
@@ -499,28 +508,28 @@ def create_admin_router(
 
     @router.post("/games", dependencies=protected)
     def create_game(payload: AdminGamePayload) -> dict[str, Any]:
-        return version_admin.create_game(data_root, payload.model_dump())
+        return create_admin_game(data_root, payload.model_dump())
 
     @router.patch("/games/{game_id}", dependencies=protected)
     def update_game(game_id: str, payload: AdminGamePayload) -> dict[str, Any]:
-        return version_admin.update_game(data_root, game_id, payload.model_dump())
+        return update_admin_game(data_root, game_id, payload.model_dump())
 
     @router.delete("/games/{game_id}", dependencies=protected)
     def delete_game(game_id: str) -> Response:
-        version_admin.delete_game(data_root, game_id)
+        delete_admin_game(data_root, game_id)
         return Response(status_code=204)
 
     @router.post("/domains", dependencies=protected)
     def create_domain(payload: AdminDomainPayload) -> dict[str, Any]:
-        return version_admin.create_domain(data_root, payload.model_dump())
+        return create_admin_domain(data_root, payload.model_dump())
 
     @router.patch("/domains/{domain_id}", dependencies=protected)
     def update_domain(domain_id: str, payload: AdminDomainPayload) -> dict[str, Any]:
-        return version_admin.update_domain(data_root, domain_id, payload.model_dump())
+        return update_admin_domain(data_root, domain_id, payload.model_dump())
 
     @router.delete("/domains/{domain_id}", dependencies=protected)
     def delete_domain(domain_id: str) -> Response:
-        version_admin.delete_domain(data_root, domain_id)
+        delete_admin_domain(data_root, domain_id)
         return Response(status_code=204)
 
     @router.post("/domains/{domain_id}/versions/{version}/artifacts/edit", dependencies=protected)

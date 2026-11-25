@@ -300,17 +300,18 @@ const GAME_PROVENANCE_LIST: GameProvenance[] = [
     vendor: "蛮啾网络 (Manjuu)",
     vendorCategory: "manjuu",
     apkSource: {
-      channel: "蛮啾官方内测 APK（人工归档）",
-      description: "保留官方内测安装包的既有归档，尚未接入自动采集。",
-      endpointName: "syncstation.manjuu.com/azurpromilia/android/...",
+      channel: "蛮啾官方下载接口",
+      description: "直连蓝色星原官网下载接口，自动获取最新国服 Android 安装包直链。",
+      endpointName: "api-grp.manjuu.com/activity/web/download/info",
     },
     pcSource: {
-      channel: "蛮啾官方 PC 启动器接口（既有归档）",
-      description: "既有内测记录来自官方 packageconfig 接口，尚未接入自动采集。",
+      channel: "蛮啾官方 PC 启动器接口",
+      description: "直连蛮啾 PC 启动器 packageconfig 接口，自动同步安装分片与文件清单。",
       upstreamProject: "官方版本接口",
       upstreamUrl: "https://api-grp.manjuu.com/pc-launcher/client/gameversion/packageconfig",
     },
-    officialHosts: ["syncstation.manjuu.com"],
+    historySource: "早期内测 Android 安装包与 PC 版本记录保留自官方接口既有归档。",
+    officialHosts: ["syncstation.manjuu.com", "l2-syncstation.manjuu.com"],
   },
 ];
 
@@ -591,7 +592,7 @@ onUnmounted(() => {
               github.com/kuaichu/Game-Manifest-Index ↗
             </a>
           </div>
-          <button type="button" class="admin-btn primary small close-action-btn" @click="emit('close')">
+          <button type="button" class="close-action-btn" @click="emit('close')">
             <span>关闭窗口</span>
           </button>
         </footer>

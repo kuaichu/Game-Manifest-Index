@@ -5,58 +5,49 @@ from __future__ import annotations
 import json
 import os
 import re
-import stat
-import tempfile
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
 from backend.catalog_admin import configured_nondefault_pc_domains, is_configured_nondefault_pc_domain
-from backend.storage_locks import DATA_LOCK, data_file_lock
 from backend.domain_registry import is_nondefault_pc_domain, nondefault_pc_domains
+from backend.fs_safety import (
+    atomic_write_text,
+    disk_platform,
+    domain_directory,
+    is_ordinary,
+    require_safe_component,
+    stat_is_ordinary,
+)
+from backend.storage_locks import DATA_LOCK, data_file_lock
 
 
 class IndexReadError(ValueError):
     """The index exists but is not a readable index object."""
 
 
-def _disk_platform(platform: str) -> str:
-    if platform == "android":
-        return "android"
-    if platform in {"pc", "windows"}:
-        return "pc"
-    raise ValueError("platform must be android, pc, or windows")
-
-
-def _safe_component(value: Any, field: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise ValueError(f"{field} must be a non-empty path component")
-    forbidden = set('<>:"/\\|?*')
-    if value in {".", ".."} or any(char in forbidden or ord(char) < 32 for char in value):
-        raise ValueError(f"{field} is not a safe path component")
-    return value
-
-
 def index_path(root: Path, vendor: str, game_id: str, platform: str, domain_id: str | None = None) -> Path:
     """Return the index path; ``windows`` is the JSON platform spelling."""
-    disk = _disk_platform(platform)
-    vendor = _safe_component(vendor, "vendor")
-    game_id = _safe_component(game_id, "game_id")
-    base = Path(root) / vendor / game_id / disk
-    if domain_id is None or domain_id == f"{game_id}-{'android' if disk == 'android' else 'pc'}":
-        return base / "index.json"
-    domain_id = _safe_component(domain_id, "domain_id")
-    if disk != "pc" or not (
-        is_nondefault_pc_domain(vendor, game_id, domain_id)
-        or is_configured_nondefault_pc_domain(root, vendor, game_id, domain_id)
-    ):
-        raise ValueError("domain_id must be a registered non-default PC domain")
-    return base / "domains" / domain_id / "index.json"
+    disk = disk_platform(platform, allow_pc=True)
+    vendor = require_safe_component(vendor, "vendor")
+    game_id = require_safe_component(game_id, "game_id")
+    default_domain = f"{game_id}-{'android' if disk == 'android' else 'pc'}"
+    if domain_id is not None and domain_id != default_domain:
+        domain_id = require_safe_component(domain_id, "domain_id")
+        if disk != "pc" or not (
+            is_nondefault_pc_domain(vendor, game_id, domain_id)
+            or is_configured_nondefault_pc_domain(root, vendor, game_id, domain_id)
+        ):
+            raise ValueError("domain_id must be a registered non-default PC domain")
+    return domain_directory(root, vendor, game_id, platform, domain_id, allow_pc=True) / "index.json"
 
 
-def _version_key(value: str) -> tuple[int, ...]:
+def version_key(value: str) -> tuple[int, ...]:
     numbers = tuple(int(part) for part in re.findall(r"\d+", value))
     return numbers or (0,)
+
+
+_version_key = version_key
 
 
 def _availability(artifact: Mapping[str, Any]) -> bool | None:
@@ -88,7 +79,24 @@ def _has_browsable_reference(record: Mapping[str, Any]) -> bool:
     return False
 
 
-def _entry(record: Mapping[str, Any], platform: str) -> dict[str, Any] | None:
+KURO_PACK_MANIFEST = re.compile(r"/packs/([a-z0-9]+)/full\.json")
+
+
+def _kuro_common_pack(record: Mapping[str, Any], artifacts: list[Mapping[str, Any]]) -> Mapping[str, Any] | None:
+    if record.get("vendor") != "kuro":
+        return None
+    for artifact in artifacts:
+        if artifact.get("component") != "game":
+            continue
+        manifest = artifact.get("manifest")
+        path = manifest.get("path") if isinstance(manifest, Mapping) else None
+        match = KURO_PACK_MANIFEST.search(path) if isinstance(path, str) else None
+        if match and match.group(1) == "common":
+            return artifact
+    return None
+
+
+def index_entry(record: Mapping[str, Any], platform: str) -> dict[str, Any] | None:
     artifacts = record.get("artifacts")
     if not isinstance(artifacts, list):
         return None
@@ -99,8 +107,12 @@ def _entry(record: Mapping[str, Any], platform: str) -> dict[str, Any] | None:
             return None
     else:
         game = [a for a in artifacts if isinstance(a, Mapping) and a.get("component") == "game"]
-        full = [a for a in game if a.get("package_type") == "full"]
-        chosen = full or [a for a in game if a.get("package_type") == "segment"]
+        common_pack = _kuro_common_pack(record, game)
+        if common_pack is not None:
+            chosen = [common_pack]
+        else:
+            full = [a for a in game if a.get("package_type") == "full"]
+            chosen = full or [a for a in game if a.get("package_type") == "segment"]
         if not chosen:
             chosen = [a for a in artifacts if isinstance(a, Mapping) and a.get("kind") == "resource"]
         if not chosen and not _has_browsable_reference(record):
@@ -131,26 +143,13 @@ def _entry(record: Mapping[str, Any], platform: str) -> dict[str, Any] | None:
     }
 
 
-def _ordinary(path: Path) -> bool:
-    try:
-        info = os.lstat(path)
-    except OSError:
-        return False
-    return stat.S_ISREG(info.st_mode) and not stat.S_ISLNK(info.st_mode) and not (getattr(info, "st_file_attributes", 0) & 0x400)
-
-
-def _safe_directory(path: Path) -> bool:
-    try:
-        info = os.lstat(path)
-    except OSError:
-        return False
-    return stat.S_ISDIR(info.st_mode) and not stat.S_ISLNK(info.st_mode) and not (getattr(info, "st_file_attributes", 0) & 0x400)
+_entry = index_entry
 
 
 def _scan(directory: Path, vendor: str, game_id: str, platform: str) -> list[tuple[Mapping[str, Any], dict[str, Any]]]:
     records: list[tuple[Mapping[str, Any], dict[str, Any]]] = []
     for path in directory.glob("*.json"):
-        if path.name == "index.json" or not _ordinary(path):
+        if path.name == "index.json" or not is_ordinary(path):
             continue
         try:
             value = json.loads(path.read_text(encoding="utf-8"))
@@ -162,27 +161,16 @@ def _scan(directory: Path, vendor: str, game_id: str, platform: str) -> list[tup
             continue
         if not isinstance(value.get("version"), str) or not value["version"]:
             continue
-        item = _entry(value, platform)
+        item = index_entry(value, platform)
         if item is not None:
             records.append((value, item))
-    records.sort(key=lambda pair: _version_key(pair[0]["version"]), reverse=True)
+    records.sort(key=lambda pair: version_key(pair[0]["version"]), reverse=True)
     return records
 
 
 def _write_atomic(path: Path, value: Mapping[str, Any]) -> None:
     raw = json.dumps(value, ensure_ascii=False, indent=2) + "\n"
-    fd, temporary = tempfile.mkstemp(prefix="index.json.", dir=path.parent)
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as stream:
-            stream.write(raw)
-            stream.flush()
-            os.fsync(stream.fileno())
-        os.replace(temporary, path)
-    finally:
-        try:
-            os.unlink(temporary)
-        except FileNotFoundError:
-            pass
+    atomic_write_text(path, raw)
 
 
 def _rebuild_locked(root: Path, vendor: str, game_id: str, platform: str, domain_id: str | None = None) -> Path:
@@ -194,7 +182,7 @@ def _rebuild_locked(root: Path, vendor: str, game_id: str, platform: str, domain
     versions = [item for _, item in scanned]
     if not versions:
         if path.exists() or path.is_symlink():
-            if not _ordinary(path):
+            if not is_ordinary(path):
                 raise OSError(f"unsafe index path: {path}")
             path.unlink()
         return path
@@ -208,14 +196,14 @@ def _rebuild_locked(root: Path, vendor: str, game_id: str, platform: str, domain
 
 
 def rebuild_index(root: Path, vendor: str, game_id: str, platform: str, domain_id: str | None = None) -> Path:
-    vendor = _safe_component(vendor, "vendor")
-    game_id = _safe_component(game_id, "game_id")
+    vendor = require_safe_component(vendor, "vendor")
+    game_id = require_safe_component(game_id, "game_id")
     canonical = "windows" if platform in {"pc", "windows"} else platform
-    _disk_platform(canonical)
+    disk_platform(canonical)
     root = Path(root)
-    if not _safe_directory(root):
+    if not is_ordinary(root, directory=True):
         root.mkdir(exist_ok=True)
-    if not _safe_directory(root):
+    if not is_ordinary(root, directory=True):
         raise OSError(f"unsafe data root: {root}")
     path = index_path(root, vendor, game_id, platform, domain_id)
     with DATA_LOCK:
@@ -223,9 +211,9 @@ def rebuild_index(root: Path, vendor: str, game_id: str, platform: str, domain_i
             current = root
             for part in path.parent.relative_to(root).parts:
                 current = current / part
-                if not _safe_directory(current):
+                if not is_ordinary(current, directory=True):
                     current.mkdir()
-                if not _safe_directory(current):
+                if not is_ordinary(current, directory=True):
                     raise OSError(f"unsafe index directory: {current}")
             return _rebuild_locked(root, vendor, game_id, canonical, domain_id)
 
@@ -233,29 +221,29 @@ def rebuild_index(root: Path, vendor: str, game_id: str, platform: str, domain_i
 def rebuild_indexes(root: Path) -> list[Path]:
     root = Path(root)
     result: list[Path] = []
-    if not _safe_directory(root):
+    if not is_ordinary(root, directory=True):
         return result
     with DATA_LOCK:
         with data_file_lock(root):
             for vendor_dir in root.iterdir():
-                if not _safe_directory(vendor_dir):
+                if not is_ordinary(vendor_dir, directory=True):
                     continue
                 for game_dir in vendor_dir.iterdir():
-                    if not _safe_directory(game_dir):
+                    if not is_ordinary(game_dir, directory=True):
                         continue
                     for disk, platform in (("android", "android"), ("pc", "windows")):
                         directory = game_dir / disk
-                        if _safe_directory(directory):
+                        if is_ordinary(directory, directory=True):
                             result.append(_rebuild_locked(root, vendor_dir.name, game_dir.name, platform))
                             if platform == "windows":
                                 domains_dir = directory / "domains"
-                                if _safe_directory(domains_dir):
+                                if is_ordinary(domains_dir, directory=True):
                                     for domain_id in (
                                         *nondefault_pc_domains(vendor_dir.name, game_dir.name),
                                         *configured_nondefault_pc_domains(root, vendor_dir.name, game_dir.name),
                                     ):
                                         domain_dir = domains_dir / domain_id
-                                        if _safe_directory(domain_dir):
+                                        if is_ordinary(domain_dir, directory=True):
                                             result.append(_rebuild_locked(root, vendor_dir.name, game_dir.name, platform, domain_id))
     return result
 
@@ -268,7 +256,7 @@ def read_index(path: Path) -> dict[str, Any] | None:
         return None
     except OSError as error:
         raise IndexReadError(f"invalid index: {path}") from error
-    if not _ordinary(path) or not stat.S_ISREG(info.st_mode):
+    if not stat_is_ordinary(info):
         raise IndexReadError(f"invalid index: {path}")
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
@@ -279,4 +267,12 @@ def read_index(path: Path) -> dict[str, Any] | None:
     return dict(value)
 
 
-__all__ = ["IndexReadError", "index_path", "rebuild_index", "rebuild_indexes", "read_index"]
+__all__ = [
+    "IndexReadError",
+    "index_entry",
+    "index_path",
+    "read_index",
+    "rebuild_index",
+    "rebuild_indexes",
+    "version_key",
+]

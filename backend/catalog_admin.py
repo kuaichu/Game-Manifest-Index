@@ -4,18 +4,22 @@ from __future__ import annotations
 
 import json
 import os
-import re
-import stat
-import tempfile
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
+from backend.catalog_registry import VENDORS
+from backend.fs_safety import (
+    SAFE_COMPONENT,
+    atomic_write_text,
+    domain_directory as fs_domain_directory,
+    is_ordinary,
+    require_safe_component,
+    stat_is_ordinary,
+)
 from backend.storage_locks import DATA_LOCK, data_file_lock
 
 
 CATALOG_CONFIG_NAME = "catalog.admin.json"
-SAFE_COMPONENT = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
-VENDORS = ("mihoyo", "hypergryph", "kuro", "perfectworld", "manjuu")
 DOMAIN_KINDS = frozenset({"apk", "packages", "patches", "chunks", "files", "resources", "mixed"})
 CAPABILITIES = frozenset({"apk", "packages", "patches", "chunks", "files", "resources", "archive", "compare"})
 
@@ -29,9 +33,7 @@ def _config_path(root: Path) -> Path:
 
 
 def _safe_component(value: Any, field: str) -> str:
-    if not isinstance(value, str) or SAFE_COMPONENT.fullmatch(value) is None:
-        raise CatalogConfigError(f"{field} 必须是安全的非空路径组件")
-    return value
+    return require_safe_component(value, field, CatalogConfigError)
 
 
 def _safe_root(root: Path) -> None:
@@ -40,16 +42,8 @@ def _safe_root(root: Path) -> None:
         info = os.lstat(root)
     except OSError as error:
         raise CatalogConfigError("数据目录不可用") from error
-    if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
+    if not stat_is_ordinary(info, directory=True):
         raise CatalogConfigError("数据目录不安全")
-
-
-def _ordinary_file(path: Path) -> bool:
-    try:
-        info = os.lstat(path)
-    except OSError:
-        return False
-    return stat.S_ISREG(info.st_mode) and not stat.S_ISLNK(info.st_mode)
 
 
 def _normalize_platform(value: Any, *, game: bool) -> str:
@@ -157,9 +151,13 @@ def empty_config() -> dict[str, dict[str, dict[str, Any]]]:
 
 def load_config(root: Path) -> dict[str, dict[str, dict[str, Any]]]:
     path = _config_path(Path(root))
-    if not path.exists():
-        return empty_config()
-    if not _ordinary_file(path):
+    if not is_ordinary(path):
+        try:
+            os.lstat(path)
+        except FileNotFoundError:
+            return empty_config()
+        except OSError as error:
+            raise CatalogConfigError("catalog 配置文件损坏") from error
         raise CatalogConfigError("catalog 配置文件不安全")
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
@@ -197,30 +195,43 @@ def save_config(root: Path, config: Mapping[str, Mapping[str, Mapping[str, Any]]
     raw = json.dumps(normalized, ensure_ascii=False, indent=2) + "\n"
     with DATA_LOCK:
         with data_file_lock(root):
-            descriptor, temporary = tempfile.mkstemp(prefix=path.name + ".", dir=root)
-            try:
-                with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as stream:
-                    stream.write(raw)
-                    stream.flush()
-                    os.fsync(stream.fileno())
-                os.replace(temporary, path)
-            finally:
+            if not is_ordinary(path):
                 try:
-                    os.unlink(temporary)
+                    os.lstat(path)
                 except FileNotFoundError:
                     pass
+                except OSError as error:
+                    raise CatalogConfigError("catalog 配置文件不可用") from error
+                else:
+                    raise CatalogConfigError("catalog 配置文件不安全")
+            atomic_write_text(path, raw)
 
 
-def configured_games(root: Path) -> dict[str, dict[str, Any]]:
-    return load_config(root)["games"]
+def configured_games(
+    root: Path,
+    *,
+    config: Mapping[str, Mapping[str, dict[str, Any]]] | None = None,
+) -> dict[str, dict[str, Any]]:
+    loaded = load_config(root) if config is None else config
+    return dict(loaded["games"])
 
 
-def configured_domains(root: Path) -> dict[str, dict[str, Any]]:
-    return load_config(root)["domains"]
+def configured_domains(
+    root: Path,
+    *,
+    config: Mapping[str, Mapping[str, dict[str, Any]]] | None = None,
+) -> dict[str, dict[str, Any]]:
+    loaded = load_config(root) if config is None else config
+    return dict(loaded["domains"])
 
 
-def game_catalog(root: Path, static_catalog: Sequence[tuple[str, str, str]]) -> list[dict[str, Any]]:
-    config = load_config(root)
+def game_catalog(
+    root: Path,
+    static_catalog: Sequence[tuple[str, str, str]],
+    *,
+    config: Mapping[str, Mapping[str, dict[str, Any]]] | None = None,
+) -> list[dict[str, Any]]:
+    loaded = load_config(root) if config is None else config
     games: list[dict[str, Any]] = []
     seen: set[str] = set()
     for order, (game_id, name, sub_name) in enumerate(static_catalog):
@@ -234,21 +245,33 @@ def game_catalog(root: Path, static_catalog: Sequence[tuple[str, str, str]]) -> 
             "sort_order": order,
             "vendor": _normalize_vendor(None, Path(root), game_id),
         }
-        base.update(config["games"].get(game_id, {}))
+        base.update(loaded["games"].get(game_id, {}))
         games.append(base)
         seen.add(game_id)
-    extras = [game for game in config["games"].values() if game["id"] not in seen]
+    extras = [game for game in loaded["games"].values() if game["id"] not in seen]
     games.extend(sorted(extras, key=lambda item: (item.get("sort_order", 0), item["id"])))
     return games
 
 
-def game_ids(root: Path, static_catalog: Sequence[tuple[str, str, str]]) -> tuple[str, ...]:
-    return tuple(game["id"] for game in game_catalog(root, static_catalog))
+def game_ids(
+    root: Path,
+    static_catalog: Sequence[tuple[str, str, str]],
+    *,
+    config: Mapping[str, Mapping[str, dict[str, Any]]] | None = None,
+) -> tuple[str, ...]:
+    return tuple(game["id"] for game in game_catalog(root, static_catalog, config=config))
 
 
-def configured_nondefault_pc_domains(root: Path, vendor: str, game_id: str) -> tuple[str, ...]:
+def configured_nondefault_pc_domains(
+    root: Path,
+    vendor: str,
+    game_id: str,
+    *,
+    config: Mapping[str, Mapping[str, dict[str, Any]]] | None = None,
+) -> tuple[str, ...]:
+    domains = load_config(root)["domains"] if config is None else config["domains"]
     result = []
-    for domain in configured_domains(root).values():
+    for domain in domains.values():
         if (
             domain["vendor"] == vendor
             and domain["game_id"] == game_id
@@ -259,17 +282,23 @@ def configured_nondefault_pc_domains(root: Path, vendor: str, game_id: str) -> t
     return tuple(sorted(result))
 
 
-def is_configured_nondefault_pc_domain(root: Path, vendor: str, game_id: str, domain_id: str) -> bool:
-    return domain_id in configured_nondefault_pc_domains(root, vendor, game_id)
+def is_configured_nondefault_pc_domain(
+    root: Path,
+    vendor: str,
+    game_id: str,
+    domain_id: str,
+    *,
+    config: Mapping[str, Mapping[str, dict[str, Any]]] | None = None,
+) -> bool:
+    return domain_id in configured_nondefault_pc_domains(
+        root, vendor, game_id, config=config,
+    )
 
 
 def domain_directory(root: Path, domain: Mapping[str, Any]) -> Path:
-    disk = "android" if domain["platform"] == "android" else "pc"
-    base = Path(root) / domain["vendor"] / domain["game_id"] / disk
-    default_id = f"{domain['game_id']}-{'android' if disk == 'android' else 'pc'}"
-    if domain["id"] == default_id:
-        return base
-    return base / "domains" / domain["id"]
+    return fs_domain_directory(
+        root, domain["vendor"], domain["game_id"], domain["platform"], domain["id"],
+    )
 
 
 def ensure_domain_directory(root: Path, domain: Mapping[str, Any]) -> Path:
@@ -288,7 +317,7 @@ def ensure_domain_directory(root: Path, domain: Mapping[str, Any]) -> Path:
                     info = os.lstat(current)
                 except OSError as error:
                     raise CatalogConfigError("模块目录不可用") from error
-                if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
+                if not stat_is_ordinary(info, directory=True):
                     raise CatalogConfigError("模块目录不安全")
     return target
 
@@ -304,7 +333,7 @@ def remove_empty_domain_directory(root: Path, domain: Mapping[str, Any]) -> None
                 return
             except OSError as error:
                 raise CatalogConfigError("模块目录不可用") from error
-            if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
+            if not stat_is_ordinary(info, directory=True):
                 raise CatalogConfigError("模块目录不安全")
             try:
                 if any(target.iterdir()):

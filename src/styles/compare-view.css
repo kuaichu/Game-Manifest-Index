@@ -308,3 +308,23 @@
   justify-content: flex-end;
 }
 
+@media (max-width: 640px) {
+  .compare-toolbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .compare-toolbar .compare-base-field {
+    min-width: 0;
+  }
+
+  .compare-toolbar select {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .compare-summary {
+    grid-template-columns: 1fr;
+  }
+}
+

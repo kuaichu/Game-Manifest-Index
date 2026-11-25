@@ -17,9 +17,15 @@ import httpx
 import zstandard
 from fastapi.testclient import TestClient
 
-from backend.api_contract import ApiContract, ApiFault, _file_metadata, _public_artifact, _summary, create_api_app
+from backend import catalog_admin
+from backend.api_contract import ApiContract, ApiFault, create_api_app
 from backend.app import app
-from backend.indexes import rebuild_indexes
+from backend.indexes import read_index, rebuild_indexes
+from backend.public_projection import (
+    file_metadata as _file_metadata,
+    public_artifact as _public_artifact,
+    version_summary as _summary,
+)
 from backend.manifest_readers import (
     HttpUpstream,
     ManifestNotFound,
@@ -277,6 +283,86 @@ class TemporaryContractTests(unittest.TestCase):
         self.assertEqual(contract.domain("hk4e-pc").domain_id, "hk4e-pc")
         with self.assertRaises(ApiFault):
             contract.inventory()
+
+    def test_inventory_stat_snapshot_cache_hits_and_invalidates_on_mutations(self):
+        contract = ApiContract(self.root, state_root=Path(self.state.name))
+        initial = contract.inventory()
+        self.assertIn("hk4e-pc", initial)
+
+        with patch("backend.inventory_loader.validate_v2_record", side_effect=AssertionError("cache miss on unchanged state")):
+            self.assertEqual(contract.inventory(), initial)
+            self.assertEqual(contract.domain("hk4e-pc"), initial["hk4e-pc"])
+
+        caller_copy = contract.inventory()
+        caller_copy.pop("hk4e-pc")
+        self.assertIn("hk4e-pc", contract.inventory())
+
+        record_path = self.root / "mihoyo" / "hk4e" / "pc" / "2.0.0.json"
+        saved_record = record_path.read_bytes()
+        updated_record = json.loads(saved_record.decode("utf-8"))
+        updated_record["artifacts"][0]["urls"][0]["current"] = {"state": "available", "http_code": 200, "checked_at": "2026-08-29T02:00:00Z"}
+        write_record(self.root, updated_record)
+        rebuild_indexes(self.root)
+        self.assertEqual(
+            contract.inventory()["hk4e-pc"].records[0]["artifacts"][0]["urls"][0]["current"]["checked_at"],
+            "2026-08-29T02:00:00Z",
+        )
+
+        record_path.write_text("{corrupt", encoding="utf-8")
+        with self.assertRaises(ApiFault) as record_err:
+            contract.inventory()
+        self.assertEqual(record_err.exception.code, "corrupt_record")
+        record_path.write_bytes(saved_record)
+        rebuild_indexes(self.root)
+        self.assertIn("hk4e-pc", contract.inventory())
+
+        index_path = self.root / "mihoyo" / "hk4e" / "android" / "index.json"
+        bad_index = json.loads(index_path.read_text(encoding="utf-8"))
+        bad_index["game_id"] = "mismatch-game"
+        index_path.write_text(json.dumps(bad_index), encoding="utf-8")
+        with self.assertRaises(ApiFault) as index_err:
+            contract.inventory()
+        self.assertEqual(index_err.exception.code, "index_mismatch")
+        rebuild_indexes(self.root)
+        self.assertIn("hk4e-android", contract.inventory())
+
+        catalog_admin.save_config(
+            self.root,
+            {
+                "games": {},
+                "domains": {
+                    "hk4e-pc": {
+                        "game_id": "hk4e",
+                        "kind": "packages",
+                        "platform": "windows",
+                        "is_enabled": False,
+                    }
+                },
+            },
+        )
+        self.assertNotIn("hk4e-pc", contract.inventory())
+
+        catalog_path = self.root / "catalog.admin.json"
+        catalog_path.write_text("{corrupt-catalog", encoding="utf-8")
+        with self.assertRaises(ApiFault) as cfg_err:
+            contract.inventory()
+        self.assertEqual(cfg_err.exception.code, "corrupt_catalog_config")
+        catalog_path.unlink()
+        self.assertIn("hk4e-pc", contract.inventory())
+
+        link_path = self.root / "mihoyo" / "hk4e" / "pc" / "9.9.9.json"
+        try:
+            os.symlink(record_path, link_path)
+        except OSError:
+            pass
+        else:
+            try:
+                with self.assertRaises(ApiFault) as sym_err:
+                    contract.inventory()
+                self.assertEqual(sym_err.exception.code, "unsafe_data_path")
+            finally:
+                link_path.unlink()
+            self.assertIn("hk4e-pc", contract.inventory())
 
     def test_domain_retains_requested_identity_and_index_validation(self):
         path = self.root / "mihoyo" / "hk4e" / "pc" / "index.json"
@@ -733,7 +819,13 @@ class TemporaryContractTests(unittest.TestCase):
         })
         mirror_artifact["urls"][0]["source_kind"] = "mirror"
         write_record(self.root, record("mihoyo", "hk4e", "android", "6.0.2", [mirror_artifact]))
-        azur_record = record("manjuu", "azurpromilia", "android", "0.3.0", [
+        azur_segment = artifact("pg_chunk.0002", kind="package", current={
+            "state": "available", "http_code": 206, "checked_at": stamp,
+        })
+        azur_segment["package_type"] = "segment"
+        azur_segment["part"] = 2
+        azur_pc_record = record("manjuu", "azurpromilia", "windows", "0.3.0.6", [azur_segment])
+        azur_android_record = record("manjuu", "azurpromilia", "android", "0.3.0", [
             artifact("game.apk", kind="apk", current={"state": "available", "http_code": 206, "checked_at": stamp}),
         ])
         endfield_record = record("hypergryph", "endfield", "windows", "1.0.0", [
@@ -742,11 +834,13 @@ class TemporaryContractTests(unittest.TestCase):
         rebuild_indexes(self.root)
         mirror = self.get_probed_url("/api/v1/domains/hk4e-android/versions/6.0.2/artifacts?q=mirror")
         with patch("backend.api_contract._utc_now", lambda: FROZEN_NOW):
-            azur = _public_artifact(azur_record, azur_record["artifacts"][0])["urls"][0]
+            azur_unprobed = _public_artifact(azur_pc_record, azur_pc_record["artifacts"][0])["urls"][0]
+            azur_android = _public_artifact(azur_android_record, azur_android_record["artifacts"][0])["urls"][0]
             endfield = _public_artifact(endfield_record, endfield_record["artifacts"][0])["urls"][0]
-        for url in (mirror, azur, endfield):
+        for url in (mirror, azur_unprobed, endfield):
             self.assertEqual(url["current"]["evidence_status"], "unverified")
             self.assertIsNone(url["current"]["expires_at"])
+        self.assertEqual(azur_android["current"]["evidence_status"], "stale")
 
     def test_stale_available_evidence_does_not_count_as_currently_available(self):
         write_record(self.root, record("mihoyo", "hk4e", "android", "6.1.1", [
@@ -1087,7 +1181,11 @@ class TemporaryContractTests(unittest.TestCase):
         self.assertEqual(child["items"][0]["name"], "Client/Bin/a.dll")
         self.assertEqual(child["manifest_total_size"], 12)
         filtered = self.get("/api/v1/domains/wuwa-pc/versions/1.0.0/artifact-tree?kind=file&q=root.exe&limit=1").json()
+        self.assertEqual([item["name"] for item in filtered["items"]], ["root.exe"])
+        self.assertEqual(filtered["folders"], [])
         self.assertEqual(filtered["manifest_total_size"], 12)
+        nested_search = self.get("/api/v1/domains/wuwa-pc/versions/1.0.0/artifact-tree?kind=file&q=a.dll").json()
+        self.assertEqual([item["name"] for item in nested_search["items"]], ["Client/Bin/a.dll"])
         next_page = self.get("/api/v1/domains/wuwa-pc/versions/1.0.0/artifact-tree?kind=file&limit=1&cursor=1").json()
         self.assertEqual(next_page["manifest_total_size"], 12)
 
@@ -1323,6 +1421,25 @@ class TemporaryContractTests(unittest.TestCase):
     def test_no_admin_routes(self):
         self.assertFalse(any(route.path.startswith("/api/v1/admin") for route in self.client.app.routes))
 
+    def test_multi_part_segment_archive_still_sums_sizes_in_index(self):
+        parts = []
+        for part, size in ((1, 110), (2, 140)):
+            item = artifact(
+                f"YuanShen_5.6.0.zip.00{part}",
+                delivery="archive",
+                size=size,
+                current={"state": "available", "http_code": 200},
+            )
+            item.update(package_type="segment", part=part)
+            parts.append(item)
+        write_record(self.root, record("mihoyo", "hk4e", "windows", "5.6.0", parts))
+        rebuild_indexes(self.root)
+        index = read_index(self.root / "mihoyo" / "hk4e" / "pc" / "index.json")
+        entry = next(item for item in index["versions"] if item["version"] == "5.6.0")
+        self.assertEqual(entry["size"], 250)
+        self.assertIs(entry["available"], True)
+        self.get("/api/v1/domains/hk4e-pc/versions")
+
 
 class KuroResourcePackTests(unittest.TestCase):
     BASE = "https://pcdownload-aliyun.aki-game.com/files/"
@@ -1421,6 +1538,79 @@ class KuroResourcePackTests(unittest.TestCase):
         self.assertNotIn("resource_packs", body)
         self.assertEqual(body["manifest_total_size"], 50)
 
+    def test_search_query_returns_matching_files_for_default_and_selected_pack(self):
+        default_search = self.tree("3.8.0", "&q=.pak")
+        self.assertEqual(default_search["folders"], [])
+        self.assertEqual([item["name"] for item in default_search["items"]], ["Client/common.pak"])
+        self.assertEqual(default_search["items"][0]["kind"], "file")
+        self.assertEqual(default_search["manifest_total_size"], 1000)
+
+        packs = default_search["resource_packs"]["packs"]
+        hd = next(item for item in packs if item["pack"] == "hd")
+        hd_search = self.tree("3.8.0", f"&q=hd.pak&identity={hd['identity']}")
+        self.assertEqual(hd_search["folders"], [])
+        self.assertEqual([item["name"] for item in hd_search["items"]], ["Client/hd.pak"])
+        self.assertEqual(hd_search["resource_packs"]["selected"], hd["identity"])
+        self.assertEqual(hd_search["manifest_total_size"], 400)
+
+        single_search = self.tree("3.7.1", "&q=old.pak")
+        self.assertEqual([item["name"] for item in single_search["items"]], ["Client/old.pak"])
+
+    def test_index_uses_common_pack_only_and_rejects_summed_size(self):
+        index_file = self.root / "kuro" / "wuwa" / "pc" / "index.json"
+        index = read_index(index_file)
+        by_version = {item["version"]: item for item in index["versions"]}
+        self.assertEqual(by_version["3.8.0"]["size"], self.SIZES["common"])
+        self.assertNotEqual(by_version["3.8.0"]["size"], sum(self.SIZES.values()))
+        self.assertIsNone(by_version["3.8.0"]["available"])
+        self.assertEqual(by_version["3.7.1"]["size"], 50)
+        self.assertEqual(self.client.get("/api/v1/domains/wuwa-pc/versions").status_code, 200)
+
+        record_file = self.root / "kuro" / "wuwa" / "pc" / "3.8.0.json"
+        stored = json.loads(record_file.read_text(encoding="utf-8"))
+        pack_currents = {
+            "uhd": {"state": "unavailable", "http_code": 404},
+            "sd": {"state": "unknown", "http_code": 503},
+            "hd": {"state": "unavailable", "http_code": 403},
+            "common": {"state": "available", "http_code": 200, "checked_at": "2026-08-29T01:00:00Z"},
+        }
+        for item in stored["artifacts"]:
+            pack = item["name"].split("-")[2]
+            item["urls"][0]["current"] = pack_currents[pack]
+        record_file.write_text(json.dumps(stored), encoding="utf-8")
+        rebuild_indexes(self.root)
+
+        rebuilt = read_index(index_file)
+        entry = next(item for item in rebuilt["versions"] if item["version"] == "3.8.0")
+        self.assertEqual(entry["size"], self.SIZES["common"])
+        self.assertIs(entry["available"], True)
+        self.assertEqual(self.client.get("/api/v1/domains/wuwa-pc/versions").status_code, 200)
+
+        for item in stored["artifacts"]:
+            pack = item["name"].split("-")[2]
+            item["urls"][0]["current"] = (
+                {"state": "unavailable", "http_code": 404}
+                if pack == "common"
+                else {"state": "available", "http_code": 200}
+            )
+        record_file.write_text(json.dumps(stored), encoding="utf-8")
+        rebuild_indexes(self.root)
+
+        rebuilt_unavailable = read_index(index_file)
+        entry_unavailable = next(item for item in rebuilt_unavailable["versions"] if item["version"] == "3.8.0")
+        self.assertEqual(entry_unavailable["size"], self.SIZES["common"])
+        self.assertIs(entry_unavailable["available"], False)
+        self.assertEqual(self.client.get("/api/v1/domains/wuwa-pc/versions").status_code, 200)
+
+        entry_unavailable["size"] = sum(self.SIZES.values())
+        index_file.write_text(json.dumps(rebuilt_unavailable), encoding="utf-8")
+        mismatch = self.client.get("/api/v1/domains/wuwa-pc/versions")
+        self.assertEqual(mismatch.status_code, 500, mismatch.text)
+        self.assertEqual(mismatch.json()["error"]["code"], "index_mismatch")
+        with self.assertRaises(ApiFault) as ctx:
+            ApiContract(self.root, state_root=Path(self.state.name)).domain("wuwa-pc")
+        self.assertEqual((ctx.exception.status, ctx.exception.code), (500, "index_mismatch"))
+
 
 class CheckedInContractTests(unittest.TestCase):
     @classmethod
@@ -1447,10 +1637,13 @@ class CheckedInContractTests(unittest.TestCase):
         self.assertEqual((game["name"], game["platform"]), ("蓝色星原：旅谣", "multi"))
         response = self.client.get("/api/v1/games/azurpromilia/domains")
         self.assertEqual(response.status_code, 200, response.text)
-        domain = response.json()[0]
+        domains = response.json()
+        domain = domains[0]
         self.assertEqual(domain["capabilities"], ["packages", "files", "archive"])
         self.assertFalse(domain["capability_contract"]["live_probe"])
         self.assertEqual(domain["capability_contract"]["availability_source_kinds"], ["metadata_inference"])
+        android_domain = next(item for item in domains if item["id"] == "azurpromilia-android")
+        self.assertEqual(android_domain["capability_contract"]["availability_source_kinds"], [])
         prefix = "/api/v1/domains/azurpromilia-pc/versions/0.3.0.6"
         first = self.client.get(prefix + "/artifacts", params={"kind": "package", "limit": 500}).json()
         self.assertEqual(first["total"], 645)

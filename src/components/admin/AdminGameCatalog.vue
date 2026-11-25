@@ -111,7 +111,6 @@ function copyText(value: string): void { emit("copy-text", value); }
     :search-query="searchQuery"
     search-placeholder="搜索游戏名称、ID 或副标题…"
     :item-count="filteredGames.length"
-    empty-icon=""
     empty-title="未找到匹配的游戏入口"
     empty-hint="可点击上方「新增游戏」创建入口"
     @start="startGame"
@@ -147,9 +146,6 @@ function copyText(value: string): void { emit("copy-text", value); }
           <code class="item-id-tag">{{ item.id }}</code>
           <span v-if="item.sub_name" class="item-sub-name">{{ item.sub_name }}</span>
         </div>
-      </div>
-      <div class="item-slot-right">
-        <span class="item-sort-badge" title="显示排序权重">#{{ item.sort_order }}</span>
       </div>
     </button>
 

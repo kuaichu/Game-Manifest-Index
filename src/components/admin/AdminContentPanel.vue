@@ -20,7 +20,6 @@ const props = defineProps<{
 // The content state lives in AdminView (via useAdminContent) so it survives tab switches.
 const {
   versionList,
-  selectedVersion,
   contentSubTab,
   editableLoaded,
   editableLoading,
@@ -33,8 +32,6 @@ const {
   selectedDomainSupportsCreateVersion,
   selectedDomainUsesPcEditor,
   selectedDomainSupportsManualVersion,
-  selectedDomainGameName,
-  selectedDomain,
   currentVersionHealth,
   pcArtifactsOverview,
   isUrlChanged,
@@ -73,6 +70,7 @@ const {
   resetCreateDraft,
   probeCurrentVersion,
 } = props.content;
+const { selectedVersion, selectedDomainGameName, selectedDomain } = versionList;
 </script>
 
 <template>

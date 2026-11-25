@@ -48,7 +48,6 @@ function mockAdminApi(platform: "android" | "windows", pcAvailability: "availabl
       sort_order: 0,
     }],
   } as never);
-  vi.spyOn(adminApi, "syncStatus").mockResolvedValue(null as never);
   vi.spyOn(adminApi, "syncRunStatus").mockResolvedValue(null as never);
   vi.spyOn(adminApi, "versions").mockResolvedValue({
     items: [{
@@ -237,6 +236,43 @@ describe("AdminView capability alignment", () => {
     expect(deleteButton.title).toContain("不可直接删除");
     expect(root.textContent).not.toContain("未接入");
     app.unmount();
+  });
+
+  it("copies text and version URLs on non-HTTPS LAN via execCommand fallback and surfaces failures", async () => {
+    const origClip = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+    const origExec = Object.getOwnPropertyDescriptor(document, "execCommand");
+    const execCommand = vi.fn().mockReturnValue(true);
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: undefined });
+    Object.defineProperty(document, "execCommand", { configurable: true, value: execCommand });
+    const { app, root } = await mountAdmin("android");
+    try {
+      // Copy game ID chip in AdminView
+      const copyChip = root.querySelector<HTMLElement>("[title*='复制']") || [...root.querySelectorAll<HTMLButtonElement>("button")].find((b) => b.title.includes("复制"));
+      if (copyChip) {
+        copyChip.click();
+        await flushUpdates();
+        expect(execCommand).toHaveBeenCalledWith("copy");
+      }
+      // Switch to version editor and test copyUrl fallback & failure
+      buttonByText(root, "版本").click();
+      await flushUpdates();
+      const copyUrlBtn = [...root.querySelectorAll<HTMLButtonElement>("button")].find((b) => b.title.includes("复制") || b.textContent?.includes("复制链接"));
+      expect(copyUrlBtn).toBeDefined();
+      copyUrlBtn!.click();
+      await flushUpdates();
+      expect(root.textContent).toContain("下载链接已成功复制到剪贴板");
+
+      execCommand.mockReturnValueOnce(false);
+      copyUrlBtn!.click();
+      await flushUpdates();
+      expect(root.textContent).toContain("复制链接失败，请手动选择复制");
+    } finally {
+      app.unmount();
+      if (origClip) Object.defineProperty(navigator, "clipboard", origClip);
+      else Reflect.deleteProperty(navigator, "clipboard");
+      if (origExec) Object.defineProperty(document, "execCommand", origExec);
+      else Reflect.deleteProperty(document, "execCommand");
+    }
   });
 
   it("keeps config sections free of numbering and English kickers", async () => {

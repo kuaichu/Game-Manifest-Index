@@ -133,13 +133,20 @@ describe("WuWa file-manifest package and patch cards", () => {
     expect(header()).not.toContain("80.52 GB");
   });
 
-  it("keeps the whole manifest size through subfolders, pagination, filtering and search", async () => {
+  it("keeps the whole manifest size through subfolders, pagination, filtering and in-place search without calling artifacts", async () => {
+    const artifacts = vi.spyOn(api, "artifacts");
     const tree = vi.spyOn(api, "artifactTree").mockImplementation(async (_domain, _version, options) => ({
       ...emptyTree, prefix: options.prefix || "", manifest_total_size: totals["3.7.0"],
-      folders: options.prefix ? [] : [{ path: "Client", name: "Client", artifact_count: 2, total_size: 100 }],
-      next_cursor: options.prefix && !options.cursor ? "1" : null,
+      folders: options.prefix || options.query ? [] : [{ path: "Client", name: "Client", artifact_count: 2, total_size: 100 }],
+      items: options.query === "Shipping" ? [{
+        id: 1, kind: "file", name: "Client/Binaries/Win64/Client-Win64-Shipping.exe", part: 1, size: 50,
+        checksum_type: "md5", checksum_value: "a".repeat(32), attributes: {},
+        urls: [{ id: 1, url: "https://cdn.example/Client-Win64-Shipping.exe", priority: 0, source_kind: "official", evidence_status: "unverified", current: null }],
+      }] : [],
+      next_cursor: options.prefix && !options.cursor && !options.query ? "1" : null,
     }));
     const { root, router, header } = await mountFiles();
+    expect(root.textContent).not.toContain("未找到匹配");
     (root.querySelector(".folder-row") as HTMLElement).click();
     await flush();
     expect(header()).toContain("80.52 GB");
@@ -150,13 +157,25 @@ describe("WuWa file-manifest package and patch cards", () => {
     await router.push("/games/wuwa/wuwa-pc/3.7.0/files?availability=available");
     await flush(); await flush();
     expect(header()).toContain("80.52 GB");
+    (root.querySelector(".folder-row") as HTMLElement).click();
+    await flush();
     const callsBeforeSearch = tree.mock.calls.length;
     const input = root.querySelector(".search-box input") as HTMLInputElement;
-    input.value = "Client";
+    input.value = "Shipping";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    await new Promise((resolve) => window.setTimeout(resolve, 220));
+    await flush();
+    expect(header()).toContain("80.52 GB");
+    expect(tree).toHaveBeenCalledTimes(callsBeforeSearch + 1);
+    expect(tree).toHaveBeenLastCalledWith("wuwa-pc", "3.7.0", expect.objectContaining({ kind: "file", prefix: "Client", query: "Shipping" }), expect.any(AbortSignal));
+    expect(root.textContent).toContain("Client-Win64-Shipping.exe");
+    expect(artifacts).not.toHaveBeenCalled();
+
+    input.value = "MissingFile";
     input.dispatchEvent(new Event("input", { bubbles: true }));
     await flush(); await flush();
-    expect(header()).toContain("80.52 GB");
-    expect(tree).toHaveBeenCalledTimes(callsBeforeSearch);
+    expect(root.textContent).toContain('未找到匹配 "MissingFile" 的文件');
+    expect(root.textContent).not.toContain("当前目录为空。");
   });
 
   it.each([undefined, -1, 1.5, Number.MAX_SAFE_INTEGER + 1, NaN])("hides unavailable or invalid manifest totals (%s) without using package or patch sums", async (size) => {
@@ -172,7 +191,7 @@ describe("WuWa file-manifest package and patch cards", () => {
     expect(header()).toContain("总大小0 B");
   });
 
-  it("shows the current official manifest time and preserves it in the local search tree", async () => {
+  it("shows the current official manifest time and preserves it when searching in-place", async () => {
     const tree = vi.spyOn(api, "artifactTree").mockResolvedValue({ ...emptyTree, manifest_total_size: totals["3.7.0"], file_time: "2026-09-29T20:00:03Z", file_time_source: "manifest" });
     const { root, header } = await mountFiles();
     expect(header()).toContain("文件时间2026.09.30 04:00");
@@ -182,15 +201,17 @@ describe("WuWa file-manifest package and patch cards", () => {
     input.dispatchEvent(new Event("input", { bubbles: true }));
     await flush(); await flush();
     expect(header()).toContain("文件时间2026.09.30 04:00");
-    expect(tree).toHaveBeenCalledTimes(1);
+    expect(tree).toHaveBeenCalledTimes(2);
+    expect(tree).toHaveBeenLastCalledWith("wuwa-pc", "3.7.0", expect.objectContaining({ kind: "file", query: "Client" }), expect.any(AbortSignal));
   });
 
-  it("uses one root metadata request for date and size on an initial search", async () => {
+  it("uses one remote tree request for results, date and size on an initial search", async () => {
     const tree = vi.spyOn(api, "artifactTree").mockResolvedValue({ ...emptyTree, manifest_total_size: totals["3.7.0"], file_time: "2026-09-29T20:00:03Z", file_time_source: "manifest" });
     const { header } = await mountFiles("/games/wuwa/wuwa-pc/3.7.0/files?q=Client");
     expect(header()).toContain("文件时间2026.09.30 04:00");
     expect(header()).toContain("80.52 GB");
     expect(tree).toHaveBeenCalledTimes(1);
+    expect(tree).toHaveBeenLastCalledWith("wuwa-pc", "3.7.0", expect.objectContaining({ kind: "file", prefix: "", query: "Client", limit: 100 }), expect.any(AbortSignal));
   });
 
   it("preserves a genuine legacy file bucket with an older API", async () => {
@@ -220,20 +241,21 @@ describe("WuWa file-manifest package and patch cards", () => {
     expect(header()).not.toContain("总大小");
   });
 
-  it("loads only root total metadata when entering directly with a search, including version switches", async () => {
+  it("searches directly via artifact-tree when entering with q, including version switches", async () => {
     const tree = vi.spyOn(api, "artifactTree").mockImplementation(async (_domain, version) => ({ ...emptyTree, manifest_total_size: totals[version] }));
     const { router, header } = await mountFiles("/games/wuwa/wuwa-pc/3.7.0/files?q=Client");
     expect(header()).toContain("80.52 GB");
     expect(tree).toHaveBeenCalledTimes(1);
-    expect(tree).toHaveBeenLastCalledWith("wuwa-pc", "3.7.0", { kind: "file", limit: 1 }, expect.any(AbortSignal));
+    expect(tree).toHaveBeenLastCalledWith("wuwa-pc", "3.7.0", expect.objectContaining({ kind: "file", prefix: "", query: "Client", limit: 100 }), expect.any(AbortSignal));
     await router.push("/games/wuwa/wuwa-pc/3.6.0/files?q=Client");
     await flush(); await flush();
     expect(header()).toContain("83.27 GB");
     expect(header()).not.toContain("80.52 GB");
     expect(tree).toHaveBeenCalledTimes(2);
+    expect(tree).toHaveBeenLastCalledWith("wuwa-pc", "3.6.0", expect.objectContaining({ kind: "file", prefix: "", query: "Client", limit: 100 }), expect.any(AbortSignal));
   });
 
-  it("ignores late search metadata after the normal tree has supplied the current total", async () => {
+  it("ignores late search failure after clearing the search has supplied the current total", async () => {
     const pending = deferred<ArtifactTreePage>();
     const tree = vi.spyOn(api, "artifactTree").mockReturnValue(pending.promise);
     const { root, header } = await mountFiles("/games/wuwa/wuwa-pc/3.7.0/files?q=Client");
@@ -283,7 +305,7 @@ describe("WuWa file-manifest package and patch cards", () => {
       ],
     };
 
-    it("shows the selector only when the tree reports resource packs and re-requests with the chosen identity", async () => {
+    it("shows the selector, keeps it mounted with selected pack during search, and resets on version change", async () => {
       const tree = vi.spyOn(api, "artifactTree").mockImplementation(async (_domain, _version, options) => ({
         ...emptyTree, manifest_total_size: options.identity === "300" ? 40 * GB : 40 * GB + 1,
         base_urls: [options.identity === "300" ? "https://cdn.example/hd/" : "https://cdn.example/common/"],
@@ -306,6 +328,16 @@ describe("WuWa file-manifest package and patch cards", () => {
       expect(chips()[0].classList.contains("active")).toBe(false);
       expect(Array.from(root.querySelectorAll(".rp-bundle.related")).map((item) => item.textContent)).toEqual(["HD 80.00 GB"]);
       expect(root.querySelector(".panel-title-row")?.textContent).toContain("40.00 GB");
+
+      // Typing a search query keeps ArchiveResourcePackPicker mounted and preserves identity=300.
+      const input = root.querySelector(".search-box input") as HTMLInputElement;
+      input.value = "pakchunk";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      await new Promise((resolve) => window.setTimeout(resolve, 220));
+      await flush();
+      expect(root.querySelector(".resource-pack-picker")).not.toBeNull();
+      expect(chips()[2].classList.contains("active")).toBe(true);
+      expect(tree.mock.calls.at(-1)?.[2]).toMatchObject({ kind: "file", identity: "300", query: "pakchunk" });
 
       // Selection resets to the backend default when the version changes.
       await router.push("/games/wuwa/wuwa-pc/3.6.0/files");

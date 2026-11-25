@@ -21,7 +21,6 @@ export interface ArchiveArtifactLoadContext {
   channelVersions: VersionSummary[];
   searchableMode: boolean;
   usesRemoteTree: boolean;
-  usesArtifactTree: boolean;
 }
 
 export interface ArchiveArtifactsLoaderOptions {
@@ -192,7 +191,7 @@ export function useArchiveArtifactsLoader(options: ArchiveArtifactsLoaderOptions
           const page = await api.artifacts(
             context.domainId,
             context.selectedVersion,
-            { query: context.query, kind: "chunk", limit: 100 },
+            { query: context.searchableMode ? context.query : "", kind: "chunk", limit: 100 },
             request.signal,
           );
           if (!isCurrent()) return;
@@ -230,19 +229,6 @@ export function useArchiveArtifactsLoader(options: ArchiveArtifactsLoaderOptions
         artifacts.value = [];
         nextCursor.value = null;
         total.value = null;
-        return;
-      }
-      if (context.usesArtifactTree) {
-        const loadedArtifacts = await api.allArtifacts(
-          context.domainId,
-          context.selectedVersion,
-          { kind: "file", query: context.query, state: context.availabilityState },
-          request.signal,
-        );
-        if (!isCurrent()) return;
-        artifacts.value = loadedArtifacts;
-        nextCursor.value = null;
-        total.value = loadedArtifacts.length;
         return;
       }
       const baseVersion = context.selectedVersion;

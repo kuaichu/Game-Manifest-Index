@@ -3,6 +3,7 @@ import { createMemoryHistory, createRouter } from "vue-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { api } from "./api";
+import { preferredDomainArtifactAction } from "./domain-presentation";
 import ArchiveView from "./views/ArchiveView.vue";
 import { publisherGroups } from "./game-meta";
 import { gameIcons } from "./game-icons";
@@ -231,6 +232,84 @@ describe("Azur Promilia generic file-manifest catalog", () => {
     expect(root.textContent).not.toContain("未验证");
     expect(root.querySelector(".availability")).toBeNull();
     expect(root.querySelector(".availability-toolbar")).toBeNull();
+    expect(root.querySelector("button.is-locked")).toBeNull();
+    expect(root.querySelector<HTMLAnchorElement>(`a.icon-button[href="${url}"]`)).not.toBeNull();
+  });
+
+  it("renders live-probed official Android APK verification and download action", async () => {
+    const url = "https://l2-syncstation.manjuu.com/azurpromilia/android/AzurPromilia_0.3.0.2634121_SC000_20260826152754_8b37.apk";
+    const game = {
+      id: "azurpromilia", name: "蓝色星原：旅谣", sub_name: "Azur Promilia", icon_source: "", platform: "multi", sort_order: 12,
+    };
+    const domain = {
+      id: "azurpromilia-android", game_id: "azurpromilia", kind: "apk", platform: "android",
+      capabilities: ["apk", "archive"], adapter: "android", version_count: 1, latest_version: "0.3.0.2634121",
+      capability_contract: {
+        artifact_fields: { size: "supported", checksum: "supported", urls: "supported", availability: "supported" },
+        availability_source_kinds: [],
+        actions: { download: "conditional" },
+        live_probe: false,
+      },
+    };
+    const version = {
+      version: "0.3.0.2634121", current_revision_id: 1, revision_count: 1, observed_at: "2026-11-25T08:00:00Z",
+      source_released_at: null, source_updated_at: null, archived_at: null, imported_at: null,
+      packed_size: 1384742820, unpacked_size: 0, artifact_count: 1,
+      artifact_kinds: { apk: { count: 1, size: 1384742820, availability_states: { available: 1 } } },
+      availability_states: { available: 1 }, attributes: {}, provenance: { source_kind: "official_sync" },
+    };
+    const current = {
+      state: "available" as const,
+      reason: "HTTP 206",
+      confidence: "low" as const,
+      retained: false,
+      checked_at: "2026-11-25T08:00:00Z",
+      source_kind: "live_probe",
+      source_confidence: "low",
+      observed_at: "2026-11-25T08:00:00Z",
+      expires_at: null,
+      evidence_status: "verified" as const,
+    };
+    const artifact = {
+      id: 1, kind: "apk", name: "AzurPromilia_0.3.0.2634121_SC000_20260826152754_8b37.apk", size: 1384742820,
+      checksum_type: "crc64", checksum_value: "18123626472714408145",
+      attributes: { component: "game", package_type: "full", delivery_mode: "direct" },
+      urls: [{ id: 1, url, priority: 0, source_kind: "official", provider: "manjuu", evidence_status: "verified" as const, current }],
+    };
+
+    expect(preferredDomainArtifactAction(domain as never, artifact as never, "download")?.url).toBe(url);
+
+    vi.spyOn(api, "games").mockResolvedValue([game] as never);
+    vi.spyOn(api, "domains").mockResolvedValue([domain] as never);
+    vi.spyOn(api, "versions").mockResolvedValue([version] as never);
+    vi.spyOn(api, "artifacts").mockResolvedValue({ items: [artifact], next_cursor: null, total: 1 } as never);
+    vi.spyOn(api, "versionRecord").mockResolvedValue({
+      vendor: "manjuu", game_id: "azurpromilia", platform: "android", channel: "official", version: version.version,
+      version_code: null, filename: artifact.name, url, size: artifact.size,
+      checksum: { etag: null, crc64: artifact.checksum_value, md5: null }, file_time: "2026-08-26T07:29:44Z",
+      status: { http_code: 206, available: true, last_checked_at: "2026-11-25T08:00:00Z" },
+    } as never);
+
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: "/games/:gameId/:domainId?/:version?/:mode?", name: "archive", component: ArchiveView }],
+    });
+    await router.push("/games/azurpromilia/azurpromilia-android/0.3.0.2634121/apk");
+    await router.isReady();
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    app = createApp(ArchiveView);
+    app.use(router);
+    app.mount(root);
+    await flush();
+    await flush();
+
+    expect(root.textContent).toContain(artifact.name);
+    const badge = root.querySelector(".availability");
+    expect(badge).not.toBeNull();
+    expect(badge?.getAttribute("data-state")).toBe("available");
+    expect(badge?.getAttribute("data-evidence-status")).toBe("verified");
+    expect(badge?.textContent).toContain("可用");
     expect(root.querySelector("button.is-locked")).toBeNull();
     expect(root.querySelector<HTMLAnchorElement>(`a.icon-button[href="${url}"]`)).not.toBeNull();
   });

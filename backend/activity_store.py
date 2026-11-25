@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import os
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 from threading import RLock
 from typing import Any, Iterable
 
-from backend.admin_state import AdminStateError, _ensure_directory, _ordinary
+from backend.admin_state import AdminStateError
+from backend.fs_safety import UnsafePathError, ensure_directory, is_ordinary
 
 
 EVENT_TYPES = frozenset({"version_update", "version_unavailable"})
@@ -24,9 +26,14 @@ class ActivityStore:
 
     def _connect(self) -> sqlite3.Connection:
         try:
-            _ensure_directory(self.path.parent)
-            if (self.path.exists() or self.path.is_symlink()) and not _ordinary(self.path):
-                raise AdminStateError("activity database is not an ordinary file")
+            ensure_directory(self.path.parent)
+            if not is_ordinary(self.path):
+                try:
+                    os.lstat(self.path)
+                except FileNotFoundError:
+                    pass
+                else:
+                    raise AdminStateError("activity database is not an ordinary file")
             connection = sqlite3.connect(self.path, timeout=5)
             connection.row_factory = sqlite3.Row
             connection.execute(
@@ -48,6 +55,8 @@ class ActivityStore:
             )
             connection.commit()
             return connection
+        except UnsafePathError as error:
+            raise AdminStateError("admin state path contains a symlink/reparse point") from error
         except AdminStateError:
             raise
         except (OSError, sqlite3.Error) as error:

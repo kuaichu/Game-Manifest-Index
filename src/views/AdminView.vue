@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
-import "../styles/admin-legacy.css";
-import "../styles/admin-responsive.css";
+import "../styles/admin-shell.css";
+import "../styles/admin-catalog.css";
+import "../styles/admin-content.css";
+import "../styles/admin-operations.css";
 import "../styles/admin.css";
+import "../styles/admin-responsive.css";
 import { ApiError, adminApi } from "../api";
 import { adminUiCapabilities } from "../admin-ui-capabilities";
+import { copyTextToClipboard } from "../clipboard";
 import { gameIcons } from "../game-icons";
 import AdminGameCatalog from "../components/admin/AdminGameCatalog.vue";
 import AdminDomainCatalog from "../components/admin/AdminDomainCatalog.vue";
@@ -24,7 +28,6 @@ import { useAvailabilityInvalidation } from "../composables/useAvailabilityInval
 import type {
   AdminCatalog,
   AdminDomain,
-  AdminSyncStatus,
 } from "../types";
 
 const TOKEN_STORAGE_KEY = "game-manifest-index-web-admin-token-v1";
@@ -101,16 +104,14 @@ const domainSearchQuery = ref("");
 
 const selectedGameId = ref("");
 const selectedDomainId = ref("");
-const syncStatus = ref<AdminSyncStatus | null>(null);
 const newGame = ref(false);
 const newDomain = ref(false);
 
 async function copyText(text: string): Promise<void> {
   if (!text) return;
-  try {
-    await navigator.clipboard.writeText(text);
+  if (await copyTextToClipboard(text)) {
     success.value = `已复制到剪贴板：${text}`;
-  } catch {
+  } else {
     error.value = "复制失败，请手动选择复制。";
   }
 }
@@ -167,7 +168,8 @@ const content = useAdminContent(shell, { stopProbePolling: probe.stopProbePollin
 
 const { stopProbePolling, openProbe, loadSyncRunStatus } = probe;
 const { stopOperationPolling, resumeAdminOperation } = ops;
-const { versions, selectedVersion, loadEditableVersion, openContent, handleGlobalDropdownClick } = content;
+const { versions, loadEditableVersion, openContent, versionList } = content;
+const { selectedVersion, handleGlobalDropdownClick } = versionList;
 
 async function refreshAllData(): Promise<void> {
   await withLoading(async (signal) => {
@@ -243,7 +245,6 @@ async function login(): Promise<void> {
     await loadCatalog(signal);
     localStorage.setItem(TOKEN_STORAGE_KEY, token.value.trim());
     authenticated.value = true;
-    syncStatus.value = await adminApi.syncStatus(token.value.trim(), signal).catch(() => null);
     await loadSyncRunStatus();
     await resumeAdminOperation();
   });
@@ -258,7 +259,6 @@ function logout(): void {
   authenticated.value = false;
   catalog.value = { games: [], domains: [] };
   versions.value = [];
-  syncStatus.value = null;
 }
 
 onMounted(async () => {
@@ -269,7 +269,6 @@ onMounted(async () => {
       await loadCatalog(signal);
       localStorage.setItem(TOKEN_STORAGE_KEY, token.value.trim());
       authenticated.value = true;
-      syncStatus.value = await adminApi.syncStatus(token.value.trim(), signal).catch(() => null);
       await loadSyncRunStatus();
       await resumeAdminOperation();
     });

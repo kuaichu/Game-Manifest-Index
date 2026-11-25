@@ -13,9 +13,7 @@ import itertools
 import json
 import os
 import re
-import stat
 import struct
-import tempfile
 import threading
 import zlib
 from collections import OrderedDict
@@ -25,13 +23,16 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote, urlsplit, urlunsplit
 
+from backend.catalog_registry import OFFICIAL_PACKAGE_HOSTS, PACKAGE_HOSTS_BY_GAME
+from backend.fs_safety import atomic_write_bytes, is_ordinary, stat_is_ordinary
 from backend.manifest_readers import (
     ManifestBadRequest,
     ManifestError,
     ManifestNotFound,
     ManifestTimeout,
     ManifestUpstream,
-    _retained_size,
+    directory_page,
+    retained_size,
     strict_relative_posix,
 )
 
@@ -55,21 +56,6 @@ SCATTERED_ROOTS = {
     "bh3": "PC/extract",
 }
 PACKAGE_DIRS = {"hkrpg": "/PC/download", "nap": "/VolumeZip", "bh3": "/PC"}
-OFFICIAL_PACKAGE_HOSTS = frozenset(
-    {
-        "autopatchcn.yuanshen.com",
-        "autopatchcn.bhsr.com",
-        "autopatchcn.juequling.com",
-        "autopatchcn.bh3.com",
-        "bundle.bh3.com",
-    }
-)
-PACKAGE_HOSTS_BY_GAME = {
-    "hk4e": frozenset({"autopatchcn.yuanshen.com"}),
-    "hkrpg": frozenset({"autopatchcn.bhsr.com"}),
-    "nap": frozenset({"autopatchcn.juequling.com"}),
-    "bh3": frozenset({"autopatchcn.bh3.com", "bundle.bh3.com"}),
-}
 
 
 class PackageFilesError(ManifestError):
@@ -114,7 +100,7 @@ def _cache_fingerprint(*paths: Path) -> tuple[tuple[int, ...], ...] | None:
             info = os.lstat(path)
         except OSError:
             return None
-        if not stat.S_ISREG(info.st_mode) or stat.S_ISLNK(info.st_mode):
+        if not stat_is_ordinary(info):
             return None
         result.append((info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns))
     return tuple(result)
@@ -122,7 +108,7 @@ def _cache_fingerprint(*paths: Path) -> tuple[tuple[int, ...], ...] | None:
 
 def _remember_verified(key: str, fingerprint: Any, files: list[dict[str, Any]], meta: dict[str, Any]) -> None:
     global _VERIFIED_CACHE_BYTES
-    retained = _retained_size((fingerprint, files, meta))
+    retained = retained_size((fingerprint, files, meta))
     with _VERIFIED_CACHE_GUARD:
         old = _VERIFIED_CACHE.pop(key, None)
         if old is not None:
@@ -143,16 +129,7 @@ def _lock_for(key: str) -> threading.Lock:
 
 def _atomic_write(path: Path, data: bytes) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    fd, temporary = tempfile.mkstemp(prefix=path.name + ".", dir=path.parent)
-    try:
-        with os.fdopen(fd, "wb") as stream:
-            stream.write(data)
-            stream.flush()
-            os.fsync(stream.fileno())
-        os.replace(temporary, path)
-    finally:
-        if os.path.exists(temporary):
-            os.unlink(temporary)
+    atomic_write_bytes(path, data)
 
 
 def _atomic_json(path: Path, value: Any) -> None:
@@ -605,14 +582,6 @@ def _file_sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _ordinary_cache_file(path: Path) -> bool:
-    try:
-        info = os.lstat(path)
-    except OSError:
-        return False
-    return stat.S_ISREG(info.st_mode) and not stat.S_ISLNK(info.st_mode)
-
-
 def _cache_dir(state_root: Path, game_id: str, version: str, groups: list[list[dict[str, Any]]]) -> Path:
     material = [
         [{key: candidate.get(key) for key in ("url", "size", "md5")} for candidate in group]
@@ -640,8 +609,8 @@ def _load_files(state_root: Path, record: Mapping[str, Any], game_id: str, versi
                 return verified[1], 0, verified[2]
             if verified is not None:
                 _VERIFIED_CACHE_BYTES -= _VERIFIED_CACHE.pop(cache_key)[3]
-        both = _ordinary_cache_file(index_path) and _ordinary_cache_file(raw_path)
-        either = index_path.exists() or raw_path.exists()
+        both = is_ordinary(index_path) and is_ordinary(raw_path)
+        either = index_path.exists() or index_path.is_symlink() or raw_path.exists() or raw_path.is_symlink()
         if both:
             try:
                 value = json.loads(index_path.read_text(encoding="utf-8"))
@@ -693,58 +662,14 @@ def _load_files(state_root: Path, record: Mapping[str, Any], game_id: str, versi
         return files, reader.network_bytes, {"fetch_mode": "package_zip_member", "download_base": None}
 
 
-def _page(items: list[dict[str, Any]], limit: int, cursor: str | None) -> tuple[list[dict[str, Any]], str | None]:
-    if isinstance(limit, bool) or not isinstance(limit, int) or limit < 1 or limit > 500:
-        raise PackageFilesBadRequest("limit 无效")
-    if cursor is None:
-        offset = 0
-    elif not re.fullmatch(r"0|[1-9][0-9]*", cursor):
-        raise PackageFilesBadRequest("cursor 无效")
-    else:
-        offset = int(cursor)
-    page = items[offset : offset + limit]
-    return page, str(offset + limit) if offset + limit < len(items) else None
-
-
-def _directory_page(files: list[dict[str, Any]], path: str, q: str | None, limit: int, cursor: str | None) -> dict[str, Any]:
-    try:
-        path = strict_relative_posix(path, allow_empty=True)
-    except ManifestBadRequest as error:
-        raise PackageFilesBadRequest("path 无效") from error
-    prefix = path + "/" if path else ""
-    if path and (any(item["path"] == path for item in files) or not any(item["path"].startswith(prefix) for item in files)):
-        raise PackageFilesNotFound("path 不存在")
-    if q:
-        selected = [item for item in files if item["path"].startswith(prefix) and q.casefold() in item["path"].casefold()]
-        selected.sort(key=lambda item: (item["path"].casefold(), item["path"]))
-    else:
-        children: dict[str, dict[str, Any]] = {}
-        for item in files:
-            if not item["path"].startswith(prefix):
-                continue
-            remainder = item["path"][len(prefix) :]
-            if not remainder:
-                continue
-            name, separator, _ = remainder.partition("/")
-            child_path = prefix + name
-            if separator:
-                child = children.setdefault(child_path, {"type": "directory", "name": name, "path": child_path, "file_count": 0, "size": 0})
-                child["file_count"] += 1
-                child["size"] += item["size"]
-            else:
-                children[child_path] = item
-        selected = sorted(children.values(), key=lambda item: (item["type"] != "directory", item["name"].casefold(), item["name"]))
-    page, next_cursor = _page(selected, limit, cursor)
-    return {
-        "path": path, "q": q, "items": [{key: value for key, value in item.items() if key != "chunks"} for item in page],
-        "total": len(selected), "next_cursor": next_cursor,
-        "totals": {"files": sum(item.get("file_count", 1) for item in selected), "directories": sum(item.get("type") == "directory" for item in selected), "size": sum(item.get("size", 0) for item in selected)},
-    }
-
-
 def list_files(state_root: Path, record: Mapping[str, Any], game_id: str, version: str, identity: str = "game", path: str = "", q: str | None = None, limit: int = 100, cursor: str | None = None, upstream: Any | None = None) -> dict[str, Any]:
     files, network_bytes, meta = _load_files(Path(state_root), record, game_id, version, identity, upstream)
-    result = _directory_page(files, path, q, limit, cursor)
+    try:
+        result = directory_page(files, path, q, limit, cursor)
+    except ManifestBadRequest as error:
+        raise PackageFilesBadRequest(str(error)) from error
+    except ManifestNotFound as error:
+        raise PackageFilesNotFound(str(error)) from error
     result.update({"source": "package_pkg_version", "fetch_mode": meta["fetch_mode"], "identity": identity, "network_bytes": network_bytes, "range_bytes": network_bytes})
     return result
 
@@ -769,5 +694,7 @@ def file_detail(state_root: Path, record: Mapping[str, Any], game_id: str, versi
 
 
 __all__ = [
-    "PackageFilesBadRequest", "PackageFilesCacheError", "PackageFilesError", "PackageFilesNotFound", "PackageFilesTimeout", "PackageFilesUnsupported", "PackageFilesUpstream", "file_detail", "list_files", "package_files",
+    "OFFICIAL_PACKAGE_HOSTS", "PACKAGE_HOSTS_BY_GAME", "PackageFilesBadRequest", "PackageFilesCacheError",
+    "PackageFilesError", "PackageFilesNotFound", "PackageFilesTimeout", "PackageFilesUnsupported",
+    "PackageFilesUpstream", "file_detail", "list_files", "package_files",
 ]

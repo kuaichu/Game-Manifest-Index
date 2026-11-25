@@ -1,4 +1,4 @@
-import type { ArchiveDomain, Artifact, ArtifactUrl, AvailabilityCurrent, AvailabilityState, VersionSummary } from "./types";
+import type { ArchiveDomain, Artifact, ArtifactUrl, AvailabilityCurrent, VersionSummary } from "./types";
 
 const defaults: Record<string, string> = {
   apk: "Android APK",
@@ -25,7 +25,7 @@ export function archiveSourceLabel(adapter: string | undefined, sourceKind?: unk
   if (adapter === "hoyo") return "HoYo 官方版本清单";
   if (adapter === "patchersdk") return "PatcherSDK ResList";
   if (adapter === "perfectworld_patcher") return "完美世界官方 PatcherSDK";
-  if (adapter === "nte") return "幻塔官方 ResList";
+  if (adapter === "nte") return "异环官方 ResList";
   if (adapter === "android") return "官方安装包直链";
   if (adapter === "resources") return "官方资源清单";
   return "官方 CDN 清单";
@@ -54,24 +54,6 @@ export function domainModeLabel(domain: ArchiveDomain | null | undefined, capabi
 export interface ArchiveModePresentation {
   domain: ArchiveDomain;
   capability: string;
-}
-
-export interface ArchiveMetric {
-  label: string;
-  value: string;
-}
-
-export interface ArchiveOverviewPresentation {
-  overviewMetrics: ArchiveMetric[];
-  moduleDetails: ArchiveMetric[];
-  artifactKind: string;
-}
-
-export interface SyncStatusPresentation {
-  primaryLabel: string;
-  primaryLatest: string;
-  primaryDomain: ArchiveDomain | null;
-  androidSecondary: string | null;
 }
 
 export interface FileTimestampEvidence {
@@ -279,33 +261,26 @@ export function preferredDomainArtifactAction(
     || (allowsMetadataOnlyActions(domain) ? preferredMetadataArtifactAction(artifact, now) : null);
 }
 
-export function artifactActionLabel(artifact: Artifact, now = Date.now()): string {
-  const preferred = preferredArtifactAction(artifact, now);
-  if (preferred?.source_kind === "mirror") return "镜像可用";
-  if (preferred) return "可用";
-  if (artifact.urls.some((candidate) => candidate.current?.reason === "expired" || (candidate.current?.expires_at && Date.parse(candidate.current.expires_at) <= now))) return "链接已过期";
-  if (artifact.urls.some((candidate) => candidate.current?.state === "unavailable")) return "不可用";
-  if (artifact.urls.some((candidate) => candidate.current?.source_kind === "live_probe" && candidate.current.reason === "probe_failed")) return "探测失败";
-  if (artifact.urls.some((candidate) => candidate.current?.source_kind === "live_probe" && candidate.current.state === "unknown")) return "探测未判定";
-  return "未验证";
-}
+const beijingDateTimeFormatter = new Intl.DateTimeFormat("zh-CN", {
+  timeZone: "Asia/Shanghai",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
 
-export function formatObservedDate(value?: string | null): string {
-  if (!value) return "—";
+export function formatObservedDate(value?: string | null, emptyFallback = "—"): string {
+  if (!value) return emptyFallback;
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value.replaceAll("-", ".");
-  const timestamp = Date.parse(value);
-  if (Number.isNaN(timestamp)) return "—";
-  const date = new Date(timestamp);
-  const parts = new Intl.DateTimeFormat("zh-CN", {
-    timeZone: "Asia/Shanghai",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  })
-    .formatToParts(date)
+  const normalized = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/.test(value) && !/(?:z|[+-]\d\d:?\d\d)$/i.test(value)
+    ? `${value.replace(" ", "T")}Z`
+    : value;
+  const timestamp = Date.parse(normalized);
+  if (!Number.isFinite(timestamp)) return emptyFallback;
+  const parts = beijingDateTimeFormatter
+    .formatToParts(new Date(timestamp))
     .reduce<Record<string, string>>((result, part) => {
       if (part.type !== "literal") result[part.type] = part.value;
       return result;
@@ -385,44 +360,25 @@ export function latestLiveProbeTime(rows: Artifact[]): string | null {
 
 export function hoyoArtifactCardPresentation(
   artifact: Artifact,
-  selectedVersion: string,
-  index = 0,
-  total = 0,
-): { label: string; subtitle: string } {
+  _selectedVersion?: string,
+): { label: string } {
   const component = String(artifact.attributes.component || "game");
   const packageType = String(artifact.attributes.package_type || "");
-  const availability = artifactActionLabel(artifact);
   if (artifact.kind === "patch") {
-    const from = displayVersionLabel(String(artifact.attributes.route_from || "未知版本"));
-    const to = displayVersionLabel(String(artifact.attributes.route_to || selectedVersion || "未知版本"));
-    const route = `${from} -> ${to}`;
     const voice = component === "voice";
     const lang = voice && artifact.attributes.language ? hoyoLanguageLabel(artifact.attributes.language) : "";
     return {
       label: voice ? (lang ? `${lang}语音更新` : "语音包更新") : "游戏包更新",
-      subtitle: `${voice ? `${lang} ` : ""}${route} / ${formatBytes(artifact.size)} / ${availability}`,
     };
   }
   if (component === "voice") {
     const lang = artifact.attributes.language ? hoyoLanguageLabel(artifact.attributes.language) : "";
     return {
       label: lang ? `${lang}语音` : "语音包",
-      subtitle: `${lang ? `${lang} / ` : ""}${formatBytes(artifact.size)} / ${availability}`,
     };
   }
-  const position = Number(artifact.attributes.route_part || artifact.part || index + 1);
-  if (packageType === "full") return { label: "游戏完整包", subtitle: `完整包 / ${formatBytes(artifact.size)} / ${availability}` };
-  return { label: "游戏包分卷", subtitle: `${position}/${total || position} / ${formatBytes(artifact.size)} / ${availability}` };
-}
-
-export function availabilityLabel(states: Record<string, number> = {}): string {
-  const available = states.available || 0;
-  const unavailable = states.unavailable || 0;
-  const unknown = states.unknown || 0;
-  if (available && !unavailable && !unknown) return "可用";
-  if (unavailable && !available && !unknown) return "链接失效";
-  if (available && (unavailable || unknown)) return "部分可达";
-  return "未判定";
+  if (packageType === "full") return { label: "游戏完整包" };
+  return { label: "游戏包分卷" };
 }
 
 interface WuWaFilesAvailability {
@@ -526,72 +482,13 @@ export function preferredDefaultMode(
   return domain.capabilities[0] || null;
 }
 
-export function artifactUrlStateCounts(artifact: Artifact): Record<AvailabilityState, number> {
-  const counts: Record<AvailabilityState, number> = { available: 0, unavailable: 0, unknown: 0 };
-  if (artifact.urls.length === 0 && artifact.availability) {
-    counts[artifact.availability.state] = 1;
-    return counts;
-  }
-  for (const candidate of artifact.urls) {
-    const verified = candidate.evidence_status === "verified" && candidate.current?.evidence_status === "verified";
-    const forbidden = candidate.current?.state === "unavailable" && candidate.current.reason === "HTTP 403";
-    counts[verified || forbidden ? candidate.current?.state || "unknown" : "unknown"] += 1;
-  }
-  return counts;
-}
-
-function platformLabel(platform: string): string {
-  if (platform === "windows") return "Windows";
-  if (platform === "android") return "Android";
-  return platform || "未知平台";
-}
-
-function syncPlatformLabel(platform: string): string {
-  if (platform === "windows") return "PC";
-  if (platform === "android") return "Android";
-  return platformLabel(platform);
-}
-
 function normalizedPlatform(domain: ArchiveDomain | null | undefined): string {
   return String(domain?.platform || "").toLowerCase();
-}
-
-function isAndroidArchiveDomain(domain: ArchiveDomain | null | undefined): boolean {
-  const platform = normalizedPlatform(domain);
-  if (platform) return platform === "android";
-  return domain?.adapter === "android" || domain?.kind === "apk" || Boolean(domain?.capabilities.includes("apk"));
 }
 
 function isPcArchiveDomain(domain: ArchiveDomain | null | undefined): boolean {
   const platform = normalizedPlatform(domain);
   return platform === "windows" || platform === "pc";
-}
-
-function syncStatusLabel(domain: ArchiveDomain | null): string {
-  const platform = normalizedPlatform(domain) || (isAndroidArchiveDomain(domain) ? "android" : "");
-  return `最新 ${syncPlatformLabel(platform)} 版本`;
-}
-
-export function buildSyncStatusPresentation(input: {
-  domains: ArchiveDomain[];
-  currentDomain: ArchiveDomain | null;
-  currentLatest: VersionSummary | null;
-}): SyncStatusPresentation {
-  const pcDomain = input.domains.find(isPcArchiveDomain) || null;
-  const androidDomain = input.domains.find(isAndroidArchiveDomain) || null;
-  const primaryDomain = pcDomain || input.currentDomain || input.domains[0] || null;
-  const primaryLatest = primaryDomain?.latest_version
-    || (primaryDomain?.id === input.currentDomain?.id ? input.currentLatest?.version : null)
-    || "—";
-  const androidSecondary = androidDomain && androidDomain.id !== primaryDomain?.id
-    ? androidDomain.latest_version || "—"
-    : null;
-  return {
-    primaryLabel: syncStatusLabel(primaryDomain),
-    primaryLatest,
-    primaryDomain,
-    androidSecondary,
-  };
 }
 
 export function distributionProfile(summary: VersionSummary): string {
@@ -692,127 +589,4 @@ export function buildVersionBadges(
     }
   }
   return result;
-}
-
-export function buildArchiveOverview(input: {
-  domain: ArchiveDomain | null;
-  summary: VersionSummary | null;
-  mode: string;
-  version: string;
-  displayVersion?: string;
-  channelSummaries?: VersionSummary[];
-  formatBytes: (value: number) => string;
-  formatDate: (value?: string | null) => string;
-}): ArchiveOverviewPresentation {
-  const { domain, summary, mode, version, formatBytes, formatDate } = input;
-  const kind = artifactKindForMode(mode);
-  const kindSummary = summary?.artifact_kinds?.[kind];
-  const count = kind ? kindSummary?.count || 0 : summary?.artifact_count || 0;
-  const size = kind ? kindSummary?.size || 0 : summary?.packed_size || 0;
-  const currentVersion = input.displayVersion || version || "—";
-  const timestamp = summary ? fileTimestampEvidence(summary) : { value: null, source: "unknown" as const };
-  const overviewMetrics: ArchiveMetric[] = [
-    { label: "当前版本", value: currentVersion },
-    { label: "数据模块", value: domain ? mode === "apk" ? "Android APK" : `${platformLabel(domain.platform)} · ${domainModeLabel(domain, mode)}` : "—" },
-    {
-      label: timestamp.source === "archived" ? "归档时间" : timestamp.source === "released" ? "发布时间" : "文件时间",
-      value: domainFieldSupport(domain, "version_fields", timestamp.source === "released" ? "source_released_at" : timestamp.source === "archived" ? "archived_at" : "observed_at") === "unsupported"
-        ? "不支持"
-        : formatDate(timestamp.value),
-    },
-    { label: "条目数", value: `${count.toLocaleString()} 个` },
-    { label: "总大小", value: domainFieldSupport(domain, "artifact_fields", "size") === "unsupported" ? "不支持" : formatBytes(size) },
-    { label: "可用性", value: mode === "files" ? "不适用" : domainFieldSupport(domain, "artifact_fields", "availability") === "unsupported" ? "不支持" : availabilityLabel(availabilityStatesForMode(summary, mode)) },
-  ];
-  if (!domain || !summary) return { overviewMetrics, moduleDetails: [], artifactKind: kind };
-
-  const countOf = (name: string) => summary.artifact_kinds?.[name]?.count || 0;
-  const sizeOf = (name: string) => summary.artifact_kinds?.[name]?.size || 0;
-  const attrs = summary.attributes || {};
-  let moduleDetails: ArchiveMetric[] = [];
-  if (domain.adapter === "android") {
-    const channelGroups = [summary, ...(input.channelSummaries || [])].filter((item): item is VersionSummary => Boolean(item));
-    const channels = new Set<string>();
-    const availability = { available: 0, unavailable: 0, unknown: 0 };
-    for (const group of channelGroups) {
-      const groupAttrs = group.attributes || {};
-      if (typeof groupAttrs.channel === "string" && groupAttrs.channel) channels.add(groupAttrs.channel);
-      if (typeof groupAttrs.channel_ids === "string") {
-        for (const channel of groupAttrs.channel_ids.split("/").map((part) => part.trim()).filter(Boolean)) channels.add(channel);
-      }
-      availability.available += Number(group.availability_states?.available || 0);
-      availability.unavailable += Number(group.availability_states?.unavailable || 0);
-      availability.unknown += Number(group.availability_states?.unknown || 0);
-    }
-    moduleDetails = [
-      { label: "渠道标识", value: channels.size ? [...channels].join(" / ") : String(attrs.channel_ids || "—") },
-      { label: "链接状态", value: availabilityLabel(availability) },
-    ];
-  } else if (domain.capabilities.includes("resources")) {
-    moduleDetails = [
-      { label: "资源快照", value: displayVersionLabel(String(attrs.resource_version || currentVersion)) },
-      { label: "主 / 初始", value: `${Number(attrs.main_file_count || 0).toLocaleString()} / ${Number(attrs.initial_file_count || 0).toLocaleString()}` },
-      { label: "素材 / 语音", value: `${Number(attrs.asset_count || 0).toLocaleString()} / ${Number(attrs.voice_count || 0).toLocaleString()}` },
-      { label: "Unity", value: String(attrs.unity_version || "—") },
-    ];
-  } else if (domain.adapter === "perfectworld_patcher") {
-    const decodedFiles = Number(attrs.decoded_file_count || 0);
-    const reslistSize = Number(attrs.reslist_size || 0);
-    const configResSize = Number(attrs.config_res_size || 0);
-    moduleDetails = [
-      { label: "版本族", value: version.split(".").slice(0, 2).join(".") },
-      { label: "完整文件", value: `${decodedFiles.toLocaleString()} 个 / ${formatBytes(summary.packed_size)}` },
-      { label: "ResList ZIP", value: formatBytes(reslistSize) },
-      { label: "配置资源", value: formatBytes(configResSize) },
-    ];
-  } else if (
-    domain.adapter === "patchersdk"
-    || (domain.capabilities.includes("files") && domainFeatureSupport(domain, "artifact_list"))
-  ) {
-    const releaseType = attrs.release_type === "major" ? " · 系列首个存档" : attrs.release_type === "patch" ? " · 后续存档" : "";
-    moduleDetails = [
-      { label: "版本族", value: `${version.split(".").slice(0, 2).join(".")}${releaseType}` },
-      { label: "完整文件", value: `${countOf("file").toLocaleString()} 个 / ${formatBytes(sizeOf("file"))}` },
-      { label: "补丁文件", value: `${countOf("patch").toLocaleString()} 个 / ${formatBytes(sizeOf("patch"))}` },
-      { label: "清单", value: `${countOf("manifest").toLocaleString()} 个` },
-    ];
-  } else if (domain.adapter === "arknights") {
-    moduleDetails = [
-      { label: "接口体积", value: formatBytes(summary.unpacked_size) },
-      { label: "文件校验", value: "game_files_md5" },
-      { label: "完整分卷", value: `${countOf("package").toLocaleString()} 个` },
-      { label: "Revision", value: `${summary.revision_count.toLocaleString()} 次` },
-    ];
-  } else if (domain.adapter === "hoyo") {
-    const languageLabels: Record<string, string> = { "zh-cn": "中文", "en-us": "英语", "ja-jp": "日语", "ko-kr": "韩语" };
-    const languages = Array.isArray(attrs.voice_languages)
-      ? attrs.voice_languages.map((value) => languageLabels[String(value)] || String(value))
-      : [];
-    moduleDetails = [
-      { label: "分发架构", value: distributionProfile(summary) },
-      { label: "压缩包", value: `${countOf("package").toLocaleString()} 个` },
-      ...(domainFeatureSupport(domain, "voice_language")
-        ? [{ label: "语音语言", value: languages.length ? languages.join(" / ") : "不支持" }]
-        : []),
-      { label: "Chunk", value: `${countOf("chunk").toLocaleString()} 个` },
-    ];
-  } else if (domain.capabilities.includes("packages") && domain.capabilities.includes("patches")) {
-    moduleDetails = [
-      { label: "解压大小", value: formatBytes(summary.unpacked_size) },
-      { label: "更新路径", value: `${Number(attrs.patch_route_count || 0).toLocaleString()} 条` },
-      { label: "完整包", value: `${countOf("package").toLocaleString()} 个` },
-      { label: "更新补丁", value: `${countOf("patch").toLocaleString()} 个` },
-    ];
-  } else if (
-    (domainFeatureSupport(domain, "multi_cdn") && domainFeatureSupport(domain, "package_file_list"))
-    || domain.adapter === "wuwa"
-  ) {
-    moduleDetails = [
-      { label: "区服", value: `${String(attrs.region || "—").toUpperCase()} · ${String(attrs.channel || "—")}` },
-      ...(mode === "files" ? [] : [{ label: "CDN 候选", value: `${Number(attrs.cdn_count || 0).toLocaleString()} 个` }]),
-      { label: "文件清单", value: `${countOf("file").toLocaleString()} 个` },
-      { label: "更新路线", value: `${Number(attrs.patch_route_count || countOf("patch")).toLocaleString()} 条` },
-    ];
-  }
-  return { overviewMetrics, moduleDetails: moduleDetails.slice(0, 4), artifactKind: kind };
 }

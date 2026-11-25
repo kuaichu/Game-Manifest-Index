@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { api } from "./api";
 import ArtifactTree from "./components/ArtifactTree.vue";
 import ComparePanel from "./components/ComparePanel.vue";
+import FragmentFileRow, { activeFileMenuId } from "./components/FragmentFileRow.vue";
 import RemoteArtifactTree from "./components/RemoteArtifactTree.vue";
 
 async function flushUpdates(): Promise<void> {
@@ -178,5 +179,60 @@ describe("read-only product components", () => {
     expect(root.textContent).not.toContain("目录加载失败");
     expect(root.textContent).not.toContain("aborted");
     app.unmount();
+  });
+
+  it("attaches global FragmentFileRow menu listeners at most once and detaches on close or unmount", async () => {
+    const addSpy = vi.spyOn(window, "addEventListener");
+    const removeSpy = vi.spyOn(window, "removeEventListener");
+    const makeRow = (id: number) => ({
+      id,
+      kind: "file",
+      name: `file-${id}.bin`,
+      part: 1,
+      size: 2048,
+      checksum_type: "md5",
+      checksum_value: "a".repeat(32),
+      attributes: {},
+      urls: [
+        { id: id * 10 + 1, url: `https://cdn1.example/${id}.bin`, priority: 0, source_kind: "official", evidence_status: "no_evidence" as const, current: null },
+        { id: id * 10 + 2, url: `https://cdn2.example/${id}.bin`, priority: 1, source_kind: "official", evidence_status: "no_evidence" as const, current: null },
+      ],
+    });
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const app = createApp({
+      render: () => h("div", [1, 2, 3, 4, 5].map((id) => h(FragmentFileRow, { key: id, artifact: makeRow(id) }))),
+    });
+    app.mount(root);
+    await nextTick();
+
+    const menuEvents = ["click", "keydown", "gmi-close-file-menus"];
+    expect(addSpy.mock.calls.filter(([type]) => menuEvents.includes(type))).toHaveLength(0);
+
+    const rows = root.querySelectorAll<HTMLElement>(".fragment-file-row");
+    rows[0].click();
+    await nextTick();
+    expect(activeFileMenuId.value).toBe(1);
+    expect(addSpy.mock.calls.filter(([type]) => menuEvents.includes(type)).map(([type]) => type)).toEqual(menuEvents);
+
+    // Switching to another row reuses the same single listener registration
+    rows[1].click();
+    await nextTick();
+    expect(activeFileMenuId.value).toBe(2);
+    expect(addSpy.mock.calls.filter(([type]) => menuEvents.includes(type))).toHaveLength(3);
+
+    // Escape closes the menu and detaches listeners
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    await nextTick();
+    expect(activeFileMenuId.value).toBeNull();
+    expect(removeSpy.mock.calls.filter(([type]) => menuEvents.includes(type)).map(([type]) => type)).toEqual(menuEvents);
+
+    // Reopening and unmounting cleans up active state and listeners
+    rows[2].click();
+    await nextTick();
+    expect(activeFileMenuId.value).toBe(3);
+    app.unmount();
+    expect(activeFileMenuId.value).toBeNull();
+    expect(removeSpy.mock.calls.filter(([type]) => menuEvents.includes(type))).toHaveLength(6);
   });
 });

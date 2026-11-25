@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
+import { formatBytes } from "../domain-presentation";
 import type { Artifact } from "../types";
 import FragmentFileRow from "./FragmentFileRow.vue";
 
@@ -31,13 +32,6 @@ const entries = computed(() => {
   }
   return { folders: [...folderMap.values()].sort((a, b) => a.name.localeCompare(b.name)), files };
 });
-
-function formatBytes(value: number): string {
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  let size = value, unit = 0;
-  while (size >= 1024 && unit < units.length - 1) { size /= 1024; unit += 1; }
-  return `${size.toFixed(unit ? 2 : 0)} ${units[unit]}`;
-}
 </script>
 
 <template>

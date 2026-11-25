@@ -64,11 +64,11 @@ function selectPageSize(event: Event): void {
 
 <style scoped>
 .artifact-pagination { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; padding: 18px 4px 4px; }
-.artifact-page-size, .artifact-page-total { align-items: center; color: var(--text-muted, #8b9ab5); display: inline-flex; font-size: 12px; gap: 5px; }
+.artifact-page-size, .artifact-page-total { align-items: center; color: var(--muted, #8397af); display: inline-flex; font-size: 12px; gap: 5px; }
 .artifact-page-size { margin-right: 8px; }
-.artifact-page-size select { background: var(--surface-2, #172337); border: 1px solid var(--border, #2a3a52); border-radius: 6px; color: inherit; padding: 5px 22px 5px 7px; }
-.artifact-page-button { background: var(--surface-2, #172337); border: 1px solid var(--border, #2a3a52); border-radius: 6px; color: var(--text-secondary, #b6c3d7); cursor: pointer; min-width: 32px; padding: 6px 9px; }
-.artifact-page-button:hover:not(:disabled), .artifact-page-button.active { background: var(--accent, #0ea5e9); border-color: var(--accent, #0ea5e9); color: white; }
+.artifact-page-size select { background: var(--panel, #182335); border: 1px solid var(--line, #2a3b50); border-radius: 6px; color: inherit; padding: 5px 22px 5px 7px; }
+.artifact-page-button { background: var(--panel, #182335); border: 1px solid var(--line, #2a3b50); border-radius: 6px; color: var(--text-secondary, #c2d2e5); cursor: pointer; min-width: 32px; padding: 6px 9px; }
+.artifact-page-button:hover:not(:disabled), .artifact-page-button.active { background: var(--blue, #38bdf8); border-color: var(--blue, #38bdf8); color: var(--bg, #0b1019); }
 .artifact-page-button:disabled { cursor: default; opacity: .45; }
-.artifact-page-ellipsis { color: var(--text-muted, #8b9ab5); padding: 0 2px; }
+.artifact-page-ellipsis { color: var(--muted, #8397af); padding: 0 2px; }
 </style>

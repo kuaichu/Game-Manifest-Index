@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import logging
-import os
 import re
-import stat
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from copy import deepcopy
 from dataclasses import dataclass
@@ -21,6 +18,8 @@ from backend.activity_store import ActivityStore
 from backend.admin_state import BoundedItems
 from backend.catalog_admin import configured_nondefault_pc_domains, is_configured_nondefault_pc_domain
 from backend.domain_registry import is_nondefault_pc_domain, nondefault_pc_domains
+from backend.fs_safety import domain_directory, is_ordinary, is_safe_component
+from backend.probe_policy import parse_probe_checked_at, stable_url_id
 from backend.schema_v2 import record_identity, validate_v2_record
 from backend.version_store import record_index_transaction, write_v2_record
 from probe_adapters.common import ProbeError
@@ -37,11 +36,6 @@ LOGGER = logging.getLogger(__name__)
 
 class AdminProbeDataError(Exception):
     """Canonical data cannot be safely selected for an admin mutation."""
-
-
-def stable_url_id(artifact_id: str, url_index: int, url: str) -> int:
-    material = "\x1f".join(str(part) for part in (artifact_id, url_index, url)).encode("utf-8")
-    return int(hashlib.sha256(material).hexdigest()[:12], 16)
 
 
 def valid_probe_url(value: str) -> bool:
@@ -63,21 +57,16 @@ def valid_probe_url(value: str) -> bool:
     )
 
 
-def _ordinary(path: Path) -> bool:
-    try:
-        info = os.lstat(path)
-    except OSError:
-        return False
-    return stat.S_ISREG(info.st_mode) and not stat.S_ISLNK(info.st_mode) and not bool(getattr(info, "st_file_attributes", 0) & 0x400)
-
-
 def _safe_record_path(root: Path, path: Path) -> bool:
     try:
         relative = path.absolute().relative_to(root.absolute())
     except ValueError:
         return False
-    default_path = len(relative.parts) == 4
-    secondary_path = (
+    if len(relative.parts) == 4 and relative.parts[2] in {"android", "pc"}:
+        vendor, game_id, disk, _filename = relative.parts
+        platform = "android" if disk == "android" else "windows"
+        domain_id = f"{game_id}-{disk}"
+    elif (
         len(relative.parts) == 6
         and relative.parts[2:4] == ("pc", "domains")
         and (
@@ -88,19 +77,23 @@ def _safe_record_path(root: Path, path: Path) -> bool:
                 root, relative.parts[0], relative.parts[1], relative.parts[4],
             )
         )
-    )
-    if not default_path and not secondary_path:
+    ):
+        vendor, game_id, _, _, domain_id, _filename = relative.parts
+        platform = "windows"
+    else:
+        return False
+    try:
+        expected_dir = domain_directory(root.absolute(), vendor, game_id, platform, domain_id)
+    except ValueError:
+        return False
+    if path.absolute().parent != expected_dir:
         return False
     current = root.absolute()
     for part in relative.parts[:-1]:
         current = current / part
-        try:
-            info = os.lstat(current)
-        except OSError:
+        if not is_ordinary(current, directory=True):
             return False
-        if not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode) or bool(getattr(info, "st_file_attributes", 0) & 0x400):
-            return False
-    return _ordinary(path)
+    return is_ordinary(path)
 
 
 def iter_records(root: Path, *, scopes: Iterable[str] = ("android", "pc")):
@@ -111,12 +104,14 @@ def iter_records(root: Path, *, scopes: Iterable[str] = ("android", "pc")):
             for game_dir in root.glob("*/*"):
                 vendor = game_dir.parent.name
                 game_id = game_dir.name
+                if not is_safe_component(vendor) or not is_safe_component(game_id):
+                    continue
                 for domain_id in (
                     *nondefault_pc_domains(vendor, game_id),
                     *configured_nondefault_pc_domains(root, vendor, game_id),
                 ):
                     paths.extend(
-                        (game_dir / "pc" / "domains" / domain_id).glob("*.json")
+                        domain_directory(root, vendor, game_id, "windows", domain_id).glob("*.json")
                     )
         for path in paths:
             if path.name == "index.json":
@@ -147,10 +142,11 @@ def iter_records(root: Path, *, scopes: Iterable[str] = ("android", "pc")):
 
 
 def candidates(record: dict[str, Any]):
-    # Azur Promilia's launcher CDN has no registered PC probe adapter yet.
-    # Keep its checked-in URLs browsable without scheduling unsupported probes.
-    if record.get("vendor") == "manjuu" and record.get("game_id") == "azurpromilia":
-        return
+    azurpromilia_pc = (
+        record.get("vendor") == "manjuu"
+        and record.get("game_id") == "azurpromilia"
+        and record.get("platform") == "windows"
+    )
     endfield_pc = (
         record.get("vendor") == "hypergryph"
         and record.get("game_id") == "endfield"
@@ -158,6 +154,13 @@ def candidates(record: dict[str, Any]):
     )
     for artifact_index, artifact in enumerate(record.get("artifacts", [])):
         if not isinstance(artifact, dict) or not isinstance(artifact.get("artifact_id"), str):
+            continue
+        # Azur Promilia PC releases split one package into hundreds of pg_chunk
+        # segments; probe only the file manifest and the first segment sentinel.
+        if azurpromilia_pc and not (
+            artifact.get("delivery_mode") == "file_manifest"
+            or artifact.get("part") == 1
+        ):
             continue
         # Endfield runtime VFS files (.chk/.blc) are historical resources,
         # not downloadable archives. Keep them visible in the archive but
@@ -298,14 +301,10 @@ def _run_probe(record: dict[str, Any], artifact_index: int, url_index: int, arti
 
 
 def _verified_current_state(candidate: dict[str, Any], state: str, now: datetime) -> bool:
-    # api_contract imports this module for scheduled candidates, so load its
-    # evidence parser only when a completed probe is being persisted.
-    from backend.api_contract import _probe_checked_at
-
     current = candidate.get("current")
     if not isinstance(current, dict) or current.get("state") != state:
         return False
-    checked = _probe_checked_at(current)
+    checked = parse_probe_checked_at(current)
     # Freshness controls scheduling/display, not whether a known state changed.
     # Normal rounds recheck available URLs only after that freshness expires.
     return checked is not None and checked[1] <= now

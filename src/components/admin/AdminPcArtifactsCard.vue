@@ -203,15 +203,15 @@ const draft = toRef(props, "draft");
           <div class="pc-artifact-section-title">元数据</div>
           <div class="admin-field-grid compact-3col">
             <label class="admin-field">
-              <span class="field-label">Manifest <small class="field-sublabel">JSON object</small></span>
+              <span class="field-label">Manifest</span>
               <textarea v-model="artifact.manifestJson" class="admin-code-textarea pc-mini-json" spellcheck="false" @input="emit('sync-json')"></textarea>
             </label>
             <label class="admin-field">
-              <span class="field-label">Source <small class="field-sublabel">compact provenance JSON</small></span>
+              <span class="field-label">Source</span>
               <textarea v-model="artifact.sourceJson" class="admin-code-textarea pc-mini-json" spellcheck="false" @input="emit('sync-json')"></textarea>
             </label>
             <label class="admin-field">
-              <span class="field-label">附加属性 <small class="field-sublabel">attributes</small></span>
+              <span class="field-label">附加属性</span>
               <textarea v-model="artifact.attributesJson" class="admin-code-textarea pc-mini-json" spellcheck="false" @input="emit('sync-json')"></textarea>
             </label>
           </div>

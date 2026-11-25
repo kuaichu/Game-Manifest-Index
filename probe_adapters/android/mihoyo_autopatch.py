@@ -19,7 +19,7 @@ def matches(vendor: str | None, game_id: str | None, url: str) -> bool:
     )
 
 
-def availability(status: int, filename: str, prefix: bytes) -> bool | None:
+def availability(status: int, filename: str, prefix: bytes, **_: object) -> bool | None:
     if status in {404, 410}:
         return False
     if status not in {200, 206}:

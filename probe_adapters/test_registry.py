@@ -19,6 +19,7 @@ EXPECTED = {
     ("android", "nte"): "perfectworld_webops",
     ("android", "p5x"): "perfectworld_webops",
     ("android", "tof"): "perfectworld_webops",
+    ("android", "azurpromilia"): "manjuu_syncstation",
     ("windows", "wuwa"): "kuro_cdn",
     ("windows", "arknights"): "hypergryph_arknights_pc",
     ("windows", "endfield"): "hypergryph_endfield_pc",
@@ -29,13 +30,14 @@ EXPECTED = {
     ("windows", "nte"): "perfectworld_patcher",
     ("windows", "p5x"): "perfectworld_patcher",
     ("windows", "tof"): "perfectworld_patcher",
+    ("windows", "azurpromilia"): "manjuu_syncstation_pc",
 }
 
 
 class ProbeRegistryTests(unittest.TestCase):
-    def test_internal_registry_has_eight_specialized_adapters(self):
-        self.assertEqual(len(ANDROID_ADAPTERS), 8)
-        self.assertEqual(len({adapter.NAME for adapter in ANDROID_ADAPTERS}), 8)
+    def test_internal_registry_has_nine_specialized_adapters(self):
+        self.assertEqual(len(ANDROID_ADAPTERS), 9)
+        self.assertEqual(len({adapter.NAME for adapter in ANDROID_ADAPTERS}), 9)
 
     def test_generic_requires_url_only_http_apk(self):
         self.assertEqual(adapter_for(None, None, "https://x.test/game.apk").NAME, "shared_generic_apk")
