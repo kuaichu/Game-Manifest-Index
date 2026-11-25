@@ -8,15 +8,15 @@ from unittest.mock import patch
 from backend.schema_v2 import artifact_id, validate_v2_record
 from url_adapters.android import (
     hypergryph_launcher_latest, kuro_pns_manifest, kuro_wuwa_mc_manifest,
-    mihoyo_bh2_download_page, mihoyo_bh3_download_porter, mihoyo_download_porter,
-    perfectworld_webops,
+    manjuu_azurpromilia, mihoyo_bh2_download_page, mihoyo_bh3_download_porter,
+    mihoyo_download_porter, perfectworld_webops,
 )
 from url_adapters.common import AdapterError
 from url_adapters.service import DISCOVERERS, _discover_one, discovery_task_count, discover_games
 
 
 class DiscoveryServiceTests(unittest.TestCase):
-    def test_registry_has_exactly_twelve_games_and_v2_discoverers(self):
+    def test_registry_has_exactly_thirteen_games_and_v2_discoverers(self):
         expected = {
             "hk4e": mihoyo_download_porter.discover_v2, "hkrpg": mihoyo_download_porter.discover_v2,
             "nap": mihoyo_download_porter.discover_v2, "bh3": mihoyo_bh3_download_porter.discover_v2,
@@ -24,6 +24,7 @@ class DiscoveryServiceTests(unittest.TestCase):
             "endfield": hypergryph_launcher_latest.discover_v2, "wuwa": kuro_wuwa_mc_manifest.discover_v2,
             "pns": kuro_pns_manifest.discover_v2, "tof": perfectworld_webops.discover_v2,
             "p5x": perfectworld_webops.discover_v2, "nte": perfectworld_webops.discover_v2,
+            "azurpromilia": manjuu_azurpromilia.discover_v2,
         }
         self.assertEqual(set(DISCOVERERS), set(expected))
         for game_id, discoverer in expected.items():
@@ -31,7 +32,7 @@ class DiscoveryServiceTests(unittest.TestCase):
                 self.assertIs(DISCOVERERS[game_id], discoverer)
                 self.assertNotIn("old", discoverer.__module__)
                 self.assertNotIn("legacy", discoverer.__module__)
-        self.assertEqual(discovery_task_count(list(DISCOVERERS)), 12)
+        self.assertEqual(discovery_task_count(list(DISCOVERERS)), 13)
 
     @staticmethod
     def canonical_record(game_id="hk4e", version="2.0.0"):

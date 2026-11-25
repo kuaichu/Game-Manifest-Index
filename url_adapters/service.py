@@ -13,6 +13,7 @@ from url_adapters.android import (
     hypergryph_launcher_latest,
     kuro_pns_manifest,
     kuro_wuwa_mc_manifest,
+    manjuu_azurpromilia,
     mihoyo_bh2_download_page,
     mihoyo_bh3_download_porter,
     mihoyo_download_porter,
@@ -25,8 +26,8 @@ from url_adapters.common import AdapterError
 Discoverer = Callable[[str, Path, int, str | None, int | None], Path]
 PCDiscoverer = Callable[[str, Path, int], Path]
 
-# Keep this registry deliberately explicit: these are the twelve supported
-# games and each points at the adapter's canonical schema-v2 writer.
+# Keep this registry deliberately explicit: these are the thirteen supported
+# Android games and each points at the adapter's canonical schema-v2 writer.
 DISCOVERERS: dict[str, Discoverer] = {
     "hk4e": mihoyo_download_porter.discover_v2,
     "hkrpg": mihoyo_download_porter.discover_v2,
@@ -40,6 +41,7 @@ DISCOVERERS: dict[str, Discoverer] = {
     "tof": perfectworld_webops.discover_v2,
     "p5x": perfectworld_webops.discover_v2,
     "nte": perfectworld_webops.discover_v2,
+    "azurpromilia": manjuu_azurpromilia.discover_v2,
 }
 
 # PC registration is intentionally separate from the Android registry.  The
