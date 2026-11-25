@@ -1,31 +1,26 @@
-import { computed, ref, watch } from "vue";
+import { computed, ref } from "vue";
 import { ApiError, adminApi } from "../api";
-import { supportsApkVersionEditor, manualVersionSavedMessage } from "../admin-ui-capabilities";
-import { formatBytes } from "../admin-format";
+import { supportsApkVersionEditor } from "../admin-ui-capabilities";
 import { formatFileTimeLabel, isoToLocalInput, localInputToIso } from "../admin-date-time";
 import { copyTextToClipboard } from "../clipboard";
 import {
   type EditableArtifactDraft,
   type VersionDraft,
-  applyArtifactFilenameFromUrl,
   artifactDraftFromPayload,
-  buildVisualArtifactAttributes,
-  defaultCreateDraft,
   isVersionUnavailable,
   isVersionUnknown,
-  normalizeArtifactUrls,
   normalizeArtifactsForComparison,
-  parseArtifactsJsonPayload,
   supportsPcVersionEditor,
   validatePcArtifacts,
 } from "../admin-version-editor";
 import type {
   AdminEditableVersionPayload,
   ManualArtifactPayload,
-  ProbeUrlResult,
   VersionSummary,
 } from "../types";
 import type { AdminShell } from "./admin-shell";
+import { buildEditableArtifactsPayload, useAdminArtifactDrafts } from "./useAdminArtifactDrafts";
+import { useAdminVersionCreate } from "./useAdminVersionCreate";
 import { useAdminVersionList } from "./useAdminVersionList";
 import type { AvailabilityInvalidation } from "./useAvailabilityInvalidation";
 
@@ -78,7 +73,7 @@ export function useAdminContent(shell: AdminShell, deps: AdminContentDeps) {
     if (!editableLoaded.value) return false;
     let currentArtifactsStr = "";
     try {
-      currentArtifactsStr = normalizeArtifactsForComparison(buildArtifactsPayload());
+      currentArtifactsStr = normalizeArtifactsForComparison(buildEditableArtifactsPayload(editableDraft.value));
     } catch {
       return true;
     }
@@ -122,14 +117,49 @@ export function useAdminContent(shell: AdminShell, deps: AdminContentDeps) {
     selectedDomainSupportsCreateVersion.value || selectedDomainUsesPcEditor.value,
   );
 
-  watch(
-    () => selectedDomainSupportsCreateVersion.value,
-    (supportsCreate) => {
-      if (!supportsCreate && contentSubTab.value === "create") {
-        contentSubTab.value = "edit";
-      }
-    },
-  );
+  const {
+    createDraft,
+    isCreateMode,
+    versionDraft,
+    buildCreateArtifactsPayload,
+    addVersion,
+    copyCurrentVersionToCreateDraft,
+    resetCreateDraft,
+  } = useAdminVersionCreate(shell, {
+    versions,
+    selectedVersion,
+    contentSubTab,
+    editableLoaded,
+    editableDraft,
+    selectedDomainGameName,
+    selectedDomainSupportsCreateVersion,
+    selectedDomainSupportsManualVersion,
+    loadEditableVersion,
+  });
+
+  const {
+    urlProbeMap,
+    buildArtifactsPayload,
+    addArtifactItem,
+    removeArtifactItem,
+    addArtifactUrlItem,
+    removeArtifactUrlItem,
+    handleArtifactUrlChange,
+    forceExtractArtifactName,
+    switchArtifactsMode,
+    syncArtifactsToJson,
+    formatArtifactsJson,
+    probeUrlItem,
+    syncArtifactsJsonForActiveDraft,
+    handleActiveArtifactUrlChange,
+    forceExtractActiveArtifactName,
+  } = useAdminArtifactDrafts(shell, {
+    editableDraft,
+    createDraft,
+    isCreateMode,
+    selectedDomainUsesPcEditor,
+    buildCreateArtifactsPayload,
+  });
 
   const currentVersionItem = computed(() =>
     versions.value.find((v) => v.version === selectedVersion.value) || null,
@@ -257,157 +287,6 @@ export function useAdminContent(shell: AdminShell, deps: AdminContentDeps) {
     if (!url) return;
     window.open(url, "_blank", "noopener,noreferrer");
   }
-
-  function buildArtifactsPayload(): ManualArtifactPayload[] {
-    if (editableDraft.value.artifactsMode === "json") {
-      return parseArtifactsJsonPayload(editableDraft.value.artifactsJson);
-    }
-
-    return editableDraft.value.artifacts.map((art, idx) => {
-      return {
-        artifact_id: art.artifact_id,
-        kind: art.kind.trim() || "file",
-        name: art.name.trim() || `part_${idx + 1}`,
-        part: Number(art.part) || idx + 1,
-        size: Number(art.size) || 0,
-        checksum_type: art.checksum_type.trim() || null,
-        checksum_value: art.checksum_value.trim().toLowerCase() || null,
-        attributes: buildVisualArtifactAttributes(art),
-        urls: normalizeArtifactUrls(art.urls, true),
-      };
-    });
-  }
-
-  function addArtifactItem(): void {
-    const nextPart = editableDraft.value.artifacts.reduce((max, a) => Math.max(max, a.part), 0) + 1;
-    editableDraft.value.artifacts.push({
-      kind: selectedDomainUsesPcEditor.value ? "package" : "file",
-      name: "",
-      part: nextPart,
-      size: 0,
-      component: "game",
-      package_type: selectedDomainUsesPcEditor.value ? "segment" : "",
-      delivery_mode: selectedDomainUsesPcEditor.value ? "direct" : "",
-      language: "",
-      route_from: "",
-      route_to: "",
-      decompressed_size: null,
-      manifestJson: "",
-      sourceJson: "",
-      checksum_type: "",
-      checksum_value: "",
-      attributesJson: "{}",
-      urls: [{ url: "", priority: 0, source_kind: "official" }],
-    });
-    syncArtifactsToJson();
-  }
-
-  function removeArtifactItem(index: number): void {
-    if (editableDraft.value.artifacts.length <= 1) {
-      error.value = "版本必须包含至少一个资源文件 (Artifact)。";
-      return;
-    }
-    editableDraft.value.artifacts.splice(index, 1);
-    syncArtifactsToJson();
-  }
-
-  function addArtifactUrlItem(artifactIndex: number): void {
-    const art = editableDraft.value.artifacts[artifactIndex];
-    if (!art) return;
-    const nextPriority = art.urls.length;
-    art.urls.push({ url: "", priority: nextPriority, source_kind: "official" });
-    syncArtifactsToJson();
-  }
-
-  function removeArtifactUrlItem(artifactIndex: number, urlIndex: number): void {
-    const art = editableDraft.value.artifacts[artifactIndex];
-    if (!art) return;
-    art.urls.splice(urlIndex, 1);
-    syncArtifactsToJson();
-  }
-
-  function handleArtifactUrlChange(art: EditableArtifactDraft, newUrl: string): void {
-    applyArtifactFilenameFromUrl(art, newUrl);
-    syncArtifactsToJson();
-  }
-
-  function forceExtractArtifactName(art: EditableArtifactDraft): void {
-    const firstUrl = art.urls.find((u) => u.url.trim())?.url || "";
-    if (applyArtifactFilenameFromUrl(art, firstUrl, true)) syncArtifactsToJson();
-  }
-
-  function switchArtifactsMode(mode: "visual" | "json"): void {
-    if (mode === "json") {
-      syncArtifactsToJson();
-      editableDraft.value.artifactsMode = "json";
-    } else {
-      try {
-        const parsed = JSON.parse(editableDraft.value.artifactsJson || "[]");
-        if (!Array.isArray(parsed)) throw new Error("Artifacts JSON 必须是数组");
-        editableDraft.value.artifacts = parsed.map(artifactDraftFromPayload);
-        editableDraft.value.artifactsMode = "visual";
-      } catch (err) {
-        error.value = err instanceof Error ? `切换失败: ${err.message}` : "JSON 解析失败";
-      }
-    }
-  }
-
-  function syncArtifactsToJson(): void {
-    try {
-      const payload = buildArtifactsPayload();
-      editableDraft.value.artifactsJson = JSON.stringify(payload, null, 2);
-    } catch {
-      // Keep the visual form editable while a nested JSON field is temporarily invalid.
-    }
-  }
-
-  function formatArtifactsJson(): void {
-    try {
-      const parsed = JSON.parse(editableDraft.value.artifactsJson || "[]");
-      editableDraft.value.artifactsJson = JSON.stringify(parsed, null, 2);
-    } catch (err) {
-      error.value = err instanceof Error ? `JSON 格式错误: ${err.message}` : "JSON 格式无效";
-    }
-  }
-
-  const urlProbeMap = ref<Record<string, { loading: boolean; result?: ProbeUrlResult }>>({});
-
-  async function probeUrlItem(target: EditableArtifactDraft["urls"][number] | string): Promise<void> {
-    const urlItem = typeof target === "string" ? { url: target, priority: 0, source_kind: "official" } : target;
-    const cleanUrl = urlItem.url.trim();
-    if (!cleanUrl) {
-      error.value = "请先输入有效的 URL 地址";
-      return;
-    }
-    if (!cleanUrl.startsWith("http://") && !cleanUrl.startsWith("https://")) {
-      error.value = "URL 必须以 http:// 或 https:// 开头";
-      return;
-    }
-    urlProbeMap.value[cleanUrl] = { loading: true };
-    try {
-      const artifactUrlId = "id" in urlItem && urlItem.id && cleanUrl === urlItem.persisted_url ? urlItem.id : undefined;
-      const res = await adminApi.probeUrl(cleanUrl, token.value, 10, artifactUrlId);
-      urlProbeMap.value[cleanUrl] = { loading: false, result: res };
-      if (res.ok) {
-        const persistence = res.persisted ? "，结果已同步到下载区" : "；当前链接尚未保存，本次仅临时检测";
-        success.value = `URL 验活成功：HTTP ${res.status || 200}${res.size ? ` (${formatBytes(res.size)})` : ""}${persistence}`;
-      } else {
-        error.value = `URL 验活异常：${res.error || res.reason || `HTTP ${res.status || "失败"}`}`;
-      }
-    } catch (err) {
-      urlProbeMap.value[cleanUrl] = {
-        loading: false,
-        result: { url: cleanUrl, ok: false, error: err instanceof Error ? err.message : "请求失败" },
-      };
-      error.value = `URL 验活请求出错: ${err instanceof Error ? err.message : "未知错误"}`;
-    }
-  }
-
-  const createDraft = ref<VersionDraft>(defaultCreateDraft());
-
-  const isCreateMode = computed(() => contentSubTab.value === "create");
-
-  const versionDraft = computed(() => (isCreateMode.value ? createDraft.value : editableDraft.value));
 
   const showApkFileCard = computed(
     () => Boolean(versionDraft.value.artifacts[0]) && (isCreateMode.value || selectedDomainSupportsCreateVersion.value),
@@ -758,220 +637,6 @@ export function useAdminContent(shell: AdminShell, deps: AdminContentDeps) {
         editableLoaded.value = false;
       }
       success.value = `版本 ${ver} 已成功永久删除。`;
-    });
-  }
-
-  function copyCurrentVersionToCreateDraft(): void {
-    if (!editableLoaded.value) {
-      error.value = "当前没有加载有效的版本数据供复制。";
-      return;
-    }
-    const clonedArtifacts: EditableArtifactDraft[] = editableDraft.value.artifacts.map((art) => ({
-      kind: "apk",
-      name: art.name,
-      part: 1,
-      size: art.size,
-      component: art.component,
-      package_type: "",
-      delivery_mode: "",
-      language: art.language,
-      route_from: "",
-      route_to: "",
-      decompressed_size: art.decompressed_size,
-      manifestJson: "",
-      sourceJson: "",
-      checksum_type: art.checksum_type,
-      checksum_value: art.checksum_value,
-      attributesJson: art.attributesJson,
-      urls: art.urls.map((u) => ({
-        url: u.url,
-        priority: u.priority,
-        source_kind: u.source_kind,
-      })),
-    }));
-
-    createDraft.value = {
-      version: "",
-      channel: editableDraft.value.channel,
-      version_code: editableDraft.value.version_code,
-      file_created_at_override: editableDraft.value.file_created_at_override || "",
-      is_visible: editableDraft.value.is_visible,
-      checksum_etag: editableDraft.value.checksum_etag,
-      checksum_crc64: editableDraft.value.checksum_crc64,
-      checksum_md5: editableDraft.value.checksum_md5,
-      artifacts: clonedArtifacts,
-      artifactsJson: editableDraft.value.artifactsJson,
-      artifactsMode: "visual",
-    };
-    contentSubTab.value = "create";
-    success.value = `已成功复制版本 ${selectedVersion.value} 的配置模板！请输入新版本号。`;
-  }
-
-  function resetCreateDraft(): void {
-    createDraft.value = defaultCreateDraft();
-    success.value = "新版本录入表单已重置为空白模板。";
-  }
-
-  function syncArtifactsJsonForActiveDraft(): void {
-    if (isCreateMode.value) {
-      createDraft.value.artifactsJson = JSON.stringify(buildCreateArtifactsPayload(), null, 2);
-      return;
-    }
-    syncArtifactsToJson();
-  }
-
-  function handleActiveArtifactUrlChange(art: EditableArtifactDraft, newUrl: string): void {
-    applyArtifactFilenameFromUrl(art, newUrl);
-    syncArtifactsJsonForActiveDraft();
-  }
-
-  function forceExtractActiveArtifactName(art: EditableArtifactDraft): void {
-    const firstUrl = art.urls.find((u) => u.url.trim())?.url || "";
-    if (applyArtifactFilenameFromUrl(art, firstUrl, true)) syncArtifactsJsonForActiveDraft();
-  }
-
-  function buildCreateArtifactsPayload(): ManualArtifactPayload[] {
-    if (createDraft.value.artifactsMode === "json") {
-      try {
-        const parsed = JSON.parse(createDraft.value.artifactsJson || "[]");
-        if (!Array.isArray(parsed)) throw new Error("Artifacts JSON 必须是数组");
-        return parsed;
-      } catch (err) {
-        throw new Error(err instanceof Error ? `Artifacts JSON 格式错误: ${err.message}` : "Artifacts JSON 无效");
-      }
-    }
-    return createDraft.value.artifacts.map((art) => {
-      return {
-        kind: art.kind,
-        name: art.name.trim(),
-        part: art.part,
-        size: Number(art.size) || 0,
-        checksum_type: art.checksum_type.trim() || undefined,
-        checksum_value: art.checksum_value.trim().toLowerCase() || undefined,
-        attributes: buildVisualArtifactAttributes(art),
-        urls: normalizeArtifactUrls(art.urls, true, false, (value) => Number(value) || 0),
-      };
-    });
-  }
-
-  async function addVersion(): Promise<void> {
-    if (!selectedDomainSupportsManualVersion.value) {
-      error.value = "当前手工录入只支持单 APK 的 Android 版本；PC 版本请通过官方采集流程维护。";
-      return;
-    }
-    const ver = createDraft.value.version.trim();
-    if (!selectedDomainId.value || !ver) {
-      error.value = "请输入新版本的版本号";
-      return;
-    }
-
-    let artifactsPayload: ManualArtifactPayload[];
-    try {
-      artifactsPayload = buildCreateArtifactsPayload();
-    } catch (err) {
-      error.value = err instanceof Error ? err.message : "Artifacts 配置无效";
-      return;
-    }
-
-    if (artifactsPayload.length !== 1) {
-      error.value = "Android 架构只允许包含一个 APK 资源文件 (Artifact)";
-      return;
-    }
-    const mainArt = artifactsPayload[0];
-    if (mainArt.kind !== "apk") {
-      error.value = "资源文件类型 (kind) 必须为 apk";
-      return;
-    }
-    if (!mainArt.name.trim()) {
-      error.value = "APK 文件名不能为空";
-      return;
-    }
-    if (!mainArt.name.trim().toLowerCase().endsWith(".apk")) {
-      error.value = "文件名必须以 .apk 结尾";
-      return;
-    }
-    if (mainArt.urls.length !== 1) {
-      error.value = "每个版本必须且仅允许包含一条下载链接 (URL)";
-      return;
-    }
-    const firstUrl = mainArt.urls[0].url.trim();
-    if (!firstUrl.startsWith("http://") && !firstUrl.startsWith("https://")) {
-      error.value = "下载链接 URL 必须使用 http:// 或 https:// 协议";
-      return;
-    }
-
-    // 注入校验值
-    const artAttrs = (mainArt.attributes || {}) as Record<string, unknown>;
-    if (createDraft.value.checksum_etag?.trim()) {
-      artAttrs.etag = createDraft.value.checksum_etag.trim();
-    }
-    if (createDraft.value.checksum_crc64?.trim()) {
-      artAttrs.crc64 = createDraft.value.checksum_crc64.trim();
-    }
-    if (createDraft.value.checksum_md5?.trim()) {
-      artAttrs.md5 = createDraft.value.checksum_md5.trim();
-    }
-    mainArt.attributes = artAttrs;
-
-    const attributes: Record<string, unknown> = {
-      channel: createDraft.value.channel.trim() || "official",
-      version_code:
-        createDraft.value.version_code !== null &&
-        createDraft.value.version_code !== undefined &&
-        String(createDraft.value.version_code).trim() !== ""
-          ? Number(createDraft.value.version_code)
-          : null,
-    };
-    if (createDraft.value.file_created_at_override?.trim()) {
-      attributes.file_created_at = createDraft.value.file_created_at_override.trim();
-    }
-
-    const confirmed = await askConfirm(
-      `确定要为【${selectedDomainGameName.value || selectedDomainId.value}】录入新版本【${ver}】吗？`,
-      { title: "录入新版本", confirmLabel: "录入" },
-    );
-    if (!confirmed) return;
-
-    await withLoading(async (signal) => {
-      try {
-        const result = await adminApi.addVersion(
-          selectedDomainId.value,
-          {
-            version: ver,
-            client_version: ver,
-            file_path: mainArt.name.trim(),
-            attributes,
-            artifacts: [mainArt],
-          },
-          token.value,
-          signal,
-        );
-
-        if (!createDraft.value.is_visible) {
-          await adminApi.setVersionVisibility(
-            selectedDomainId.value,
-            ver,
-            false,
-            token.value,
-            signal,
-          );
-        }
-
-        const verRes = await adminApi.versions(selectedDomainId.value, token.value, signal);
-        versions.value = verRes.items;
-        selectedVersion.value = ver;
-        await loadEditableVersion(selectedDomainId.value, ver);
-        contentSubTab.value = "edit";
-        createDraft.value = defaultCreateDraft();
-
-        success.value = manualVersionSavedMessage(ver, result.probe_error);
-      } catch (err) {
-        if (err instanceof ApiError && err.status === 409) {
-          error.value = `版本【${ver}】已存在，请勿重复新增 (HTTP 409)。`;
-          return;
-        }
-        throw err;
-      }
     });
   }
 
