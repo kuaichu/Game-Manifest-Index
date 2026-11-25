@@ -91,13 +91,6 @@ def classify_head_fallback(
     # A successful HEAD with matching size/content type is still only
     # metadata.  Without archive evidence it remains unknown and the service
     # reports the original probe failure.
-    if status not in {200, 206}:
-        return None
-    if isinstance(expected_size, bool) or not isinstance(expected_size, int) or expected_size <= 0:
-        return None
-    raw_size = evidence.get("content-length", "")
-    if not str(raw_size).isdigit() or int(raw_size) != expected_size:
-        return None
     return None
 
 
