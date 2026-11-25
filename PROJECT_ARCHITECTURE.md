@@ -22,18 +22,19 @@
                                |
 +-------------------------------------------------------------------+
 | Web API 与安全边界层 (FastAPI ASGI: backend/app.py)               |
-|  - 公开只读契约: backend/api_contract.py                          |
+|  - 公开只读契约: backend/api_contract.py (658 行)                 |
 |  - 管理员鉴权与运维接口: backend/admin_routes.py                  |
 +-------------------------------------------------------------------+
           |                              |
           v                              v
 +--------------------------+   +------------------------------------+
 | 异步运维与调度引擎       |   | 领域模型、存储锁与索引投影层       |
-| - admin_operations.py    |   | - schema_v2.py (Schema v2 / ID)    |
+| - admin_operations.py    |   | - schema_v2.py / legacy_record_*   |
 | - probe_scheduler.py     |   | - version_store.py / indexes.py    |
-| - admin_probe.py         |   | - storage_locks.py (DATA_LOCK + OS)|
-| - telegram_notify.py     |   | - version_admin.py / catalog_admin |
-|                          |   | - manifest_readers.py / mihoyo_*   |
+| - admin_probe.py         |   | - storage_locks.py / fs_safety.py  |
+| - probe_policy.py        |   | - catalog_registry / inventory_*   |
+| - telegram_notify.py     |   | - public_projection / manifest_*   |
+|                          |   | - version_admin / admin_catalog_*  |
 +--------------------------+   +------------------------------------+
           |                              |
           v                              |
@@ -75,14 +76,14 @@ data/
             └── <version>.json
 ```
 
-- **Schema v2 规范（[schema_v2.py](file:///d:/Project/Active/Game%20Manifest%20Index/backend/schema_v2.py)）**：
+- **Schema v2 规范（[schema_v2.py](file:///d:/Project/Active/Game%20Manifest%20Index/backend/schema_v2.py) — 690 行，旧格式规范化独立于 [legacy_record_normalizer.py](file:///d:/Project/Active/Game%20Manifest%20Index/backend/legacy_record_normalizer.py) — 485 行）**：
   - 记录级身份字段（`RECORD_IDENTITY_FIELDS`）：`("vendor", "game_id", "domain_id", "platform", "channel", "version")`。
   - 资源级身份 `artifact_id`（`a1_<32hex>`）：通过 `artifact_id()` / `artifact_identity_key()` 从记录身份与资源稳定属性推导，**不依赖**数组顺序、URL、大小、校验值或 `kind`/`package_type`/`delivery_mode`。
   - 允许 `kind`：`apk` / `package` / `patch` / `resource`；`component`：`game` / `voice` / `launcher` / `other` / `resource`；`urls[].current` 记录最近探活状态（`available` / `unavailable` / `unknown`、`http_code`、`checked_at` 等）。
   - `provenance.source_kind` 严格区分官方同步（`official_sync`）、历史回填（`third_party_history`）、迁移（`legacy_migration`）与手工录入（`manual`）。
-- **并发事务与安全写入（[storage_locks.py](file:///d:/Project/Active/Game%20Manifest%20Index/backend/storage_locks.py)、[version_store.py](file:///d:/Project/Active/Game%20Manifest%20Index/backend/version_store.py)、[indexes.py](file:///d:/Project/Active/Game%20Manifest%20Index/backend/indexes.py)）**：
+- **并发事务与安全写入（[storage_locks.py](file:///d:/Project/Active/Game%20Manifest%20Index/backend/storage_locks.py)、[fs_safety.py](file:///d:/Project/Active/Game%20Manifest%20Index/backend/fs_safety.py)、[version_store.py](file:///d:/Project/Active/Game%20Manifest%20Index/backend/version_store.py)、[indexes.py](file:///d:/Project/Active/Game%20Manifest%20Index/backend/indexes.py)）**：
   - 所有写入通过可重入线程锁 `DATA_LOCK` + 跨进程 OS 文件锁 `data_file_lock`（Windows `msvcrt.locking` / POSIX `fcntl.flock`）串行化。
-  - 校验路径组件合法性并拒绝符号链接/重解析点；在单次事务（`record_index_transaction` / `write_v2_record`）中原子写入版本 JSON 并同步更新对应 `index.json`。
+  - 由 [fs_safety.py](file:///d:/Project/Active/Game%20Manifest%20Index/backend/fs_safety.py) 统一校验路径组件合法性、拦截符号链接与 Windows `0x400` 重解析点并执行 `mkstemp` + `fsync` + `os.replace` 原子写入；在单次事务（`record_index_transaction` / `write_v2_record`）中原子写入版本 JSON 并同步更新对应 `index.json`。
 - **次级 PC 数据域白名单（[domain_registry.py](file:///d:/Project/Active/Game%20Manifest%20Index/backend/domain_registry.py)）**：
   - 显式注册非默认 PC 域（例如 `("hypergryph", "endfield") -> ("endfield-resources",)`），也支持通过 [catalog_admin.py](file:///d:/Project/Active/Game%20Manifest%20Index/backend/catalog_admin.py) 从 `catalog.admin.json` 读取自定义域。
 
@@ -107,9 +108,14 @@ data/
 4. 初始化 `ProbeScheduler`（仅当 `GMI_ADMIN_TOKEN` 非空且不含空白字符时 `authorized=True`），并在 ASGI `lifespan` 中启动定时轮询，退出时优雅停止调度器并等待运维线程收尾（最长 30 秒）。
 5. 额外暴露公开只读接口 `GET /api/v1/probe/schedule-status`，脱敏返回内置探活调度状态与证据有效期（`evidence_ttl_hours`）。
 
-### 3.2 公开只读 API 契约（[api_contract.py](file:///d:/Project/Active/Game%20Manifest%20Index/backend/api_contract.py) — 1951 行）
+### 3.2 公开只读 API 契约与库存投影层
 
-`ApiContract` 在磁盘边界校验 Schema v2 记录并投影为公开 JSON，不泄露本地路径、内部字段与源码采集配方：
+公开只读契约按职责拆分为 5 个正交模块，在磁盘边界校验 Schema v2 记录并投影为公开 JSON，不泄露本地路径、内部字段与源码采集配方：
+- **[catalog_registry.py](file:///d:/Project/Active/Game%20Manifest%20Index/backend/catalog_registry.py)**（87 行）：厂商、公开游戏目录与本地官方 CDN 主机白名单单一真相源。
+- **[inventory_loader.py](file:///d:/Project/Active/Game%20Manifest%20Index/backend/inventory_loader.py)**（479 行）：规范版本记录与 `index.json` 校验加载器，提供 `DATA_LOCK` 保护下的 `lstat` 快照指纹缓存（`snapshot_data_root`）。
+- **[public_projection.py](file:///d:/Project/Active/Game%20Manifest%20Index/backend/public_projection.py)**（615 行）+ **[probe_policy.py](file:///d:/Project/Active/Game%20Manifest%20Index/backend/probe_policy.py)**（50 行）：20 小时探活证据保鲜判定、URL/血缘脱敏及游戏/数据域/版本/资源公开字段投影。
+- **[manifest_projection.py](file:///d:/Project/Active/Game%20Manifest%20Index/backend/manifest_projection.py)**（583 行）：库洛画质包（`resource-packs.json`）、文件清单元数据、Sophon Chunk 文档及版本对比投影。
+- **[api_contract.py](file:///d:/Project/Active/Game%20Manifest%20Index/backend/api_contract.py)**（658 行）：`ApiContract` 协调器与公开 HTTP 路由挂载：
 
 | 路由 | 职责 |
 | --- | --- |
@@ -129,9 +135,9 @@ data/
 
 ### 3.3 远端/本地清单解析层
 
-- **[manifest_readers.py](file:///d:/Project/Active/Game%20Manifest%20Index/backend/manifest_readers.py)**（865 行）：
+- **[manifest_readers.py](file:///d:/Project/Active/Game%20Manifest%20Index/backend/manifest_readers.py)**（867 行）：
   - 解析本地核验的清单与官方 MiHoYo Sophon Chunk 资源（Protobuf + Zstandard），带条目数/字节上限与 LRU 内存缓存（`MAX_CHUNK_MANIFEST_CACHE_ENTRIES = 8`、`64 MiB`），严格限制官方主机白名单（`OFFICIAL_SOPHON_HOSTS`：`autopatchcn.yuanshen.com`、`autopatchcn.bhsr.com`、`autopatchcn.juequling.com`、`autopatchcn.bh3.com`）并防止路径穿越（`strict_relative_posix`）。
-- **[mihoyo_package_files.py](file:///d:/Project/Active/Game%20Manifest%20Index/backend/mihoyo_package_files.py)**（773 行）：
+- **[mihoyo_package_files.py](file:///d:/Project/Active/Game%20Manifest%20Index/backend/mihoyo_package_files.py)**（700 行）：
   - 通过 HTTP Range 等受界读取方式解析 MiHoYo 官方安装包分卷/ZIP 内文件清单与详情，用于支持包内文件浏览与版本文件级对比。
 
 ### 3.4 后台鉴权路由、版本/目录管理与运维调度
@@ -139,8 +145,8 @@ data/
 - **鉴权与路由（[admin_routes.py](file:///d:/Project/Active/Game%20Manifest%20Index/backend/admin_routes.py)）**：
   - 使用 `Authorization: Bearer <token>` + 常量时间比对（`hmac.compare_digest`）保护 `/api/v1/admin/*`。
   - 包含：调度配置 CRUD（`/sync/schedule`、`/probe/schedule`、`/probe/scheduler`）、单链接/批量链接探活（`/probe/url`、`/probe/urls`）、单版本探活（`/domains/{domain_id}/versions/{version}/probe`）、异步运维任务（`/operations/start|latest|{job_id}|{job_id}/cancel`）、目录与版本管理（`/catalog`、`/games`、`/domains`、`/domains/{domain_id}/versions`、`/editable`、`/artifacts/edit`）。
-- **目录与版本维护（[catalog_admin.py](file:///d:/Project/Active/Game%20Manifest%20Index/backend/catalog_admin.py)、[version_admin.py](file:///d:/Project/Active/Game%20Manifest%20Index/backend/version_admin.py)）**：
-  - `catalog_admin.py`：游戏与数据域配置 CRUD 及空目录安全删除。
+- **目录与版本维护（[catalog_admin.py](file:///d:/Project/Active/Game%20Manifest%20Index/backend/catalog_admin.py)、[admin_catalog_service.py](file:///d:/Project/Active/Game%20Manifest%20Index/backend/admin_catalog_service.py) — 339 行、[version_admin.py](file:///d:/Project/Active/Game%20Manifest%20Index/backend/version_admin.py) — 605 行）**：
+  - `catalog_admin.py` + `admin_catalog_service.py`：`catalog.admin.json` 底层配置读写、后台目录聚合投影（`catalog_projection`）以及游戏/数据域 CRUD 与空目录安全删除。
   - `version_admin.py`：手工录入单 APK 版本、在线编辑现有版本元信息/APK/PC `artifacts`（保留原有不可变身份与血缘或按 Schema v2 重新生成合法 `artifact_id`）、切换 `is_visible`、永久删除版本快照。
 - **探活写回与异步运维（[admin_probe.py](file:///d:/Project/Active/Game%20Manifest%20Index/backend/admin_probe.py)、[admin_operations.py](file:///d:/Project/Active/Game%20Manifest%20Index/backend/admin_operations.py)、[probe_scheduler.py](file:///d:/Project/Active/Game%20Manifest%20Index/backend/probe_scheduler.py)、[telegram_notify.py](file:///d:/Project/Active/Game%20Manifest%20Index/backend/telegram_notify.py)）**：
   - **单目标写回原则**：`probe_records` 只更新目标 `artifacts[].urls[].current`，不改写 `artifact_id`、血缘 provenance、references 与其它候选 URL。
@@ -167,6 +173,8 @@ data/
     - Kuro（`wuwa`）：`kuro_manifests.py`（含新版资源包端点的资源发现与清单）
     - Perfect World（`tof`、`p5x`、`nte`）：`perfectworld_patcher.py`
     - Hypergryph（`arknights`、`endfield`）：`hypergryph_game_packages.py`
+  - **独立 CLI 采集/导入模块（暂未挂入默认定时注册表）**：
+    - Manjuu（`azurpromilia`）：`url_adapters/android/manjuu_azurpromilia.py`（官方下载站重定向发现）与 `url_adapters/pc/manjuu_azurpromilia.py`（启动器清单解密导入）。
   - 公共基础能力：`url_adapters/common.py`、`url_adapters/endpoints.json`。
 
 ### 4.2 URL 探活适配器（`probe_adapters/`）
@@ -194,12 +202,14 @@ data/
 ### 5.2 前台页面模块（`ArchiveView` 生态）
 
 ```text
-ArchiveView.vue (1574 行: 路由协同、弹窗状态、领域呈现编排)
-├── Composables (状态加载与业务逻辑)
-│   ├── useArchiveLoader.ts          # 游戏/域/版本列表与概览加载
-│   ├── useArchiveArtifactsLoader.ts # artifacts、leads、文件树、Chunk 清单分页加载
-│   ├── useArchiveCompare.ts         # 版本对比状态与比较请求
-│   ├── useArchiveExport.ts          # 下载/导出 JSON 与外链构造
+ArchiveView.vue (1261 行: 路由协同、弹窗状态、领域呈现编排)
+├── Composables (状态加载、筛选与呈现编排)
+│   ├── useArchiveLoader.ts            # 游戏/域/版本列表与概览加载
+│   ├── useArchiveArtifactsLoader.ts   # artifacts、leads、文件树、Chunk 清单分页加载
+│   ├── useArchiveFiltersAndPacks.ts   # 鸣潮画质包状态、文件类型与 Chunk 组件筛选 (223 行)
+│   ├── useArchivePresentationMeta.ts  # 面板标题、文件时间/体积摘要与历史归档引导 (257 行)
+│   ├── useArchiveCompare.ts           # 版本对比状态与比较请求
+│   ├── useArchiveExport.ts            # 下载/导出 JSON 与外链构造
 │   └── useAvailabilityInvalidation.ts # 跨标签页监听后台探活失效刷新
 ├── 领域工具与纯函数
 │   ├── domain-presentation.ts       # 按厂商/模式决定卡片字段、模式页签与标签映射
@@ -229,17 +239,22 @@ ArchiveView.vue (1574 行: 路由协同、弹窗状态、领域呈现编排)
 ### 5.3 后台管理控制台（`AdminView` 生态）
 
 ```text
-AdminView.vue (730 行: 鉴权生命周期、全局 Toast/Confirm、跨 Tab 持久化状态宿主)
-├── 专属样式 (仅 /admin Chunk 加载)
-│   ├── styles/admin-legacy.css
-│   ├── styles/admin-responsive.css
-│   └── styles/admin.css
+AdminView.vue (729 行: 鉴权生命周期、全局 Toast/Confirm、跨 Tab 持久化状态宿主)
+├── 专属样式 (仅 /admin Chunk 按层叠顺序加载)
+│   ├── styles/admin-shell.css       (976 行: 外壳、左侧导航栏、登录页、全局通知、双栏骨架)
+│   ├── styles/admin-catalog.css     (1013 行: 游戏/数据模块表单、图标预览、控件与标准按钮)
+│   ├── styles/admin-content.css     (1635 行: 版本级联栏、健康概览、版本分组与 APK/PC 卡片)
+│   ├── styles/admin-operations.css  (746 行: 探活调度面板、运维控制台与终端日志窗口)
+│   ├── styles/admin.css             (572 行: 配置台 v2 扁平化覆盖层，0 重复块)
+│   └── styles/admin-responsive.css  (345 行: 后台窄屏与断点适配层)
 ├── Composables (全部在 AdminView 创建，切换 Tab 不丢失状态)
-│   ├── admin-shell.ts               # AdminShell 共享接口契约
-│   ├── useAdminContent.ts (1062 行) # 版本草稿编辑/新建、URL 探活、JSON/列表双模式、校验与保存
-│   ├── useAdminVersionList.ts (365行)# 游戏/模块级联下拉、搜索/健康筛选、分层折叠与自动展开
-│   ├── useAdminProbe.ts (148 行)    # 采集计划与探活定时参数及状态轮询
-│   └── useAdminOperations.ts (436行)# 批量运维启动/取消/日志增量轮询/结果筛选
+│   ├── admin-shell.ts                  # AdminShell 共享接口契约
+│   ├── useAdminContent.ts (726 行)     # 版本加载/保存、可见性、单版本探活与整体编排
+│   │   ├── useAdminArtifactDrafts.ts (220 行) # 可视化/JSON 双模式草稿增删与单 URL 探测
+│   │   └── useAdminVersionCreate.ts  (262 行) # 手工录入单 APK 新版本草稿校验与提交
+│   ├── useAdminVersionList.ts (365 行) # 游戏/模块级联下拉、搜索/健康筛选、分层折叠与自动展开
+│   ├── useAdminProbe.ts (148 行)       # 采集计划与探活定时参数及状态轮询
+│   └── useAdminOperations.ts (436 行)  # 批量运维启动/取消/日志增量轮询/结果筛选
 ├── 领域工具
 │   ├── admin-version-editor.ts      # Draft 转换、规范化对比、PC 差分校验与状态徽标
 │   ├── admin-ui-capabilities.ts / admin-format.ts / admin-date-time.ts / operation-scope.ts
@@ -259,7 +274,7 @@ AdminView.vue (730 行: 鉴权生命周期、全局 Toast/Confirm、跨 Tab 持�
 - **前台全局 CSS（`src/styles.css` 按精确层叠顺序 `@import`）**：
   `base.css` → `layout-sidebar.css` → `control-strip-picker.css` → `file-panel-cards.css` → `chunks-toast.css` → `compare-view.css` → `remote-browser-misc.css` → `responsive.css` → `modals.css`。
 - **组件作用域 CSS**：`src/styles/chunk-file-browser.css` 由 `ChunkFileBrowser.vue` 以 `<style scoped src>` 引入（详情弹窗样式已外提至 `ChunkFileDetailModal.vue`）。
-- **后台独立 CSS**：`admin-legacy.css` + `admin-responsive.css` + `admin.css` 仅由懒加载的 `AdminView.vue` 引入，前台 CSS 构建体积约 `111.56 kB`（gzip `19.81 kB`），后台约 `77.71 kB`（gzip `14.03 kB`）。
+- **后台独立 CSS**：`admin-shell.css` + `admin-catalog.css` + `admin-content.css` + `admin-operations.css` + `admin.css` + `admin-responsive.css` 仅由懒加载的 `AdminView.vue` 按层叠顺序引入，前台 CSS 构建体积约 `116.76 kB`（gzip `20.88 kB`），后台约 `76.03 kB`（gzip `13.79 kB`）。
 
 ---
 
@@ -267,10 +282,10 @@ AdminView.vue (730 行: 鉴权生命周期、全局 Toast/Confirm、跨 Tab 持�
 
 ### 6.1 自动化测试体系
 
-- **前端测试（Vitest + jsdom，共 28 个测试文件 / 407 项测试）**：
+- **前端测试（Vitest + jsdom，共 30 个测试文件 / 400 项测试）**：
   - 覆盖路由与状态持久化（`route-state.test.ts`、`version-routing.test.ts`、`archive-navigation.test.ts`）、领域呈现与格式工具（`domain-presentation.test.ts`、`game-activity.test.ts`、`admin-format.test.ts`、`admin-date-time.test.ts`）、Chunk 解析与多选下载（`chunk-download.test.ts`、`chunk-directory-download.test.ts`、`chunk-file-browser.test.ts`、`selected-file-download.test.ts`、`wuwa-file-manifest.test.ts`、`azurpromilia-catalog.test.ts`）、API 与后台能力（`api.test.ts`、`admin-view-capabilities.test.ts`、`operation-scope.test.ts` 等）。
-- **后端与适配器测试（`pytest`）**：
-  - `backend/test_*.py`（21 个测试文件）：覆盖 Schema v2、存储锁与事务、索引、公开 API 契约（`test_api_contract.py`）、管理员版本/操作/调度/通知、内存上界与基线审计。
+- **后端与适配器测试（`unittest` / `pytest`）**：
+  - `backend/test_*.py`（20 个测试文件）：覆盖底层原语与零跨模块私有导入校验（`test_backend_primitives.py`）、Schema v2、存储锁与事务、索引、公开 API 契约（`test_api_contract.py`）、管理员版本/操作/调度/通知、内存上界与基线审计。
   - `url_adapters/**/test_*.py` & `probe_adapters/test_*.py`：覆盖各厂商官方发现与探活适配回归测试。
 
 ### 6.2 一次性迁移/恢复脚本（`scripts/`）
