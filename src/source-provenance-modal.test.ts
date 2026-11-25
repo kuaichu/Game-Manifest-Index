@@ -42,6 +42,20 @@ it("keeps current PC collection links separate from historical import sources", 
       expect(history).toBeDefined();
       expect(history!.contains(currentLink)).toBe(false);
     }
+    const azurCard = cards.find((item) => item.querySelector(".game-id-tag")?.textContent === "azurpromilia")!;
+    const azurLink = azurCard.querySelector<HTMLAnchorElement>(".upstream-link-badge")!;
+    expect(new URL(azurLink.href).hostname).toBe("api-grp.manjuu.com");
+    expect(azurCard.querySelector(".channel-endpoint")?.textContent).toBe(
+      "api-grp.manjuu.com/activity/web/download/info",
+    );
+    const azurHistory = Array.from(azurCard.querySelectorAll(".provenance-row"))
+      .find((row) => row.querySelector(".row-label")?.textContent?.includes("历史来源"));
+    expect(azurHistory).toBeDefined();
+    expect(azurHistory!.contains(azurLink)).toBe(false);
+    expect(Array.from(azurCard.querySelectorAll(".host-tag"), (tag) => tag.textContent?.trim())).toEqual([
+      "syncstation.manjuu.com",
+      "l2-syncstation.manjuu.com",
+    ]);
   } finally {
     app.unmount();
     host.remove();
