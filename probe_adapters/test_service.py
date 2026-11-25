@@ -1,9 +1,15 @@
+import ast
+import inspect
 import unittest
 from copy import deepcopy
+from pathlib import Path
 from unittest.mock import patch
 
 from backend.schema_v2 import artifact_id
+from probe_adapters.android import shared_generic_apk
 from probe_adapters.common import ProbeError, ProbeObservation
+from probe_adapters.registry import ANDROID_ADAPTERS, PC_ADAPTERS
+from probe_adapters import service as probe_service
 from probe_adapters.service import current_from_result, probe
 
 
@@ -59,9 +65,147 @@ class ProbeServiceTests(unittest.TestCase):
         url = "https://autopatchcn.yuanshen.com/game.apk"
         error = ProbeError("failed", returncode=56, final_url=url)
         with patch("probe_adapters.service.probe_url", side_effect=error), patch("probe_adapters.service.probe_head") as head_probe:
-            with self.assertRaises(ProbeError):
+            with self.assertRaises(ProbeError) as ctx:
                 probe(url, vendor="mihoyo", game_id="hk4e")
         head_probe.assert_not_called()
+        self.assertEqual(getattr(ctx.exception, "adapter", None), "mihoyo_autopatch")
+
+    def test_bh3_head_fallback_success_projects_official_storage_metadata(self):
+        url = "https://bundle.bh3.com/public/Android/archived.apk"
+        error = ProbeError(
+            "reset", returncode=56, status=206, final_url=url,
+            headers={"content-range": "bytes 0-15/456"},
+        )
+        head_headers = {
+            "content-length": "456",
+            "x-oss-storage-class": "Archive",
+            "x-oss-hash-crc64ecma": "9999",
+        }
+        with patch("probe_adapters.service.probe_url", side_effect=error), patch(
+            "probe_adapters.service.probe_head",
+            return_value=(200, head_headers, url),
+        ) as head_probe:
+            result = probe(url, vendor="mihoyo", game_id="bh3", expected_size=456)
+        head_probe.assert_called_once_with(url, 10)
+        self.assertEqual(result["adapter"], "mihoyo_bh3_cdn")
+        self.assertEqual(result["platform"], "android")
+        self.assertIs(result["available"], False)
+        self.assertIsNone(result["http_code"])
+        self.assertEqual(result["metadata_http_code"], 200)
+        self.assertEqual(result["size"], 456)
+        self.assertEqual(result["observed_size"], 456)
+        self.assertEqual(result["expected_size"], 456)
+        self.assertEqual(result["crc64"], "9999")
+        self.assertEqual(result["reason"], "oss_archive_not_restored")
+        self.assertEqual(result["confidence"], "high")
+        self.assertEqual(result["source_kind"], "official_storage_metadata")
+        self.assertEqual(result["transport_returncode"], 56)
+        self.assertEqual(result["bytes_received"], 0)
+
+    def test_bh3_head_fallback_recovers_from_range_archive_evidence_when_head_fails(self):
+        url = "https://bundle.bh3.com/public/Android/archived.apk"
+        error = ProbeError(
+            "reset", returncode=56, status=502, final_url=url,
+            headers={"x-oss-hash-crc64ecma": "7777"},
+            body=b"<Error><Code>InvalidObjectState</Code></Error>",
+        )
+        head_error = ProbeError("head timeout", returncode=28)
+        with patch("probe_adapters.service.probe_url", side_effect=error), patch(
+            "probe_adapters.service.probe_head",
+            side_effect=head_error,
+        ) as head_probe:
+            result = probe(url, vendor="mihoyo", game_id="bh3", expected_size=456)
+        head_probe.assert_called_once_with(url, 10)
+        self.assertIs(result["available"], False)
+        self.assertIsNone(result["http_code"])
+        self.assertEqual(result["metadata_http_code"], 502)
+        self.assertEqual(result["crc64"], "7777")
+        self.assertEqual(result["reason"], "oss_archive_not_restored")
+        self.assertEqual(result["source_kind"], "official_storage_metadata")
+        self.assertEqual(result["transport_returncode"], 56)
+        self.assertEqual(result["bytes_received"], 0)
+
+    def test_bh3_head_fallback_redirect_to_retired_host_returns_static_preflight(self):
+        url = "https://bundle.bh3.com/public/Android/old.apk"
+        retired = "https://app.bh3.com/public/Android/old.apk"
+        error = ProbeError("reset", returncode=56, final_url=url)
+        with patch("probe_adapters.service.probe_url", side_effect=error), patch(
+            "probe_adapters.service.probe_head",
+            return_value=(200, {}, retired),
+        ) as head_probe:
+            result = probe(url, vendor="mihoyo", game_id="bh3", expected_size=100)
+        head_probe.assert_called_once_with(url, 10)
+        self.assertIs(result["available"], False)
+        self.assertEqual(result["url"], retired)
+        self.assertIsNone(result["http_code"])
+        self.assertEqual(result["reason"], "retired_official_host")
+        self.assertEqual(result["source_kind"], "adapter_policy")
+
+    def test_bh3_head_fallback_failure_paths_preserve_adapter_on_probe_error(self):
+        url = "https://bundle.bh3.com/public/Android/unconfirmed.apk"
+        range_error = ProbeError("reset", returncode=56, status=206, final_url=url)
+        with patch("probe_adapters.service.probe_url", side_effect=range_error), patch(
+            "probe_adapters.service.probe_head",
+            return_value=(200, {"content-length": "456", "content-type": "application/vnd.android.package-archive"}, url),
+        ):
+            with self.assertRaisesRegex(ProbeError, r"HEAD fallback 无法确认资源（HTTP 200）") as unconfirmed_ctx:
+                probe(url, vendor="mihoyo", game_id="bh3", expected_size=456)
+        self.assertEqual(unconfirmed_ctx.exception.status, 200)
+        self.assertEqual(unconfirmed_ctx.exception.final_url, url)
+        self.assertEqual(getattr(unconfirmed_ctx.exception, "adapter", None), "mihoyo_bh3_cdn")
+
+        head_error = ProbeError("head failed", returncode=28)
+        with patch("probe_adapters.service.probe_url", side_effect=range_error), patch(
+            "probe_adapters.service.probe_head",
+            side_effect=head_error,
+        ):
+            with self.assertRaisesRegex(ProbeError, "head failed") as head_ctx:
+                probe(url, vendor="mihoyo", game_id="bh3", expected_size=456)
+        self.assertIs(head_ctx.exception, head_error)
+        self.assertEqual(getattr(head_ctx.exception, "adapter", None), "mihoyo_bh3_cdn")
+
+    def test_service_avoids_locals_and_all_availability_hooks_accept_evidence_kwargs(self):
+        source = Path(probe_service.__file__).read_text(encoding="utf-8")
+        tree = ast.parse(source, filename=probe_service.__file__)
+        locals_refs = [
+            node for node in ast.walk(tree)
+            if isinstance(node, ast.Name) and node.id == "locals"
+        ]
+        self.assertEqual(locals_refs, [])
+
+        evidence_kwargs = {
+            "observed_size": 16,
+            "expected_size": 16,
+            "transport_returncode": 0,
+            "bytes_received": 16,
+        }
+        checked = 0
+        for adapter in (*ANDROID_ADAPTERS, *PC_ADAPTERS, shared_generic_apk):
+            availability = getattr(adapter, "availability", None)
+            if availability is None:
+                continue
+            checked += 1
+            with self.subTest(adapter=adapter.NAME, module=adapter.__name__):
+                params = inspect.signature(availability).parameters.values()
+                has_var_keyword = any(
+                    param.kind == inspect.Parameter.VAR_KEYWORD for param in params
+                )
+                accepted_names = {
+                    param.name for param in params
+                    if param.kind in (
+                        inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                        inspect.Parameter.KEYWORD_ONLY,
+                    )
+                }
+                self.assertTrue(
+                    has_var_keyword or set(evidence_kwargs).issubset(accepted_names),
+                    f"{adapter.__name__}.availability does not accept all evidence kwargs",
+                )
+                verdict = availability(
+                    206, "sample.apk", b"PK\x03\x04" + b"\x00" * 12, **evidence_kwargs,
+                )
+                self.assertIn(verdict, (True, False, None))
+        self.assertGreater(checked, 0)
 
     def test_bh3_readable_range_does_not_use_head(self):
         url = "https://bundle.bh3.com/public/Android/readable.apk"
