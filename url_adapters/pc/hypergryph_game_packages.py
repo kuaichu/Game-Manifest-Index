@@ -14,7 +14,7 @@ from urllib.parse import urlsplit
 
 from backend.schema_v2 import artifact_id, record_identity, validate_v2_record
 from backend.version_store import (
-    VersionStoreError, _persist_v2_record_locked, _read_existing_record,
+    VersionStoreError, persist_v2_record_locked, read_existing_record,
     record_index_transaction,
 )
 from url_adapters.common import AdapterError, curl, print_error
@@ -224,12 +224,12 @@ def discover_collection(collection: HypergryphPackageCollection, output_root: Pa
     try:
         with record_index_transaction(record, root) as target:
             try:
-                existing = _read_existing_record(target)
+                existing = read_existing_record(target)
             except FileNotFoundError:
                 existing = None
             if existing is not None:
                 record = _merge_existing(record, existing)
-            return _persist_v2_record_locked(
+            return persist_v2_record_locked(
                 record, root, target, preserve_references=True,
                 preserve_provenance=True, preserve_url_current=True,
             )
