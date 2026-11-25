@@ -23,6 +23,7 @@ GAME_CATALOG: tuple[tuple[str, str, str], ...] = (
     ("nte", "异环", "Neverness to Everness"),
     ("tof", "幻塔", "Tower of Fantasy"),
     ("p5x", "女神异闻录：夜幕魅影", "Persona 5: The Phantom X"),
+    ("azurpromilia", "蓝色星原：旅谣", "Azur Promilia"),
 )
 GAME_IDS: frozenset[str] = frozenset(item[0] for item in GAME_CATALOG)
 
@@ -41,7 +42,7 @@ LOCAL_OFFICIAL_HOSTS: dict[str, frozenset[str]] = {
             "htcdn1.wmupd.com",
         }
     ),
-    "manjuu": frozenset({"syncstation.manjuu.com"}),
+    "manjuu": frozenset({"syncstation.manjuu.com", "l2-syncstation.manjuu.com"}),
 }
 
 OFFICIAL_SOPHON_HOSTS: frozenset[str] = frozenset(

@@ -6,7 +6,7 @@
 
 ## 1. 系统定位与总体分层
 
-**Game Manifest Index (GMI V5)** 是一个面向二次元游戏客户端历史版本与官方分发包清单的索引、探活、浏览与下载系统，覆盖 Android APK 与 Windows/PC 安装包、增量补丁、Chunk 清单及文件清单（支持 `mihoyo`、`hypergryph`、`kuro`、`perfectworld`、`manjuu` 等厂商，核心公开目录含 12 款主支持游戏及独立配置的非默认数据域/测试目录）。
+**Game Manifest Index (GMI V5)** 是一个面向二次元游戏客户端历史版本与官方分发包清单的索引、探活、浏览与下载系统，覆盖 Android APK 与 Windows/PC 安装包、增量补丁、Chunk 清单及文件清单（支持 `mihoyo`、`hypergryph`、`kuro`、`perfectworld`、`manjuu` 等厂商，核心公开目录含 13 款主支持游戏及独立配置的非默认数据域/测试目录）。
 
 系统总体分为 5 个核心层次：
 
@@ -162,27 +162,27 @@ data/
 
 严格遵守**官方源原则**（仅访问游戏厂商官方接口、启动器配置或 CDN 清单）：
 - **调度入口（[url_adapters/service.py](file:///d:/Project/Active/Game%20Manifest%20Index/url_adapters/service.py)）**：
-  - `DISCOVERERS`（12 款 Android）：
+  - `DISCOVERERS`（13 款 Android）：
     - MiHoYo：`hk4e`、`hkrpg`、`nap`（`mihoyo_download_porter.py`），`bh3`（`mihoyo_bh3_download_porter.py`），`bh2`（`mihoyo_bh2_download_page.py`）
     - Hypergryph：`arknights`、`endfield`（`hypergryph_launcher_latest.py`）
     - Kuro：`wuwa`（`kuro_wuwa_mc_manifest.py`）、`pns`（`kuro_pns_manifest.py`）
     - Perfect World：`tof`、`p5x`、`nte`（`perfectworld_webops.py`）
-    - 另含各厂商 APK 解析与组织辅助（`*_apk_organizer.py`、`apk_manifest.py`）。
-  - `PC_DISCOVERERS`（10 款 PC）：
+    - Manjuu：`azurpromilia`（`manjuu_azurpromilia.py`）
+    - 另含原生 Schema v2 组织构建器与厂商 APK 解析辅助（`apk_v2_organizer.py`、`*_apk_organizer.py`、`apk_manifest.py`）。
+  - `PC_DISCOVERERS`（11 款 PC）：
     - MiHoYo（`hk4e`、`hkrpg`、`nap`、`bh3`）：两阶段并行写入同一规范记录——`mihoyo_game_packages.py`（包与补丁）+ `mihoyo_chunk_manifests.py`（Sophon Chunk 清单）
     - Kuro（`wuwa`）：`kuro_manifests.py`（含新版资源包端点的资源发现与清单）
     - Perfect World（`tof`、`p5x`、`nte`）：`perfectworld_patcher.py`
     - Hypergryph（`arknights`、`endfield`）：`hypergryph_game_packages.py`
-  - **独立 CLI 采集/导入模块（暂未挂入默认定时注册表）**：
-    - Manjuu（`azurpromilia`）：`url_adapters/android/manjuu_azurpromilia.py`（官方下载站重定向发现）与 `url_adapters/pc/manjuu_azurpromilia.py`（启动器清单解密导入）。
+    - Manjuu（`azurpromilia`）：`manjuu_azurpromilia.py`（官方 PC 启动器 `packageconfig` 在线签名发现与本地抓包导入）
   - 公共基础能力：`url_adapters/common.py`、`url_adapters/endpoints.json`。
 
 ### 4.2 URL 探活适配器（`probe_adapters/`）
 
 - **唯一分发路由（[probe_adapters/registry.py](file:///d:/Project/Active/Game%20Manifest%20Index/probe_adapters/registry.py)）**：
   - 根据 `platform`、`vendor`、`game_id` 与 URL 精确匹配唯一适配器（多匹配或无匹配时报错，Android 末位可回退 `shared_generic_apk`）。
-- **Android 适配器（`probe_adapters/android/`）**：`mihoyo_autopatch.py`、`mihoyo_bh3_cdn.py`、`mihoyo_bh2_benghuai.py`、`hypergryph_arknights_hycdn.py`、`hypergryph_endfield_hycdn.py`、`kuro_wuwa_mc_cdn.py`、`kuro_pns_txcdn.py`、`perfectworld_webops.py`、`shared_generic_apk.py`。
-- **PC 适配器（`probe_adapters/pc/`）**：`hypergryph_arknights.py`、`hypergryph_endfield.py`、`mihoyo_autopatch.py`、`mihoyo_bh3_cdn.py`、`kuro_cdn.py`、`perfectworld_patcher.py`（配合 `mihoyo_package_common.py`）。
+- **Android 适配器（`probe_adapters/android/`）**：`mihoyo_autopatch.py`、`mihoyo_bh3_cdn.py`、`mihoyo_bh2_benghuai.py`、`hypergryph_arknights_hycdn.py`、`hypergryph_endfield_hycdn.py`、`kuro_wuwa_mc_cdn.py`、`kuro_pns_txcdn.py`、`perfectworld_webops.py`、`manjuu_syncstation.py`、`shared_generic_apk.py`。
+- **PC 适配器（`probe_adapters/pc/`）**：`hypergryph_arknights.py`、`hypergryph_endfield.py`、`mihoyo_autopatch.py`、`mihoyo_bh3_cdn.py`、`kuro_cdn.py`、`perfectworld_patcher.py`、`manjuu_syncstation.py`（配合 `mihoyo_package_common.py`）。
 - **公共探活核心（[probe_adapters/common.py](file:///d:/Project/Active/Game%20Manifest%20Index/probe_adapters/common.py)、[probe_adapters/service.py](file:///d:/Project/Active/Game%20Manifest%20Index/probe_adapters/service.py)）**：
   - 使用子进程硬超时、Range/HEAD 探测、HTTP 403 明确判定不可用、OSS 未解冻归档识别等规则生成 `current` 证据；通过 [android_record_compat.py](file:///d:/Project/Active/Game%20Manifest%20Index/backend/android_record_compat.py) 将结果映射回 Schema v2 字段。
 

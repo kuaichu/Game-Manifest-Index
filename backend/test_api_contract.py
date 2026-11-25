@@ -819,7 +819,13 @@ class TemporaryContractTests(unittest.TestCase):
         })
         mirror_artifact["urls"][0]["source_kind"] = "mirror"
         write_record(self.root, record("mihoyo", "hk4e", "android", "6.0.2", [mirror_artifact]))
-        azur_record = record("manjuu", "azurpromilia", "android", "0.3.0", [
+        azur_segment = artifact("pg_chunk.0002", kind="package", current={
+            "state": "available", "http_code": 206, "checked_at": stamp,
+        })
+        azur_segment["package_type"] = "segment"
+        azur_segment["part"] = 2
+        azur_pc_record = record("manjuu", "azurpromilia", "windows", "0.3.0.6", [azur_segment])
+        azur_android_record = record("manjuu", "azurpromilia", "android", "0.3.0", [
             artifact("game.apk", kind="apk", current={"state": "available", "http_code": 206, "checked_at": stamp}),
         ])
         endfield_record = record("hypergryph", "endfield", "windows", "1.0.0", [
@@ -828,11 +834,13 @@ class TemporaryContractTests(unittest.TestCase):
         rebuild_indexes(self.root)
         mirror = self.get_probed_url("/api/v1/domains/hk4e-android/versions/6.0.2/artifacts?q=mirror")
         with patch("backend.api_contract._utc_now", lambda: FROZEN_NOW):
-            azur = _public_artifact(azur_record, azur_record["artifacts"][0])["urls"][0]
+            azur_unprobed = _public_artifact(azur_pc_record, azur_pc_record["artifacts"][0])["urls"][0]
+            azur_android = _public_artifact(azur_android_record, azur_android_record["artifacts"][0])["urls"][0]
             endfield = _public_artifact(endfield_record, endfield_record["artifacts"][0])["urls"][0]
-        for url in (mirror, azur, endfield):
+        for url in (mirror, azur_unprobed, endfield):
             self.assertEqual(url["current"]["evidence_status"], "unverified")
             self.assertIsNone(url["current"]["expires_at"])
+        self.assertEqual(azur_android["current"]["evidence_status"], "stale")
 
     def test_stale_available_evidence_does_not_count_as_currently_available(self):
         write_record(self.root, record("mihoyo", "hk4e", "android", "6.1.1", [
@@ -1629,10 +1637,13 @@ class CheckedInContractTests(unittest.TestCase):
         self.assertEqual((game["name"], game["platform"]), ("蓝色星原：旅谣", "multi"))
         response = self.client.get("/api/v1/games/azurpromilia/domains")
         self.assertEqual(response.status_code, 200, response.text)
-        domain = response.json()[0]
+        domains = response.json()
+        domain = domains[0]
         self.assertEqual(domain["capabilities"], ["packages", "files", "archive"])
         self.assertFalse(domain["capability_contract"]["live_probe"])
         self.assertEqual(domain["capability_contract"]["availability_source_kinds"], ["metadata_inference"])
+        android_domain = next(item for item in domains if item["id"] == "azurpromilia-android")
+        self.assertEqual(android_domain["capability_contract"]["availability_source_kinds"], [])
         prefix = "/api/v1/domains/azurpromilia-pc/versions/0.3.0.6"
         first = self.client.get(prefix + "/artifacts", params={"kind": "package", "limit": 500}).json()
         self.assertEqual(first["total"], 645)

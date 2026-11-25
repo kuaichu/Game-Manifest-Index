@@ -237,20 +237,55 @@ class ScheduledProbeEngineTests(unittest.TestCase):
         self.assertEqual(finished["result"]["probe"]["checked"], 2)
         self.assertEqual(set(calls), {"old.7z", "new.7z"})
 
-    def test_azurpromilia_android_and_pc_never_enter_scheduled_probe(self):
+    def test_azurpromilia_probes_android_apk_and_pc_sentinels_only(self):
         stamp = (NOW - timedelta(hours=21)).isoformat().replace("+00:00", "Z")
-        for platform in ("android", "windows"):
-            write_v2_record(
-                _record(platform, [_url("game.bin", checked_at=stamp)],
-                        game_id="azurpromilia", vendor="manjuu"), self.data,
-            )
+        android_record = _record(
+            "android", [_url("azurpromilia/android/c000/test.apk", checked_at=stamp)],
+            game_id="azurpromilia", vendor="manjuu",
+        )
+        pc_record = _record(
+            "windows", [_url("azurpromilia/pg_chunk/c000/part1", checked_at=stamp)],
+            game_id="azurpromilia", vendor="manjuu",
+        )
+        pc_identity = {
+            key: pc_record[key]
+            for key in ("vendor", "game_id", "domain_id", "platform", "channel", "version")
+        }
+        pc_artifacts = [
+            {
+                "kind": "package", "component": "game", "package_type": "segment",
+                "delivery_mode": "direct", "name": f"pg_chunk.{part:04d}", "part": part,
+                "size": 10, "checksum": {"md5": "a" * 32},
+                "urls": [_url(f"azurpromilia/pg_chunk/c000/part{part}", checked_at=stamp)],
+            }
+            for part in (1, 2, 3)
+        ] + [{
+            "kind": "package", "component": "game", "package_type": "full",
+            "delivery_mode": "file_manifest", "name": "AzurPromilia-1.0.0-pg_item_v2",
+            "size": 30, "decompressed_size": 30,
+            "manifest": {"path": "manifests/1.0.0/pg_item_v2.json", "base_urls": [_url("azurpromilia/pg_item_v2/target/")]},
+            "urls": [_url("azurpromilia/pg_item_v2/c000/mf-1.txt", checked_at=stamp)],
+        }]
+        for item in pc_artifacts:
+            item["artifact_id"] = artifact_id(item, record_identity=pc_identity)
+        pc_record["artifacts"] = pc_artifacts
+        validate_v2_record(pc_record)
+        self._save(android_record)
+        self._save(pc_record)
+
+        probed_names: list[str] = []
+
+        def probe(url, **kwargs):
+            probed_names.append(url.rsplit("/", 1)[-1])
+            return _probe(url, **kwargs)
+
         manager = OperationManager(AdminStateStore(self.state), self.data,
-                                   probe_fn=lambda *_args, **_kwargs: self.fail("Azur Promilia was probed"),
-                                   clock=lambda: NOW)
+                                   probe_fn=probe, current_fn=current_from_result, clock=lambda: NOW)
         manager.start(["probe"], ["azurpromilia"], "all", 5, 1, scheduled_mode="full")
         finished = self._wait(manager)
-        self.assertEqual(finished["result"]["probe"]["selected"], 0)
-        self.assertEqual(finished["result"]["probe"]["checked"], 0)
+        self.assertEqual(finished["result"]["probe"]["selected"], 3)
+        self.assertEqual(finished["result"]["probe"]["checked"], 3)
+        self.assertEqual(set(probed_names), {"test.apk", "part1", "mf-1.txt"})
 
     def test_confirmed_unavailable_stops_future_scheduled_probes(self):
         stamp = (NOW - timedelta(hours=21)).isoformat().replace("+00:00", "Z")

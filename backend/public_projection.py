@@ -522,7 +522,11 @@ def domain_projection(domain: DomainData, sort_order: int) -> dict[str, Any]:
         }
     )
     adapter = domain_adapter(domain)
-    metadata_only_availability = domain.vendor == "manjuu" and domain.game_id == "azurpromilia"
+    metadata_only_availability = (
+        domain.vendor == "manjuu"
+        and domain.game_id == "azurpromilia"
+        and domain.platform == "windows"
+    )
     return {
         "id": domain.domain_id,
         "game_id": domain.game_id,
@@ -549,9 +553,9 @@ def domain_projection(domain: DomainData, sort_order: int) -> dict[str, Any]:
                 }
             ),
             "checksum_algorithms": checksums,
-            # Azur Promilia is a checked-in launcher archive without a probe
-            # adapter. Its official URLs remain directly usable from metadata;
-            # other domains keep the default probe-gated contract.
+            # Azur Promilia PC probes only its manifest and first segment
+            # sentinel, so unprobed pg_chunk segments remain usable from
+            # metadata unless probe evidence marks a candidate unavailable.
             "availability_source_kinds": ["metadata_inference"] if metadata_only_availability else [],
             "url_providers": providers,
             "features": {

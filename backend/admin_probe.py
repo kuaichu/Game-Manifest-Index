@@ -142,10 +142,11 @@ def iter_records(root: Path, *, scopes: Iterable[str] = ("android", "pc")):
 
 
 def candidates(record: dict[str, Any]):
-    # Azur Promilia's launcher CDN has no registered PC probe adapter yet.
-    # Keep its checked-in URLs browsable without scheduling unsupported probes.
-    if record.get("vendor") == "manjuu" and record.get("game_id") == "azurpromilia":
-        return
+    azurpromilia_pc = (
+        record.get("vendor") == "manjuu"
+        and record.get("game_id") == "azurpromilia"
+        and record.get("platform") == "windows"
+    )
     endfield_pc = (
         record.get("vendor") == "hypergryph"
         and record.get("game_id") == "endfield"
@@ -153,6 +154,13 @@ def candidates(record: dict[str, Any]):
     )
     for artifact_index, artifact in enumerate(record.get("artifacts", [])):
         if not isinstance(artifact, dict) or not isinstance(artifact.get("artifact_id"), str):
+            continue
+        # Azur Promilia PC releases split one package into hundreds of pg_chunk
+        # segments; probe only the file manifest and the first segment sentinel.
+        if azurpromilia_pc and not (
+            artifact.get("delivery_mode") == "file_manifest"
+            or artifact.get("part") == 1
+        ):
             continue
         # Endfield runtime VFS files (.chk/.blc) are historical resources,
         # not downloadable archives. Keep them visible in the archive but
