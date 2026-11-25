@@ -1,18 +1,25 @@
-"""Import a successful Manjuu PC launcher packageconfig without running the launcher."""
+"""Discover or import official Manjuu PC launcher packageconfig releases."""
 
 from __future__ import annotations
 
 import argparse
 import base64
+from copy import deepcopy
 import hashlib
 import json
 import os
 from pathlib import Path
 import re
+import secrets
+import ssl
 import stat
 import tempfile
+import time
+from urllib.error import URLError
 from urllib.parse import unquote, urlsplit
-from urllib.request import HTTPRedirectHandler, Request, build_opener
+from urllib.request import HTTPRedirectHandler, HTTPSHandler, Request, build_opener
+
+import certifi
 
 from backend.schema_v2 import SchemaValidationError, artifact_id, validate_v2_record
 from backend.storage_locks import DATA_LOCK, data_file_lock
@@ -21,8 +28,15 @@ from url_adapters.common import AdapterError, print_error
 
 PACKAGECONFIG_URL = "https://api-grp.manjuu.com/pc-launcher/client/gameversion/packageconfig"
 CDN = "https://syncstation.manjuu.com"
+SALT_ENV = "GMI_MANJUU_LAUNCHER_SALT"
 KEY_ENV = "GMI_MANJUU_MANIFEST_KEY"
 IV_ENV = "GMI_MANJUU_MANIFEST_IV"
+_LAUNCHER_ID = "93cdd43e096046138053253dc56d3562"
+_APP_ID = "354"
+_CHANNEL = "C000"
+_SUB_CHANNEL = "SC000"
+_LAUNCHER_VERSION = "1.0.1.1"
+_PACKAGECONFIG_QUERY = f"launcherId={_LAUNCHER_ID}&uid="
 _CATALOG_LIMIT = 1 << 20
 _MANIFEST_LIMIT = 32 << 20
 _DOCUMENT_LIMIT = 16 << 20  # Limit used by the API when opening a local manifest.
@@ -38,6 +52,14 @@ class _NoRedirect(HTTPRedirectHandler):
         return None
 
 
+def _ssl_context() -> ssl.SSLContext:
+    return ssl.create_default_context(cafile=certifi.where())
+
+
+def _opener():
+    return build_opener(_NoRedirect(), HTTPSHandler(context=_ssl_context()))
+
+
 def _official_url(path: str, prefix: str) -> str:
     if not isinstance(path, str) or not path.startswith(prefix) or not re.fullmatch(r"[-A-Za-z0-9_./=+]+", path):
         raise AdapterError("蛮啾清单路径不属于已验证的官方 CDN 目录")
@@ -46,9 +68,51 @@ def _official_url(path: str, prefix: str) -> str:
     return f"{CDN}/{path}"
 
 
-def _read_config(path: Path) -> tuple[dict, dict[int, tuple[str, int, str]]]:
-    with path.open("rb") as stream:
-        raw = stream.read(_CATALOG_LIMIT + 1)
+def _fetch_live_config(timeout: int, salt: str) -> bytes:
+    timestamp = str(time.time_ns() // 1_000_000)
+    sign_payload = f"{timestamp}{_PACKAGECONFIG_QUERY}{_APP_ID}{_CHANNEL}{salt}"
+    sign = hashlib.md5(sign_payload.encode("utf-8"), usedforsecurity=False).hexdigest()
+    trace_id = secrets.token_hex(16)
+    device_id = secrets.token_hex(16)
+    headers = {
+        "Accept": "application/json, text/plain, */*",
+        "Accept-Encoding": "identity",
+        "User-Agent": f"AzurPromiliaLauncher/{_LAUNCHER_VERSION}",
+        "grp-app-id": _APP_ID,
+        "grp-platform": "Launcher",
+        "grp-channel-code": _CHANNEL,
+        "grp-sub-channel-code": _SUB_CHANNEL,
+        "sdk-version": _LAUNCHER_VERSION,
+        "channel-sdk-version": _LAUNCHER_VERSION,
+        "grp-launcher-version-code": _LAUNCHER_VERSION,
+        "lang": "zh-Hans",
+        "device-id": device_id,
+        "grp-trace-id": trace_id,
+        "grp-client-info": json.dumps(
+            {
+                "device_model": "Launcher",
+                "device_os": "Linux",
+                "app_version": _LAUNCHER_VERSION,
+                "grp_trace_id": trace_id,
+                "spec_device_info": {},
+            },
+            separators=(",", ":"),
+        ),
+        "timestamp": timestamp,
+        "sign": sign,
+    }
+    url = f"{PACKAGECONFIG_URL}?{_PACKAGECONFIG_QUERY}"
+    try:
+        with _opener().open(Request(url, headers=headers), timeout=timeout) as response:
+            raw = response.read(_CATALOG_LIMIT + 1)
+    except (OSError, URLError) as error:
+        raise AdapterError("无法请求蛮啾官方 PC packageconfig 接口") from error
+    if len(raw) > _CATALOG_LIMIT:
+        raise AdapterError("packageconfig 文件过大")
+    return raw
+
+
+def _parse_config(raw: bytes) -> tuple[dict, dict[int, tuple[str, int, str]]]:
     if len(raw) > _CATALOG_LIMIT:
         raise AdapterError("packageconfig 文件过大")
     try:
@@ -82,15 +146,40 @@ def _read_config(path: Path) -> tuple[dict, dict[int, tuple[str, int, str]]]:
     return released, modes
 
 
-def _manifest_bytes(spec: tuple[str, int, str], timeout: int, key: bytes, iv: bytes) -> bytes:
+def _read_config(path: Path) -> tuple[dict, dict[int, tuple[str, int, str]]]:
+    with path.open("rb") as stream:
+        raw = stream.read(_CATALOG_LIMIT + 1)
+    return _parse_config(raw)
+
+
+def _cipher_env() -> tuple[bytes | None, bytes | None]:
+    key = os.environ.get(KEY_ENV, "").encode("utf-8")
+    iv = os.environ.get(IV_ENV, "").encode("utf-8")
+    if not key and not iv:
+        return None, None
+    if len(key) != 24 or len(iv) != 16:
+        raise AdapterError(f"请在运行环境设置 {KEY_ENV}（24 字节）和 {IV_ENV}（16 字节）")
+    return key, iv
+
+
+def _manifest_bytes(
+    spec: tuple[str, int, str], timeout: int, key: bytes | None, iv: bytes | None,
+) -> bytes:
+    url, size, md5 = spec
+    try:
+        with _opener().open(Request(url, headers={"Accept-Encoding": "identity"}), timeout=timeout) as response:
+            raw = response.read(size + 1)
+    except (OSError, URLError) as error:
+        raise AdapterError("无法下载蛮啾官方清单") from error
+    if len(raw) != size or hashlib.md5(raw, usedforsecurity=False).hexdigest() != md5:
+        raise AdapterError("官方清单的大小或 MD5 与 packageconfig 不符")
+    if b"," in raw:
+        return raw
+    if key is None or iv is None or len(key) != 24 or len(iv) != 16:
+        raise AdapterError(f"请在运行环境设置 {KEY_ENV}（24 字节）和 {IV_ENV}（16 字节）")
     from Crypto.Cipher import AES
     from Crypto.Util.Padding import unpad
 
-    url, size, md5 = spec
-    with build_opener(_NoRedirect()).open(Request(url, headers={"Accept-Encoding": "identity"}), timeout=timeout) as response:
-        raw = response.read(size + 1)
-    if len(raw) != size or hashlib.md5(raw, usedforsecurity=False).hexdigest() != md5:
-        raise AdapterError("官方清单的大小或 MD5 与 packageconfig 不符")
     try:
         encrypted = base64.b64decode(raw.strip(), validate=True)
         return unpad(AES.new(key, AES.MODE_CBC, iv).decrypt(encrypted), AES.block_size)
@@ -177,6 +266,95 @@ def _is_regular(path: Path, directory: bool = False) -> bool:
     )
 
 
+def _strip_mutable(record: dict) -> dict:
+    cleaned = deepcopy(record)
+    if not isinstance(cleaned, dict):
+        return cleaned
+    cleaned.pop("is_visible", None)
+    artifacts = cleaned.get("artifacts")
+    if isinstance(artifacts, list):
+        for artifact in artifacts:
+            if not isinstance(artifact, dict):
+                continue
+            urls = artifact.get("urls")
+            if isinstance(urls, list):
+                for candidate in urls:
+                    if isinstance(candidate, dict):
+                        candidate.pop("current", None)
+    return cleaned
+
+
+def _live_fast_skip(output_root: Path, release: dict, specs: dict[int, tuple[str, int, str]]) -> Path | None:
+    output_root = Path(output_root)
+    version = release["versionCode"]
+    package_size = release["packageSize"]
+    manifest_url = specs[2][0]
+    with DATA_LOCK:
+        if not output_root.exists() and not output_root.is_symlink():
+            return None
+        if not _is_regular(output_root, directory=True):
+            raise AdapterError("文件清单输出目录不安全")
+        with data_file_lock(output_root):
+            pc_dir = output_root
+            for part in ("manjuu", "azurpromilia", "pc"):
+                pc_dir = pc_dir / part
+                if not pc_dir.exists() and not pc_dir.is_symlink():
+                    return None
+                if not _is_regular(pc_dir, directory=True):
+                    raise AdapterError("文件清单输出目录不安全")
+            for sub in (pc_dir / "manifests", pc_dir / "manifests" / version):
+                if not sub.exists() and not sub.is_symlink():
+                    return None
+                if not _is_regular(sub, directory=True):
+                    raise AdapterError("文件清单输出目录不安全")
+            target = pc_dir / f"{version}.json"
+            sidecar = pc_dir / "manifests" / version / "pg_item_v2.json"
+            index_file = pc_dir / "index.json"
+            if not (_is_regular(target) and _is_regular(sidecar) and _is_regular(index_file)):
+                return None
+            try:
+                raw_target = target.read_bytes()
+                if len(raw_target) > _DOCUMENT_LIMIT:
+                    return None
+                existing = json.loads(raw_target)
+                validate_v2_record(existing)
+                raw_sidecar = sidecar.read_bytes()
+                if len(raw_sidecar) > _DOCUMENT_LIMIT:
+                    return None
+                doc = json.loads(raw_sidecar)
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError, SchemaValidationError):
+                return None
+            if (
+                existing.get("vendor"),
+                existing.get("game_id"),
+                existing.get("domain_id"),
+                existing.get("platform"),
+                existing.get("channel"),
+                existing.get("version"),
+            ) != ("manjuu", "azurpromilia", "azurpromilia-pc", "windows", "official", version):
+                return None
+            has_manifest = any(
+                isinstance(artifact, dict)
+                and artifact.get("delivery_mode") == "file_manifest"
+                and artifact.get("size") == package_size
+                and isinstance(artifact.get("urls"), list)
+                and bool(artifact["urls"])
+                and isinstance(artifact["urls"][0], dict)
+                and artifact["urls"][0].get("url") == manifest_url
+                for artifact in existing.get("artifacts", [])
+            )
+            if not has_manifest:
+                return None
+            if (
+                not isinstance(doc, dict)
+                or doc.get("version") != version
+                or not isinstance(doc.get("config"), dict)
+                or doc["config"].get("packageSize") != package_size
+            ):
+                return None
+            return target
+
+
 def _publish(record: dict, document: dict, output_root: Path) -> Path:
     content = (json.dumps(document, ensure_ascii=False, indent=2) + "\n").encode()
     if len(content) > _DOCUMENT_LIMIT:
@@ -192,8 +370,13 @@ def _publish(record: dict, document: dict, output_root: Path) -> Path:
             created = None
             try:
                 with record_index_transaction(record, output_root) as target:
-                    if target.exists() and json.loads(target.read_bytes()) != record:
-                        raise AdapterError("同版本记录已存在且内容不同，未覆盖")
+                    if target.exists():
+                        try:
+                            existing = json.loads(target.read_bytes())
+                        except (UnicodeDecodeError, json.JSONDecodeError) as error:
+                            raise AdapterError("同版本记录已存在且内容不同，未覆盖") from error
+                        if _strip_mutable(existing) != _strip_mutable(record):
+                            raise AdapterError("同版本记录已存在且内容不同，未覆盖")
                     folder = target.parent
                     for component in ("manifests", record["version"]):
                         folder /= component
@@ -226,13 +409,29 @@ def _publish(record: dict, document: dict, output_root: Path) -> Path:
                 raise
 
 
-def discover(packageconfig: Path, output_root: Path, timeout: int = 30) -> Path:
+def discover(
+    source: str | Path = "azurpromilia",
+    output_root: Path = Path("data"),
+    timeout: int = 30,
+) -> Path:
     if type(timeout) is not int or timeout <= 0:
         raise AdapterError("timeout 必须是正整数")
-    key, iv = (os.environ.get(name, "").encode("utf-8") for name in (KEY_ENV, IV_ENV))
-    if len(key) != 24 or len(iv) != 16:
-        raise AdapterError(f"请在运行环境设置 {KEY_ENV}（24 字节）和 {IV_ENV}（16 字节）")
-    release, specs = _read_config(packageconfig)
+    if isinstance(source, str):
+        if source != "azurpromilia":
+            raise AdapterError(f"蓝色星原 PC 适配器不支持：{source}")
+        salt = os.environ.get(SALT_ENV, "").strip()
+        if not salt:
+            raise AdapterError(f"请在运行环境设置 {SALT_ENV}")
+        key, iv = _cipher_env()
+        release, specs = _parse_config(_fetch_live_config(timeout, salt))
+        skipped = _live_fast_skip(output_root, release, specs)
+        if skipped is not None:
+            return skipped
+    elif isinstance(source, Path):
+        key, iv = _cipher_env()
+        release, specs = _read_config(source)
+    else:
+        raise AdapterError("source 必须是游戏 ID 字符串或本地 packageconfig 路径")
     chunk_data, files_data = (_manifest_bytes(specs[i], timeout, key, iv) for i in (1, 2))
     try:
         artifacts, chunk_info = _segments(chunk_data, specs[1][0])
@@ -277,17 +476,23 @@ def discover(packageconfig: Path, output_root: Path, timeout: int = 30) -> Path:
     return _publish(record, document, output_root)
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="蓝色星原：旅谣 国服 PC 官方清单导入",
-        epilog=f"解密使用运行环境中的 {KEY_ENV} 和 {IV_ENV}，无需安装启动器。",
+        description="蓝色星原：旅谣 国服 PC 官方清单在线发现与本地抓包导入",
+        epilog=(
+            f"在线请求需要设置 {SALT_ENV}；若官方清单启用加密，还需设置 {KEY_ENV} 和 {IV_ENV}。"
+        ),
     )
-    parser.add_argument("--packageconfig", type=Path, required=True, help="官方 JSON 响应或包含该响应的 HTTP 文本抓包")
-    parser.add_argument("--output-root", type=Path, required=True, help="GMI 数据根目录")
+    parser.add_argument(
+        "--packageconfig", type=Path, default=None,
+        help="可选：官方 JSON 响应或包含该响应的本地 HTTP 文本抓包；省略时直接请求官方接口",
+    )
+    parser.add_argument("--output-root", type=Path, default=Path("data"), help="GMI 数据根目录")
     parser.add_argument("--timeout", type=int, default=30)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
+    source: str | Path = "azurpromilia" if args.packageconfig is None else args.packageconfig
     try:
-        print(discover(args.packageconfig, args.output_root, args.timeout).resolve())
+        print(discover(source, args.output_root, args.timeout).resolve())
         return 0
     except (AdapterError, OSError, ValueError) as error:
         return print_error(error)
