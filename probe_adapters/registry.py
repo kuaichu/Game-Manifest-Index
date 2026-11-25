@@ -22,6 +22,7 @@ from probe_adapters.pc import (
     hypergryph_arknights,
     hypergryph_endfield,
     kuro_cdn,
+    manjuu_syncstation as pc_manjuu_syncstation,
     mihoyo_autopatch as pc_mihoyo_autopatch,
     mihoyo_bh3_cdn as pc_mihoyo_bh3_cdn,
     perfectworld_patcher,
@@ -46,6 +47,7 @@ PC_ADAPTERS = (
     pc_mihoyo_bh3_cdn,
     kuro_cdn,
     perfectworld_patcher,
+    pc_manjuu_syncstation,
 )
 
 

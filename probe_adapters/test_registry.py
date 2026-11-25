@@ -30,6 +30,7 @@ EXPECTED = {
     ("windows", "nte"): "perfectworld_patcher",
     ("windows", "p5x"): "perfectworld_patcher",
     ("windows", "tof"): "perfectworld_patcher",
+    ("windows", "azurpromilia"): "manjuu_syncstation_pc",
 }
 
 
