@@ -278,20 +278,13 @@ AdminView.vue (729 行: 鉴权生命周期、全局 Toast/Confirm、跨 Tab 持�
 
 ---
 
-## 6. 测试与工具脚本
+## 6. 自动化测试体系
 
-### 6.1 自动化测试体系
-
-- **前端测试（Vitest + jsdom，共 30 个测试文件 / 400 项测试）**：
+- **前端测试（Vitest + jsdom，共 30 个测试文件 / 401 项测试）**：
   - 覆盖路由与状态持久化（`route-state.test.ts`、`version-routing.test.ts`、`archive-navigation.test.ts`）、领域呈现与格式工具（`domain-presentation.test.ts`、`game-activity.test.ts`、`admin-format.test.ts`、`admin-date-time.test.ts`）、Chunk 解析与多选下载（`chunk-download.test.ts`、`chunk-directory-download.test.ts`、`chunk-file-browser.test.ts`、`selected-file-download.test.ts`、`wuwa-file-manifest.test.ts`、`azurpromilia-catalog.test.ts`）、API 与后台能力（`api.test.ts`、`admin-view-capabilities.test.ts`、`operation-scope.test.ts` 等）。
 - **后端与适配器测试（`unittest` / `pytest`）**：
-  - `backend/test_*.py`（20 个测试文件）：覆盖底层原语与零跨模块私有导入校验（`test_backend_primitives.py`）、Schema v2、存储锁与事务、索引、公开 API 契约（`test_api_contract.py`）、管理员版本/操作/调度/通知、内存上界与基线审计。
+  - `backend/test_*.py`（18 个测试文件）：覆盖底层原语与零跨模块私有导入校验（`test_backend_primitives.py`）、Schema v2、存储锁与事务、索引、公开 API 契约（`test_api_contract.py`）、管理员版本/操作/调度/通知、内存上界与基线审计。
   - `url_adapters/**/test_*.py` & `probe_adapters/test_*.py`：覆盖各厂商官方发现与探活适配回归测试。
-
-### 6.2 一次性迁移/恢复脚本（`scripts/`）
-
-- `scripts/migrate_pc_data_baseline.py`（及审计报告）：PC 基线数据迁移脚本。
-- `scripts/recover_pc_history_from_archive_db.py`（及审计报告）：从历史归档数据库回填/恢复可证实 PC 历史记录脚本。
 
 ---
 
