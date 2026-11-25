@@ -45,11 +45,14 @@ from backend.mihoyo_package_files import (
     list_files as list_mihoyo_package_files, package_files as mihoyo_package_files,
 )
 from backend.probe_policy import PROBE_EVIDENCE_TTL, parse_probe_checked_at, stable_id
+from backend.manifest_projection import (
+    chunk_summary, compare_artifact_rows, compare_file, file_metadata,
+    public_chunk_document, record_artifact_tree_entries, resolve_kuro_resource_packs,
+    resolve_package_document, tree_artifact, validate_chunk_document,
+)
 from backend.public_projection import (
-    artifact_state, chunk_summary, compare_artifact_rows, compare_file, domain_projection,
-    file_metadata, public_artifact, public_chunk_document, public_version,
-    record_artifact_tree_entries, resolve_kuro_resource_packs, resolve_package_document,
-    scheduled_probe_indices, tree_artifact, utc_now, validate_chunk_document, version_summary,
+    artifact_state, domain_projection, public_artifact, public_version,
+    scheduled_probe_indices, utc_now, version_summary,
 )
 from backend.storage_locks import DATA_LOCK
 

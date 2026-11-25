@@ -94,7 +94,8 @@ def _identity_conflict_field(existing: Mapping[str, Any], expected: Mapping[str,
     return "未知字段"
 
 
-def _read_existing_record(path: Path) -> dict[str, Any]:
+def read_existing_record(path: Path) -> dict[str, Any]:
+    """Read and parse an existing record JSON object from ``path``."""
     try:
         info = os.lstat(path)
     except FileNotFoundError:
@@ -110,6 +111,10 @@ def _read_existing_record(path: Path) -> dict[str, Any]:
     if not isinstance(existing, dict):
         raise VersionStoreError(f"已有 v2 记录必须是 JSON 对象：{path}")
     return existing
+
+
+_read_existing_record = read_existing_record
+_ORIGINAL_READ_EXISTING_RECORD = read_existing_record
 
 
 def _prepare_output_root(root: Path) -> None:
@@ -182,7 +187,7 @@ def _preserve_missing_url_currents(existing: Mapping[str, Any], artifacts: list[
                 candidate["current"] = deepcopy(current)
 
 
-def _persist_v2_record_locked(
+def persist_v2_record_locked(
     record: Mapping[str, Any], root: Path, target: Path, *,
     preserve_artifacts: bool = False,
     preserve_references: bool = False,
@@ -191,8 +196,13 @@ def _persist_v2_record_locked(
 ) -> Path:
     """Persist one record while preserving selected fields from an existing v2 record."""
     _prepare_v2_target_directory_locked(root, target)
+    reader = (
+        _read_existing_record
+        if _read_existing_record is not _ORIGINAL_READ_EXISTING_RECORD
+        else read_existing_record
+    )
     try:
-        existing = _read_existing_record(target)
+        existing = reader(target)
     except FileNotFoundError:
         return _write_v2_record_locked(record, root, target, overwrite=False)
 
@@ -232,6 +242,10 @@ def _persist_v2_record_locked(
     except ValueError as error:
         raise VersionStoreError(f"合并后的 schema v2 记录无效：{error}") from error
     return _write_v2_record_locked(updated, root, target, overwrite=True)
+
+
+_persist_v2_record_locked = persist_v2_record_locked
+_ORIGINAL_PERSIST_V2_RECORD_LOCKED = persist_v2_record_locked
 
 
 def _file_snapshot(path: Path) -> bytes | None:
@@ -334,8 +348,13 @@ def persist_v2_record(
             raise TypeError(f"{name} 必须显式使用 bool")
     root = Path(output_root)
     target = v2_record_path(record, root)
+    writer = (
+        _persist_v2_record_locked
+        if _persist_v2_record_locked is not _ORIGINAL_PERSIST_V2_RECORD_LOCKED
+        else persist_v2_record_locked
+    )
     with record_index_transaction(record, root):
-        return _persist_v2_record_locked(
+        return writer(
             record,
             root,
             target,
@@ -369,6 +388,8 @@ __all__ = [
     "VersionStoreError",
     "legacy_identity_matches",
     "persist_v2_record",
+    "persist_v2_record_locked",
+    "read_existing_record",
     "record_index_transaction",
     "v2_record_path",
     "write_v2_record",

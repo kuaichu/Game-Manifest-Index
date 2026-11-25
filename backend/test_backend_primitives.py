@@ -15,13 +15,19 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from backend import (
+    admin_catalog_service,
     api_contract,
     catalog_admin,
     catalog_registry,
     inventory_loader,
+    legacy_record_normalizer,
+    manifest_projection,
     manifest_readers,
     mihoyo_package_files,
+    public_projection,
+    schema_v2,
     version_admin,
+    version_store,
 )
 from backend.fs_safety import (
     FILE_ATTRIBUTE_REPARSE_POINT,
@@ -43,7 +49,12 @@ from backend.probe_policy import (
     stable_url_id,
 )
 from backend.schema_v2 import artifact_id, validate_v2_record
-from backend.version_store import write_v2_record
+from backend.version_store import (
+    persist_v2_record_locked,
+    read_existing_record,
+    record_index_transaction,
+    write_v2_record,
+)
 
 
 class FsSafetyTests(unittest.TestCase):
@@ -163,24 +174,99 @@ class ProbePolicyAndDecouplingTests(unittest.TestCase):
                             violations.append((path.name, node.module, alias.name))
         self.assertEqual(violations, [])
 
-        for entry in (
-            "import backend.catalog_registry",
-            "import backend.inventory_loader",
-            "import backend.public_projection",
-            "import backend.admin_probe",
-            "import backend.api_contract",
-            "import backend.admin_operations",
-            "import backend.telegram_notify",
+        with tempfile.TemporaryDirectory() as state_dir:
+            env = {**os.environ, "GMI_STATE_ROOT": state_dir}
+            for entry in (
+                "import backend.catalog_registry",
+                "import backend.schema_v2",
+                "import backend.legacy_record_normalizer",
+                "import backend.inventory_loader",
+                "import backend.public_projection",
+                "import backend.manifest_projection",
+                "import backend.admin_probe",
+                "import backend.version_admin",
+                "import backend.admin_catalog_service",
+                "import backend.admin_routes",
+                "import backend.api_contract",
+                "import backend.admin_operations",
+                "import backend.telegram_notify",
+                "import backend.public_projection, backend.manifest_projection, backend.api_contract, backend.app",
+            ):
+                completed = subprocess.run(
+                    [sys.executable, "-c", entry],
+                    cwd=backend_dir.parent,
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    timeout=15,
+                    check=False,
+                )
+                self.assertEqual(completed.returncode, 0, completed.stderr)
+
+    def test_split_modules_reexports_and_public_version_store_hooks(self) -> None:
+        self.assertIs(schema_v2.normalize_legacy_record, legacy_record_normalizer.normalize_legacy_record)
+        self.assertIs(schema_v2.LegacyNormalizationError, legacy_record_normalizer.LegacyNormalizationError)
+        self.assertIs(schema_v2.Diagnostic, legacy_record_normalizer.Diagnostic)
+
+        normalized = legacy_record_normalizer.normalize_legacy_record(
+            {
+                "vendor": "mihoyo",
+                "game_id": "hk4e",
+                "platform": "android",
+                "channel": "official",
+                "version": "1.0.0",
+                "filename": "hk4e_1.0.0.apk",
+                "url": "https://example.test/hk4e_1.0.0.apk",
+            }
+        )
+        validate_v2_record(normalized)
+
+        for name in (
+            "KURO_PACK_MANIFEST",
+            "kuro_pack_name",
+            "kuro_pack_index_url",
+            "kuro_common_pack",
+            "build_kuro_resource_packs",
+            "resolve_kuro_resource_packs",
+            "file_artifacts",
+            "file_metadata",
+            "nte_manifest_modified_at",
+            "compare_artifact",
+            "compare_file",
+            "artifact_compare_identity",
+            "compare_artifact_rows",
+            "public_chunk_document",
+            "chunk_summary",
+            "validate_chunk_document",
+            "resolve_package_document",
+            "tree_artifact",
+            "record_artifact_tree_entries",
         ):
-            completed = subprocess.run(
-                [sys.executable, "-c", entry],
-                cwd=backend_dir.parent,
-                capture_output=True,
-                text=True,
-                timeout=15,
-                check=False,
-            )
-            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertIs(getattr(public_projection, name), getattr(manifest_projection, name), name)
+
+        for name in (
+            "catalog_projection",
+            "create_game",
+            "update_game",
+            "delete_game",
+            "create_domain",
+            "update_domain",
+            "delete_domain",
+        ):
+            self.assertIs(getattr(version_admin, name), getattr(admin_catalog_service, name), name)
+
+        self.assertIs(version_store.read_existing_record, read_existing_record)
+        self.assertIs(version_store._read_existing_record, read_existing_record)
+        self.assertIs(version_store.persist_v2_record_locked, persist_v2_record_locked)
+        self.assertIs(version_store._persist_v2_record_locked, persist_v2_record_locked)
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "data"
+            with record_index_transaction(normalized, root) as target:
+                written = persist_v2_record_locked(normalized, root, target)
+                self.assertEqual(written, target)
+                loaded = read_existing_record(target)
+            self.assertEqual(loaded["version"], "1.0.0")
 
     def test_catalog_registry_is_single_source_of_truth(self) -> None:
         self.assertIs(catalog_admin.VENDORS, catalog_registry.VENDORS)
