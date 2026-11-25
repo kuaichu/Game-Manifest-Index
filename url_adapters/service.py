@@ -19,7 +19,14 @@ from url_adapters.android import (
     mihoyo_download_porter,
     perfectworld_webops,
 )
-from url_adapters.pc import hypergryph_game_packages, kuro_manifests, mihoyo_chunk_manifests, mihoyo_game_packages, perfectworld_patcher
+from url_adapters.pc import (
+    hypergryph_game_packages,
+    kuro_manifests,
+    manjuu_azurpromilia as pc_manjuu_azurpromilia,
+    mihoyo_chunk_manifests,
+    mihoyo_game_packages,
+    perfectworld_patcher,
+)
 from url_adapters.common import AdapterError
 
 
@@ -56,6 +63,7 @@ for _game_id in ("tof", "p5x", "nte"):
     PC_DISCOVERERS[_game_id] = (("packages", perfectworld_patcher.discover),)
 for _game_id in ("arknights", "endfield"):
     PC_DISCOVERERS[_game_id] = (("packages", hypergryph_game_packages.discover),)
+PC_DISCOVERERS["azurpromilia"] = (("packages", pc_manjuu_azurpromilia.discover),)
 
 _PC_IDENTITIES = {
     "hk4e": ("mihoyo", "hk4e-pc"), "hkrpg": ("mihoyo", "hkrpg-pc"),
@@ -63,6 +71,7 @@ _PC_IDENTITIES = {
     "wuwa": ("kuro", "wuwa-pc"), "tof": ("perfectworld", "tof-pc"),
     "p5x": ("perfectworld", "p5x-pc"), "nte": ("perfectworld", "nte-pc"),
     "arknights": ("hypergryph", "arknights-pc"), "endfield": ("hypergryph", "endfield-pc"),
+    "azurpromilia": ("manjuu", "azurpromilia-pc"),
 }
 
 
