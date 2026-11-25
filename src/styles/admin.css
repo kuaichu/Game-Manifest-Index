@@ -2,7 +2,7 @@
    后台配置台样式（/admin）
    --------------------------------------------------------------------------
    配置台 v2 视觉规则，全部限定在 .admin-main 作用域内。
-   由 AdminView.vue 在 admin-legacy.css 之后、admin-responsive.css 之前引入，
+   由 AdminView.vue 在基础模块样式（admin-shell / admin-catalog / admin-content / admin-operations.css）之后、admin-responsive.css 之前引入，
    只在进入后台时加载，前台页面不下载这段样式。
 
    分区：
