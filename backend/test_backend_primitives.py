@@ -327,9 +327,34 @@ class ProbePolicyAndDecouplingTests(unittest.TestCase):
             with patch.object(catalog_admin, "load_config", wraps=catalog_admin.load_config) as spy:
                 first = contract.inventory()
                 self.assertEqual(spy.call_count, 1)
-                second = contract.inventory()
+                for _ in range(5):
+                    second = contract.inventory()
+                    self.assertEqual(spy.call_count, 1)
+                    self.assertEqual(second, first)
+
+            # Nested directory creation must remain stable across consecutive snapshots on Windows NTFS.
+            catalog_admin.save_config(
+                root,
+                {
+                    "games": {
+                        "demo": {"name": "Demo", "platform": "windows", "vendor": "mihoyo"},
+                        "demo2": {"name": "Demo2", "platform": "windows", "vendor": "kuro"},
+                    },
+                    "domains": {
+                        "demo-extra": {"game_id": "demo", "kind": "resources", "platform": "windows", "vendor": "mihoyo"},
+                        "demo2-extra": {"game_id": "demo2", "kind": "resources", "platform": "windows", "vendor": "kuro"},
+                    },
+                },
+            )
+            catalog_admin.ensure_domain_directory(
+                root,
+                catalog_admin.configured_domains(root)["demo2-extra"],
+            )
+            with patch.object(catalog_admin, "load_config", wraps=catalog_admin.load_config) as spy:
+                refreshed = contract.inventory()
                 self.assertEqual(spy.call_count, 1)
-                self.assertEqual(second, first)
+                self.assertEqual(contract.inventory(), refreshed)
+                self.assertEqual(spy.call_count, 1)
 
             with patch.object(catalog_admin, "load_config", wraps=catalog_admin.load_config) as spy:
                 projection = version_admin.catalog_projection(root)

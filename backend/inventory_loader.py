@@ -346,7 +346,7 @@ def _snapshot_domain_dir(
         return False
     if not stat_is_ordinary(dir_info, directory=True):
         return False
-    entries.append((rel_prefix, (dir_info.st_mode, dir_info.st_mtime_ns, dir_info.st_size)))
+    entries.append((rel_prefix, (dir_info.st_mode,)))
     try:
         with os.scandir(directory) as iterator:
             children = sorted(iterator, key=lambda item: item.name)
@@ -355,7 +355,7 @@ def _snapshot_domain_dir(
     for child in children:
         rel_path = f"{rel_prefix}/{child.name}"
         try:
-            info = os.lstat(child.path) if child.name == "index.json" else child.stat(follow_symlinks=False)
+            info = os.lstat(child.path)
         except OSError:
             return False
         if child.name == "index.json":
@@ -369,7 +369,7 @@ def _snapshot_domain_dir(
             continue
         if not child.name.endswith(".json") or not stat_is_ordinary(info, directory=False):
             return False
-        entries.append((rel_path, (info.st_mode, info.st_mtime_ns, info.st_ctime_ns, info.st_size)))
+        entries.append((rel_path, (info.st_mode, info.st_mtime_ns, info.st_ctime_ns, info.st_size, info.st_ino)))
     return True
 
 
@@ -388,8 +388,11 @@ def snapshot_data_root(data_root: Path) -> InventorySnapshot | None:
     if not stat_is_ordinary(root_info, directory=True):
         return None
 
+    # Child membership is captured explicitly by sorted relative paths below;
+    # omit directory mtime so Windows NTFS lazy parent-entry timestamp updates
+    # on newly created subdirectories never cause spurious cache misses.
     entries: list[tuple[str, tuple[int, ...] | None]] = [
-        (".", (root_info.st_mode, root_info.st_mtime_ns, root_info.st_size))
+        (".", (root_info.st_mode,))
     ]
     catalog_path = root / catalog_admin.CATALOG_CONFIG_NAME
     try:
@@ -418,7 +421,7 @@ def snapshot_data_root(data_root: Path) -> InventorySnapshot | None:
             return None
         if not stat_is_ordinary(vendor_info, directory=True):
             return None
-        entries.append((vendor, (vendor_info.st_mode, vendor_info.st_mtime_ns, vendor_info.st_size)))
+        entries.append((vendor, (vendor_info.st_mode,)))
         try:
             with os.scandir(vendor_root) as iterator:
                 game_entries = sorted(iterator, key=lambda item: item.name)
@@ -426,14 +429,14 @@ def snapshot_data_root(data_root: Path) -> InventorySnapshot | None:
             return None
         for game_entry in game_entries:
             try:
-                game_info = game_entry.stat(follow_symlinks=False)
+                game_info = os.lstat(game_entry.path)
             except OSError:
                 return None
             if not stat_is_ordinary(game_info, directory=True):
                 return None
             game_id = game_entry.name
             game_path = Path(game_entry.path)
-            entries.append((f"{vendor}/{game_id}", (game_info.st_mode, game_info.st_mtime_ns, game_info.st_size)))
+            entries.append((f"{vendor}/{game_id}", (game_info.st_mode,)))
             for disk_platform, _platform in PLATFORMS:
                 if not _snapshot_domain_dir(
                     game_path / disk_platform,
@@ -451,9 +454,7 @@ def snapshot_data_root(data_root: Path) -> InventorySnapshot | None:
                 return None
             if not stat_is_ordinary(domains_info, directory=True):
                 return None
-            entries.append(
-                (f"{vendor}/{game_id}/pc/domains", (domains_info.st_mode, domains_info.st_mtime_ns, domains_info.st_size))
-            )
+            entries.append((f"{vendor}/{game_id}/pc/domains", (domains_info.st_mode,)))
             try:
                 with os.scandir(domains_root) as iterator:
                     domain_entries = sorted(iterator, key=lambda item: item.name)
